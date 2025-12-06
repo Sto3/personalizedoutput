@@ -1,0 +1,143 @@
+You are creating a "New Year 2025 Reflection & Reset Planner" for someone reflecting on their past year and setting intentions for the year ahead.
+
+CRITICAL TONE REQUIREMENTS:
+- NOT childish
+- NOT "therapy voice"
+- NOT over-affirming
+- NOT prescriptive (never say "you should" or "you need to")
+- The system is NOT there to diagnose, heal, or promise outcomes
+- The system IS there to: organize, mirror, clarify, and gently offer perspectives
+
+THEIR MEANING MODEL:
+{{meaningModel}}
+
+THEIR FREEFORM ANSWERS:
+{{freeformAnswers}}
+
+---
+
+Generate the following sections. Each section should be substantive and SPECIFIC to what this person shared. Do not use generic "new year new you" language.
+
+## SECTION 1: LOOKING BACK AT 2024
+{{targetTokens: 400}}
+
+Write a 2-3 paragraph reflection on their year that:
+- Acknowledges what happened (the significant events, changes, challenges)
+- Names what they accomplished or navigated (even if imperfect)
+- Recognizes the emotional landscape of their year
+- Uses their own words and specifics where possible
+
+Do NOT:
+- Sugarcoat difficult experiences
+- Force silver linings
+- Be generic about "what a year it's been"
+
+---
+
+## SECTION 2: PATTERNS & REALIZATIONS
+{{targetTokens: 500}}
+
+Identify and articulate:
+- Patterns that emerged over the year (in behavior, relationships, energy)
+- Things that surprised them about themselves or their circumstances
+- What became clearer by year's end
+- Themes they might not have named but are visible now
+
+Format: Use clear headings. Each pattern should feel like a recognition, not a judgment.
+
+---
+
+## SECTION 3: INTENTIONS FOR 2025
+{{targetTokens: 500}}
+
+Based on their reflections, offer:
+- 3-5 intentions (NOT resolutions, NOT goals - directions and orientations)
+- Each intention should connect to something specific they shared
+- Frame as "moving toward" rather than "achieving" or "fixing"
+
+Use language like:
+- "Moving toward more..."
+- "Creating space for..."
+- "Being gentler with..."
+- "Exploring..."
+- "Protecting..."
+
+NEVER:
+- "Losing X pounds"
+- "Finally doing X"
+- "Stopping [bad habit]"
+- Any shame-based framing
+
+---
+
+## SECTION 4: YOUR QUARTERLY FOCUS
+{{targetTokens: 600}}
+
+Break down the year into quarters with specific, realistic focuses:
+
+### Q1 (January - March)
+- Primary focus area
+- 2-3 specific, low-pressure actions
+- One thing to pay attention to
+
+### Q2 (April - June)
+- Primary focus area
+- 2-3 specific actions
+- One thing to pay attention to
+
+### Q3 (July - September)
+- Primary focus area
+- 2-3 specific actions
+- One check-in question to ask themselves
+
+### Q4 (October - December)
+- Primary focus area
+- 2-3 specific actions
+- One reflection prompt for year-end
+
+Each quarter should feel connected but not overwhelming. Respect their constraints.
+
+---
+
+## SECTION 5: MOVING FORWARD WITH CLARITY
+{{targetTokens: 200}}
+
+Close with a brief (2-3 paragraphs) section that:
+- Affirms the value of taking time to reflect and organize thoughts
+- Acknowledges that plans change and that's okay
+- Encourages self-compassion throughout the year
+- Does NOT claim to be therapy or professional advice
+- Leaves them feeling oriented, not overwhelmed
+
+---
+
+Respond with valid JSON in this format:
+{
+  "sections": [
+    {
+      "id": "year_review",
+      "title": "Looking Back at 2024",
+      "content": "..."
+    },
+    {
+      "id": "patterns",
+      "title": "Patterns & Realizations",
+      "content": "..."
+    },
+    {
+      "id": "intentions",
+      "title": "Intentions for 2025",
+      "content": "..."
+    },
+    {
+      "id": "quarterly_focus",
+      "title": "Your Quarterly Focus",
+      "content": "..."
+    },
+    {
+      "id": "closing",
+      "title": "Moving Forward with Clarity",
+      "content": "..."
+    }
+  ]
+}

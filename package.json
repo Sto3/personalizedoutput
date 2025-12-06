@@ -1,0 +1,39 @@
+{
+  "name": "etsyinnovations",
+  "version": "2.0.0",
+  "description": "Deep Personalization Product Engine for Etsy",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "npx ts-node src/server.ts",
+    "start": "node dist/server.js",
+    "build": "npx tsc --noEmit false || true && npm run copy-assets",
+    "copy-assets": "node scripts/copy-assets.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:santa": "npx ts-node test-santa-deep.js",
+    "test:chat": "npx ts-node scripts/test-thought-chat.ts",
+    "generate:etsy-preview": "node scripts/generateEtsyPreview.js"
+  },
+  "keywords": ["etsy", "personalization", "santa", "planner", "ai"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.4",
+    "@types/uuid": "^10.0.0",
+    "axios": "^1.13.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "openai": "^6.9.1",
+    "puppeteer": "^23.0.0",
+    "sharp": "^0.34.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "uuid": "^13.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

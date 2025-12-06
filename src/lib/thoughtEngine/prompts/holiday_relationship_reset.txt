@@ -1,0 +1,137 @@
+You are creating a "Holiday Game Plan: Family, Mental Health & Peace" planner for someone navigating complex family dynamics during the holiday season.
+
+CRITICAL TONE REQUIREMENTS:
+- NOT childish
+- NOT "therapy voice"
+- NOT over-affirming
+- NOT prescriptive (never say "you should" or "you need to")
+- The system is NOT there to diagnose, heal, or promise outcomes
+- The system IS there to: organize, mirror, clarify, and gently offer perspectives
+
+THEIR MEANING MODEL:
+{{meaningModel}}
+
+THEIR FREEFORM ANSWERS:
+{{freeformAnswers}}
+
+---
+
+Generate the following sections. Each section should be substantive and SPECIFIC to what this person shared. Do not use generic advice.
+
+## SECTION 1: WHERE YOU ARE RIGHT NOW
+{{targetTokens: 400}}
+
+Write a 2-3 paragraph organized recap of their situation, grouped into themes. This should:
+- Mirror back what they shared, organized clearly
+- Name the key dynamics at play
+- Acknowledge complexity without dramatizing
+- Use their own words where possible
+
+Do NOT:
+- Diagnose or label
+- Promise resolution
+- Minimize their situation
+
+---
+
+## SECTION 2: KEY THEMES & TENSIONS
+{{targetTokens: 500}}
+
+Create a structured breakdown of:
+- Named tensions (the specific friction points)
+- Trade-offs they're navigating
+- Mixed feelings that emerged
+- Unspoken fears or concerns that might be present
+
+Format: Use clear headings and brief explanations. Each theme should feel recognized, not analyzed.
+
+---
+
+## SECTION 3: THINGS TO CONSIDER
+{{targetTokens: 600}}
+
+This is the "wisdom layer." Offer 4-6 perspectives or considerations that are:
+- Specific to their situation
+- Framed as OPTIONS, not instructions
+- Thoughtful without being preachy
+
+Use language like:
+- "One way to think about this..."
+- "Some people in similar situations find..."
+- "It might be worth considering..."
+- "A question you might ask yourself..."
+
+NEVER use:
+- "You should..."
+- "You need to..."
+- "The answer is..."
+- Any definitive prescriptions
+
+---
+
+## SECTION 4: YOUR HOLIDAY GAME PLAN
+{{targetTokens: 700}}
+
+Create a concrete, scheduled action plan divided into:
+
+### Before the Holidays
+(Specific, low-pressure steps they could take in the days leading up)
+
+### During the Holidays
+(Realistic strategies for navigating the actual gatherings/events)
+
+### After the Holidays
+(Reflection points and follow-through items)
+
+Each action should be:
+- Specific and actionable
+- Realistic given their constraints
+- Low-pressure (not overwhelming)
+- Connected to what they actually shared
+
+Include 2-3 "if-then" contingencies:
+"If [specific situation they mentioned] happens, you might try [specific response]"
+
+---
+
+## SECTION 5: A NOTE ON ORGANIZING YOUR THOUGHTS
+{{targetTokens: 200}}
+
+Close with a brief (2-3 paragraphs) framing that:
+- Acknowledges the value of organizing thoughts for mental clarity
+- Does NOT claim to be therapy or professional advice
+- Encourages self-compassion
+- Leaves them feeling capable, not dependent on this document
+
+---
+
+Respond with valid JSON in this format:
+{
+  "sections": [
+    {
+      "id": "snapshot",
+      "title": "Where You Are Right Now",
+      "content": "..."
+    },
+    {
+      "id": "themes_tensions",
+      "title": "Key Themes & Tensions",
+      "content": "..."
+    },
+    {
+      "id": "wisdom",
+      "title": "Things to Consider",
+      "content": "..."
+    },
+    {
+      "id": "action_plan",
+      "title": "Your Holiday Game Plan",
+      "content": "..."
+    },
+    {
+      "id": "closing",
+      "title": "A Note on Organizing Your Thoughts",
+      "content": "..."
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+You are creating a "2025 Reflection & Reset Planner" for {{firstName}}, someone who has spent ~20 minutes deeply reflecting on their year and their hopes for the next.
+
+This person has been brave enough to name their struggles, their growth, their secret dreams. They deserve a planner that proves we HEARD them - that uses their specific moments, their exact words, their real feelings.
+
+CRITICAL TONE REQUIREMENTS:
+- NOT childish
+- NOT "new year new you" clichés
+- NOT over-affirming
+- NOT prescriptive (never say "you should" or "you need to")
+- The system IS there to: organize, mirror, illuminate patterns, and honor what they shared
+
+---
+
+## WHO IS THIS FOR:
+{{firstName}}
+
+## THEIR THREE WORDS FOR 2024:
+{{yearOverview.threeWordsToDescribe.[0]}}, {{yearOverview.threeWordsToDescribe.[1]}}, {{yearOverview.threeWordsToDescribe.[2]}}
+
+## THE YEAR THAT WAS:
+
+Biggest Accomplishment:
+"{{yearOverview.biggestAccomplishment}}"
+
+Biggest Challenge:
+"{{yearOverview.biggestChallenge}}"
+
+Unexpected Joy:
+"{{yearOverview.unexpectedJoy}}"
+
+{{#if yearOverview.unexpectedLoss}}
+Unexpected Loss:
+"{{yearOverview.unexpectedLoss}}"
+{{/if}}
+
+## SIGNIFICANT MOMENT #1:
+
+What happened:
+"{{significantMoment1.whatHappened}}"
+
+Why it mattered:
+"{{significantMoment1.whyItMattered}}"
+
+How it changed them:
+"{{significantMoment1.howItChangedYou}}"
+
+What they want to carry forward:
+"{{significantMoment1.whatYouWantToRemember}}"
+
+## SIGNIFICANT MOMENT #2:
+
+What happened:
+"{{significantMoment2.whatHappened}}"
+
+Why it mattered:
+"{{significantMoment2.whyItMattered}}"
+
+How it changed them:
+"{{significantMoment2.howItChangedYou}}"
+
+What they want to carry forward:
+"{{significantMoment2.whatYouWantToRemember}}"
+
+{{#if difficultMoment}}
+## A DIFFICULT MOMENT:
+
+What happened:
+"{{difficultMoment.whatHappened}}"
+
+How they got through:
+"{{difficultMoment.howYouGotThrough}}"
+
+What they learned:
+"{{difficultMoment.whatYouLearned}}"
+
+{{#if difficultMoment.stillProcessing}}
+Still processing:
+"{{difficultMoment.stillProcessing}}"
+{{/if}}
+{{/if}}
+
+## WHAT THEY LEARNED ABOUT THEMSELVES:
+
+What surprised them:
+"{{surprisedYou}}"
+
+A strength they discovered:
+"{{strengthDiscovered}}"
+
+A pattern they noticed:
+"{{patternNoticed}}"
+
+{{#if relationshipInsight}}
+About relationships:
+"{{relationshipInsight}}"
+{{/if}}
+
+## UNFINISHED BUSINESS:
+
+What they need to let go of:
+"{{letGoOf}}"
+
+{{#if forgiveYourself}}
+What they need to forgive themselves for:
+"{{forgiveYourself}}"
+{{/if}}
+
+{{#if conversationNeeded}}
+A conversation still needed:
+"{{conversationNeeded}}"
+{{/if}}
+
+{{#if unfinishedProject}}
+Something left undone:
+"{{unfinishedProject}}"
+{{/if}}
+
+## LOOKING FORWARD TO 2025:
+
+One word to guide the year: {{oneWordForNextYear}}
+
+How they want to feel:
+"{{feelingYouWant}}"
+
+One thing that MUST change:
+"{{nonNegotiableChange}}"
+
+{{#if secretDream}}
+Secret dream:
+"{{secretDream}}"
+{{/if}}
+
+## PRACTICAL INTENTIONS:
+
+{{#if healthIntention}}Health: "{{healthIntention}}"{{/if}}
+{{#if relationshipIntention}}Relationships: "{{relationshipIntention}}"{{/if}}
+{{#if careerIntention}}Work/Purpose: "{{careerIntention}}"{{/if}}
+{{#if personalIntention}}Personal: "{{personalIntention}}"{{/if}}
+
+What might get in the way:
+"{{whatMightGetInWay}}"
+
+Support needed:
+"{{supportNeeded}}"
+
+## PREFERENCES:
+Tone: {{tonePreference}}
+Quarterly breakdown: {{#if includeQuarterlyBreakdown}}Yes{{else}}No{{/if}}
+
+---
+
+Generate the following sections. Use {{firstName}} naturally throughout. Reference SPECIFIC moments, their exact words, the patterns they named. This should feel like their year, organized and reflected back with clarity.
+
+## SECTION 1: {{firstName}}, YOUR 2024
+{{targetTokens: 600}}
+
+Write a 4-5 paragraph reflection that:
+- Opens by acknowledging the three words they chose: {{yearOverview.threeWordsToDescribe}}
+- Tells the STORY of their year using their specific moments
+- References their biggest accomplishment by name
+- Names the challenge they faced
+- Weaves in BOTH significant moments with specific details
+- Acknowledges the unexpected joy AND any loss they shared
+- Uses their OWN WORDS frequently
+
+Do NOT:
+- Sugarcoat or force silver linings
+- Use generic "what a year" language
+- Skip over the difficult parts
+
+THIS SECTION SHOULD MAKE THEM FEEL: "I didn't realize how much happened. Someone finally organized it all."
+
+---
+
+## SECTION 2: WHAT YOU DISCOVERED
+{{targetTokens: 600}}
+
+Create a deeply personal section about what 2024 taught {{firstName}}:
+
+### The Strength You Found
+- Reference their specific answer about the strength they discovered
+- Connect it to one of their significant moments
+- Show them the pattern
+
+### The Pattern You Named
+- Directly reference what they said about patterns in themselves
+- Connect it to specific examples from their year
+- Ask a question that deepens their understanding
+
+### What Surprised You
+- Use their exact words about what surprised them
+- Connect it to who they're becoming
+
+### About Relationships
+- Reference their relationship insight if shared
+- Connect to specific moments or challenges
+
+### What You're Ready to Release
+- Honor what they said they need to let go of
+- If they mentioned self-forgiveness, acknowledge that with tenderness
+- If they mentioned a conversation needed, acknowledge the courage that requires
+
+---
+
+## SECTION 3: 2025 - THE YEAR OF {{oneWordForNextYear | uppercase}}
+{{targetTokens: 600}}
+
+Based on everything {{firstName}} shared, offer:
+
+### The Word You Chose: {{oneWordForNextYear}}
+- Reflect on why this word might have chosen them
+- Connect it to what they said about how they want to feel
+- Show how it relates to their year
+
+### Intentions, Not Resolutions
+Create 5-6 intentions that:
+- Flow directly from what they shared
+- Are framed as "moving toward" not "fixing"
+- Connect to their secret dream if shared
+- Address the one thing that MUST change
+- Feel realistic given what might get in their way
+
+### The Support You Need
+- Reference their answer about support needed
+- Suggest how to ask for it
+
+### Protecting This Year
+- Address what they said might get in their way
+- Offer perspectives on navigating those obstacles
+
+NEVER use shame-based framing or generic resolutions.
+
+---
+
+{{#if includeQuarterlyBreakdown}}
+## SECTION 4: YOUR QUARTERLY FOCUS
+{{targetTokens: 700}}
+
+Break down 2025 into quarters, with each quarter connected to their specific goals and intentions:
+
+### Q1: January - March | "Foundations"
+- Primary focus connected to their most urgent intention
+- 2-3 specific, low-pressure actions
+- One thing to pay attention to (connected to patterns they noticed)
+- Check-in question for March
+
+### Q2: April - June | "Momentum"
+- Building on Q1
+- Connected to their career/purpose intention if shared
+- Actions that feel natural, not forced
+- Mid-year reflection prompt
+
+### Q3: July - September | "Integration"
+- The middle of the year
+- Connected to relationship or personal intentions
+- Space for their secret dream if shared
+- What to watch for
+
+### Q4: October - December | "Harvest"
+- Looking back at the year of {{oneWordForNextYear}}
+- How they'll know if they felt what they wanted to feel
+- Preparation for next year's reflection
+- A prompt to return to this document
+
+Each quarter should respect their constraints and what might get in their way.
+{{/if}}
+
+---
+
+## SECTION {{#if includeQuarterlyBreakdown}}5{{else}}4{{/if}}: A YEAR FROM NOW
+{{targetTokens: 400}}
+
+Address {{firstName}} directly. This is the closing.
+
+Begin with:
+"{{firstName}}, you've just done something most people never do - you've paused long enough to truly look at your life."
+
+Then:
+- Reference what they want to carry forward from their significant moments
+- Acknowledge the word {{oneWordForNextYear}} and what it means for them
+- If they shared a secret dream, honor it: "And that dream you mentioned..."
+- Give them permission for whatever they need permission for
+- Acknowledge this is about organizing thoughts, not professional advice
+- End with something that leaves them feeling oriented and capable
+
+Close with something like:
+"A year from now, when you read this again, may you recognize the person who was brave enough to reflect honestly - and may you see how far you've come."
+
+---
+
+Respond with valid JSON in this format:
+{
+  "sections": [
+    {
+      "id": "year_review",
+      "title": "{{firstName}}, Your 2024",
+      "content": "..."
+    },
+    {
+      "id": "discoveries",
+      "title": "What You Discovered",
+      "content": "..."
+    },
+    {
+      "id": "year_ahead",
+      "title": "2025 - The Year of {{oneWordForNextYear}}",
+      "content": "..."
+    },
+    {{#if includeQuarterlyBreakdown}}
+    {
+      "id": "quarterly",
+      "title": "Your Quarterly Focus",
+      "content": "..."
+    },
+    {{/if}}
+    {
+      "id": "closing",
+      "title": "A Year From Now",
+      "content": "..."
+    }
+  ]
+}

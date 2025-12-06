@@ -1,0 +1,271 @@
+You are creating a "Holiday Game Plan: Family, Mental Health & Peace" planner for someone navigating complex family dynamics during the holiday season.
+
+This person has spent ~20 minutes deeply reflecting and sharing. They deserve a planner that proves we HEARD them. This is not generic advice - this is a mirror that organizes what they shared and helps them see it clearly.
+
+CRITICAL TONE REQUIREMENTS:
+- NOT childish
+- NOT "therapy voice"
+- NOT over-affirming
+- NOT prescriptive (never say "you should" or "you need to")
+- The system is NOT there to diagnose, heal, or promise outcomes
+- The system IS there to: organize, mirror, clarify, and gently offer perspectives
+
+---
+
+## THE USER'S FIRST NAME:
+{{firstName}}
+
+## THE LANDSCAPE:
+Primary Relationship Challenge: {{primaryRelationship}}
+Holiday Context: {{holidayContext}}
+
+## THE CORE TENSION - THEIR WORDS:
+Who this is with: {{coreTension.withWhom}}
+
+What it looks like:
+"{{coreTension.whatItLooksLike}}"
+
+A specific recent example:
+"{{coreTension.specificExample}}"
+
+How they typically respond:
+"{{coreTension.whatYouUsuallyDo}}"
+
+How it makes them feel:
+"{{coreTension.howItMakesYouFeel}}"
+
+What they wish they could say:
+"{{coreTension.whatYouWishYouCouldSay}}"
+
+{{#if coreTension.underlyingNeed}}
+The need not being met:
+"{{coreTension.underlyingNeed}}"
+{{/if}}
+
+## THE PATTERN:
+What usually happens at holidays:
+"{{pastHolidayPattern}}"
+
+What happened LAST YEAR specifically:
+"{{lastYearSpecific}}"
+
+What they've tried before:
+"{{whatYouTriedBefore}}"
+
+{{#if whyItDidntWork}}
+Why it didn't work:
+"{{whyItDidntWork}}"
+{{/if}}
+
+## THEIR INNER WORLD:
+Biggest fear for this holiday:
+"{{biggestFear}}"
+
+Secret hope:
+"{{secretHope}}"
+
+What peace would look like:
+"{{whatPeaceLooksLike}}"
+
+{{#if guiltyAbout}}
+What they feel guilty about:
+"{{guiltyAbout}}"
+{{/if}}
+
+## PRACTICAL REALITY:
+{{#if constraints}}
+Their constraints:
+{{#each constraints}}
+- {{type}}: "{{description}}"
+{{/each}}
+{{/if}}
+
+Non-negotiables:
+{{#each nonNegotiables}}
+- "{{this}}"
+{{/each}}
+
+Where they have flexibility:
+{{#each flexibleAreas}}
+- "{{this}}"
+{{/each}}
+
+## WHAT THEY NEED:
+What they need to hear:
+"{{whatYouNeedToHear}}"
+
+{{#if whatYouNeedPermissionFor}}
+What they need permission for:
+"{{whatYouNeedPermissionFor}}"
+{{/if}}
+
+{{#if boundaryYouWantToSet}}
+A boundary they want to set:
+"{{boundaryYouWantToSet}}"
+{{/if}}
+
+## THEIR PREFERENCES:
+Tone: {{tonePreference}}
+Spiritual language: {{#if spiritualLanguageOk}}Okay{{else}}Please keep secular{{/if}}
+
+---
+
+Generate the following sections. Use {{firstName}} naturally throughout (2-3 times). Reference SPECIFIC details from what they shared - their exact words, the specific example, the person they're dealing with BY NAME.
+
+## SECTION 1: {{firstName}}, WHERE YOU ARE RIGHT NOW
+{{targetTokens: 500}}
+
+Write a 3-4 paragraph organized recap of THEIR situation that:
+- Opens by acknowledging them by name and what they're navigating
+- Mirrors back what they shared using their OWN WORDS
+- Names the specific person ({{coreTension.withWhom}}) and the dynamic
+- References the specific example they shared
+- Acknowledges the feelings they named ({{coreTension.howItMakesYouFeel}})
+- Names the pattern they've noticed (from lastYearSpecific)
+- Organizes the complexity they're holding without dramatizing
+
+Do NOT:
+- Use generic language
+- Say things that could apply to anyone
+- Diagnose or label
+- Promise resolution
+
+THIS SECTION SHOULD MAKE THEM FEEL: "Finally, someone organized all this chaos in my head."
+
+---
+
+## SECTION 2: THE TENSIONS YOU'RE HOLDING
+{{targetTokens: 600}}
+
+Create a deeply specific breakdown of:
+
+### The Core Tension: {{coreTension.withWhom}}
+- Reference their specific example
+- Name what they wish they could say
+- Acknowledge the underlying need if shared
+
+### The Historical Pattern
+- What usually happens (use their words)
+- Why previous attempts didn't work
+
+### The Mixed Feelings
+- The fear AND the hope they named
+- The guilt they carry (if shared)
+- The trade-offs they're navigating
+
+### What You Actually Want
+- Their vision of peace (their words)
+- What they need permission for
+
+Format: Use their name occasionally. Reference specific details. Each section should feel like recognition, not analysis.
+
+---
+
+## SECTION 3: PERSPECTIVES TO CONSIDER
+{{targetTokens: 700}}
+
+Offer 5-7 perspectives that are:
+- SPECIFIC to their situation with {{coreTension.withWhom}}
+- Connected to what they said they need to hear
+- Framed as OPTIONS, not instructions
+- Sensitive to their guilt (if shared)
+- Respectful of their constraints
+
+Structure each perspective as:
+- A heading that names the consideration
+- 2-3 sentences exploring it
+- A question for them to sit with (optional)
+
+Use language like:
+- "{{firstName}}, one way to think about this..."
+- "Given what you shared about {{coreTension.withWhom}}..."
+- "You mentioned that {{reference their words}}..."
+- "Some people navigating similar dynamics find..."
+
+If they asked for permission ({{whatYouNeedPermissionFor}}), GIVE IT TO THEM directly and clearly.
+
+NEVER use:
+- "You should..."
+- "You need to..."
+- Generic advice
+
+---
+
+## SECTION 4: YOUR HOLIDAY GAME PLAN
+{{targetTokens: 800}}
+
+Create a concrete, SPECIFIC plan using their constraints and non-negotiables:
+
+### Before the Holidays (This Week)
+3-4 specific, low-pressure steps that:
+- Address what they said they need
+- Are realistic given their constraints
+- Connect to the boundary they want to set (if shared)
+
+### During: If {{coreTension.withWhom}} [specific behavior from their example]
+2-3 "if-then" contingencies:
+- "If {{specific situation from their example}}, you might try [specific response]"
+- Based on what they said typically happens
+
+### During: Protecting Your Peace
+2-3 strategies specific to:
+- Their definition of what peace looks like
+- Their energy/time constraints
+- The specific gatherings they'll attend
+
+### After the Holidays
+2-3 reflection points:
+- Connected to whether their secret hope came true
+- Low-pressure follow-through items
+- Space to process what happened
+
+---
+
+## SECTION 5: THE WORDS YOU NEEDED TO HEAR
+{{targetTokens: 300}}
+
+This section is personal. Address {{firstName}} directly.
+
+Begin by GIVING THEM what they said they needed to hear ({{whatYouNeedToHear}}) - not word for word, but the essence of it, expanded with warmth.
+
+Then:
+- Acknowledge this is about organizing thoughts for clarity, not professional advice
+- Give explicit permission for whatever they said they needed permission for
+- Affirm their capacity to navigate this
+- End with encouragement that leaves them feeling capable, not dependent
+
+Close with:
+"{{firstName}}, you know more about this situation than any document ever could. This is simply your own thoughts, organized."
+
+---
+
+Respond with valid JSON in this format:
+{
+  "sections": [
+    {
+      "id": "snapshot",
+      "title": "{{firstName}}, Where You Are Right Now",
+      "content": "..."
+    },
+    {
+      "id": "tensions",
+      "title": "The Tensions You're Holding",
+      "content": "..."
+    },
+    {
+      "id": "perspectives",
+      "title": "Perspectives to Consider",
+      "content": "..."
+    },
+    {
+      "id": "game_plan",
+      "title": "Your Holiday Game Plan",
+      "content": "..."
+    },
+    {
+      "id": "words_needed",
+      "title": "The Words You Needed to Hear",
+      "content": "..."
+    }
+  ]
+}

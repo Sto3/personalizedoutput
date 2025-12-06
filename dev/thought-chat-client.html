@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Thought Chat - Developer Test Client</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .product-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .product-btn {
+      padding: 12px 20px;
+      border: 2px solid #ddd;
+      background: white;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+
+    .product-btn:hover {
+      border-color: #007AFF;
+      background: #f0f7ff;
+    }
+
+    .product-btn.active {
+      border-color: #007AFF;
+      background: #007AFF;
+      color: white;
+    }
+
+    .chat-container {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      overflow: hidden;
+      display: none;
+    }
+
+    .chat-container.active {
+      display: block;
+    }
+
+    .chat-header {
+      background: #007AFF;
+      color: white;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-header h2 {
+      font-size: 16px;
+      font-weight: 600;
+    }
+
+    .chat-status {
+      font-size: 12px;
+      background: rgba(255,255,255,0.2);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+
+    .chat-messages {
+      height: 400px;
+      overflow-y: auto;
+      padding: 20px;
+      background: #fafafa;
+    }
+
+    .message {
+      margin-bottom: 16px;
+      max-width: 80%;
+    }
+
+    .message.assistant {
+      margin-right: auto;
+    }
+
+    .message.user {
+      margin-left: auto;
+    }
+
+    .message-content {
+      padding: 12px 16px;
+      border-radius: 12px;
+      line-height: 1.5;
+    }
+
+    .message.assistant .message-content {
+      background: white;
+      border: 1px solid #e0e0e0;
+    }
+
+    .message.user .message-content {
+      background: #007AFF;
+      color: white;
+    }
+
+    .message-meta {
+      font-size: 11px;
+      color: #999;
+      margin-top: 4px;
+      padding: 0 4px;
+    }
+
+    .chat-input-area {
+      padding: 16px 20px;
+      border-top: 1px solid #eee;
+      background: white;
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 14px;
+      resize: none;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: #007AFF;
+    }
+
+    .send-btn {
+      padding: 12px 24px;
+      background: #007AFF;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .send-btn:hover {
+      background: #0056b3;
+    }
+
+    .send-btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .action-btn {
+      padding: 10px 16px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .action-btn:hover {
+      background: #f5f5f5;
+    }
+
+    .action-btn.generate {
+      background: #28a745;
+      color: white;
+      border-color: #28a745;
+    }
+
+    .action-btn.generate:hover {
+      background: #218838;
+    }
+
+    .action-btn.generate:disabled {
+      background: #ccc;
+      border-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .output-section {
+      margin-top: 20px;
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: none;
+    }
+
+    .output-section.active {
+      display: block;
+    }
+
+    .output-section h3 {
+      margin-bottom: 16px;
+      color: #333;
+    }
+
+    .script-output {
+      background: #f8f8f8;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: Georgia, serif;
+      line-height: 1.8;
+      white-space: pre-wrap;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .pdf-link {
+      display: inline-block;
+      padding: 12px 20px;
+      background: #007AFF;
+      color: white;
+      text-decoration: none;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+    }
+
+    .loading::after {
+      content: '';
+      animation: dots 1.5s infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
+    .error {
+      color: #dc3545;
+      padding: 12px;
+      background: #ffe6e6;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+
+    .info-panel {
+      margin-top: 20px;
+      padding: 16px;
+      background: #e8f4fd;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #0066cc;
+    }
+
+    .info-panel code {
+      background: rgba(0,0,0,0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Thought Chat - Developer Test Client</h1>
+
+    <div class="product-selector">
+      <button class="product-btn" data-product="santa_message">
+        🎅 Santa Message
+      </button>
+      <button class="product-btn" data-product="holiday_reset">
+        🎄 Holiday Reset
+      </button>
+      <button class="product-btn" data-product="new_year_reset">
+        ✨ New Year Reset
+      </button>
+    </div>
+
+    <div id="chatContainer" class="chat-container">
+      <div class="chat-header">
+        <h2 id="chatTitle">Starting conversation...</h2>
+        <span class="chat-status" id="chatStatus">in_progress</span>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="loading">Starting session<span></span></div>
+      </div>
+
+      <div class="chat-input-area">
+        <div class="chat-input-row">
+          <textarea
+            id="chatInput"
+            class="chat-input"
+            placeholder="Type your response..."
+            rows="2"
+            disabled
+          ></textarea>
+          <button id="sendBtn" class="send-btn" disabled>Send</button>
+        </div>
+        <div class="action-buttons">
+          <button id="newSessionBtn" class="action-btn">New Session</button>
+          <button id="generateBtn" class="action-btn generate" disabled>
+            Generate Output
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="outputSection" class="output-section">
+      <h3>Generated Output</h3>
+      <div id="outputContent"></div>
+    </div>
+
+    <div class="info-panel">
+      <strong>API Endpoints:</strong><br>
+      <code>POST /api/thought-chat/start</code> - Start a new session<br>
+      <code>POST /api/thought-chat/continue</code> - Continue conversation<br>
+      <code>POST /api/thought-chat/generate</code> - Generate final output<br>
+      <code>GET /api/thought-chat/session/:id</code> - Get session details
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = '/api/thought-chat';
+    let currentSessionId = null;
+    let currentProductId = null;
+    let canGenerate = false;
+
+    // DOM elements
+    const chatContainer = document.getElementById('chatContainer');
+    const chatTitle = document.getElementById('chatTitle');
+    const chatStatus = document.getElementById('chatStatus');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const newSessionBtn = document.getElementById('newSessionBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const outputSection = document.getElementById('outputSection');
+    const outputContent = document.getElementById('outputContent');
+    const productBtns = document.querySelectorAll('.product-btn');
+
+    // Product selection
+    productBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const productId = btn.dataset.product;
+        startSession(productId);
+
+        productBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+
+    // Start a new session
+    async function startSession(productId) {
+      currentProductId = productId;
+      chatContainer.classList.add('active');
+      outputSection.classList.remove('active');
+      chatMessages.innerHTML = '<div class="loading">Starting session</div>';
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+      generateBtn.disabled = true;
+
+      try {
+        const response = await fetch(`${API_BASE}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ productId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          currentSessionId = data.sessionId;
+          chatTitle.textContent = data.meta.productName;
+          chatStatus.textContent = 'in_progress';
+          chatMessages.innerHTML = '';
+
+          addMessage('assistant', data.firstAssistantMessage);
+
+          chatInput.disabled = false;
+          sendBtn.disabled = false;
+          chatInput.focus();
+        } else {
+          showError(data.error);
+        }
+      } catch (error) {
+        showError(error.message);
+      }
+    }
+
+    // Send message
+    async function sendMessage() {
+      const message = chatInput.value.trim();
+      if (!message || !currentSessionId) return;
+
+      addMessage('user', message);
+      chatInput.value = '';
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+
+      try {
+        const response = await fetch(`${API_BASE}/continue`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: currentSessionId,
+            userMessage: message
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          addMessage('assistant', data.assistantMessage);
+          chatStatus.textContent = data.status;
+          canGenerate = data.canGenerate;
+
+          if (data.status === 'ready_for_generation') {
+            generateBtn.disabled = false;
+            chatInput.disabled = true;
+            sendBtn.disabled = true;
+          } else {
+            chatInput.disabled = false;
+            sendBtn.disabled = false;
+            generateBtn.disabled = !canGenerate;
+            chatInput.focus();
+          }
+        } else {
+          showError(data.error);
+          chatInput.disabled = false;
+          sendBtn.disabled = false;
+        }
+      } catch (error) {
+        showError(error.message);
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+      }
+    }
+
+    // Generate output
+    async function generateOutput() {
+      if (!currentSessionId) return;
+
+      generateBtn.disabled = true;
+      generateBtn.textContent = 'Generating...';
+      outputSection.classList.add('active');
+      outputContent.innerHTML = '<div class="loading">Creating your personalized output</div>';
+
+      try {
+        const response = await fetch(`${API_BASE}/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: currentSessionId,
+            forceGenerate: true
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          chatStatus.textContent = 'completed';
+          displayOutput(data);
+        } else {
+          outputContent.innerHTML = `<div class="error">${data.error}</div>`;
+        }
+      } catch (error) {
+        outputContent.innerHTML = `<div class="error">${error.message}</div>`;
+      }
+
+      generateBtn.textContent = 'Generate Output';
+    }
+
+    // Display generated output
+    function displayOutput(data) {
+      let html = '';
+
+      if (data.script) {
+        html += `
+          <h4>Santa's Script</h4>
+          <div class="script-output">${escapeHtml(data.script)}</div>
+        `;
+
+        if (data.audioUrl) {
+          html += `
+            <h4 style="margin-top: 16px;">Audio</h4>
+            <audio controls src="${data.audioUrl}"></audio>
+          `;
+        }
+      }
+
+      if (data.pdfUrl) {
+        html += `
+          <h4>Your Personalized Planner</h4>
+          <a href="${data.pdfUrl}" target="_blank" class="pdf-link">
+            📄 Download PDF
+          </a>
+        `;
+      }
+
+      if (data.warnings && data.warnings.length > 0) {
+        html += `
+          <div style="margin-top: 16px; padding: 12px; background: #fff3cd; border-radius: 8px; font-size: 13px;">
+            <strong>Notes:</strong><br>
+            ${data.warnings.map(w => `• ${escapeHtml(w)}`).join('<br>')}
+          </div>
+        `;
+      }
+
+      html += `
+        <div style="margin-top: 16px; font-size: 12px; color: #666;">
+          Session ID: ${data.sessionId}<br>
+          Generation time: ${data.meta?.generationTimeMs || 'N/A'}ms<br>
+          Turns: ${data.meta?.turnCount || 'N/A'}
+        </div>
+      `;
+
+      outputContent.innerHTML = html;
+    }
+
+    // Add message to chat
+    function addMessage(role, content) {
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = `message ${role}`;
+      div.innerHTML = `
+        <div class="message-content">${escapeHtml(content)}</div>
+        <div class="message-meta">${role === 'assistant' ? 'Guide' : 'You'} • ${time}</div>
+      `;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Show error
+    function showError(message) {
+      const div = document.createElement('div');
+      div.className = 'error';
+      div.textContent = message;
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Event listeners
+    sendBtn.addEventListener('click', sendMessage);
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    newSessionBtn.addEventListener('click', () => {
+      if (currentProductId) {
+        startSession(currentProductId);
+      }
+    });
+
+    generateBtn.addEventListener('click', generateOutput);
+  </script>
+</body>
+</html>

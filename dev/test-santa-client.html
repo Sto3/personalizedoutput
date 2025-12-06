@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Santa Message - Developer Test Client</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    h1 { color: #c41e3a; }
+    .section {
+      background: white;
+      padding: 20px;
+      margin: 20px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .section h2 {
+      margin-top: 0;
+      color: #333;
+      border-bottom: 2px solid #c41e3a;
+      padding-bottom: 10px;
+    }
+    .field {
+      margin: 15px 0;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 5px;
+    }
+    .help-text {
+      font-size: 12px;
+      color: #666;
+      margin-top: 3px;
+    }
+    input[type="text"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+    .checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .checkbox-group label {
+      display: inline-flex;
+      align-items: center;
+      font-weight: normal;
+      padding: 8px 12px;
+      background: #f0f0f0;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+    .checkbox-group input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .checkbox-group input:checked + span {
+      color: #c41e3a;
+    }
+    button {
+      background: #c41e3a;
+      color: white;
+      border: none;
+      padding: 15px 30px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover { background: #a01830; }
+    button:disabled { background: #ccc; cursor: not-allowed; }
+    .mode-buttons {
+      margin: 20px 0;
+    }
+    .mode-buttons button {
+      background: #666;
+    }
+    .mode-buttons button.active {
+      background: #c41e3a;
+    }
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f9f9f9;
+      border-radius: 8px;
+      display: none;
+    }
+    #result.show { display: block; }
+    #script {
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 15px;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      font-family: Georgia, serif;
+      line-height: 1.6;
+    }
+    #audio-player {
+      margin-top: 15px;
+      width: 100%;
+    }
+    .meta {
+      font-size: 12px;
+      color: #666;
+      margin-top: 10px;
+    }
+    .error {
+      background: #fee;
+      border: 1px solid #c00;
+      padding: 15px;
+      border-radius: 4px;
+      color: #c00;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 10px;
+      border-radius: 4px;
+      color: #856404;
+      margin: 10px 0;
+    }
+    .loading {
+      text-align: center;
+      padding: 40px;
+    }
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 30px;
+      height: 30px;
+      border: 3px solid #ddd;
+      border-top-color: #c41e3a;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <h1>🎅 Santa Message - Developer Test Client</h1>
+
+  <div class="section">
+    <h2>API Configuration</h2>
+    <div class="field">
+      <label>API Base URL</label>
+      <input type="text" id="apiUrl" value="http://localhost:3000">
+      <div class="help-text">Change if your server runs on a different port</div>
+    </div>
+    <div class="mode-buttons">
+      <label>Generation Mode:</label><br>
+      <button type="button" class="mode-btn active" data-mode="full">Full (Script + Audio)</button>
+      <button type="button" class="mode-btn" data-mode="script_only">Script Only</button>
+      <button type="button" class="mode-btn" data-mode="audio_only">Audio Only</button>
+    </div>
+  </div>
+
+  <form id="santaForm">
+    <div class="section">
+      <h2>1. Basic Info</h2>
+      <div class="field">
+        <label>Child's First Name *</label>
+        <input type="text" name="childFirstName" required value="Emma">
+      </div>
+      <div class="field">
+        <label>Gender *</label>
+        <select name="childGender" required>
+          <option value="girl">Girl</option>
+          <option value="boy">Boy</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Age *</label>
+        <input type="number" name="childAge" min="2" max="12" required value="7">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>2. This Year's Focus</h2>
+      <div class="field">
+        <label>Primary Scenario *</label>
+        <select name="primaryScenario" required>
+          <option value="kindness_to_others">Shown amazing kindness to others</option>
+          <option value="academic_effort">Worked really hard in school</option>
+          <option value="overcoming_challenge">Overcome a real challenge</option>
+          <option value="big_life_change">Handled a big life change well</option>
+          <option value="building_confidence">Grown more confident</option>
+          <option value="being_brave">Been incredibly brave</option>
+          <option value="helping_family">Stepped up to help our family</option>
+          <option value="friendship_growth">Grown as a friend</option>
+          <option value="personal_achievement">Achieved something meaningful</option>
+          <option value="general_celebration">Just been wonderful!</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>3. First Proud Moment</h2>
+      <div class="field">
+        <label>What happened? *</label>
+        <textarea name="proudMoment1.whatHappened" required>There was a new girl who started at Emma's school in October. She didn't know anyone and was sitting alone at lunch every day.</textarea>
+      </div>
+      <div class="field">
+        <label>What did your child do? *</label>
+        <textarea name="proudMoment1.howChildResponded" required>Emma noticed her on the third day and walked right over. She invited her to sit with her group and made sure she felt included.</textarea>
+      </div>
+      <div class="field">
+        <label>Why did this moment matter? *</label>
+        <textarea name="proudMoment1.whyItMattered" required>It showed me that Emma has real courage to do what's right even when it's not the popular thing.</textarea>
+      </div>
+      <div class="field">
+        <label>One vivid detail (optional)</label>
+        <input type="text" name="proudMoment1.specificDetail" value="Emma said: 'Nobody should feel invisible.'">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>4. Second Proud Moment</h2>
+      <div class="field">
+        <label>What happened? *</label>
+        <textarea name="proudMoment2.whatHappened" required>Her little brother was having nightmares for a few weeks and was scared to go to sleep.</textarea>
+      </div>
+      <div class="field">
+        <label>What did your child do? *</label>
+        <textarea name="proudMoment2.howChildResponded" required>Emma started reading him bedtime stories every night. She even made up her own 'brave dreams' story about a superhero who fights bad dreams.</textarea>
+      </div>
+      <div class="field">
+        <label>Why did this moment matter? *</label>
+        <textarea name="proudMoment2.whyItMattered" required>She showed such tenderness and creativity. She wanted to help her brother feel safe.</textarea>
+      </div>
+      <div class="field">
+        <label>One vivid detail (optional)</label>
+        <input type="text" name="proudMoment2.specificDetail" value="She drew pictures to go with her story and left them by his bed 'for protection'">
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>5. Character Traits</h2>
+      <div class="field">
+        <label>Which words describe your child? (Pick 2-4) *</label>
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="characterTraits" value="kind" checked><span>Kind</span></label>
+          <label><input type="checkbox" name="characterTraits" value="brave" checked><span>Brave</span></label>
+          <label><input type="checkbox" name="characterTraits" value="creative" checked><span>Creative</span></label>
+          <label><input type="checkbox" name="characterTraits" value="thoughtful" checked><span>Thoughtful</span></label>
+          <label><input type="checkbox" name="characterTraits" value="curious"><span>Curious</span></label>
+          <label><input type="checkbox" name="characterTraits" value="hardworking"><span>Hardworking</span></label>
+          <label><input type="checkbox" name="characterTraits" value="caring"><span>Caring</span></label>
+          <label><input type="checkbox" name="characterTraits" value="funny"><span>Funny</span></label>
+          <label><input type="checkbox" name="characterTraits" value="determined"><span>Determined</span></label>
+          <label><input type="checkbox" name="characterTraits" value="helpful"><span>Helpful</span></label>
+          <label><input type="checkbox" name="characterTraits" value="patient"><span>Patient</span></label>
+          <label><input type="checkbox" name="characterTraits" value="resilient"><span>Resilient</span></label>
+        </div>
+      </div>
+      <div class="field">
+        <label>Where have they grown most? *</label>
+        <textarea name="growthArea" required>She's become more confident in speaking up for what's right, even in uncomfortable situations.</textarea>
+      </div>
+      <div class="field">
+        <label>Challenge overcome (optional)</label>
+        <textarea name="challengeOvercome">She struggled with feeling shy about sharing her ideas in class, but now she raises her hand almost every day.</textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>6. Your Message to Santa</h2>
+      <div class="field">
+        <label>What do you most want Santa to tell your child? *</label>
+        <textarea name="whatParentWantsReinforced" required>I want her to know that her kindness matters. That choosing to be kind, especially when it's hard, is one of the most important things a person can do. And that we're so proud of who she's becoming.</textarea>
+      </div>
+      <div class="field">
+        <label>Anything to avoid? (optional)</label>
+        <textarea name="anythingToAvoid"></textarea>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>7. Tone & Options</h2>
+      <div class="field">
+        <label>Tone *</label>
+        <select name="tonePreference" required>
+          <option value="warm_gentle">Warm & Gentle</option>
+          <option value="cheerful">Cheerful</option>
+          <option value="enthusiastic">Enthusiastic</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>
+          <input type="checkbox" name="includeChristianMessage">
+          Include Christian/faith-based message
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <button type="submit" id="submitBtn">🎅 Generate Santa Message</button>
+      <button type="button" id="schemaBtn">📋 View Form Schema</button>
+      <button type="button" id="statsBtn">📊 View Stats</button>
+    </div>
+  </form>
+
+  <div id="result">
+    <div class="section">
+      <h2>Result</h2>
+      <div id="loading" class="loading" style="display:none">Generating...</div>
+      <div id="resultContent"></div>
+    </div>
+  </div>
+
+  <script>
+    let selectedMode = 'full';
+
+    // Mode selection
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedMode = btn.dataset.mode;
+      });
+    });
+
+    // Form submission
+    document.getElementById('santaForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const formData = new FormData(e.target);
+      const apiUrl = document.getElementById('apiUrl').value;
+
+      // Build answers object
+      const answers = {};
+
+      // Handle regular fields
+      for (const [key, value] of formData.entries()) {
+        if (key === 'characterTraits') continue; // Handle separately
+
+        if (key.includes('.')) {
+          const [parent, child] = key.split('.');
+          if (!answers[parent]) answers[parent] = {};
+          answers[parent][child] = value;
+        } else {
+          answers[key] = value;
+        }
+      }
+
+      // Handle character traits (checkboxes)
+      answers.characterTraits = formData.getAll('characterTraits');
+
+      // Handle boolean
+      answers.includeChristianMessage = formData.get('includeChristianMessage') === 'on';
+
+      // Handle number
+      answers.childAge = parseInt(answers.childAge, 10);
+
+      console.log('Submitting:', { answers, mode: selectedMode });
+
+      // Show loading
+      document.getElementById('result').classList.add('show');
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('resultContent').innerHTML = '';
+      document.getElementById('submitBtn').disabled = true;
+
+      try {
+        const response = await fetch(`${apiUrl}/api/santa/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers, mode: selectedMode })
+        });
+
+        const data = await response.json();
+
+        let html = '';
+
+        if (data.success) {
+          if (data.script) {
+            html += `<h3>Generated Script</h3><div id="script">${data.script}</div>`;
+          }
+
+          if (data.audioUrl) {
+            html += `
+              <h3>Audio</h3>
+              <audio id="audio-player" controls src="${apiUrl}${data.audioUrl}"></audio>
+            `;
+          }
+
+          if (data.warnings && data.warnings.length > 0) {
+            html += `<div class="warning"><strong>Warnings:</strong><ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul></div>`;
+          }
+
+          if (data.meta) {
+            html += `
+              <div class="meta">
+                <strong>Metadata:</strong><br>
+                Words: ${data.meta.wordCount} |
+                Duration: ~${data.meta.estimatedDurationSeconds}s |
+                Time: ${data.meta.generationTimeMs}ms |
+                Safety: ${data.meta.safetyCheckPassed ? '✅' : '⚠️'}
+                ${data.meta.spendStatus ? `<br>Spend: $${data.meta.spendStatus.totalSpentThisMonth.toFixed(2)} / $${data.meta.spendStatus.limit}` : ''}
+              </div>
+            `;
+          }
+        } else {
+          html = `<div class="error">${data.error}</div>`;
+        }
+
+        document.getElementById('resultContent').innerHTML = html;
+
+      } catch (error) {
+        document.getElementById('resultContent').innerHTML = `<div class="error">Request failed: ${error.message}</div>`;
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('submitBtn').disabled = false;
+      }
+    });
+
+    // Schema button
+    document.getElementById('schemaBtn').addEventListener('click', async () => {
+      const apiUrl = document.getElementById('apiUrl').value;
+
+      try {
+        const response = await fetch(`${apiUrl}/api/santa/schema`);
+        const schema = await response.json();
+
+        document.getElementById('result').classList.add('show');
+        document.getElementById('resultContent').innerHTML = `
+          <h3>Form Schema</h3>
+          <pre style="overflow:auto;max-height:400px;background:#f9f9f9;padding:10px;font-size:12px;">${JSON.stringify(schema, null, 2)}</pre>
+        `;
+      } catch (error) {
+        alert('Failed to fetch schema: ' + error.message);
+      }
+    });
+
+    // Stats button
+    document.getElementById('statsBtn').addEventListener('click', async () => {
+      const apiUrl = document.getElementById('apiUrl').value;
+
+      try {
+        const response = await fetch(`${apiUrl}/api/santa/stats`);
+        const stats = await response.json();
+
+        document.getElementById('result').classList.add('show');
+        document.getElementById('resultContent').innerHTML = `
+          <h3>Usage Statistics</h3>
+          <pre style="overflow:auto;background:#f9f9f9;padding:10px;font-size:12px;">${JSON.stringify(stats, null, 2)}</pre>
+        `;
+      } catch (error) {
+        alert('Failed to fetch stats: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>
