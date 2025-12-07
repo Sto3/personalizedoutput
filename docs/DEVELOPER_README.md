@@ -662,6 +662,77 @@ curl http://localhost:3000/api/thought-chat/health
 
 ---
 
+---
+
+## Email List Management
+
+The system includes a simple email capture system for marketing.
+
+### Email List Location
+
+```
+data/email_list.csv
+```
+
+The file is created automatically on server startup with headers:
+```
+timestamp,name,email,source
+```
+
+### Viewing the Email List
+
+```bash
+# View all signups
+cat data/email_list.csv
+
+# Count signups (excluding header)
+tail -n +2 data/email_list.csv | wc -l
+
+# View recent signups
+tail -20 data/email_list.csv
+```
+
+### Exporting the Email List
+
+The file is standard CSV format, compatible with:
+- Excel / Google Sheets (open directly)
+- Mailchimp (import as CSV)
+- ConvertKit (import as CSV)
+- Any email marketing platform
+
+```bash
+# Copy to Downloads for export
+cp data/email_list.csv ~/Downloads/email_export_$(date +%Y%m%d).csv
+```
+
+### Signup Routes
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/signup` | GET | Email signup page |
+| `/api/signup` | POST | Process signup form |
+
+### CSV Format
+
+Each signup creates a row:
+```csv
+"2024-12-06T10:30:00.000Z","John","john@example.com","signup_page"
+```
+
+Fields:
+- `timestamp`: ISO 8601 timestamp
+- `name`: Optional, user-provided
+- `email`: Required, validated
+- `source`: Currently always "signup_page"
+
+### Notes
+
+- Duplicate emails are allowed (tracked as separate signups)
+- Data persists in the `data/` directory
+- On Render.com free tier, data may be lost on redeploy (consider external storage for production)
+
+---
+
 ## Support
 
 For issues or questions:
