@@ -27,14 +27,18 @@ import {
   VISION_BOARD_THEMES,
   SANTA_MESSAGE_THEMES,
   FLASH_CARD_THEMES,
-  WORKBOOK_THEMES
+  PLANNER_THEMES
 } from '../config/themes';
 import {
-  startAuthFlow,
+  startInteractiveAuthFlow,
   getAuthStatus,
   clearCredentials,
   refreshAccessToken
 } from '../api/etsyAuth';
+import * as dotenv from 'dotenv';
+
+// Load environment variables from .env
+dotenv.config();
 import { getEtsyClient } from '../api/etsyClient';
 import { BulkPublisher, bulkPublish } from '../api/bulkPublisher';
 import { getHashStats, getLogStats } from '../generators/variationEngine';
@@ -107,7 +111,7 @@ function showUsage(): void {
   console.log('');
   console.log('  generate <theme-id>       Generate a single listing');
   console.log('');
-  console.log('Product types: vision_board, santa_message, flash_cards, workbook');
+  console.log('Product types: vision_board, santa_message, flash_cards, planner');
   console.log('');
   console.log('Options:');
   console.log('  --mode=<draft|active>     Publish mode (default: draft)');
@@ -127,32 +131,25 @@ function showUsage(): void {
 // ============================================================
 
 async function commandAuth(): Promise<void> {
-  logHeader('Etsy OAuth Authentication');
-
+  // The interactive auth flow handles its own headers and formatting
   const apiKey = process.env.ETSY_API_KEY;
 
   if (!apiKey) {
+    logHeader('Etsy OAuth Authentication');
     logError('ETSY_API_KEY environment variable is required');
     console.log('');
     console.log('To get an API key:');
     console.log('1. Go to https://www.etsy.com/developers/your-apps');
     console.log('2. Create a new app or use an existing one');
-    console.log('3. Copy the Keystring (API Key)');
-    console.log('4. Set it: export ETSY_API_KEY=your_key_here');
+    console.log('3. Copy the "Keystring" (Client ID / API Key)');
+    console.log('4. Add it to your .env file: ETSY_API_KEY=your_key_here');
     console.log('');
     process.exit(1);
   }
 
-  logInfo('Starting OAuth flow...');
-  logInfo('A browser window will open for authorization.');
-  console.log('');
-
   try {
-    const credentials = await startAuthFlow(apiKey);
-    console.log('');
-    logSuccess('Authentication successful!');
-    logInfo(`Shop ID: ${credentials.shopId}`);
-    logInfo('Credentials saved to data/etsy/credentials.json');
+    // Use the interactive auth flow with step-by-step prompts
+    await startInteractiveAuthFlow(apiKey);
   } catch (error) {
     logError(`Authentication failed: ${(error as Error).message}`);
     process.exit(1);
@@ -235,7 +232,7 @@ async function commandThemes(productType?: ProductType): Promise<void> {
 
   const productTypes: ProductType[] = productType
     ? [productType]
-    : ['vision_board', 'santa_message', 'flash_cards', 'workbook'];
+    : ['vision_board', 'santa_message', 'flash_cards', 'planner'];
 
   for (const pt of productTypes) {
     const themes = getThemesByProductType(pt);

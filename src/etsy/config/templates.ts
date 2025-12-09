@@ -138,41 +138,41 @@ export const TITLE_TEMPLATES: TitleTemplate[] = [
     placeholders: ['theme', 'angle']
   },
 
-  // ===== WORKBOOK TITLES =====
+  // ===== PLANNER TITLES =====
   {
-    id: 'workbook_title_1',
-    productType: 'workbook',
-    template: '{theme} Workbook | {angle} | Printable Journal PDF',
+    id: 'planner_title_1',
+    productType: 'planner',
+    template: '{theme} Planner | {angle} | Printable Journal PDF',
     placeholders: ['theme', 'angle']
   },
   {
-    id: 'workbook_title_2',
-    productType: 'workbook',
-    template: '{theme} Guided Journal | {outcome} | Digital Download',
+    id: 'planner_title_2',
+    productType: 'planner',
+    template: '{theme} Guided Planner | {outcome} | Digital Download',
     placeholders: ['theme', 'outcome']
   },
   {
-    id: 'workbook_title_3',
-    productType: 'workbook',
-    template: 'Printable {theme} Workbook | {audience} | Self-Help Guide',
+    id: 'planner_title_3',
+    productType: 'planner',
+    template: 'Printable {theme} Planner | {audience} | Self-Help Guide',
     placeholders: ['theme', 'audience']
   },
   {
-    id: 'workbook_title_4',
-    productType: 'workbook',
-    template: '{theme} Activity Book | {angle} | Instant Download',
+    id: 'planner_title_4',
+    productType: 'planner',
+    template: '{theme} Activity Planner | {angle} | Instant Download',
     placeholders: ['theme', 'angle']
   },
   {
-    id: 'workbook_title_5',
-    productType: 'workbook',
-    template: 'Digital {theme} Journal | {outcome} | Reflection Prompts',
+    id: 'planner_title_5',
+    productType: 'planner',
+    template: 'Digital {theme} Planner | {outcome} | Reflection Prompts',
     placeholders: ['theme', 'outcome']
   },
   {
-    id: 'workbook_title_6',
-    productType: 'workbook',
-    template: '{theme} Growth Workbook | {audience} | PDF Printable',
+    id: 'planner_title_6',
+    productType: 'planner',
+    template: '{theme} Growth Planner | {audience} | PDF Printable',
     placeholders: ['theme', 'audience']
   }
 ];
@@ -505,42 +505,42 @@ Colors may vary slightly depending on your monitor and printer settings.`,
     variationIndex: 0
   },
 
-  // ===== WORKBOOK HOOKS =====
+  // ===== PLANNER HOOKS =====
   {
-    id: 'workbook_hook_1',
-    productType: 'workbook',
+    id: 'planner_hook_1',
+    productType: 'planner',
     blockType: 'hook',
-    content: `Ready to do the inner work? This guided workbook takes you through powerful exercises designed to help you grow, heal, and become your best self.`,
+    content: `Ready to do the inner work? This guided planner takes you through powerful exercises designed to help you grow, heal, and become your best self.`,
     variationIndex: 0
   },
   {
-    id: 'workbook_hook_2',
-    productType: 'workbook',
+    id: 'planner_hook_2',
+    productType: 'planner',
     blockType: 'hook',
-    content: `Transformation doesn't happen by accident - it happens through intention. This workbook gives you the structure and prompts to create meaningful change.`,
+    content: `Transformation doesn't happen by accident - it happens through intention. This planner gives you the structure and prompts to create meaningful change.`,
     variationIndex: 1
   },
   {
-    id: 'workbook_hook_3',
-    productType: 'workbook',
+    id: 'planner_hook_3',
+    productType: 'planner',
     blockType: 'hook',
-    content: `Sometimes we need a guide to help us through life's transitions. This thoughtfully designed workbook walks you through every step of your journey.`,
+    content: `Sometimes we need a guide to help us through life's transitions. This thoughtfully designed planner (workbook included!) walks you through every step of your journey.`,
     variationIndex: 2
   },
   {
-    id: 'workbook_hook_4',
-    productType: 'workbook',
+    id: 'planner_hook_4',
+    productType: 'planner',
     blockType: 'hook',
     content: `Journal prompts, reflection exercises, and actionable worksheets - everything you need to navigate this chapter of your life with clarity and confidence.`,
     variationIndex: 3
   },
 
-  // ===== WORKBOOK HOW IT WORKS =====
+  // ===== PLANNER HOW IT WORKS =====
   {
-    id: 'workbook_how_1',
-    productType: 'workbook',
+    id: 'planner_how_1',
+    productType: 'planner',
     blockType: 'how_it_works',
-    content: `HOW TO USE THIS WORKBOOK:
+    content: `HOW TO USE THIS PLANNER:
 1. Download and print your PDF (or use digitally on a tablet)
 2. Set aside dedicated time for reflection - even 10 minutes helps
 3. Work through the exercises at your own pace
@@ -549,13 +549,13 @@ Colors may vary slightly depending on your monitor and printer settings.`,
     variationIndex: 0
   },
 
-  // ===== WORKBOOK WHAT YOU RECEIVE =====
+  // ===== PLANNER WHAT YOU RECEIVE =====
   {
-    id: 'workbook_receive_1',
-    productType: 'workbook',
+    id: 'planner_receive_1',
+    productType: 'planner',
     blockType: 'what_you_receive',
     content: `WHAT YOU RECEIVE:
-- Complete printable workbook (PDF format)
+- Complete printable planner (PDF format)
 - Guided journal prompts and reflection questions
 - Actionable worksheets and exercises
 - High-quality design for an elevated experience
@@ -563,12 +563,12 @@ Colors may vary slightly depending on your monitor and printer settings.`,
     variationIndex: 0
   },
 
-  // ===== WORKBOOK WHO FOR =====
+  // ===== PLANNER WHO FOR =====
   {
-    id: 'workbook_who_1',
-    productType: 'workbook',
+    id: 'planner_who_1',
+    productType: 'planner',
     blockType: 'who_for',
-    content: `THIS WORKBOOK IS FOR YOU IF:
+    content: `THIS PLANNER IS FOR YOU IF:
 - You're navigating change and want support
 - You love journaling and self-reflection
 - You're ready to invest in your personal growth
@@ -577,10 +577,10 @@ Colors may vary slightly depending on your monitor and printer settings.`,
     variationIndex: 0
   },
 
-  // ===== WORKBOOK REASSURANCE =====
+  // ===== PLANNER REASSURANCE =====
   {
-    id: 'workbook_reassure_1',
-    productType: 'workbook',
+    id: 'planner_reassure_1',
+    productType: 'planner',
     blockType: 'reassurance',
     content: `This is a digital download - no physical item will be shipped. You'll receive instant access to your PDF after purchase. Print it out or fill it in digitally on your tablet. Questions? I'm here to help!`,
     variationIndex: 0
@@ -697,17 +697,17 @@ export const TAG_POOLS: TagPool[] = [
     ]
   },
 
-  // ===== WORKBOOK TAGS =====
+  // ===== PLANNER TAGS =====
   {
-    productType: 'workbook',
+    productType: 'planner',
     coreProductTags: [
-      'printable workbook',
+      'printable planner',
       'guided journal',
       'self help',
       'journal prompts',
-      'reflection journal',
+      'reflection planner',
       'personal development',
-      'digital workbook',
+      'digital planner',
       'worksheet printable',
       'planner insert',
       'pdf download'
@@ -725,7 +725,7 @@ export const TAG_POOLS: TagPool[] = [
       'personal growth'
     ],
     seasonalTags: [
-      'new year journal',
+      'new year planner',
       'fresh start',
       'yearly reflection',
       'annual review'

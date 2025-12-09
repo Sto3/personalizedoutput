@@ -34,7 +34,7 @@ export {
   VISION_BOARD_THEMES,
   SANTA_MESSAGE_THEMES,
   FLASH_CARD_THEMES,
-  WORKBOOK_THEMES,
+  PLANNER_THEMES,
   STYLE_VARIANTS,
   // Theme helpers
   getThemesByProductType,
@@ -208,7 +208,7 @@ export function getMaxListingsForProduct(productType: ProductType): number {
  * Get summary counts for all products
  */
 export function getProductSummary(): Record<ProductType, { themes: number; maxListings: number }> {
-  const products: ProductType[] = ['vision_board', 'santa_message', 'flash_cards', 'workbook'];
+  const products: ProductType[] = ['vision_board', 'santa_message', 'flash_cards', 'planner'];
 
   const summary: Record<ProductType, { themes: number; maxListings: number }> = {} as any;
 

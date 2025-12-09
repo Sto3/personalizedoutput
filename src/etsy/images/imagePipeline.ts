@@ -96,25 +96,25 @@ export const MOCKUP_TEMPLATES: MockupTemplate[] = [
     outputSuffix: '-desk'
   },
 
-  // ===== WORKBOOK MOCKUPS =====
+  // ===== PLANNER MOCKUPS =====
   {
-    id: 'workbook_open',
-    productType: 'workbook',
-    templatePath: 'workbook/book-open.png',
+    id: 'planner_open',
+    productType: 'planner',
+    templatePath: 'planner/book-open.png',
     samplePosition: { x: 300, y: 300, width: 1400, height: 1000 },
     outputSuffix: '-open'
   },
   {
-    id: 'workbook_closed',
-    productType: 'workbook',
-    templatePath: 'workbook/book-closed.png',
+    id: 'planner_closed',
+    productType: 'planner',
+    templatePath: 'planner/book-closed.png',
     samplePosition: { x: 500, y: 200, width: 1000, height: 1400 },
     outputSuffix: '-closed'
   },
   {
-    id: 'workbook_desk',
-    productType: 'workbook',
-    templatePath: 'workbook/desk-journal.png',
+    id: 'planner_desk',
+    productType: 'planner',
+    templatePath: 'planner/desk-journal.png',
     samplePosition: { x: 400, y: 400, width: 1200, height: 900 },
     outputSuffix: '-desk'
   },

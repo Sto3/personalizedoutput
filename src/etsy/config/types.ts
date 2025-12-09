@@ -8,7 +8,7 @@
 // PRODUCT TYPES
 // ============================================================
 
-export type ProductType = 'vision_board' | 'santa_message' | 'flash_cards' | 'workbook';
+export type ProductType = 'vision_board' | 'santa_message' | 'flash_cards' | 'planner';
 
 // ============================================================
 // THEME CONFIGURATION
