@@ -397,6 +397,17 @@
         <p>This isn't about making a perfect five-year plan. It's about pausing long enough to see what this year actually asked of you, what you're carrying, and what you want to release or strengthen as you move into a new year.</p>
         <p>We'll ask a few focused questions so the final planner captures your real story, not just generic resolutions.</p>
       </div>
+
+      <!-- Order ID Section -->
+      <div class="order-section" id="orderSection">
+        <label for="orderIdInput" style="display: block; margin-bottom: 8px; color: #fff; font-weight: 500;">Etsy Order ID</label>
+        <input type="text" id="orderIdInput"
+               placeholder="Enter your Etsy Order ID (e.g., 1234567890)"
+               style="width: 100%; padding: 12px 16px; font-size: 1rem; border: 1px solid #444; border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff; margin-bottom: 8px;"
+               maxlength="20" minlength="4" required>
+        <p style="color: #888; font-size: 0.85rem; margin: 0 0 20px 0;">You can find this in your Etsy purchase confirmation email or order history</p>
+      </div>
+
       <button class="btn-start" onclick="startSession()">Begin the questions</button>
     </div>
 
@@ -453,12 +464,33 @@
   <script>
     const API_BASE = '/api/thought-chat';
 
+    // Get orderId from URL if present
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlOrderId = urlParams.get('orderId');
+
     let sessionId = null;
+    let orderId = null;
     let currentQuestion = '';
     let answers = []; // Array of {question, answer} pairs
     let questionCount = 0;
 
+    // Pre-fill orderId if provided in URL
+    window.onload = function() {
+      if (urlOrderId) {
+        document.getElementById('orderIdInput').value = urlOrderId;
+      }
+    };
+
     async function startSession() {
+      // Get orderId from input
+      const orderInput = document.getElementById('orderIdInput');
+      orderId = orderInput.value.trim();
+
+      if (!orderId || orderId.length < 4) {
+        showError('Please enter a valid Etsy Order ID (at least 4 characters)');
+        return;
+      }
+
       hideError();
       document.getElementById('startScreen').style.display = 'none';
       document.getElementById('formArea').classList.add('active');
@@ -468,13 +500,17 @@
         const response = await fetch(`${API_BASE}/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: 'new_year_reset' })
+          body: JSON.stringify({ productId: 'new_year_reset', orderId: orderId })
         });
 
-        if (!response.ok) throw new Error('Failed to start session');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to start session');
+        }
 
         const data = await response.json();
         sessionId = data.sessionId;
+        orderId = data.orderId || orderId; // Use sanitized orderId from server
         // Handle both possible field names
         currentQuestion = data.firstAssistantMessage || data.message || '';
         questionCount = 1;
@@ -600,7 +636,7 @@
         const response = await fetch(`${API_BASE}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId })
+          body: JSON.stringify({ sessionId, orderId })
         });
 
         if (!response.ok) throw new Error('Failed to generate planner');

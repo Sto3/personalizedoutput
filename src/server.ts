@@ -98,10 +98,11 @@ app.get('/santa', (req, res) => {
     }
 
     // Invalid token - show appropriate error
+    const reason = (validation as { valid: false; reason: string }).reason;
     let errorMessage = '';
     let errorDetail = '';
 
-    switch (validation.reason) {
+    switch (reason) {
       case 'expired':
         errorMessage = 'This session link has expired.';
         errorDetail = 'Session links are valid for 72 hours. Please contact support if you need help.';
@@ -182,7 +183,7 @@ app.get('/santa', (req, res) => {
 </head>
 <body>
   <div class="container">
-    <div class="icon">${validation.reason === 'redeemed' ? '🎁' : '⏰'}</div>
+    <div class="icon">${reason === 'redeemed' ? '🎁' : '⏰'}</div>
     <h1>${errorMessage}</h1>
     <p>${errorDetail}</p>
     <a href="/santa" class="btn">Enter Order Details</a>
@@ -412,17 +413,19 @@ app.post('/api/santa/claim', (req, res) => {
   const result = createOrReuseToken(orderId.trim(), product, email.trim());
 
   if (result.success) {
-    console.log(`[Claim] Token issued for order ${orderId}: ${result.token.substring(0, 8)}...`);
+    const token = (result as { success: true; token: string }).token;
+    console.log(`[Claim] Token issued for order ${orderId}: ${token.substring(0, 8)}...`);
     return res.json({
       ok: true,
-      redirectUrl: `/santa?token=${result.token}`
+      redirectUrl: `/santa?token=${token}`
     });
   } else {
-    console.log(`[Claim] Rejected for order ${orderId}: ${result.error}`);
+    const failedResult = result as { success: false; error: string; alreadyRedeemed: boolean };
+    console.log(`[Claim] Rejected for order ${orderId}: ${failedResult.error}`);
     return res.status(400).json({
       ok: false,
-      error: result.error,
-      alreadyRedeemed: result.alreadyRedeemed
+      error: failedResult.error,
+      alreadyRedeemed: failedResult.alreadyRedeemed
     });
   }
 });

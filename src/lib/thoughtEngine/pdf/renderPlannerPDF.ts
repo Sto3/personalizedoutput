@@ -10,15 +10,27 @@ import * as path from 'path';
 import { PlannerOutput, SectionOutput } from '../models/meaningModel';
 
 // ============================================================
+// TYPES
+// ============================================================
+
+export interface PDFMetadata {
+  orderId?: string;
+  productId?: string;
+  jobId?: string;
+  version?: string;
+}
+
+// ============================================================
 // MAIN FUNCTION
 // ============================================================
 
 export async function renderPlannerToPDF(
   plannerOutput: PlannerOutput,
-  outputPath: string
+  outputPath: string,
+  metadata?: PDFMetadata
 ): Promise<void> {
-  // Build full HTML
-  const html = buildPlannerHtml(plannerOutput);
+  // Build full HTML with orderId footer
+  const html = buildPlannerHtml(plannerOutput, metadata);
 
   // Ensure directory exists
   const dir = path.dirname(outputPath);
@@ -68,7 +80,7 @@ export async function renderPlannerToPDF(
 // HTML BUILDING
 // ============================================================
 
-function buildPlannerHtml(output: PlannerOutput): string {
+function buildPlannerHtml(output: PlannerOutput, metadata?: PDFMetadata): string {
   const sectionsHtml = output.sections
     .map(section => renderSection(section))
     .join('\n');
@@ -252,6 +264,7 @@ function buildPlannerHtml(output: PlannerOutput): string {
   <footer class="footer">
     <p>This planner is a tool for organizing your thoughts. It is not a substitute for professional advice.</p>
     <p>Created with Personalized Output</p>
+    ${metadata?.orderId ? `<p style="margin-top: 0.25in; font-size: 8pt;">Order ID: ${escapeHtml(metadata.orderId)} | This personalized planner was generated exclusively for this purchase.</p>` : ''}
   </footer>
 </body>
 </html>`;

@@ -39,7 +39,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Import token store for order-based access control
-import { validateToken, markTokenRedeemed } from '../lib/thoughtEngine/santa/tokenStore';
+import { validateToken, markTokenRedeemed, getRecordByToken } from '../lib/thoughtEngine/santa/tokenStore';
+
+// Import order validation
+import {
+  validateOrderForGeneration,
+  markOrderIdUsed,
+  sanitizeOrderId
+} from '../lib/orders/orderValidation';
 
 // ============================================================
 // TYPES
@@ -48,6 +55,7 @@ import { validateToken, markTokenRedeemed } from '../lib/thoughtEngine/santa/tok
 interface StartSessionRequest {
   productId: 'santa_message' | 'holiday_reset' | 'new_year_reset';
   token?: string; // Access token for santa_message product
+  orderId?: string; // Etsy Order ID (required for production)
 }
 
 interface ContinueSessionRequest {
@@ -59,6 +67,7 @@ interface GenerateRequest {
   sessionId: string;
   forceGenerate?: boolean;
   token?: string; // Access token for santa_message product
+  orderId?: string; // Etsy Order ID (can be passed here or will use session's orderId)
 }
 
 // ============================================================
@@ -74,7 +83,7 @@ const router = Router();
 
 router.post('/start', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { productId, token } = req.body as StartSessionRequest;
+  const { productId, token, orderId: bodyOrderId } = req.body as StartSessionRequest;
 
   try {
     // Validate product
@@ -86,26 +95,57 @@ router.post('/start', async (req: Request, res: Response) => {
       });
     }
 
+    // Resolve orderId from multiple sources
+    let resolvedOrderId: string | undefined;
+
     // Validate token for Santa messages (if provided)
     if (productId === 'santa_message' && token) {
       const tokenValidation = validateToken(token);
       if (!tokenValidation.valid) {
-        const errorMessages = {
+        const errorMessages: Record<string, string> = {
           'not_found': 'Invalid access token. Please start from your order link.',
           'expired': 'Your session has expired. Please contact support for assistance.',
           'redeemed': 'This order has already been used to generate a Santa message.'
         };
         return res.status(403).json({
           success: false,
-          error: errorMessages[tokenValidation.reason]
+          error: errorMessages[(tokenValidation as { valid: false; reason: string }).reason]
         });
+      }
+      // Get orderId from token record
+      const record = getRecordByToken(token);
+      if (record) {
+        resolvedOrderId = record.orderId;
       }
     }
 
-    console.log(`[ThoughtChat API] Starting session for ${productId}`);
+    // If no orderId from token, try body
+    if (!resolvedOrderId) {
+      resolvedOrderId = bodyOrderId;
+    }
+
+    // Validate orderId if provided
+    let sanitizedOrderId: string | undefined;
+    if (resolvedOrderId) {
+      const orderValidation = validateOrderForGeneration(resolvedOrderId, productId);
+      if (!orderValidation.valid) {
+        return res.status(400).json({
+          success: false,
+          error: (orderValidation as { valid: false; error: string }).error
+        });
+      }
+      sanitizedOrderId = (orderValidation as { valid: true; sanitizedOrderId: string }).sanitizedOrderId;
+    }
+
+    console.log(`[ThoughtChat API] Starting session for ${productId}${sanitizedOrderId ? ` (order: ${sanitizedOrderId})` : ''}`);
 
     // Create session
     const session = createThoughtSession(productId);
+
+    // Store orderId in session for later use
+    if (sanitizedOrderId) {
+      (session as any).orderId = sanitizedOrderId;
+    }
 
     // Generate opening message
     const result = await startThoughtSession(session);
@@ -117,6 +157,7 @@ router.post('/start', async (req: Request, res: Response) => {
       success: true,
       sessionId: result.session.sessionId,
       productId: result.session.productId,
+      orderId: sanitizedOrderId,
       firstAssistantMessage: result.assistantMessage,
       meta: {
         productName: config.displayName,
@@ -210,7 +251,7 @@ router.post('/continue', async (req: Request, res: Response) => {
 
 router.post('/generate', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { sessionId, forceGenerate = false, token } = req.body as GenerateRequest;
+  const { sessionId, forceGenerate = false, token, orderId: bodyOrderId } = req.body as GenerateRequest;
 
   try {
     // Validate input
@@ -245,19 +286,23 @@ router.post('/generate', async (req: Request, res: Response) => {
       });
     }
 
-    console.log(`[ThoughtChat API] Generating output for session ${sessionId}`);
+    // Get orderId from session or request
+    const sessionOrderId = (session as any).orderId;
+    const orderId = sessionOrderId || bodyOrderId;
 
-    // Route to appropriate generator
+    console.log(`[ThoughtChat API] Generating output for session ${sessionId}${orderId ? ` (order: ${orderId})` : ''}`);
+
+    // Route to appropriate generator (pass orderId for filename generation)
     let result;
     switch (session.productId) {
       case 'santa_message':
-        result = await generateSantaFromSession(session);
+        result = await generateSantaFromSession(session, orderId);
         break;
       case 'holiday_reset':
-        result = await generateHolidayResetFromSession(session);
+        result = await generateHolidayResetFromSession(session, orderId);
         break;
       case 'new_year_reset':
-        result = await generateNewYearResetFromSession(session);
+        result = await generateNewYearResetFromSession(session, orderId);
         break;
       default:
         return res.status(400).json({
@@ -283,6 +328,7 @@ router.post('/generate', async (req: Request, res: Response) => {
       success: true,
       sessionId,
       productId: session.productId,
+      orderId,
       ...result,
       meta: {
         generationTimeMs: totalTime,
@@ -403,10 +449,11 @@ router.get('/health', (req: Request, res: Response) => {
 // GENERATION FUNCTIONS
 // ============================================================
 
-async function generateSantaFromSession(session: any): Promise<{
+async function generateSantaFromSession(session: any, orderId?: string): Promise<{
   script: string;
   audioUrl?: string;
   warnings?: string[];
+  jobId?: string;
 }> {
   // Extract input from conversation
   const input = extractSantaInputFromConversation(session);
@@ -436,6 +483,7 @@ async function generateSantaFromSession(session: any): Promise<{
 
   // Generate audio if possible
   let audioUrl: string | undefined;
+  let jobId: string | undefined;
 
   if (canGenerateAudio()) {
     const ttsResult = await synthesizeSantaMessageWithRetry(finalScript, session.sessionId);
@@ -448,11 +496,20 @@ async function generateSantaFromSession(session: any): Promise<{
         fs.mkdirSync(outputDir, { recursive: true });
       }
 
-      const audioFilename = `santa-chat-${input.childFirstName.toLowerCase()}-${Date.now()}.mp3`;
+      // Use orderId in filename if available
+      const filenameBase = orderId || input.childFirstName.toLowerCase();
+      const audioFilename = `santa-chat-${filenameBase}-${Date.now()}.mp3`;
       const filepath = path.join(outputDir, audioFilename);
       fs.writeFileSync(filepath, ttsResult.audioBuffer);
 
       audioUrl = `/outputs/santa/${audioFilename}`;
+
+      // Mark order as used after successful audio generation
+      if (orderId) {
+        const usageRecord = markOrderIdUsed(orderId, 'santa_message', 'audio', audioFilename);
+        jobId = usageRecord.jobId;
+        console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
+      }
     } else {
       warnings.push(`Audio generation failed: ${ttsResult.error?.message || 'Unknown error'}`);
     }
@@ -464,12 +521,14 @@ async function generateSantaFromSession(session: any): Promise<{
   return {
     script: finalScript,
     audioUrl,
-    warnings: warnings.length > 0 ? warnings : undefined
+    warnings: warnings.length > 0 ? warnings : undefined,
+    jobId
   };
 }
 
-async function generateHolidayResetFromSession(session: any): Promise<{
+async function generateHolidayResetFromSession(session: any, orderId?: string): Promise<{
   pdfUrl: string;
+  jobId?: string;
 }> {
   // Extract input from conversation
   const input = extractHolidayResetInputFromConversation(session);
@@ -484,18 +543,33 @@ async function generateHolidayResetFromSession(session: any): Promise<{
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  const filename = `holiday-reset-chat-${Date.now()}.pdf`;
+  // Use orderId in filename if available
+  const filenameBase = orderId || 'chat';
+  const filename = `holiday-reset-${filenameBase}-${Date.now()}.pdf`;
   const filepath = path.join(outputDir, filename);
 
-  await renderPlannerToPDF(plannerOutput, filepath);
+  await renderPlannerToPDF(plannerOutput, filepath, {
+    orderId,
+    productId: 'holiday_relationship_reset'
+  });
+
+  // Mark order as used after successful generation
+  let jobId: string | undefined;
+  if (orderId) {
+    const usageRecord = markOrderIdUsed(orderId, 'holiday_relationship_reset', 'pdf', filename);
+    jobId = usageRecord.jobId;
+    console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
+  }
 
   return {
-    pdfUrl: `/outputs/planners/${filename}`
+    pdfUrl: `/outputs/planners/${filename}`,
+    jobId
   };
 }
 
-async function generateNewYearResetFromSession(session: any): Promise<{
+async function generateNewYearResetFromSession(session: any, orderId?: string): Promise<{
   pdfUrl: string;
+  jobId?: string;
 }> {
   // Extract input from conversation
   const input = extractNewYearResetInputFromConversation(session);
@@ -510,13 +584,27 @@ async function generateNewYearResetFromSession(session: any): Promise<{
     fs.mkdirSync(outputDir, { recursive: true });
   }
 
-  const filename = `new-year-reset-chat-${Date.now()}.pdf`;
+  // Use orderId in filename if available
+  const filenameBase = orderId || 'chat';
+  const filename = `new-year-reset-${filenameBase}-${Date.now()}.pdf`;
   const filepath = path.join(outputDir, filename);
 
-  await renderPlannerToPDF(plannerOutput, filepath);
+  await renderPlannerToPDF(plannerOutput, filepath, {
+    orderId,
+    productId: 'new_year_reflection_reset'
+  });
+
+  // Mark order as used after successful generation
+  let jobId: string | undefined;
+  if (orderId) {
+    const usageRecord = markOrderIdUsed(orderId, 'new_year_reflection_reset', 'pdf', filename);
+    jobId = usageRecord.jobId;
+    console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
+  }
 
   return {
-    pdfUrl: `/outputs/planners/${filename}`
+    pdfUrl: `/outputs/planners/${filename}`,
+    jobId
   };
 }
 

@@ -16,12 +16,17 @@ import { validateAndAdjust } from '../lib/thoughtEngine/santa/lengthControl';
 import { logGeneration, logScriptComplete, logTTSComplete, logError, getUsageStats } from '../lib/thoughtEngine/santa/analyticsLogger';
 import { getSpendTracker, canGenerateAudio, recordAudioGeneration, getSpendStatus } from '../lib/thoughtEngine/santa/spendLimiter';
 import { getSantaFormSchema } from '../lib/thoughtEngine/schemas/santaFormSchema';
-import { markTokenRedeemed, validateToken } from '../lib/thoughtEngine/santa/tokenStore';
+import { markTokenRedeemed, validateToken, getRecordByToken } from '../lib/thoughtEngine/santa/tokenStore';
 import {
   SantaQuestionnaireInput,
   validateSantaInput,
   inferPronouns
 } from '../lib/thoughtEngine/configs/santa_questionnaire';
+import {
+  validateOrderForGeneration,
+  markOrderIdUsed,
+  sanitizeOrderId
+} from '../lib/orders/orderValidation';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -35,6 +40,7 @@ interface SantaGenerateRequest {
   answers: SantaQuestionnaireInput;
   mode?: GenerationMode;
   token?: string; // Access token from order claim
+  orderId?: string; // Can be passed directly or in answers
 }
 
 interface SantaGenerateResponse {
@@ -52,6 +58,8 @@ interface SantaGenerateResponse {
     audioFilename?: string;
     generationTimeMs: number;
     safetyCheckPassed: boolean;
+    orderId?: string;
+    jobId?: string;
     spendStatus?: {
       totalSpentThisMonth: number;
       limit: number;
@@ -73,13 +81,18 @@ const router = Router();
 
 router.post('/generate', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { answers, mode = 'full', token } = req.body as SantaGenerateRequest;
+  const { answers, mode = 'full', token, orderId: bodyOrderId } = req.body as SantaGenerateRequest;
+  const productId = 'santa_message';
+
+  // Get orderId from multiple sources (token record, body, or answers)
+  let resolvedOrderId: string | undefined;
+  let tokenRecord: { orderId: string } | null = null;
 
   // Validate token if provided (required for production flow)
   if (token) {
     const tokenValidation = validateToken(token);
     if (!tokenValidation.valid) {
-      const errorMessages = {
+      const errorMessages: Record<string, string> = {
         'not_found': 'Invalid access token. Please start from your order link.',
         'expired': 'Your session has expired. Please contact support for assistance.',
         'redeemed': 'This order has already been used to generate a Santa message.'
@@ -87,9 +100,34 @@ router.post('/generate', async (req: Request, res: Response) => {
       return res.status(403).json({
         success: false,
         mode,
-        error: errorMessages[tokenValidation.reason]
+        error: errorMessages[(tokenValidation as { valid: false; reason: string }).reason]
       });
     }
+    // Get orderId from token record
+    const record = getRecordByToken(token);
+    if (record) {
+      resolvedOrderId = record.orderId;
+      tokenRecord = record;
+    }
+  }
+
+  // If no orderId from token, try body or answers
+  if (!resolvedOrderId) {
+    resolvedOrderId = bodyOrderId || ((answers as unknown as Record<string, unknown>)?.orderId as string | undefined);
+  }
+
+  // Validate orderId if provided (required in production)
+  let sanitizedOrderId: string | undefined;
+  if (resolvedOrderId) {
+    const orderValidation = validateOrderForGeneration(resolvedOrderId, productId);
+    if (!orderValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        mode,
+        error: (orderValidation as { valid: false; error: string }).error
+      });
+    }
+    sanitizedOrderId = (orderValidation as { valid: true; sanitizedOrderId: string }).sanitizedOrderId;
   }
 
   // Start analytics logging
@@ -114,6 +152,7 @@ router.post('/generate', async (req: Request, res: Response) => {
     let script: string | undefined;
     let audioUrl: string | undefined;
     let audioFilename: string | undefined;
+    let jobId: string | undefined;
 
     // ===== STEP 1: Generate Script (unless audio_only) =====
     if (mode !== 'audio_only') {
@@ -172,11 +211,20 @@ router.post('/generate', async (req: Request, res: Response) => {
             fs.mkdirSync(outputDir, { recursive: true });
           }
 
-          audioFilename = `santa-${answers.childFirstName.toLowerCase()}-${Date.now()}.mp3`;
+          // Use orderId in filename if available, fallback to childName
+          const filenameBase = sanitizedOrderId || answers.childFirstName.toLowerCase();
+          audioFilename = `santa-${filenameBase}-${Date.now()}.mp3`;
           const filepath = path.join(outputDir, audioFilename);
           fs.writeFileSync(filepath, ttsResult.audioBuffer);
 
           audioUrl = `/outputs/santa/${audioFilename}`;
+
+          // Mark order as used after successful audio generation
+          if (sanitizedOrderId) {
+            const usageRecord = markOrderIdUsed(sanitizedOrderId, productId, 'audio', audioFilename);
+            jobId = usageRecord.jobId;
+            console.log(`[Santa API] Order marked as used: ${sanitizedOrderId} (job: ${jobId})`);
+          }
 
           // Log TTS success
           logTTSComplete(logId, true, ttsResult.retries, ttsResult.audioBuffer.length);
@@ -208,6 +256,8 @@ router.post('/generate', async (req: Request, res: Response) => {
         audioFilename,
         generationTimeMs: totalTime,
         safetyCheckPassed: warnings.filter(w => w.includes('Safety')).length === 0,
+        orderId: sanitizedOrderId,
+        jobId,
         spendStatus: {
           totalSpentThisMonth: spendStatus.totalSpentThisMonth,
           limit: spendStatus.limit,

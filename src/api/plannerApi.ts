@@ -15,6 +15,11 @@ import { generateNewYearResetPlannerDeep } from '../lib/thoughtEngine/planners/g
 import { getHolidayResetFormSchema, normalizeHolidayResetAnswers } from '../lib/thoughtEngine/schemas/holidayResetFormSchema';
 import { getNewYearResetFormSchema, normalizeNewYearResetAnswers } from '../lib/thoughtEngine/schemas/newYearResetFormSchema';
 import { renderPlannerToPDF } from '../lib/thoughtEngine/pdf/renderPlannerPDF';
+import {
+  validateOrderForGeneration,
+  markOrderIdUsed,
+  sanitizeOrderId
+} from '../lib/orders/orderValidation';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -24,6 +29,7 @@ import * as path from 'path';
 
 interface PlannerGenerateRequest {
   answers: Record<string, unknown>;
+  orderId?: string; // Can be in request body or in answers
 }
 
 interface PlannerGenerateResponse {
@@ -35,6 +41,8 @@ interface PlannerGenerateResponse {
     title: string;
     generationTimeMs: number;
     sectionCount: number;
+    orderId?: string;
+    jobId?: string;
   };
 }
 
@@ -51,10 +59,31 @@ const router = Router();
 
 router.post('/holiday-reset', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { answers } = req.body as PlannerGenerateRequest;
+  const { answers, orderId: bodyOrderId } = req.body as PlannerGenerateRequest;
+  const productId = 'holiday_relationship_reset';
 
   try {
-    console.log('[Planner API] Generating Holiday Reset planner...');
+    // Get orderId from request body or from answers
+    const orderId = bodyOrderId || (answers?.orderId as string);
+
+    // Validate order ID (REQUIRED)
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Etsy Order ID is required. Please enter your order ID to continue.'
+      });
+    }
+
+    const orderValidation = validateOrderForGeneration(orderId, productId);
+    if (!orderValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: (orderValidation as { valid: false; error: string }).error
+      });
+    }
+
+    const sanitizedOrderId = (orderValidation as { valid: true; sanitizedOrderId: string }).sanitizedOrderId;
+    console.log(`[Planner API] Generating Holiday Reset planner for order: ${sanitizedOrderId}`);
 
     // Normalize answers from flat form data to structured input
     const normalizedAnswers = normalizeHolidayResetAnswers(answers);
@@ -62,16 +91,22 @@ router.post('/holiday-reset', async (req: Request, res: Response) => {
     // Generate the planner
     const plannerOutput = await generateHolidayResetPlannerDeep(normalizedAnswers as any);
 
-    // Render to PDF
+    // Render to PDF with orderId in filename
     const outputDir = path.join(process.cwd(), 'outputs', 'planners');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const filename = `holiday-reset-${Date.now()}.pdf`;
+    const filename = `holiday-reset-${sanitizedOrderId}-${Date.now()}.pdf`;
     const filepath = path.join(outputDir, filename);
 
-    await renderPlannerToPDF(plannerOutput, filepath);
+    await renderPlannerToPDF(plannerOutput, filepath, {
+      orderId: sanitizedOrderId,
+      productId
+    });
+
+    // Mark order as used after successful generation
+    const usageRecord = markOrderIdUsed(sanitizedOrderId, productId, 'pdf', filename);
 
     const totalTime = Date.now() - startTime;
 
@@ -82,11 +117,13 @@ router.post('/holiday-reset', async (req: Request, res: Response) => {
         productId: plannerOutput.productId,
         title: plannerOutput.title,
         generationTimeMs: totalTime,
-        sectionCount: plannerOutput.sections.length
+        sectionCount: plannerOutput.sections.length,
+        orderId: sanitizedOrderId,
+        jobId: usageRecord.jobId
       }
     };
 
-    console.log(`[Planner API] Holiday Reset complete in ${totalTime}ms`);
+    console.log(`[Planner API] Holiday Reset complete in ${totalTime}ms (order: ${sanitizedOrderId})`);
     res.json(response);
 
   } catch (error) {
@@ -107,10 +144,31 @@ router.post('/holiday-reset', async (req: Request, res: Response) => {
 
 router.post('/new-year-reset', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { answers } = req.body as PlannerGenerateRequest;
+  const { answers, orderId: bodyOrderId } = req.body as PlannerGenerateRequest;
+  const productId = 'new_year_reflection_reset';
 
   try {
-    console.log('[Planner API] Generating New Year Reset planner...');
+    // Get orderId from request body or from answers
+    const orderId = bodyOrderId || (answers?.orderId as string);
+
+    // Validate order ID (REQUIRED)
+    if (!orderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Etsy Order ID is required. Please enter your order ID to continue.'
+      });
+    }
+
+    const orderValidation = validateOrderForGeneration(orderId, productId);
+    if (!orderValidation.valid) {
+      return res.status(400).json({
+        success: false,
+        error: (orderValidation as { valid: false; error: string }).error
+      });
+    }
+
+    const sanitizedOrderId = (orderValidation as { valid: true; sanitizedOrderId: string }).sanitizedOrderId;
+    console.log(`[Planner API] Generating New Year Reset planner for order: ${sanitizedOrderId}`);
 
     // Normalize answers from flat form data to structured input
     const normalizedAnswers = normalizeNewYearResetAnswers(answers);
@@ -118,16 +176,22 @@ router.post('/new-year-reset', async (req: Request, res: Response) => {
     // Generate the planner
     const plannerOutput = await generateNewYearResetPlannerDeep(normalizedAnswers as any);
 
-    // Render to PDF
+    // Render to PDF with orderId in filename
     const outputDir = path.join(process.cwd(), 'outputs', 'planners');
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
 
-    const filename = `new-year-reset-${Date.now()}.pdf`;
+    const filename = `new-year-reset-${sanitizedOrderId}-${Date.now()}.pdf`;
     const filepath = path.join(outputDir, filename);
 
-    await renderPlannerToPDF(plannerOutput, filepath);
+    await renderPlannerToPDF(plannerOutput, filepath, {
+      orderId: sanitizedOrderId,
+      productId
+    });
+
+    // Mark order as used after successful generation
+    const usageRecord = markOrderIdUsed(sanitizedOrderId, productId, 'pdf', filename);
 
     const totalTime = Date.now() - startTime;
 
@@ -138,11 +202,13 @@ router.post('/new-year-reset', async (req: Request, res: Response) => {
         productId: plannerOutput.productId,
         title: plannerOutput.title,
         generationTimeMs: totalTime,
-        sectionCount: plannerOutput.sections.length
+        sectionCount: plannerOutput.sections.length,
+        orderId: sanitizedOrderId,
+        jobId: usageRecord.jobId
       }
     };
 
-    console.log(`[Planner API] New Year Reset complete in ${totalTime}ms`);
+    console.log(`[Planner API] New Year Reset complete in ${totalTime}ms (order: ${sanitizedOrderId})`);
     res.json(response);
 
   } catch (error) {
