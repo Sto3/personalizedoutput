@@ -12,6 +12,7 @@ dist/
 # Output files (generated at runtime)
 outputs/
 data/sessions/
+data/order_redemptions.json
 
 # OS files
 .DS_Store

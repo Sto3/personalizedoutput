@@ -582,6 +582,10 @@
   <script>
     const API_BASE = '/api/thought-chat';
 
+    // Get token from URL query parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const accessToken = urlParams.get('token');
+
     let sessionId = null;
     let currentQuestion = '';
     let answers = []; // Array of {question, answer} pairs
@@ -594,13 +598,21 @@
       showLoading(true);
 
       try {
+        const requestBody = { productId: 'santa_message' };
+        if (accessToken) {
+          requestBody.token = accessToken;
+        }
+
         const response = await fetch(`${API_BASE}/start`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: 'santa_message' })
+          body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) throw new Error('Failed to start session');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to start session');
+        }
 
         const data = await response.json();
         sessionId = data.sessionId;
@@ -726,13 +738,21 @@
       document.getElementById('previousAnswers').classList.add('hidden');
 
       try {
+        const requestBody = { sessionId };
+        if (accessToken) {
+          requestBody.token = accessToken;
+        }
+
         const response = await fetch(`${API_BASE}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId })
+          body: JSON.stringify(requestBody)
         });
 
-        if (!response.ok) throw new Error('Failed to generate message');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to generate message');
+        }
 
         const data = await response.json();
 

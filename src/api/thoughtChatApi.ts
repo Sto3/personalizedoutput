@@ -38,12 +38,16 @@ import { PlannerOutput, SectionOutput } from '../lib/thoughtEngine/models/meanin
 import * as fs from 'fs';
 import * as path from 'path';
 
+// Import token store for order-based access control
+import { validateToken, markTokenRedeemed } from '../lib/thoughtEngine/santa/tokenStore';
+
 // ============================================================
 // TYPES
 // ============================================================
 
 interface StartSessionRequest {
   productId: 'santa_message' | 'holiday_reset' | 'new_year_reset';
+  token?: string; // Access token for santa_message product
 }
 
 interface ContinueSessionRequest {
@@ -54,6 +58,7 @@ interface ContinueSessionRequest {
 interface GenerateRequest {
   sessionId: string;
   forceGenerate?: boolean;
+  token?: string; // Access token for santa_message product
 }
 
 // ============================================================
@@ -69,7 +74,7 @@ const router = Router();
 
 router.post('/start', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { productId } = req.body as StartSessionRequest;
+  const { productId, token } = req.body as StartSessionRequest;
 
   try {
     // Validate product
@@ -79,6 +84,22 @@ router.post('/start', async (req: Request, res: Response) => {
         success: false,
         error: `Unknown product: ${productId}. Available: santa_message, holiday_reset, new_year_reset`
       });
+    }
+
+    // Validate token for Santa messages (if provided)
+    if (productId === 'santa_message' && token) {
+      const tokenValidation = validateToken(token);
+      if (!tokenValidation.valid) {
+        const errorMessages = {
+          'not_found': 'Invalid access token. Please start from your order link.',
+          'expired': 'Your session has expired. Please contact support for assistance.',
+          'redeemed': 'This order has already been used to generate a Santa message.'
+        };
+        return res.status(403).json({
+          success: false,
+          error: errorMessages[tokenValidation.reason]
+        });
+      }
     }
 
     console.log(`[ThoughtChat API] Starting session for ${productId}`);
@@ -189,7 +210,7 @@ router.post('/continue', async (req: Request, res: Response) => {
 
 router.post('/generate', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { sessionId, forceGenerate = false } = req.body as GenerateRequest;
+  const { sessionId, forceGenerate = false, token } = req.body as GenerateRequest;
 
   try {
     // Validate input
@@ -248,6 +269,12 @@ router.post('/generate', async (req: Request, res: Response) => {
     // Mark session as completed
     session.status = 'completed';
     await saveThoughtSession(session);
+
+    // Mark token as redeemed for Santa messages
+    if (session.productId === 'santa_message' && token) {
+      markTokenRedeemed(token);
+      console.log(`[ThoughtChat API] Token marked as redeemed: ${token.substring(0, 8)}...`);
+    }
 
     const totalTime = Date.now() - startTime;
     console.log(`[ThoughtChat API] Generation complete in ${totalTime}ms`);

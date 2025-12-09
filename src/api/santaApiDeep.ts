@@ -16,6 +16,7 @@ import { validateAndAdjust } from '../lib/thoughtEngine/santa/lengthControl';
 import { logGeneration, logScriptComplete, logTTSComplete, logError, getUsageStats } from '../lib/thoughtEngine/santa/analyticsLogger';
 import { getSpendTracker, canGenerateAudio, recordAudioGeneration, getSpendStatus } from '../lib/thoughtEngine/santa/spendLimiter';
 import { getSantaFormSchema } from '../lib/thoughtEngine/schemas/santaFormSchema';
+import { markTokenRedeemed, validateToken } from '../lib/thoughtEngine/santa/tokenStore';
 import {
   SantaQuestionnaireInput,
   validateSantaInput,
@@ -33,6 +34,7 @@ export type GenerationMode = 'script_only' | 'audio_only' | 'full';
 interface SantaGenerateRequest {
   answers: SantaQuestionnaireInput;
   mode?: GenerationMode;
+  token?: string; // Access token from order claim
 }
 
 interface SantaGenerateResponse {
@@ -71,7 +73,24 @@ const router = Router();
 
 router.post('/generate', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { answers, mode = 'full' } = req.body as SantaGenerateRequest;
+  const { answers, mode = 'full', token } = req.body as SantaGenerateRequest;
+
+  // Validate token if provided (required for production flow)
+  if (token) {
+    const tokenValidation = validateToken(token);
+    if (!tokenValidation.valid) {
+      const errorMessages = {
+        'not_found': 'Invalid access token. Please start from your order link.',
+        'expired': 'Your session has expired. Please contact support for assistance.',
+        'redeemed': 'This order has already been used to generate a Santa message.'
+      };
+      return res.status(403).json({
+        success: false,
+        mode,
+        error: errorMessages[tokenValidation.reason]
+      });
+    }
+  }
 
   // Start analytics logging
   const logId = logGeneration(
@@ -196,6 +215,12 @@ router.post('/generate', async (req: Request, res: Response) => {
         }
       }
     };
+
+    // Mark token as redeemed after successful generation
+    if (token) {
+      markTokenRedeemed(token);
+      console.log(`[Santa API] Token marked as redeemed: ${token.substring(0, 8)}...`);
+    }
 
     console.log(`[Santa API] Complete in ${totalTime}ms`);
     res.json(response);
