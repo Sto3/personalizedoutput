@@ -13,7 +13,13 @@
     "test:chat": "npx ts-node scripts/test-thought-chat.ts",
     "generate:etsy-preview": "node scripts/generateEtsyPreview.js"
   },
-  "keywords": ["etsy", "personalization", "santa", "planner", "ai"],
+  "keywords": [
+    "etsy",
+    "personalization",
+    "santa",
+    "planner",
+    "ai"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
@@ -26,6 +32,7 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
+    "formdata-node": "^6.0.3",
     "openai": "^6.9.1",
     "puppeteer": "^23.0.0",
     "sharp": "^0.34.5",
