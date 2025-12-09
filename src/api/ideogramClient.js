@@ -17,7 +17,8 @@ async function generateImage(prompt, options = {}) {
   const {
     model = 'V_2',  // Ideogram 2.0
     aspectRatio = 'ASPECT_9_16',  // Portrait for vision boards (closest to 1024x1792)
-    magicPromptOption = 'AUTO'  // Let Ideogram enhance the prompt
+    magicPromptOption = 'AUTO',  // Let Ideogram enhance the prompt
+    negativePrompt = null  // Optional negative prompt
   } = options;
 
   const apiKey = process.env.IDEOGRAM_API_KEY;
@@ -29,6 +30,19 @@ async function generateImage(prompt, options = {}) {
   console.log('Calling Ideogram...');
   console.log('Prompt length:', prompt.length, 'characters');
 
+  // Build the image request
+  const imageRequest = {
+    prompt: prompt,
+    model: model,
+    aspect_ratio: aspectRatio,
+    magic_prompt_option: magicPromptOption
+  };
+
+  // Add negative prompt if provided
+  if (negativePrompt) {
+    imageRequest.negative_prompt = negativePrompt;
+  }
+
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: {
@@ -36,12 +50,7 @@ async function generateImage(prompt, options = {}) {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      image_request: {
-        prompt: prompt,
-        model: model,
-        aspect_ratio: aspectRatio,
-        magic_prompt_option: magicPromptOption
-      }
+      image_request: imageRequest
     })
   });
 

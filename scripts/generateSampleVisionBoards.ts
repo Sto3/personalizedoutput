@@ -5,8 +5,13 @@
  * Saves to output/samples/vision-boards/<theme-id>.png
  */
 
+// Load environment variables FIRST
+import * as dotenv from 'dotenv';
 import * as path from 'path';
 import * as fs from 'fs';
+
+// Load .env from project root
+dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 // Import the vision board engine
 const { generateVisionBoard } = require('../src/lib/visionBoardEngineV12');
@@ -28,19 +33,19 @@ const THEME_CONFIGS: Record<string, {
 }> = {
   // Life Transitions
   post_breakup_healing: {
-    title: 'HEALING',
-    subtitle: 'New Beginnings',
+    title: 'My Healing Journey',
+    subtitle: 'SELF-LOVE • GROWTH • NEW BEGINNINGS • PEACE',
     colors: {
       background: '#F8E8EE',
       accents: ['#FFB6C1', '#E8D4F0', '#B4E4FF', '#FFEAA7'],
       banner: '#4A3F45',
       bannerText: '#FFFFFF'
     },
-    photos: ['butterfly transformation', 'sunrise over ocean', 'woman smiling', 'blooming flower',
-             'peaceful garden', 'open road ahead', 'self-care candles', 'mountain summit',
-             'yoga meditation', 'cozy reading nook', 'journal and coffee', 'starry night'],
+    photos: ['monarch butterfly on flower', 'sunrise over calm ocean', 'pink blooming roses', 'cherry blossom tree',
+             'peaceful zen garden', 'empty road through mountains', 'lit candles and bath salts', 'mountain summit view',
+             'yoga mat with plants', 'cozy reading nook with books', 'leather journal and coffee cup', 'starry night sky'],
     quotes: ['"You are worthy of love"', '"This too shall pass"'],
-    style: { mood: 'soft feminine healing', bokeh: true, decorations: true }
+    style: { mood: 'soft feminine healing', bokeh: true, decorations: false }
   },
 
   new_job_career_change: {
@@ -52,11 +57,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#2C3E50',
       bannerText: '#FFFFFF'
     },
-    photos: ['professional workspace', 'laptop and coffee', 'city skyline', 'handshake success',
-             'organized desk', 'climbing stairs', 'confident person', 'modern office',
-             'networking event', 'achievement trophy', 'planner calendar', 'sunrise'],
+    photos: ['modern desk setup with monitor', 'laptop and latte art coffee', 'city skyline at sunset', 'business documents and pen',
+             'organized minimalist desk', 'spiral staircase architecture', 'leather briefcase', 'modern glass office building',
+             'conference room table', 'gold trophy on shelf', 'open planner with pen', 'sunrise over city'],
     quotes: ['"Your future starts today"', '"Believe in yourself"'],
-    style: { mood: 'professional clean ambitious', bokeh: true, decorations: true }
+    style: { mood: 'professional clean ambitious', bokeh: true, decorations: false }
   },
 
   new_year_2025_vision: {
@@ -68,11 +73,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#3A3530',
       bannerText: '#FFFFFF'
     },
-    photos: ['champagne celebration', 'goal planner', 'healthy lifestyle', 'travel adventure',
-             'fitness motivation', 'family gathering', 'career success', 'peaceful home',
-             'abundance nature', 'gratitude journal', 'sunrise new day', 'sparklers celebration'],
+    photos: ['champagne glasses and confetti', 'goal planner notebook', 'fresh fruit and smoothie bowl', 'vintage suitcase with map',
+             'dumbbells and water bottle', 'dining table set for feast', 'desk with awards', 'cozy living room interior',
+             'lush garden abundance', 'gratitude journal with pen', 'sunrise through window', 'sparklers in night'],
     quotes: ['"Make it happen"', '"Dream big"'],
-    style: { mood: 'celebratory hopeful ambitious', bokeh: true, decorations: true }
+    style: { mood: 'celebratory hopeful ambitious', bokeh: true, decorations: false }
   },
 
   self_love_healing: {
@@ -84,11 +89,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#4A3F45',
       bannerText: '#FFFFFF'
     },
-    photos: ['heart hands', 'mirror affirmation', 'spa self-care', 'blooming flowers',
-             'peaceful meditation', 'journaling', 'healthy meal', 'nature walk',
-             'cozy blanket', 'sunshine face', 'bubble bath', 'smile portrait'],
+    photos: ['pink heart shaped stones', 'vintage mirror with flowers', 'spa products and towels', 'pink peonies bouquet',
+             'meditation cushion with incense', 'open journal and tea', 'colorful healthy salad bowl', 'forest path with sunlight',
+             'soft knit blanket', 'sunflowers in golden light', 'bubble bath with rose petals', 'fresh flowers in vase'],
     quotes: ['"You are worthy"', '"Love yourself first"'],
-    style: { mood: 'soft feminine self-care', bokeh: true, decorations: true }
+    style: { mood: 'soft feminine self-care', bokeh: true, decorations: false }
   },
 
   fitness_health_journey: {
@@ -100,11 +105,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#2C5530',
       bannerText: '#FFFFFF'
     },
-    photos: ['gym workout', 'healthy smoothie', 'running outdoors', 'yoga pose',
-             'fresh vegetables', 'weights training', 'mountain hiking', 'swimming pool',
-             'meditation peaceful', 'sunrise run', 'water bottle', 'achievement'],
+    photos: ['gym equipment rack', 'green smoothie bowl', 'running shoes on track', 'yoga mat and blocks',
+             'fresh vegetables arrangement', 'dumbbells and kettlebells', 'mountain trail path', 'swimming pool water',
+             'meditation cushion setup', 'sunrise over track', 'stainless water bottle', 'gold medal trophy'],
     quotes: ['"Progress not perfection"', '"You got this"'],
-    style: { mood: 'energetic motivational fitness', bokeh: true, decorations: true }
+    style: { mood: 'energetic motivational fitness', bokeh: true, decorations: false }
   },
 
   financial_goals_abundance: {
@@ -116,11 +121,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#2C3E50',
       bannerText: '#FFFFFF'
     },
-    photos: ['savings jar coins', 'investment growth', 'dream home', 'luxury vacation',
-             'budget planner', 'passive income', 'emergency fund', 'retirement beach',
-             'debt free celebration', 'prosperity mindset', 'wealth building', 'financial freedom'],
+    photos: ['mason jar with coins', 'stock chart on screen', 'luxury home exterior', 'tropical resort pool',
+             'budget planner notebook', 'laptop with graphs', 'safe with cash', 'beach sunset view',
+             'confetti celebration', 'gold coins stacked', 'investment books', 'ocean horizon'],
     quotes: ['"Wealth flows to me"', '"Invest in yourself"'],
-    style: { mood: 'professional abundant prosperous', bokeh: true, decorations: true }
+    style: { mood: 'professional abundant prosperous', bokeh: true, decorations: false }
   },
 
   travel_goals_dream_trips: {
@@ -132,11 +137,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#2C4A5E',
       bannerText: '#FFFFFF'
     },
-    photos: ['airplane window', 'eiffel tower paris', 'tropical beach', 'mountain adventure',
-             'passport stamps', 'suitcase packed', 'sunset beach', 'city exploration',
-             'local cuisine', 'travel journal', 'adventure hiking', 'world map'],
+    photos: ['airplane wing view clouds', 'eiffel tower at sunset', 'tropical beach palm trees', 'mountain peak vista',
+             'passport and stamps', 'vintage suitcase', 'beach sunset waves', 'european cobblestone street',
+             'exotic food spread', 'leather travel journal', 'hiking boots on trail', 'world map pinboard'],
     quotes: ['"Explore the world"', '"Adventure awaits"'],
-    style: { mood: 'adventurous exciting exploration', bokeh: true, decorations: true }
+    style: { mood: 'adventurous exciting exploration', bokeh: true, decorations: false }
   },
 
   confidence_empowerment: {
@@ -148,11 +153,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#4A3030',
       bannerText: '#FFFFFF'
     },
-    photos: ['power pose woman', 'stage spotlight', 'bold lipstick', 'high heels',
-             'achievement medal', 'microphone speech', 'mirror confidence', 'crown success',
-             'fearless jump', 'bold fashion', 'leadership meeting', 'celebration'],
+    photos: ['red lipstick and compact', 'stage with spotlight', 'red bottom heels', 'designer handbag',
+             'gold medal closeup', 'vintage microphone', 'ornate mirror frame', 'golden crown jewelry',
+             'cliff edge ocean view', 'fashion magazine stack', 'empty boardroom', 'champagne popping'],
     quotes: ['"She believed she could"', '"Own your power"'],
-    style: { mood: 'bold empowered confident', bokeh: true, decorations: true }
+    style: { mood: 'bold empowered confident', bokeh: true, decorations: false }
   },
 
   mindfulness_peace_calm: {
@@ -164,11 +169,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#3A4A3A',
       bannerText: '#FFFFFF'
     },
-    photos: ['zen garden', 'meditation cushion', 'calm lake reflection', 'incense burning',
-             'peaceful forest', 'morning tea', 'yoga sunrise', 'breathing exercise',
-             'nature sounds', 'minimalist room', 'peaceful sleeping', 'candle flame'],
+    photos: ['zen rock garden', 'meditation cushion with mala', 'still lake mountain reflection', 'incense smoke swirling',
+             'misty forest path', 'ceramic tea set', 'yoga mat at sunrise', 'essential oil diffuser',
+             'bamboo wind chimes', 'minimalist white room', 'cozy bed linens', 'flickering candle flame'],
     quotes: ['"Be present"', '"Peace begins within"'],
-    style: { mood: 'calm peaceful serene', bokeh: true, decorations: true }
+    style: { mood: 'calm peaceful serene', bokeh: true, decorations: false }
   },
 
   graduation_new_grad: {
@@ -180,11 +185,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#2C2C50',
       bannerText: '#FFFFFF'
     },
-    photos: ['graduation cap throw', 'diploma celebration', 'first job interview', 'apartment keys',
-             'career goals', 'travel adventure', 'city life', 'professional attire',
-             'networking event', 'dream career', 'celebration party', 'bright future'],
+    photos: ['graduation caps in air', 'diploma scroll ribbon', 'interview outfit on hanger', 'apartment keys on table',
+             'vision board desk', 'luggage at airport', 'city skyline view', 'professional blazer',
+             'business cards stack', 'corner office window', 'confetti and streamers', 'sunrise new day'],
     quotes: ['"The world awaits"', '"Go get it"'],
-    style: { mood: 'celebratory ambitious exciting', bokeh: true, decorations: true }
+    style: { mood: 'celebratory ambitious exciting', bokeh: true, decorations: false }
   },
 
   birthday_year_vision: {
@@ -196,11 +201,11 @@ const THEME_CONFIGS: Record<string, {
       banner: '#4A3F45',
       bannerText: '#FFFFFF'
     },
-    photos: ['birthday candles', 'celebration balloons', 'gift wrapped', 'champagne toast',
-             'bucket list', 'adventure planning', 'self love spa', 'goals journal',
-             'dream vacation', 'friendship celebration', 'new experiences', 'joy happiness'],
+    photos: ['birthday cake with candles', 'colorful balloons bunch', 'wrapped gift boxes', 'champagne glasses toast',
+             'bucket list notebook', 'map with pins', 'spa products arrangement', 'goals journal pen',
+             'tropical beach resort', 'celebration confetti', 'concert tickets', 'golden sunlight'],
     quotes: ['"This is your year"', '"Celebrate you"'],
-    style: { mood: 'celebratory joyful personal', bokeh: true, decorations: true }
+    style: { mood: 'celebratory joyful personal', bokeh: true, decorations: false }
   },
 
   faith_purpose_calling: {
@@ -212,11 +217,29 @@ const THEME_CONFIGS: Record<string, {
       banner: '#3A3530',
       bannerText: '#FFFFFF'
     },
-    photos: ['sunrise prayer', 'bible and coffee', 'church steeple', 'peaceful nature',
-             'grateful heart hands', 'cross sunset', 'family blessing', 'helping hands',
-             'worship music', 'quiet reflection', 'grace light', 'faith journey'],
+    photos: ['sunrise over mountains', 'open bible with coffee', 'white church steeple', 'peaceful meadow flowers',
+             'gratitude journal open', 'cross silhouette sunset', 'dinner table setting', 'dove in flight',
+             'piano keys closeup', 'candlelit sanctuary', 'sunbeams through trees', 'winding path forward'],
     quotes: ['"Trust His plan"', '"Faith over fear"'],
-    style: { mood: 'peaceful faithful reverent', bokeh: true, decorations: true }
+    style: { mood: 'peaceful faithful reverent', bokeh: true, decorations: false }
+  },
+
+  // Masculine themes
+  built_different: {
+    title: 'BUILT DIFFERENT',
+    subtitle: 'DISCIPLINE • STRENGTH • LEGACY',
+    colors: {
+      background: '#1A1A1A',
+      accents: ['#2A2A2A', '#3A3A3A', '#4A4A4A', '#5A5A5A'],
+      banner: '#000000',
+      bannerText: '#FFFFFF'
+    },
+    photos: ['black dumbbells arranged in V shape', 'mountain summit at dawn', 'leather journal with pen',
+             'black coffee steaming', 'black running shoes on concrete', 'minimalist dark desk setup',
+             'chess board with pieces', 'luxury watch in box', 'boxing gloves on bench',
+             'candle flame in darkness', 'sports car interior', 'empty gym at night'],
+    quotes: ['"No excuses"', '"Built not born"'],
+    style: { mood: 'dark masculine discipline', bokeh: false, decorations: false }
   }
 };
 

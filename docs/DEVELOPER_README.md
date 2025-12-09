@@ -733,6 +733,95 @@ Fields:
 
 ---
 
+---
+
+## CSV Export System (Etsy Bulk Upload)
+
+Since Etsy API app approval can take days to months, we've implemented a CSV-based bulk upload workflow that works with third-party tools like Shop Uploader.
+
+### Supported Upload Tools
+
+| Tool | Description | Status |
+|------|-------------|--------|
+| **Shop Uploader** | Primary target - clear docs, well-documented format | Recommended |
+| **CSV Lister** | Alternative bulk upload tool | Supported |
+| **Generic Etsy** | Simplified format for manual upload | Fallback |
+
+### Etsy CLI Commands
+
+```bash
+# List available CSV export targets
+npx ts-node src/etsy/cli/etsyCli.ts csv-targets
+
+# Export listings to CSV
+npx ts-node src/etsy/cli/etsyCli.ts export <product> <count> [options]
+
+# Examples:
+npx ts-node src/etsy/cli/etsyCli.ts export santa_message 50 --file=output/etsy_csv/santa_50.csv
+npx ts-node src/etsy/cli/etsyCli.ts export vision_board 25 --target=shopuploader
+npx ts-node src/etsy/cli/etsyCli.ts export planner 10 --file=output/planners.csv
+```
+
+### Product Types for Export
+
+- `santa_message` - Personalized Santa audio messages ($9.99)
+- `vision_board` - Digital vision boards ($4.99)
+- `planner` - Digital planners ($6.99)
+- `flash_cards` - Educational flash cards ($5.99)
+
+### CSV Export Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--file=<path>` | Output file path | `output/etsy_csv/<product>_<count>.csv` |
+| `--target=<id>` | CSV target format | `shopuploader` |
+
+### Using Shop Uploader
+
+1. Generate your CSV: `npx ts-node src/etsy/cli/etsyCli.ts export santa_message 50`
+2. Go to [shopuploader.com](https://www.shopuploader.com)
+3. Upload the generated CSV file
+4. Upload product images to a public host (Imgur, your own server, etc.)
+5. Replace `[UPLOAD_TO_HOST]` placeholders in the CSV with actual image URLs
+6. Review listings in Shop Uploader
+7. Push to Etsy
+
+### CSV Module Structure
+
+```
+src/etsy/
+├── cli/
+│   └── etsyCli.ts          # Main CLI entry point
+├── config/
+│   ├── themes.ts           # Product themes configuration
+│   └── types.ts            # Type definitions
+├── csv/
+│   ├── index.ts            # Module exports
+│   ├── csvTypes.ts         # CSV-related types
+│   ├── csvTargets.ts       # Target tool configurations
+│   └── csvExporter.ts      # CSV generation logic
+└── generators/
+    ├── listingGenerator.ts # Etsy listing content generator
+    └── imagePipeline.ts    # Image handling
+```
+
+### Vision Board Generation
+
+```bash
+# Dry run (no API calls)
+npx ts-node scripts/generateSampleVisionBoards.ts --dry-run
+
+# Generate specific theme
+npx ts-node scripts/generateSampleVisionBoards.ts --theme=new_year_2025_vision
+
+# Generate with limit
+npx ts-node scripts/generateSampleVisionBoards.ts --limit=3
+```
+
+Vision boards are saved to: `./outputs/visionboard-v12-<timestamp>.png`
+
+---
+
 ## Support
 
 For issues or questions:

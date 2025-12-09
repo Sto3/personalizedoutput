@@ -11,11 +11,15 @@
  * Commands:
  *   auth           - Start OAuth flow to connect your Etsy shop
  *   auth-status    - Check authentication status
- *   publish        - Bulk publish listings
+ *   publish        - Bulk publish listings (requires API approval)
  *   preview        - Preview what would be published (dry run)
  *   stats          - Show publishing statistics
  *   themes         - List available themes
  *   test           - Test connection to Etsy
+ *
+ * CSV Export Commands (no API approval required):
+ *   csv-targets    - List available CSV export targets
+ *   export         - Export listings to CSV for bulk upload tools
  */
 
 import { ProductType } from '../config/types';
@@ -41,8 +45,19 @@ import * as dotenv from 'dotenv';
 dotenv.config();
 import { getEtsyClient } from '../api/etsyClient';
 import { BulkPublisher, bulkPublish } from '../api/bulkPublisher';
-import { getHashStats, getLogStats } from '../generators/variationEngine';
+import { getHashStats, getLogStats, getNextVariationIndex } from '../generators/variationEngine';
 import { generateListing } from '../generators/listingGenerator';
+import {
+  listCsvTargets,
+  getCsvTarget,
+  getDefaultCsvTarget,
+  CsvTargetId,
+  ListingDraft,
+  exportToCsv,
+  createListingDraft,
+  PRODUCT_PRICES
+} from '../csv';
+import { findSampleImage, getDefaultImage } from '../services/imagePipeline';
 
 // ============================================================
 // CLI HELPERS
@@ -98,30 +113,41 @@ function showUsage(): void {
   console.log('Usage:');
   console.log('  npx ts-node src/etsy/cli/etsyCli.ts <command> [options]');
   console.log('');
-  console.log('Commands:');
+  console.log('CSV Export Commands (NO API APPROVAL REQUIRED):');
+  console.log('  csv-targets               List available CSV export targets');
+  console.log('  export <product> <count>  Export listings to CSV file');
+  console.log('');
+  console.log('API Commands (requires Etsy app approval):');
   console.log('  auth                      Start OAuth flow to connect Etsy shop');
   console.log('  auth-status               Check authentication status');
   console.log('  logout                    Clear stored credentials');
   console.log('  test                      Test connection to Etsy');
-  console.log('');
-  console.log('  themes [product]          List available themes');
   console.log('  preview <product> <count> Preview listings (dry run)');
   console.log('  publish <product> <count> Publish listings to Etsy');
   console.log('  stats                     Show publishing statistics');
   console.log('');
+  console.log('Other Commands:');
+  console.log('  themes [product]          List available themes');
   console.log('  generate <theme-id>       Generate a single listing');
   console.log('');
-  console.log('Product types: vision_board, santa_message, flash_cards, planner');
+  console.log('Product types: santa_message, vision_board, planner, flash_cards');
   console.log('');
-  console.log('Options:');
+  console.log('Export Options:');
+  console.log('  --file=<path>             Output CSV file path (required for export)');
+  console.log('  --target=<target-id>      CSV target tool (default: shopuploader)');
+  console.log('  --themes=<id1,id2,...>    Filter by specific theme IDs');
+  console.log('');
+  console.log('API Options:');
   console.log('  --mode=<draft|active>     Publish mode (default: draft)');
-  console.log('  --theme=<theme-id>        Filter by specific theme');
-  console.log('  --style=<style-id>        Filter by specific style');
   console.log('');
   console.log('Examples:');
-  console.log('  npx ts-node src/etsy/cli/etsyCli.ts auth');
-  console.log('  npx ts-node src/etsy/cli/etsyCli.ts preview vision_board 10');
-  console.log('  npx ts-node src/etsy/cli/etsyCli.ts publish vision_board 50 --mode=draft');
+  console.log('  # Export 50 Santa listings to CSV (ready for Shop Uploader)');
+  console.log('  npx ts-node src/etsy/cli/etsyCli.ts export santa_message 50 --file=output/etsy_csv/santa_50.csv');
+  console.log('');
+  console.log('  # Export vision boards with generic format');
+  console.log('  npx ts-node src/etsy/cli/etsyCli.ts export vision_board 50 --file=output/etsy_csv/vb_50.csv --target=generic_etsy');
+  console.log('');
+  console.log('  # List available themes');
   console.log('  npx ts-node src/etsy/cli/etsyCli.ts themes santa_message');
   console.log('');
 }
@@ -448,6 +474,185 @@ async function commandGenerate(themeId: string): Promise<void> {
 }
 
 // ============================================================
+// CSV EXPORT COMMANDS
+// ============================================================
+
+async function commandCsvTargets(): Promise<void> {
+  logHeader('Available CSV Export Targets');
+
+  const targets = listCsvTargets();
+
+  console.log('These targets format CSV files for different bulk upload tools.\n');
+
+  for (const target of targets) {
+    console.log(`${COLORS.cyan}${target.id}${COLORS.reset}`);
+    console.log(`  Label: ${target.label}`);
+    console.log(`  ${target.description}`);
+    console.log('');
+  }
+
+  const defaultTarget = getDefaultCsvTarget();
+  logInfo(`Default target: ${defaultTarget.id} (${defaultTarget.label})`);
+  console.log('');
+
+  console.log('Usage:');
+  console.log('  npx ts-node src/etsy/cli/etsyCli.ts export santa_message 50 --file=output.csv --target=shopuploader');
+  console.log('');
+}
+
+async function commandExport(
+  productType: ProductType,
+  count: number,
+  options: Record<string, string>
+): Promise<void> {
+  const targetId = (options.target || 'shopuploader') as CsvTargetId;
+  const outputFile = options.file;
+  const themeFilter = options.themes ? options.themes.split(',') : undefined;
+
+  if (!outputFile) {
+    logError('--file=<path> is required');
+    console.log('');
+    console.log('Example:');
+    console.log(`  npx ts-node src/etsy/cli/etsyCli.ts export ${productType} ${count} --file=output/etsy_csv/${productType}_${count}.csv`);
+    process.exit(1);
+  }
+
+  logHeader(`CSV Export: ${productType} (${count} listings)`);
+
+  const target = getCsvTarget(targetId);
+  logInfo(`Target: ${target.label} (${target.id})`);
+  logInfo(`Output: ${outputFile}`);
+  if (themeFilter) {
+    logInfo(`Theme filter: ${themeFilter.join(', ')}`);
+  }
+  console.log('');
+
+  // Get themes for this product type
+  let themes = getThemesByProductType(productType);
+  if (themeFilter) {
+    themes = themes.filter(t => themeFilter.includes(t.id));
+    if (themes.length === 0) {
+      logError('No themes match the filter');
+      process.exit(1);
+    }
+  }
+
+  logInfo(`Generating ${count} listings from ${themes.length} themes...`);
+  console.log('');
+
+  const listings: ListingDraft[] = [];
+  let generated = 0;
+  let themeIndex = 0;
+
+  while (generated < count && themes.length > 0) {
+    const theme = themes[themeIndex % themes.length];
+    themeIndex++;
+
+    // Get next variation index for this theme
+    const variationIndex = getNextVariationIndex(theme.id);
+
+    // Generate listing content
+    const result = await generateListing(theme, undefined, { useAI: false });
+
+    if (!result.success || !result.listing) {
+      logWarning(`Skipped ${theme.id}: ${result.error || 'generation failed'}`);
+      continue;
+    }
+
+    // Find sample image for this theme
+    let imagePaths: string[] = [];
+    const sampleImage = findSampleImage(productType, theme.id);
+    if (sampleImage) {
+      imagePaths = [sampleImage];
+    } else {
+      const defaultImage = getDefaultImage(productType);
+      if (defaultImage) {
+        imagePaths = [defaultImage];
+      }
+    }
+
+    // Create listing draft
+    const draft = createListingDraft(
+      {
+        title: result.listing.title,
+        description: result.listing.description,
+        tags: result.listing.tags,
+        contentHash: result.listing.contentHash
+      },
+      {
+        productType,
+        themeId: theme.id,
+        variationIndex,
+        imagePaths
+      }
+    );
+
+    listings.push(draft);
+    generated++;
+
+    // Progress update
+    process.stdout.write(`\r  Generated: ${generated}/${count} | Theme: ${theme.id.substring(0, 20)}...     `);
+  }
+
+  console.log('\n');
+
+  if (listings.length === 0) {
+    logError('No listings generated');
+    process.exit(1);
+  }
+
+  // Export to CSV
+  logInfo('Writing CSV file...');
+
+  const exportResult = await exportToCsv(listings, {
+    targetId,
+    outputFile,
+    productType
+  });
+
+  console.log('');
+
+  if (exportResult.success) {
+    logSuccess(`Exported ${exportResult.rowCount} listings!`);
+    logInfo(`File: ${exportResult.filePath}`);
+    logInfo(`Duration: ${exportResult.durationMs}ms`);
+    console.log('');
+
+    console.log('Next steps:');
+    console.log(`  1. Go to ${target.label} (${getToolUrl(targetId)})`);
+    console.log('  2. Upload the CSV file');
+    if (target.imagePathFormat === 'url') {
+      console.log('  3. Upload images to a public host (Imgur, etc.)');
+      console.log('  4. Replace [UPLOAD_TO_HOST] placeholders with actual URLs');
+    }
+    console.log('  5. Review and push listings to Etsy');
+    console.log('');
+  } else {
+    logError('Export failed');
+    if (exportResult.errors) {
+      for (const err of exportResult.errors) {
+        console.log(`  - ${err}`);
+      }
+    }
+    process.exit(1);
+  }
+}
+
+/**
+ * Get URL for a CSV tool
+ */
+function getToolUrl(targetId: CsvTargetId): string {
+  switch (targetId) {
+    case 'shopuploader':
+      return 'https://www.shopuploader.com';
+    case 'csvlister':
+      return 'https://csvlister.com';
+    default:
+      return 'your bulk upload tool';
+  }
+}
+
+// ============================================================
 // MAIN
 // ============================================================
 
@@ -477,6 +682,24 @@ async function main(): Promise<void> {
 
   try {
     switch (command) {
+      // CSV Export Commands (no API approval required)
+      case 'csv-targets':
+        await commandCsvTargets();
+        break;
+
+      case 'export':
+        if (positionalArgs.length < 2) {
+          logError('Usage: export <product-type> <count> --file=<output.csv> [--target=<target-id>]');
+          process.exit(1);
+        }
+        await commandExport(
+          positionalArgs[0] as ProductType,
+          parseInt(positionalArgs[1]),
+          options
+        );
+        break;
+
+      // API Commands (require Etsy app approval)
       case 'auth':
         await commandAuth();
         break;

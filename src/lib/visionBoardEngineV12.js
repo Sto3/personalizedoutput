@@ -24,12 +24,12 @@ const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
 const COST_PER_IMAGE = 0.025;
 
-// Typography
+// Typography - exact fontconfig names for SVG rendering
 const FONTS = {
-  script: "'Snell Roundhand', 'Brush Script MT', cursive",
-  serifCaps: "'Bodoni 72 Smallcaps', 'Bodoni MT', 'Didot', serif",
-  serifQuote: "'Cormorant Garamond', 'Playfair Display', 'Georgia', serif",
-  sans: "'Helvetica Neue', 'Arial', sans-serif"
+  script: "Snell Roundhand",  // For feminine boards
+  serifCaps: "Bodoni 72 Smallcaps",  // For masculine/neutral boards (NOT Oldstyle)
+  serifQuote: "Cormorant Garamond, Playfair Display, Georgia, serif",
+  sans: "Helvetica Neue, Arial, sans-serif"
 };
 
 function selectFonts(style) {
@@ -369,13 +369,19 @@ function downloadImage(url) {
 }
 
 async function generatePhoto(symbol, style, index) {
-  const noPeople = "no people, no faces, no hands, no body parts";
   const mood = style?.mood || "aesthetic dreamy warm";
-  const prompt = `Beautiful photograph of ${symbol}. ${mood}, professional photography. ${noPeople}, no text, no logos.`;
+  const prompt = `Beautiful photograph of ${symbol}. ${mood}, professional photography, no text, no logos, no watermarks.`;
+
+  // Strong negative prompt to prevent people/body parts
+  const negativePrompt = "people, person, human, man, woman, child, baby, face, faces, portrait, hands, fingers, arms, legs, feet, body, figure, silhouette, crowd, group";
 
   console.log(`  [${index + 1}] "${symbol.substring(0, 38)}..."`);
   try {
-    const url = await generateImage(prompt, { model: 'V_2_TURBO', aspectRatio: 'ASPECT_1_1' });
+    const url = await generateImage(prompt, {
+      model: 'V_2_TURBO',
+      aspectRatio: 'ASPECT_1_1',
+      negativePrompt: negativePrompt
+    });
     return await downloadImage(url);
   } catch (e) {
     console.error(`  [${index + 1}] Error:`, e.message);
@@ -405,7 +411,7 @@ async function generateVisionBoard(input, options = {}) {
   const quotes = input.quotes || [];
   const textBlocks = input.textBlocks || [];
   const style = {
-    decorations: input.style?.decorations !== false,
+    decorations: false,  // DISABLED - no hearts, stars, flowers per user request
     bokeh: input.style?.bokeh !== false,
     mood: input.style?.mood || 'dreamy warm aesthetic'
   };
@@ -507,10 +513,11 @@ async function generateVisionBoard(input, options = {}) {
     canvas = await sharp(canvas).composite(decs).png().toBuffer();
   }
 
-  // Banner
+  // Banner - pre-render SVG to PNG for correct font rendering
   console.log('[9] Adding banner...');
   const bannerSvg = createBanner(CANVAS_WIDTH, title, subtitle, colors, fonts);
-  canvas = await sharp(canvas).composite([{ input: Buffer.from(bannerSvg), top: 0, left: 0 }]).png().toBuffer();
+  const bannerPng = await sharp(Buffer.from(bannerSvg)).png().toBuffer();
+  canvas = await sharp(canvas).composite([{ input: bannerPng, top: 0, left: 0 }]).png().toBuffer();
 
   // Save
   if (!fs.existsSync(OUTPUT_DIR)) fs.mkdirSync(OUTPUT_DIR, { recursive: true });
