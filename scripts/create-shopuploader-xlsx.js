@@ -30,8 +30,8 @@ const listingData = {
   price: '14.99',
   quantity: '999',
 
-  // Category - Digital Downloads > Audio
-  category: 'Craft Supplies & Tools > Patterns & How To > Tutorials',  // Will need to verify
+  // Category - Digital Audio
+  category: 'Books, Movies & Music > Music > Recorded Audio',
 
   // Attributes
   colors: '',
@@ -50,9 +50,9 @@ const listingData = {
   image_9: '',
   image_10: '',
 
-  // Digital files (placeholder - actual file delivered manually)
-  digital_file_1: '',
-  digital_file_name_1: '',
+  // Digital files - instruction file for buyers
+  digital_file_1: 'https://personalizedoutput.com/digital-downloads/santa_instructions.txt',
+  digital_file_name_1: 'INSTRUCTIONS_READ_FIRST.txt',
   digital_file_2: '',
   digital_file_name_2: '',
   digital_file_3: '',
@@ -62,9 +62,13 @@ const listingData = {
   digital_file_5: '',
   digital_file_name_5: '',
 
-  // Listing type
+  // Listing type - ALL required fields for the column set
   type: 'digital',
   who_made: 'i_did',
+  when_made: '2020_2025',
+  is_supply: 'false',
+  is_vintage: 'false',
+  is_taxable: 'false',
 
   // Personalization
   is_personalizable: 'true',
@@ -107,7 +111,7 @@ const allColumns = [
   'digital_file_3', 'digital_file_name_3',
   'digital_file_4', 'digital_file_name_4',
   'digital_file_5', 'digital_file_name_5',
-  'type', 'who_made',
+  'type', 'who_made', 'when_made', 'is_supply', 'is_vintage', 'is_taxable',
   'is_personalizable', 'personalization_instructions', 'personalization_char_count_max',
   'tag_1', 'tag_2', 'tag_3', 'tag_4', 'tag_5',
   'tag_6', 'tag_7', 'tag_8', 'tag_9', 'tag_10',
