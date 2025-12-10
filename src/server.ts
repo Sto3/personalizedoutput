@@ -80,6 +80,7 @@ if (isProduction) {
 app.use('/outputs', express.static(path.join(process.cwd(), 'outputs')));
 app.use('/dev', express.static(path.join(process.cwd(), 'dev')));
 app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
+app.use('/listing-images', express.static(path.join(process.cwd(), 'public', 'listing-images')));
 
 // ============================================================
 // PRODUCTION ROUTES - Clean URLs for Etsy buyers
