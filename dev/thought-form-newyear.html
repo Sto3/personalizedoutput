@@ -3,55 +3,114 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Year Reflection Thought Organizer</title>
+  <title>New Year Reflection | Personalized Planning Guide</title>
+  <meta name="description" content="Start the new year with clarity. A guided reflection to help you look back on this year and intentionally shape the one ahead.">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap');
+
     * {
+      margin: 0;
+      padding: 0;
       box-sizing: border-box;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+      font-family: 'Lora', Georgia, serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
       min-height: 100vh;
-      margin: 0;
-      padding: 20px;
-      color: #e8e8e8;
+      color: #fff;
+    }
+
+    /* Starry night header */
+    .stars-header {
+      width: 100%;
+      height: 140px;
+      background: linear-gradient(180deg, #0f0f23 0%, #1a1a2e 70%, transparent 100%);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .stars-header::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 120px;
+      background:
+        radial-gradient(circle 2px at 5% 20%, #fff 100%, transparent 100%),
+        radial-gradient(circle 1px at 15% 45%, rgba(255,255,255,0.8) 100%, transparent 100%),
+        radial-gradient(circle 2px at 25% 15%, #fff 100%, transparent 100%),
+        radial-gradient(circle 1px at 35% 55%, rgba(255,255,255,0.6) 100%, transparent 100%),
+        radial-gradient(circle 2px at 45% 30%, #fff 100%, transparent 100%),
+        radial-gradient(circle 1px at 55% 10%, rgba(255,255,255,0.7) 100%, transparent 100%),
+        radial-gradient(circle 2px at 65% 50%, #fff 100%, transparent 100%),
+        radial-gradient(circle 1px at 75% 25%, rgba(255,255,255,0.8) 100%, transparent 100%),
+        radial-gradient(circle 2px at 85% 40%, #fff 100%, transparent 100%),
+        radial-gradient(circle 1px at 95% 15%, rgba(255,255,255,0.6) 100%, transparent 100%),
+        radial-gradient(circle 1px at 10% 70%, rgba(255,255,255,0.5) 100%, transparent 100%),
+        radial-gradient(circle 1px at 30% 80%, rgba(255,255,255,0.4) 100%, transparent 100%),
+        radial-gradient(circle 1px at 50% 65%, rgba(255,255,255,0.6) 100%, transparent 100%),
+        radial-gradient(circle 1px at 70% 75%, rgba(255,255,255,0.5) 100%, transparent 100%),
+        radial-gradient(circle 1px at 90% 60%, rgba(255,255,255,0.4) 100%, transparent 100%);
+    }
+
+    /* Crescent moon */
+    .stars-header::after {
+      content: '';
+      position: absolute;
+      top: 25px;
+      right: 15%;
+      width: 35px;
+      height: 35px;
+      background: radial-gradient(circle at 30% 30%, #f5e6c8 0%, #d4c4a8 100%);
+      border-radius: 50%;
+      box-shadow: 0 0 20px rgba(245, 230, 200, 0.4), 0 0 40px rgba(245, 230, 200, 0.2);
     }
 
     .container {
       max-width: 700px;
       margin: 0 auto;
+      padding: 30px 20px 60px;
+      position: relative;
+      z-index: 1;
     }
 
     h1 {
+      font-family: 'Playfair Display', Georgia, serif;
       text-align: center;
-      color: #fff;
+      color: #f5e6c8;
       margin-bottom: 8px;
-      font-size: 1.8rem;
+      font-size: 2.2rem;
+      font-weight: 600;
+      letter-spacing: -0.5px;
     }
 
     .subtitle {
       text-align: center;
-      color: #aaa;
+      color: rgba(255,255,255,0.7);
       margin-bottom: 30px;
       font-size: 1rem;
-      line-height: 1.5;
+      line-height: 1.6;
+      font-style: italic;
     }
 
     /* Start Screen */
     .start-screen {
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.06);
       border-radius: 16px;
       padding: 40px;
       text-align: center;
+      border: 1px solid rgba(245,230,200,0.1);
+      backdrop-filter: blur(10px);
     }
 
     .start-screen .intro-text {
-      color: #ccc;
+      color: rgba(255,255,255,0.85);
       margin-bottom: 30px;
-      line-height: 1.7;
+      line-height: 1.8;
       text-align: left;
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
 
     .start-screen .intro-text p {
@@ -62,12 +121,58 @@
       margin-bottom: 0;
     }
 
+    /* Order ID Section */
+    .order-section {
+      background: rgba(0,0,0,0.25);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    .order-section label {
+      display: block;
+      margin-bottom: 8px;
+      color: #f5e6c8;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
+
+    .order-input {
+      width: 100%;
+      padding: 14px 18px;
+      font-size: 1rem;
+      font-family: inherit;
+      border: 1px solid rgba(245,230,200,0.25);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      margin-bottom: 8px;
+      transition: border-color 0.2s;
+    }
+
+    .order-input:focus {
+      outline: none;
+      border-color: #f5e6c8;
+    }
+
+    .order-input::placeholder {
+      color: rgba(255,255,255,0.35);
+    }
+
+    .order-hint {
+      color: rgba(255,255,255,0.45);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
     .btn-start {
-      background: linear-gradient(135deg, #5a6c7d 0%, #3d4f5f 100%);
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
       color: white;
       border: none;
       padding: 16px 48px;
       font-size: 1.1rem;
+      font-family: 'Lora', Georgia, serif;
       border-radius: 30px;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
@@ -76,7 +181,7 @@
 
     .btn-start:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(90, 108, 125, 0.4);
+      box-shadow: 0 8px 25px rgba(99, 102, 241, 0.4);
     }
 
     /* Form Area */
@@ -94,53 +199,56 @@
     }
 
     .previous-answers h3 {
-      color: #fff;
-      font-size: 0.9rem;
+      color: #f5e6c8;
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 1rem;
       font-weight: 600;
       margin-bottom: 6px;
     }
 
     .previous-answers .helper-text {
-      color: #888;
-      font-size: 0.85rem;
+      color: rgba(255,255,255,0.55);
+      font-size: 0.9rem;
       margin-bottom: 12px;
-      line-height: 1.4;
+      line-height: 1.5;
     }
 
     .answer-pair {
-      background: rgba(255,255,255,0.03);
-      border-left: 3px solid #7f8c8d;
+      background: rgba(255,255,255,0.04);
+      border-left: 3px solid #818cf8;
       padding: 12px 16px;
       margin-bottom: 10px;
-      border-radius: 0 8px 8px 0;
+      border-radius: 0 10px 10px 0;
     }
 
     .answer-pair .question {
-      color: #888;
+      color: rgba(255,255,255,0.45);
       font-size: 0.85rem;
       margin-bottom: 4px;
     }
 
     .answer-pair .answer {
-      color: #e8e8e8;
+      color: rgba(255,255,255,0.9);
       font-size: 0.95rem;
     }
 
     .no-answers {
-      color: #666;
+      color: rgba(255,255,255,0.35);
       font-style: italic;
       font-size: 0.9rem;
     }
 
     /* Current Question */
     .current-question {
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(245,230,200,0.08);
       border-radius: 16px;
       padding: 30px;
+      backdrop-filter: blur(10px);
     }
 
     .current-question-header {
-      color: #7f8c8d;
+      color: #818cf8;
       font-size: 0.8rem;
       font-weight: 600;
       text-transform: uppercase;
@@ -149,8 +257,8 @@
     }
 
     .current-question-hint {
-      color: #666;
-      font-size: 0.8rem;
+      color: rgba(255,255,255,0.45);
+      font-size: 0.85rem;
       margin-bottom: 16px;
     }
 
@@ -159,37 +267,39 @@
       font-size: 1.15rem;
       font-weight: 500;
       margin-bottom: 20px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
 
     .answer-input {
       width: 100%;
       min-height: 120px;
       background: rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(245,230,200,0.15);
       border-radius: 12px;
       padding: 16px;
       font-size: 1rem;
-      color: #e8e8e8;
+      color: #fff;
       resize: vertical;
       font-family: inherit;
     }
 
     .answer-input:focus {
       outline: none;
-      border-color: #7f8c8d;
+      border-color: #818cf8;
+      box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.15);
     }
 
     .answer-input::placeholder {
-      color: #666;
+      color: rgba(255,255,255,0.35);
     }
 
     .btn-next {
-      background: linear-gradient(135deg, #5a6c7d 0%, #3d4f5f 100%);
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
       color: white;
       border: none;
       padding: 14px 36px;
       font-size: 1rem;
+      font-family: 'Lora', Georgia, serif;
       border-radius: 25px;
       cursor: pointer;
       margin-top: 20px;
@@ -198,7 +308,7 @@
 
     .btn-next:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(90, 108, 125, 0.4);
+      box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
     }
 
     .btn-next:disabled {
@@ -216,19 +326,21 @@
     }
 
     .summary-screen h2 {
-      color: #7f8c8d;
+      font-family: 'Playfair Display', Georgia, serif;
+      color: #f5e6c8;
       margin-bottom: 16px;
     }
 
     .summary-screen .body-text {
-      color: #ccc;
-      line-height: 1.7;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.8;
       margin-bottom: 24px;
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
 
     .summary-content {
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(245,230,200,0.08);
       border-radius: 12px;
       padding: 20px;
       margin-bottom: 24px;
@@ -239,7 +351,7 @@
     .summary-item {
       margin-bottom: 16px;
       padding-bottom: 16px;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
     }
 
     .summary-item:last-child {
@@ -249,22 +361,23 @@
     }
 
     .summary-item .q {
-      color: #888;
+      color: rgba(255,255,255,0.45);
       font-size: 0.85rem;
       margin-bottom: 4px;
     }
 
     .summary-item .a {
-      color: #e8e8e8;
+      color: rgba(255,255,255,0.9);
     }
 
     .btn-generate {
-      background: linear-gradient(135deg, #5a6c7d 0%, #3d4f5f 100%);
-      color: white;
+      background: linear-gradient(135deg, #f5e6c8 0%, #d4c4a8 100%);
+      color: #1a1a2e;
       border: none;
       padding: 18px 48px;
       font-size: 1.1rem;
       font-weight: 600;
+      font-family: 'Lora', Georgia, serif;
       border-radius: 30px;
       cursor: pointer;
       transition: transform 0.2s, box-shadow 0.2s;
@@ -272,7 +385,7 @@
 
     .btn-generate:hover:not(:disabled) {
       transform: translateY(-2px);
-      box-shadow: 0 8px 25px rgba(90, 108, 125, 0.4);
+      box-shadow: 0 8px 25px rgba(245, 230, 200, 0.3);
     }
 
     .btn-generate:disabled {
@@ -290,54 +403,59 @@
     }
 
     .result-screen h2 {
-      color: #7f8c8d;
+      font-family: 'Playfair Display', Georgia, serif;
+      color: #f5e6c8;
       margin-bottom: 20px;
     }
 
     .result-content {
-      background: rgba(255,255,255,0.05);
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(245,230,200,0.08);
       border-radius: 12px;
       padding: 24px;
       white-space: pre-wrap;
-      line-height: 1.7;
+      line-height: 1.8;
       font-size: 1.05rem;
+      color: rgba(255,255,255,0.9);
       margin-bottom: 20px;
     }
 
     .result-note {
-      color: #888;
-      font-size: 0.85rem;
+      color: rgba(255,255,255,0.45);
+      font-size: 0.9rem;
       font-style: italic;
       margin-bottom: 20px;
     }
 
     .btn-restart {
-      background: rgba(255,255,255,0.1);
-      color: #e8e8e8;
-      border: 1px solid rgba(255,255,255,0.2);
+      background: transparent;
+      color: #f5e6c8;
+      border: 2px solid #f5e6c8;
       padding: 12px 30px;
       font-size: 0.95rem;
+      font-family: 'Lora', Georgia, serif;
       border-radius: 25px;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.2s;
     }
 
     .btn-restart:hover {
-      background: rgba(255,255,255,0.15);
+      background: #f5e6c8;
+      color: #1a1a2e;
     }
 
     /* Loading state */
     .loading {
       text-align: center;
       padding: 40px;
-      color: #888;
+      color: rgba(255,255,255,0.55);
     }
 
     .spinner {
       width: 40px;
       height: 40px;
       border: 3px solid rgba(255,255,255,0.1);
-      border-top-color: #7f8c8d;
+      border-top-color: #818cf8;
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 16px;
@@ -359,56 +477,110 @@
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.15);
     }
 
     .progress-dot.completed {
-      background: #7f8c8d;
+      background: #818cf8;
     }
 
     .progress-dot.current {
-      background: #7f8c8d;
-      box-shadow: 0 0 10px rgba(127, 140, 141, 0.6);
+      background: #f5e6c8;
+      box-shadow: 0 0 10px rgba(245, 230, 200, 0.5);
     }
 
     /* Error state */
     .error {
-      background: rgba(239, 68, 68, 0.2);
-      border: 1px solid rgba(239, 68, 68, 0.3);
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.25);
       color: #fca5a5;
       padding: 16px;
-      border-radius: 8px;
+      border-radius: 10px;
       margin-bottom: 20px;
+    }
+
+    /* Midnight footer with sparkle */
+    .footer-accent {
+      width: 100%;
+      height: 120px;
+      background: linear-gradient(180deg, transparent 0%, #0f0f23 100%);
+      position: relative;
+      margin-top: 40px;
+    }
+
+    .footer-accent::before {
+      content: '2025';
+      position: absolute;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 2rem;
+      font-weight: 600;
+      color: rgba(245, 230, 200, 0.2);
+      letter-spacing: 8px;
+    }
+
+    .footer-accent::after {
+      content: '';
+      position: absolute;
+      top: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100px;
+      height: 20px;
+      background:
+        radial-gradient(circle 2px at 10% 50%, rgba(245,230,200,0.6) 100%, transparent 100%),
+        radial-gradient(circle 1px at 30% 30%, rgba(255,255,255,0.5) 100%, transparent 100%),
+        radial-gradient(circle 2px at 50% 60%, rgba(245,230,200,0.7) 100%, transparent 100%),
+        radial-gradient(circle 1px at 70% 40%, rgba(255,255,255,0.5) 100%, transparent 100%),
+        radial-gradient(circle 2px at 90% 50%, rgba(245,230,200,0.6) 100%, transparent 100%);
     }
 
     .hidden {
       display: none !important;
     }
+
+    @media (max-width: 600px) {
+      h1 {
+        font-size: 1.7rem;
+      }
+
+      .container {
+        padding: 20px 15px 40px;
+      }
+
+      .start-screen {
+        padding: 25px;
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Starry night header -->
+  <div class="stars-header"></div>
+
   <div class="container">
-    <h1>New Year Reflection Thought Organizer</h1>
-    <p class="subtitle">A structured way to look back at this year and name what you want next year to feel like.</p>
+    <h1>New Year Reflection</h1>
+    <p class="subtitle">Look back with honesty. Step forward with intention.</p>
 
     <!-- Start Screen -->
     <div id="startScreen" class="start-screen">
       <div class="intro-text">
         <p>This isn't about making a perfect five-year plan. It's about pausing long enough to see what this year actually asked of you, what you're carrying, and what you want to release or strengthen as you move into a new year.</p>
-        <p>We'll ask a few focused questions so the final planner captures your real story, not just generic resolutions.</p>
+        <p>We'll ask a few focused questions so the final planner captures your real story, not just abstract goals.</p>
       </div>
 
       <!-- Order ID Section -->
       <div class="order-section" id="orderSection">
-        <label for="orderIdInput" style="display: block; margin-bottom: 8px; color: #fff; font-weight: 500;">Etsy Order ID</label>
-        <input type="text" id="orderIdInput"
+        <label for="orderIdInput">Etsy Order ID</label>
+        <input type="text" id="orderIdInput" class="order-input"
                placeholder="Enter your Etsy Order ID (e.g., 1234567890)"
-               style="width: 100%; padding: 12px 16px; font-size: 1rem; border: 1px solid #444; border-radius: 8px; background: rgba(255,255,255,0.1); color: #fff; margin-bottom: 8px;"
                maxlength="20" minlength="4" required>
-        <p style="color: #888; font-size: 0.85rem; margin: 0 0 20px 0;">You can find this in your Etsy purchase confirmation email or order history</p>
+        <p class="order-hint">You can find this in your Etsy purchase confirmation email</p>
       </div>
 
-      <button class="btn-start" onclick="startSession()">Begin the questions</button>
+      <button class="btn-start" onclick="startSession()">Begin Your Reflection</button>
     </div>
 
     <!-- Form Area -->
@@ -436,7 +608,7 @@
 
       <div id="loadingQuestion" class="loading hidden">
         <div class="spinner"></div>
-        <p>Thinking...</p>
+        <p>Reflecting...</p>
       </div>
     </div>
 
@@ -444,22 +616,25 @@
     <div id="summaryScreen" class="summary-screen">
       <h2>You've reached the end of the questions</h2>
       <p class="body-text">You've just described the shape of your year — what it demanded, what it revealed, and what you want to feel more (and less) of going forward.</p>
-      <p class="body-text">When you click below, we'll use what you've shared to create a New Year Reflection planner that's based on your actual life, not abstract goals.</p>
+      <p class="body-text">When you click below, we'll use what you've shared to create a New Year Reflection guide based on your actual life, not abstract goals.</p>
       <div id="summaryContent" class="summary-content"></div>
-      <button class="btn-generate" onclick="generateMessage()">Generate New Year planner</button>
+      <button class="btn-generate" onclick="generateMessage()">Generate Your 2025 Guide</button>
     </div>
 
     <!-- Result Screen -->
     <div id="resultScreen" class="result-screen">
-      <h2>Your New Year Reflection planner is ready (preview)</h2>
+      <h2>Your New Year Reflection guide is ready</h2>
       <div id="resultContent" class="result-content"></div>
-      <p class="result-note">You'll receive this as your final digital file. For now, this is a developer preview of the generated content.</p>
+      <p class="result-note">You'll receive this as your final digital file. For now, this is a preview of the generated content.</p>
       <button class="btn-restart" onclick="restart()">Start Over</button>
     </div>
 
     <!-- Error Display -->
     <div id="errorDisplay" class="error hidden"></div>
   </div>
+
+  <!-- Footer accent -->
+  <div class="footer-accent"></div>
 
   <script>
     const API_BASE = '/api/thought-chat';
@@ -471,7 +646,7 @@
     let sessionId = null;
     let orderId = null;
     let currentQuestion = '';
-    let answers = []; // Array of {question, answer} pairs
+    let answers = [];
     let questionCount = 0;
 
     // Pre-fill orderId if provided in URL
@@ -482,7 +657,6 @@
     };
 
     async function startSession() {
-      // Get orderId from input
       const orderInput = document.getElementById('orderIdInput');
       orderId = orderInput.value.trim();
 
@@ -510,8 +684,7 @@
 
         const data = await response.json();
         sessionId = data.sessionId;
-        orderId = data.orderId || orderId; // Use sanitized orderId from server
-        // Handle both possible field names
+        orderId = data.orderId || orderId;
         currentQuestion = data.firstAssistantMessage || data.message || '';
         questionCount = 1;
 
@@ -530,7 +703,6 @@
       document.getElementById('answerInput').value = '';
       document.getElementById('answerInput').focus();
       document.getElementById('currentQuestion').classList.remove('hidden');
-
       updateAnswersList();
     }
 
@@ -552,7 +724,7 @@
 
     function updateProgress() {
       const progress = document.getElementById('progress');
-      const maxDots = 10; // Approximate max questions
+      const maxDots = 10;
 
       let dots = '';
       for (let i = 0; i < maxDots; i++) {
@@ -574,8 +746,6 @@
       if (!answer) return;
 
       hideError();
-
-      // Store the Q&A pair
       answers.push({ question: currentQuestion, answer: answer });
 
       document.getElementById('currentQuestion').classList.add('hidden');
@@ -593,12 +763,10 @@
         const data = await response.json();
 
         if (data.status === 'ready_for_generation') {
-          // Show summary screen
           showLoading(false);
           document.getElementById('formArea').classList.remove('active');
           showSummary();
         } else {
-          // Next question - handle both field names
           currentQuestion = data.assistantMessage || data.message || '';
           questionCount++;
           showLoading(false);
@@ -656,17 +824,15 @@
     }
 
     function showResult(output) {
-      // Handle different output formats
       let content = '';
 
       if (typeof output === 'string') {
         content = output;
       } else if (typeof output === 'object') {
-        // Format the planner output nicely
         if (output.summary) {
           content = output.summary;
         } else if (output.pdfPath) {
-          content = `Your New Year Reflection planner has been generated.\n\nPDF File: ${output.pdfPath}\n\n`;
+          content = `Your New Year Reflection guide has been generated.\n\nPDF File: ${output.pdfPath}\n\n`;
           if (output.sections) {
             content += JSON.stringify(output.sections, null, 2);
           }
