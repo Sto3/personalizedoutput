@@ -358,6 +358,11 @@ app.get('/santa', (req, res) => {
   `);
 });
 
+// Santa Samples page (for Etsy listings - audio previews)
+app.get('/santa-samples', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dev', 'santa-samples.html'));
+});
+
 // Holiday Reset form
 app.get('/holiday-reset', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-holiday.html'));
