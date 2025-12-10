@@ -1,0 +1,14 @@
+{
+  "price": "9.99",
+  "quantity": 999,
+  "type": "digital",
+  "is_personalizable": true,
+  "personalization_instructions": "Please provide: 1) Child's first name, 2) Age, 3) 2-3 accomplishments or good behaviors from this year, 4) Any special details (pets, siblings, hobbies), 5) Optional: challenges they've overcome",
+  "personalization_char_limit": 1000,
+  "personalization_required": true,
+  "category": "Craft Supplies & Tools > Personalization",
+  "who_made": "i_did",
+  "when_made": "2020_2025",
+  "processing_time": "1-2 business days",
+  "listing_state": "draft"
+}

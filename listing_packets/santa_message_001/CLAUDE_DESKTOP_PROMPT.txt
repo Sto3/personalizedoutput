@@ -1,0 +1,49 @@
+I need you to publish an Etsy listing using Computer Use. Please create a new digital product listing on Etsy with the following content:
+
+LISTING PACKET LOCATION: /Users/matthewriley/EtsyInnovations/listing_packets/santa_message_001/
+
+STEP-BY-STEP INSTRUCTIONS:
+
+1. FIRST: Open Chrome and go to etsy.com/your/shops/me/listing-editor/create
+   (I should already be logged in. If not, pause and tell me.)
+
+2. TITLE (paste exactly):
+   Personalized Santa Audio Message for Your Child | Custom Voice Message From Santa | Instant Digital Download | Christmas Gift
+
+3. PHOTOS - Upload in this order from the images/ folder:
+   - 01_hero.png (main listing image)
+   - 02_benefit.png
+   - 03_process.png
+   - 04_voice.png
+   - 05_reviews.png
+
+4. VIDEO - Upload video.mp4 from the packet folder
+
+5. DESCRIPTION - Read and paste the full content from description.txt
+
+6. LISTING SETTINGS:
+   - Type: Digital
+   - Price: $9.99
+   - Quantity: 999
+   - Who made it: I did
+   - When made: 2020-2025
+   - Category: Search for "Digital Downloads" or "Personalization"
+
+7. TAGS - Add these tags (one per line from tags.txt):
+   personalized santa, santa message, christmas gift kids, custom santa audio, santa voice message, personalized christmas, kids christmas gift, santa call, letter from santa, christmas magic, holiday gift kids, santa audio message, custom christmas
+
+8. PERSONALIZATION:
+   - Enable "Buyers can request personalization"
+   - Instructions: "Please provide: 1) Child's first name, 2) Age, 3) 2-3 accomplishments or good behaviors from this year, 4) Any special details (pets, siblings, hobbies), 5) Optional: challenges they've overcome"
+   - Character limit: 1000
+   - Mark as REQUIRED
+
+9. SAVE AS DRAFT (do NOT publish yet - I want to review first)
+
+IMPORTANT:
+- Wait for each upload to complete before moving on
+- If anything seems wrong, pause and ask me
+- Tell me when you reach each major step
+- Screenshot the final preview before saving
+
+Ready? Please begin by opening Chrome to the Etsy listing editor.
