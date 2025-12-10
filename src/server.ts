@@ -79,6 +79,7 @@ if (isProduction) {
 // Static file serving
 app.use('/outputs', express.static(path.join(process.cwd(), 'outputs')));
 app.use('/dev', express.static(path.join(process.cwd(), 'dev')));
+app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
 
 // ============================================================
 // PRODUCTION ROUTES - Clean URLs for Etsy buyers
