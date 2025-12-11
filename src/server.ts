@@ -29,6 +29,64 @@ const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
 // ============================================================
+// SIMPLE ANALYTICS TRACKING (in-memory, persisted to file)
+// ============================================================
+
+interface AnalyticsData {
+  startTime: string;
+  pageViews: Record<string, number>;
+  apiCalls: Record<string, number>;
+  generations: Record<string, number>;
+  hourlyTraffic: Record<string, number>;
+  lastUpdated: string;
+}
+
+const ANALYTICS_PATH = path.join(process.cwd(), 'data', 'analytics.json');
+
+// Load or initialize analytics
+let analytics: AnalyticsData = {
+  startTime: new Date().toISOString(),
+  pageViews: {},
+  apiCalls: {},
+  generations: {},
+  hourlyTraffic: {},
+  lastUpdated: new Date().toISOString()
+};
+
+try {
+  if (fs.existsSync(ANALYTICS_PATH)) {
+    analytics = JSON.parse(fs.readFileSync(ANALYTICS_PATH, 'utf-8'));
+  }
+} catch (e) {
+  console.log('[Analytics] Starting fresh analytics');
+}
+
+// Track a page view or API call
+function trackEvent(type: 'page' | 'api' | 'generation', name: string) {
+  const hourKey = new Date().toISOString().slice(0, 13); // "2024-12-11T14"
+
+  if (type === 'page') {
+    analytics.pageViews[name] = (analytics.pageViews[name] || 0) + 1;
+  } else if (type === 'api') {
+    analytics.apiCalls[name] = (analytics.apiCalls[name] || 0) + 1;
+  } else if (type === 'generation') {
+    analytics.generations[name] = (analytics.generations[name] || 0) + 1;
+  }
+
+  analytics.hourlyTraffic[hourKey] = (analytics.hourlyTraffic[hourKey] || 0) + 1;
+  analytics.lastUpdated = new Date().toISOString();
+
+  // Save every 10 events (not every request to avoid I/O overhead)
+  const totalEvents = Object.values(analytics.pageViews).reduce((a, b) => a + b, 0);
+  if (totalEvents % 10 === 0) {
+    fs.writeFileSync(ANALYTICS_PATH, JSON.stringify(analytics, null, 2));
+  }
+}
+
+// Export for use in API routes
+export { trackEvent };
+
+// ============================================================
 // ENSURE OUTPUT DIRECTORIES EXIST
 // ============================================================
 
@@ -97,6 +155,7 @@ app.get('/santa', (req, res) => {
 
     if (validation.valid) {
       // Valid token - show the Santa form
+      trackEvent('page', 'santa');
       return res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-santa.html'));
     }
 
@@ -368,26 +427,31 @@ app.get('/santa-samples', (req, res) => {
 
 // Holiday Reset form
 app.get('/holiday-reset', (req, res) => {
+  trackEvent('page', 'holiday-reset');
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-holiday.html'));
 });
 
 // New Year Reset form
 app.get('/new-year-reset', (req, res) => {
+  trackEvent('page', 'new-year-reset');
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-newyear.html'));
 });
 
 // Vision Board form
 app.get('/vision-board', (req, res) => {
+  trackEvent('page', 'vision-board');
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-visionboard.html'));
 });
 
 // Generic Clarity Planner form
 app.get('/planner', (req, res) => {
+  trackEvent('page', 'planner');
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-planner.html'));
 });
 
 // Custom Flash Cards form
 app.get('/flash-cards', (req, res) => {
+  trackEvent('page', 'flash-cards');
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-flashcards.html'));
 });
 
@@ -468,6 +532,52 @@ app.use('/api/thought-chat', thoughtChatApi);
 
 app.get('/health', (req, res) => {
   res.json({ ok: true });
+});
+
+// Admin stats endpoint (password-protected)
+// Access: https://personalizedoutput.com/admin/stats?key=YOUR_SECRET
+app.get('/admin/stats', (req, res) => {
+  const adminKey = req.query.key;
+  const expectedKey = process.env.ADMIN_KEY || 'po-admin-2024'; // Set ADMIN_KEY in Render env vars
+
+  if (adminKey !== expectedKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  // Calculate summary stats
+  const totalPageViews = Object.values(analytics.pageViews).reduce((a, b) => a + b, 0);
+  const totalApiCalls = Object.values(analytics.apiCalls).reduce((a, b) => a + b, 0);
+  const totalGenerations = Object.values(analytics.generations).reduce((a, b) => a + b, 0);
+
+  // Get last 24 hours of traffic
+  const now = new Date();
+  const last24Hours: Record<string, number> = {};
+  for (let i = 0; i < 24; i++) {
+    const hourKey = new Date(now.getTime() - i * 60 * 60 * 1000).toISOString().slice(0, 13);
+    last24Hours[hourKey] = analytics.hourlyTraffic[hourKey] || 0;
+  }
+
+  // Check if traffic is spiking (more than 100 requests in last hour)
+  const lastHourKey = now.toISOString().slice(0, 13);
+  const lastHourTraffic = analytics.hourlyTraffic[lastHourKey] || 0;
+  const isSpike = lastHourTraffic > 100;
+
+  res.json({
+    status: isSpike ? '🚨 HIGH TRAFFIC' : '✅ Normal',
+    summary: {
+      totalPageViews,
+      totalApiCalls,
+      totalGenerations,
+      lastHourTraffic,
+      upSince: analytics.startTime
+    },
+    pageViews: analytics.pageViews,
+    apiCalls: analytics.apiCalls,
+    generations: analytics.generations,
+    last24Hours,
+    lastUpdated: analytics.lastUpdated,
+    alertThreshold: '100 requests/hour triggers spike warning'
+  });
 });
 
 // ============================================================
