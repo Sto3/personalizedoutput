@@ -73,6 +73,7 @@
     "formdata-node": "^6.0.3",
     "openai": "^6.9.1",
     "puppeteer": "^23.0.0",
+    "resend": "^6.6.0",
     "sharp": "^0.34.5",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",

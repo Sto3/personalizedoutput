@@ -24,6 +24,9 @@ import thoughtChatApi from './api/thoughtChatApi';
 // Import token store for order-based access control
 import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tokenStore';
 
+// Import email alerts
+import { alertTrafficSpike, sendTestAlert, isAlertConfigured, sendDailySummary } from './lib/alerts/emailAlerts';
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
@@ -61,6 +64,9 @@ try {
   console.log('[Analytics] Starting fresh analytics');
 }
 
+// Traffic spike threshold
+const TRAFFIC_SPIKE_THRESHOLD = 100;
+
 // Track a page view or API call
 function trackEvent(type: 'page' | 'api' | 'generation', name: string) {
   const hourKey = new Date().toISOString().slice(0, 13); // "2024-12-11T14"
@@ -75,6 +81,15 @@ function trackEvent(type: 'page' | 'api' | 'generation', name: string) {
 
   analytics.hourlyTraffic[hourKey] = (analytics.hourlyTraffic[hourKey] || 0) + 1;
   analytics.lastUpdated = new Date().toISOString();
+
+  // Check for traffic spike and alert
+  const currentHourTraffic = analytics.hourlyTraffic[hourKey];
+  if (currentHourTraffic === TRAFFIC_SPIKE_THRESHOLD) {
+    // Alert when we hit exactly 100 (only once per hour)
+    alertTrafficSpike(currentHourTraffic, hourKey).catch(err => {
+      console.error('[Alerts] Failed to send traffic spike alert:', err);
+    });
+  }
 
   // Save every 10 events (not every request to avoid I/O overhead)
   const totalEvents = Object.values(analytics.pageViews).reduce((a, b) => a + b, 0);
@@ -576,7 +591,41 @@ app.get('/admin/stats', (req, res) => {
     generations: analytics.generations,
     last24Hours,
     lastUpdated: analytics.lastUpdated,
-    alertThreshold: '100 requests/hour triggers spike warning'
+    alertThreshold: '100 requests/hour triggers spike warning',
+    emailAlerts: isAlertConfigured() ? '✅ Configured' : '❌ Not configured (set RESEND_API_KEY and ALERT_EMAIL)'
+  });
+});
+
+// Test email alert endpoint
+app.get('/admin/test-alert', async (req, res) => {
+  const adminKey = req.query.key;
+  const expectedKey = process.env.ADMIN_KEY || 'po-admin-2024';
+
+  if (adminKey !== expectedKey) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (!isAlertConfigured()) {
+    return res.json({
+      success: false,
+      message: 'Email alerts not configured. Set RESEND_API_KEY and ALERT_EMAIL in Render environment variables.',
+      instructions: {
+        step1: 'Sign up at resend.com',
+        step2: 'Get your API key from the dashboard',
+        step3: 'In Render dashboard, go to Environment and add:',
+        variables: {
+          RESEND_API_KEY: 'your-resend-api-key',
+          ALERT_EMAIL: 'your-personal-email@example.com',
+          FROM_EMAIL: 'alerts@yourdomain.com (optional, requires verified domain)'
+        }
+      }
+    });
+  }
+
+  const sent = await sendTestAlert();
+  res.json({
+    success: sent,
+    message: sent ? 'Test email sent! Check your inbox.' : 'Failed to send test email. Check logs.'
   });
 });
 
