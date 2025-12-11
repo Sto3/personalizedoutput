@@ -337,3 +337,43 @@ When a person navigating holiday stress reads "The Words You Needed to Hear" and
 Every product should have that moment.
 
 **Deep personalization is not a feature. It IS the product.**
+
+---
+
+## 🚀 DEPLOYMENT - ALWAYS PUSH AFTER CHANGES
+
+**CRITICAL RULE: Every time you make updates, fine-tunings, or changes to the codebase, you MUST commit and push to GitHub to deploy to production.**
+
+**Render Deployment:**
+- **Hosting:** Render.com (auto-deploys from GitHub main branch)
+- **Live URL:** https://personalizedoutput.com
+- **Config:** render.yaml in project root
+
+**After ANY code changes:**
+```bash
+# 1. Stage all changes
+git add -A
+
+# 2. Commit with descriptive message
+git commit -m "Description of changes"
+
+# 3. Push to trigger auto-deploy
+git push origin main
+```
+
+**Deploy takes ~2-5 minutes.** Check Render dashboard for build status.
+
+**Live Product URLs:**
+- https://personalizedoutput.com/santa
+- https://personalizedoutput.com/holiday-reset
+- https://personalizedoutput.com/new-year-reset
+- https://personalizedoutput.com/vision-board
+- https://personalizedoutput.com/clarity-planner
+- https://personalizedoutput.com/flash-cards
+
+**Environment Variables (set in Render dashboard):**
+- ANTHROPIC_API_KEY
+- ELEVENLABS_API_KEY
+- ELEVENLABS_SANTA_VOICE_ID
+
+**DO NOT FORGET:** Local changes don't go live until you push!
