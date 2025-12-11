@@ -67,9 +67,9 @@ export async function signUp(
 export async function signIn(
   email: string,
   password: string
-): Promise<{ user: Profile | null; error: string | null }> {
+): Promise<{ user: Profile | null; session: { access_token: string } | null; error: string | null }> {
   if (!isSupabaseConfigured()) {
-    return { user: null, error: 'Supabase not configured' };
+    return { user: null, session: null, error: 'Supabase not configured' };
   }
 
   const supabase = getSupabaseClient();
@@ -80,15 +80,19 @@ export async function signIn(
   });
 
   if (error) {
-    return { user: null, error: error.message };
+    return { user: null, session: null, error: error.message };
   }
 
   if (!data.user) {
-    return { user: null, error: 'Failed to sign in' };
+    return { user: null, session: null, error: 'Failed to sign in' };
   }
 
   const profile = await getProfile(data.user.id);
-  return { user: profile, error: null };
+  return {
+    user: profile,
+    session: data.session ? { access_token: data.session.access_token } : null,
+    error: null
+  };
 }
 
 /**

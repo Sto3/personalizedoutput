@@ -12,6 +12,7 @@ import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,22 @@ import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tok
 
 // Import email alerts
 import { alertTrafficSpike, sendTestAlert, isAlertConfigured, sendDailySummary } from './lib/alerts/emailAlerts';
+
+// Import page renderers
+import { renderPremiumHomepage } from './pages/homepageV2';
+import { renderLoginPage, renderSignupPage, renderForgotPasswordPage } from './pages/auth';
+import { renderDashboardPage, renderPricingPage } from './pages/dashboard';
+import { renderBlogListPage, renderBlogPostPage } from './pages/blog';
+import { renderTermsPage, renderPrivacyPage, renderCopyrightPage } from './pages/legal';
+
+// Import Supabase services
+import { isSupabaseConfigured, isSupabaseServiceConfigured } from './lib/supabase/client';
+import { signUp, signIn, signOut, getSession, resetPassword, getProfile, getReferralStats } from './lib/supabase/userService';
+import { getPublishedPosts, getPostBySlug } from './lib/supabase/blogService';
+import { addToEmailList } from './lib/supabase/emailListService';
+
+// Import Stripe services
+import { isStripeConfigured, createCheckoutSession, createPortalSession, constructWebhookEvent, handleWebhookEvent } from './lib/stripe/stripeService';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -134,6 +151,7 @@ if (!fs.existsSync(EMAIL_LIST_PATH)) {
 // ============================================================
 
 app.use(cors());
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -540,6 +558,258 @@ app.use('/api/planner', plannerApi);
 
 // Thought Chat API (Chat-based experience for all products)
 app.use('/api/thought-chat', thoughtChatApi);
+
+// ============================================================
+// STRIPE WEBHOOK (must be before body parser for raw body)
+// ============================================================
+
+// Stripe webhook needs raw body
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const signature = req.headers['stripe-signature'] as string;
+
+  if (!signature) {
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
+  }
+
+  const event = constructWebhookEvent(req.body, signature);
+
+  if (!event) {
+    return res.status(400).json({ error: 'Invalid webhook signature' });
+  }
+
+  try {
+    await handleWebhookEvent(event);
+    res.json({ received: true });
+  } catch (error) {
+    console.error('[Stripe Webhook] Error:', error);
+    res.status(500).json({ error: 'Webhook handler failed' });
+  }
+});
+
+// ============================================================
+// AUTH ROUTES
+// ============================================================
+
+// Login page
+app.get('/login', (req, res) => {
+  trackEvent('page', 'login');
+  const error = req.query.error as string | undefined;
+  const redirectTo = req.query.redirect as string | undefined;
+  res.send(renderLoginPage(error, redirectTo));
+});
+
+// Signup page (new auth-based signup, different from email list signup)
+app.get('/auth/signup', (req, res) => {
+  trackEvent('page', 'auth-signup');
+  const error = req.query.error as string | undefined;
+  const referralCode = req.query.ref as string | undefined;
+  res.send(renderSignupPage(error, referralCode));
+});
+
+// Forgot password page
+app.get('/forgot-password', (req, res) => {
+  trackEvent('page', 'forgot-password');
+  const success = req.query.success === '1';
+  const error = req.query.error as string | undefined;
+  res.send(renderForgotPasswordPage(error, success));
+});
+
+// Auth API: Login
+app.post('/api/auth/login', async (req, res) => {
+  const { email, password, redirect } = req.body;
+
+  if (!email || !password) {
+    return res.redirect(`/login?error=${encodeURIComponent('Email and password are required')}`);
+  }
+
+  const result = await signIn(email, password);
+
+  if (result.user) {
+    // Set session cookie (simplified - in production use proper session management)
+    res.cookie('session', result.session?.access_token, { httpOnly: true, secure: isProduction });
+    return res.redirect(redirect || '/dashboard');
+  } else {
+    return res.redirect(`/login?error=${encodeURIComponent(result.error || 'Login failed')}`);
+  }
+});
+
+// Auth API: Signup
+app.post('/api/auth/signup', async (req, res) => {
+  const { email, password, fullName, referralCode } = req.body;
+
+  if (!email || !password) {
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('Email and password are required')}`);
+  }
+
+  if (password.length < 8) {
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('Password must be at least 8 characters')}`);
+  }
+
+  const result = await signUp(email, password, fullName, referralCode);
+
+  if (result.user) {
+    // Redirect to login with success message
+    return res.redirect('/login?success=1');
+  } else {
+    return res.redirect(`/auth/signup?error=${encodeURIComponent(result.error || 'Signup failed')}`);
+  }
+});
+
+// Auth API: Password reset request
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.redirect(`/forgot-password?error=${encodeURIComponent('Email is required')}`);
+  }
+
+  await resetPassword(email);
+  // Always show success to prevent email enumeration
+  return res.redirect('/forgot-password?success=1');
+});
+
+// Auth API: Logout
+app.get('/logout', async (req, res) => {
+  await signOut();
+  res.clearCookie('session');
+  res.redirect('/');
+});
+
+// ============================================================
+// DASHBOARD ROUTES (require auth)
+// ============================================================
+
+app.get('/dashboard', async (req, res) => {
+  trackEvent('page', 'dashboard');
+
+  // For now, show a placeholder dashboard
+  // In production, validate session cookie and get user
+  const sessionToken = req.cookies?.session;
+
+  if (!sessionToken) {
+    return res.redirect('/login?redirect=/dashboard');
+  }
+
+  // Get user session (simplified - in production verify token)
+  const session = await getSession();
+
+  if (!session) {
+    return res.redirect('/login?redirect=/dashboard');
+  }
+
+  const profile = await getProfile(session.user.id);
+  const referralStats = await getReferralStats(session.user.id);
+
+  if (!profile) {
+    return res.redirect('/login?redirect=/dashboard&error=profile_not_found');
+  }
+
+  res.send(renderDashboardPage({
+    profile,
+    referralStats
+  }));
+});
+
+// Pricing page
+app.get('/pricing', (req, res) => {
+  trackEvent('page', 'pricing');
+  res.send(renderPricingPage());
+});
+
+// ============================================================
+// STRIPE CHECKOUT ROUTES
+// ============================================================
+
+app.post('/api/stripe/checkout', async (req, res) => {
+  const { tier } = req.body;
+  const sessionToken = req.cookies?.session;
+
+  if (!sessionToken) {
+    return res.status(401).json({ error: 'Not authenticated' });
+  }
+
+  const session = await getSession();
+  if (!session) {
+    return res.status(401).json({ error: 'Invalid session' });
+  }
+
+  const siteUrl = process.env.SITE_URL || 'https://personalizedoutput.com';
+  const result = await createCheckoutSession(
+    session.user.id,
+    session.user.email || '',
+    tier,
+    `${siteUrl}/dashboard?checkout=success`,
+    `${siteUrl}/pricing?checkout=cancelled`
+  );
+
+  if (result.url) {
+    res.json({ url: result.url });
+  } else {
+    res.status(400).json({ error: result.error });
+  }
+});
+
+app.get('/api/stripe/portal', async (req, res) => {
+  const sessionToken = req.cookies?.session;
+
+  if (!sessionToken) {
+    return res.redirect('/login?redirect=/dashboard');
+  }
+
+  const session = await getSession();
+  if (!session) {
+    return res.redirect('/login?redirect=/dashboard');
+  }
+
+  const siteUrl = process.env.SITE_URL || 'https://personalizedoutput.com';
+  const result = await createPortalSession(session.user.id, `${siteUrl}/dashboard`);
+
+  if (result.url) {
+    res.redirect(result.url);
+  } else {
+    res.redirect('/dashboard?error=portal_failed');
+  }
+});
+
+// ============================================================
+// BLOG ROUTES
+// ============================================================
+
+app.get('/blog', async (req, res) => {
+  trackEvent('page', 'blog');
+  const posts = await getPublishedPosts();
+  res.send(renderBlogListPage(posts));
+});
+
+app.get('/blog/:slug', async (req, res) => {
+  const post = await getPostBySlug(req.params.slug);
+
+  if (!post) {
+    return res.status(404).send('Post not found');
+  }
+
+  trackEvent('page', `blog-${req.params.slug}`);
+  res.send(renderBlogPostPage(post));
+});
+
+// ============================================================
+// LEGAL PAGES
+// ============================================================
+
+app.get('/terms', (req, res) => {
+  trackEvent('page', 'terms');
+  res.send(renderTermsPage());
+});
+
+app.get('/privacy', (req, res) => {
+  trackEvent('page', 'privacy');
+  res.send(renderPrivacyPage());
+});
+
+app.get('/copyright', (req, res) => {
+  trackEvent('page', 'copyright');
+  res.send(renderCopyrightPage());
+});
 
 // ============================================================
 // HEALTH CHECK (Simple format for Render health checks)
