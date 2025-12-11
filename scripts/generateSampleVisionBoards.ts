@@ -240,6 +240,93 @@ const THEME_CONFIGS: Record<string, {
              'candle flame in darkness', 'sports car interior', 'empty gym at night'],
     quotes: ['"No excuses"', '"Built not born"'],
     style: { mood: 'dark masculine discipline', bokeh: false, decorations: false }
+  },
+
+  // Goal Achievement theme (for Goal hero sample) - NO PEOPLE
+  level_up_2025: {
+    title: 'LEVEL UP 2025',
+    subtitle: 'GOALS • GROWTH • GREATNESS',
+    colors: {
+      background: '#1B2838',
+      accents: ['#4A9BD4', '#56C596', '#F2B134', '#2D4255'],
+      banner: '#F2B134',
+      bannerText: '#1B2838'
+    },
+    photos: ['target bullseye with arrows', 'gold trophy on pedestal', 'stack of hundred dollar bills',
+             'modern office with city view', 'running track lanes empty', 'signed contract with pen',
+             'graduation cap and diploma', 'laptop showing growth chart', 'alarm clock reading 5am',
+             'mountain summit flag planted', 'luxury sports car on road', 'bookshelf with success books'],
+    quotes: ['"Dream big. Work hard. Stay focused."', '"Hit every target"'],
+    style: { mood: 'dark ambitious achievement', bokeh: false, decorations: false }
+  },
+
+  // Relationship/Love theme (for Relationship hero sample) - NO PEOPLE
+  our_love_story: {
+    title: 'OUR LOVE STORY 2025',
+    subtitle: 'LOVE • TOGETHER • FOREVER',
+    colors: {
+      background: '#FDF8F5',
+      accents: ['#E86B6B', '#D4A5A5', '#A8C5DB', '#95B8A0'],
+      banner: '#E86B6B',
+      bannerText: '#FFFFFF'
+    },
+    photos: ['two intertwined red roses', 'romantic dinner table with candles', 'wedding rings on rose petals',
+             'airplane tickets and passport', 'cozy fireplace with blanket', 'picnic basket in park',
+             'two champagne glasses clinking', 'beach sunset with footprints', 'kitchen with fresh ingredients',
+             'mountain hiking trail vista', 'charming house with garden', 'heart-shaped anniversary cake'],
+    quotes: ['"In all the world, there is no heart for me like yours"', '"Forever starts now"'],
+    style: { mood: 'romantic warm loving', bokeh: true, decorations: false }
+  },
+
+  // Christmas Gift - Masculine Theme (For Him) - NO PEOPLE
+  christmas_for_him: {
+    title: 'HIS 2025 VISION',
+    subtitle: 'GOALS • GROWTH • GREATNESS',
+    colors: {
+      background: '#1A1A2E',
+      accents: ['#C4A35A', '#2B4A2B', '#8B4513', '#1E3D59'],
+      banner: '#C4A35A',
+      bannerText: '#1A1A2E'
+    },
+    photos: ['black dumbbells arranged neatly', 'luxury leather watch on stand', 'sports car front view', 'mountain peak at sunrise',
+             'executive leather office chair', 'golf clubs on green grass', 'premium whiskey glass amber', 'running track lanes empty',
+             'chess pieces king and queen', 'stock chart on monitor', 'luxury villa pool view', 'sunrise over mountain range'],
+    quotes: ['"The grind never stops"', '"Build your legacy"'],
+    style: { mood: 'dark masculine luxury', bokeh: false, decorations: false }
+  },
+
+  // Christmas Gift - Feminine Theme (For Her) - NO PEOPLE
+  christmas_for_her: {
+    title: 'HER BEST YEAR 2025',
+    subtitle: 'LOVE • DREAM • SHINE',
+    colors: {
+      background: '#FDF5F3',
+      accents: ['#D4A5A5', '#E8B4B8', '#A8C5DB', '#F5E6CC'],
+      banner: '#D4A5A5',
+      bannerText: '#FFFFFF'
+    },
+    photos: ['pink peonies bouquet', 'spa candles and bath bombs', 'designer handbag on marble', 'cozy cashmere blanket',
+             'champagne and macarons', 'beach sunset golden hour', 'yoga mat with candles', 'fresh flowers in ceramic vase',
+             'luxury skincare products arranged', 'travel passport and world map', 'cozy reading corner with books', 'golden jewelry on velvet display'],
+    quotes: ['"She believed she could, so she did"', '"Glow from within"'],
+    style: { mood: 'soft feminine luxury', bokeh: true, decorations: false }
+  },
+
+  // Christmas Gift - Couple/Anniversary Theme - NO PEOPLE
+  christmas_couple: {
+    title: 'OUR YEAR TOGETHER 2025',
+    subtitle: 'LOVE • ADVENTURE • FOREVER',
+    colors: {
+      background: '#F9F5F0',
+      accents: ['#B85C5C', '#6B8E6B', '#C4A35A', '#5B7B8A'],
+      banner: '#B85C5C',
+      bannerText: '#FFFFFF'
+    },
+    photos: ['pair of wedding rings on roses', 'romantic dinner table candlelight', 'tropical beach palms sunset', 'cozy fireplace with blanket',
+             'airplane window view clouds', 'two wine glasses toasting', 'mountain summit hiking gear', 'kitchen with fresh ingredients',
+             'charming home with white fence', 'travel suitcases and passport', 'two footprints in beach sand', 'two-tier anniversary cake'],
+    quotes: ['"Forever begins with you"', '"Our greatest adventure"'],
+    style: { mood: 'warm romantic cozy', bokeh: true, decorations: false }
   }
 };
 

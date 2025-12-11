@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2025-12-09T08:10:46.244Z",
+  "samples": [
+    {
+      "themeId": "santa_toddler_2_4",
+      "path": null
+    },
+    {
+      "themeId": "santa_early_childhood_5_7",
+      "path": null
+    },
+    {
+      "themeId": "santa_kids_8_10",
+      "path": null
+    },
+    {
+      "themeId": "santa_first_christmas_baby",
+      "path": null
+    },
+    {
+      "themeId": "santa_child_lost_loved_one",
+      "path": null
+    },
+    {
+      "themeId": "santa_twins_siblings",
+      "path": null
+    },
+    {
+      "themeId": "santa_mentions_pet",
+      "path": null
+    },
+    {
+      "themeId": "santa_nice_list_focus",
+      "path": null
+    },
+    {
+      "themeId": "santa_belief_magic_tone",
+      "path": null
+    },
+    {
+      "themeId": "santa_christian_tone_optional",
+      "path": null
+    }
+  ]
+}

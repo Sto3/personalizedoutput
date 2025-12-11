@@ -51,12 +51,21 @@ export interface ListingContent {
 }
 
 export interface GeneratedListing extends ListingContent {
+  id: string;                    // unique listing ID
+  sku?: string;                  // SKU for inventory tracking
   productType: ProductType;
   themeId: string;
   styleId?: string;
   variationIndex: number;
   contentHash: string;           // for uniqueness tracking
   generatedAt: string;           // ISO timestamp
+  imagePaths?: string[];         // paths to generated images
+  personalization?: {            // Etsy personalization config
+    isPersonalizable: boolean;
+    isRequired: boolean;
+    instructions: string;
+    charCountMax?: number;
+  };
 }
 
 // ============================================================

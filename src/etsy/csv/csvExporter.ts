@@ -38,6 +38,22 @@ const PRODUCT_PRICES: Record<ProductType, number> = {
   'flash_cards': 5.99
 };
 
+// Personalization instructions by product type
+const PERSONALIZATION_INSTRUCTIONS: Record<ProductType, string> = {
+  'santa_message': 'Please provide: 1) Child\'s name, 2) Age, 3) 2-3 good things they did this year',
+  'vision_board': 'Please provide: 1) Your name or title for the board, 2) Any specific words/phrases for the subtitle, 3) Color preferences (optional)',
+  'planner': 'Please provide: 1) Your name (optional), 2) Any specific goals to highlight',
+  'flash_cards': 'Please provide: 1) Topic or subject, 2) Age group or difficulty level'
+};
+
+// Max personalization characters by product type
+const PERSONALIZATION_CHAR_LIMIT: Record<ProductType, number> = {
+  'santa_message': 1000,
+  'vision_board': 500,
+  'planner': 300,
+  'flash_cards': 200
+};
+
 // Default quantity for digital products
 const DEFAULT_QUANTITY = 999;
 
@@ -83,6 +99,9 @@ function rowToCsvLine(row: CsvRow, columns: string[]): string {
 function listingToShopUploaderRow(listing: ListingDraft, target: CsvTargetConfig): CsvRow {
   const row: CsvRow = {};
 
+  // Action (first column for ShopUploader)
+  row['action'] = 'create';
+
   // Core fields
   row['title'] = listing.title.substring(0, 140);  // Etsy max 140 chars
   row['description'] = listing.description;
@@ -93,14 +112,22 @@ function listingToShopUploaderRow(listing: ListingDraft, target: CsvTargetConfig
   // Type fields
   row['type'] = 'digital';
   row['who_made'] = 'i_did';
+  row['when_made'] = '2020_2025';
   row['is_made_to_order'] = 'FALSE';
   row['is_vintage'] = 'FALSE';
   row['is_supply'] = 'FALSE';
   row['is_taxable'] = 'TRUE';
   row['is_customizable'] = 'FALSE';
-  row['is_personalizable'] = 'FALSE';
   row['auto_renew'] = 'TRUE';
-  row['action'] = 'create';
+
+  // Personalization (product-specific)
+  row['is_personalizable'] = 'TRUE';
+  row['personalization_instructions'] = PERSONALIZATION_INSTRUCTIONS[listing.productType];
+  row['personalization_char_count_max'] = String(PERSONALIZATION_CHAR_LIMIT[listing.productType]);
+  row['personalization_is_required'] = 'FALSE';
+
+  // Listing state (default to draft for review before publishing)
+  row['listing_state'] = 'draft';
 
   // Tags (up to 13, each max 20 chars)
   const mappings = target.columnMappings;

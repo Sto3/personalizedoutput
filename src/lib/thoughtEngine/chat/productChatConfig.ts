@@ -15,7 +15,10 @@ import * as path from 'path';
 export type GenerationTarget =
   | 'santa_message'
   | 'planner_holiday_reset'
-  | 'planner_new_year_reset';
+  | 'planner_new_year_reset'
+  | 'vision_board'
+  | 'clarity_planner'
+  | 'flash_cards';
 
 export interface ProductChatConfig {
   id: string;
@@ -60,6 +63,36 @@ const PRODUCT_CONFIGS: Record<string, ProductChatConfig> = {
     systemPromptFile: 'chat_new_year_reset_guide.txt',
     generationTarget: 'planner_new_year_reset',
     openingContext: 'helping someone reflect on their year and set intentions for the year ahead'
+  },
+
+  vision_board: {
+    id: 'vision_board',
+    displayName: 'Personalized Vision Board',
+    maxTurns: 14, // 7 exchanges (~7-10 minutes)
+    minTurnsBeforeGeneration: 6, // At least 3 exchanges
+    systemPromptFile: 'chat_vision_board_guide.txt',
+    generationTarget: 'vision_board',
+    openingContext: 'helping someone clarify their dreams and goals to create a personalized vision board'
+  },
+
+  clarity_planner: {
+    id: 'clarity_planner',
+    displayName: 'Guided Clarity Planner',
+    maxTurns: 24, // 12 exchanges (~30 minutes of substantive conversation)
+    minTurnsBeforeGeneration: 16, // At least 8 exchanges for depth
+    systemPromptFile: 'chat_clarity_planner_guide.txt',
+    generationTarget: 'clarity_planner',
+    openingContext: 'helping someone gain clarity on any life situation - career, relationships, decisions, emotions, or direction'
+  },
+
+  flash_cards: {
+    id: 'flash_cards',
+    displayName: 'Custom Flash Cards for Your Child',
+    maxTurns: 14, // 7 exchanges (~10-15 minutes)
+    minTurnsBeforeGeneration: 8, // At least 4 exchanges to understand the child
+    systemPromptFile: 'chat_flash_cards_guide.txt',
+    generationTarget: 'flash_cards',
+    openingContext: 'helping a parent create deeply personalized learning flash cards tailored to their child\'s specific needs, interests, and learning style'
   }
 };
 
@@ -142,6 +175,15 @@ export function getWrapUpMessage(productId: string): string {
 
     case 'new_year_reset':
       return "Thank you for sharing so openly. I have a clear sense of your year and where you want to go. When you're ready, I can create your personalized Reflection & Reset Planner. It will honor everything you've shared and help you move into the new year with intention. Would you like me to create it now?";
+
+    case 'vision_board':
+      return "I have a beautiful picture of your vision now - your dreams, your aesthetic, and what you're manifesting. When you're ready, I can create your personalized vision board. It will reflect everything you've shared. Would you like me to create it now?";
+
+    case 'clarity_planner':
+      return "Thank you for sharing so openly and thoughtfully. I feel like I have a real sense of what you're navigating — the challenges, the hopes, and what clarity looks like for you. When you're ready, I can create your personalized Clarity Planner. It will include reflection prompts, action steps, and exercises tailored specifically to what you've shared today. Would you like me to create it now?";
+
+    case 'flash_cards':
+      return "I have such a clear picture of your child now — their personality, what they're working on, and how they learn best. When you're ready, I can create a custom flash card set designed specifically for them. These won't be generic cards — they'll use their interests, address exactly where they're struggling, and be written in a way that connects with how they think. Would you like me to create them now?";
 
     default:
       return "I think I understand what matters most to you. Would you like me to create your personalized output now, or is there anything else you'd like to add?";

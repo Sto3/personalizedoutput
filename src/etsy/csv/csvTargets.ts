@@ -51,16 +51,19 @@ export const SHOPUPLOADER_TARGET: CsvTargetConfig = {
     category: 'taxonomy_id'
   },
   defaultValues: {
+    'action': 'create',
     'type': 'digital',
     'who_made': 'i_did',
+    'when_made': '2020_2025',
     'is_supply': 'FALSE',
     'is_made_to_order': 'FALSE',
     'is_vintage': 'FALSE',
     'auto_renew': 'TRUE',
     'is_taxable': 'TRUE',
     'is_customizable': 'FALSE',
-    'is_personalizable': 'FALSE',
-    'action': 'create'
+    'is_personalizable': 'TRUE',
+    'personalization_is_required': 'FALSE',
+    'listing_state': 'draft'
   }
 };
 
@@ -185,8 +188,12 @@ export function getDefaultCsvTarget(): CsvTargetConfig {
 /**
  * Full column order for Shop Uploader CSV
  * This ensures consistent column ordering in output files
+ *
+ * Based on ShopUploader documentation:
+ * https://www.shopuploader.com/docs/templates
  */
 export const SHOPUPLOADER_COLUMN_ORDER = [
+  'action',
   'title',
   'description',
   'sku',
@@ -194,19 +201,24 @@ export const SHOPUPLOADER_COLUMN_ORDER = [
   'quantity',
   'type',
   'who_made',
+  'when_made',
   'is_made_to_order',
   'is_vintage',
   'is_supply',
   'is_taxable',
   'is_customizable',
   'is_personalizable',
+  'personalization_instructions',
+  'personalization_char_count_max',
+  'personalization_is_required',
   'auto_renew',
+  'listing_state',
   'tag_1', 'tag_2', 'tag_3', 'tag_4', 'tag_5',
   'tag_6', 'tag_7', 'tag_8', 'tag_9', 'tag_10',
   'tag_11', 'tag_12', 'tag_13',
   'image_1', 'image_2', 'image_3', 'image_4', 'image_5',
   'image_6', 'image_7', 'image_8', 'image_9', 'image_10',
-  'action'
+  'digital_file_1', 'digital_file_2', 'digital_file_3'
 ];
 
 /**

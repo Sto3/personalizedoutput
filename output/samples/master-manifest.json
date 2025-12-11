@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2025-12-09T08:10:46.514Z",
+  "mode": "generated",
+  "results": [
+    {
+      "type": "vision_board",
+      "success": 0,
+      "failed": 0,
+      "skipped": true,
+      "duration": 0
+    },
+    {
+      "type": "Santa Messages",
+      "success": 1,
+      "failed": 0,
+      "skipped": false,
+      "duration": 287
+    },
+    {
+      "type": "Planners",
+      "success": 1,
+      "failed": 0,
+      "skipped": false,
+      "duration": 263
+    },
+    {
+      "type": "flash_cards",
+      "success": 0,
+      "failed": 0,
+      "skipped": true,
+      "duration": 0
+    }
+  ],
+  "totals": {
+    "success": 2,
+    "failed": 0,
+    "skipped": 2
+  },
+  "duration": 550
+}

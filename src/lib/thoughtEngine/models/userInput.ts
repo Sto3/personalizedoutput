@@ -96,7 +96,10 @@ export interface FreeformAnswer {
 export type ProductId =
   | "holiday_relationship_reset"
   | "new_year_reflection_reset"
-  | "santa_message";
+  | "santa_message"
+  | "vision_board"
+  | "clarity_planner"
+  | "flash_cards";
 
 export interface UserInputPayload {
   productId: ProductId;

@@ -23,6 +23,18 @@ import {
 // TYPES
 // ============================================================
 
+// Anthropic API Response types
+interface AnthropicContentBlock {
+  type: string;
+  text?: string;
+}
+
+interface AnthropicResponse {
+  content: AnthropicContentBlock[];
+  model?: string;
+  stop_reason?: string;
+}
+
 interface OrchestratorResult {
   session: ThoughtSession;
   assistantMessage: string;
@@ -209,6 +221,12 @@ function getGenerationConfirmationMessage(productId: string): string {
     case 'new_year_reset':
       return "Wonderful. I'm creating your Reflection & Reset Planner now. It will honor everything you've shared about your year and help you move forward with intention. Just a moment...";
 
+    case 'vision_board':
+      return "Beautiful. I have a clear picture of your vision now. I'm creating your personalized vision board - it will reflect everything you've shared about where you are and where you want to go. This will just take a moment...";
+
+    case 'clarity_planner':
+      return "Thank you for sharing so openly. I'm creating your personalized Clarity Planner now. It will include reflection prompts, action steps, and exercises tailored specifically to everything you've shared. This will just take a moment...";
+
     default:
       return "I'm creating your personalized output now. This will just take a moment...";
   }
@@ -247,7 +265,7 @@ async function callClaudeAPI(
     throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as AnthropicResponse;
 
   if (!data.content || !data.content[0] || !data.content[0].text) {
     throw new Error('Invalid response from Claude API');

@@ -331,6 +331,7 @@ export async function generateListing(
 
     // Create full generated listing
     const listing: GeneratedListing = {
+      id: `${theme.id}_${style?.id || 'default'}_v${variationIndex}_${Date.now()}`,
       ...listingContent,
       productType: theme.productType,
       themeId: theme.id,

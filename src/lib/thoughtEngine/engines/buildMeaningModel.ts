@@ -287,7 +287,7 @@ async function callLLMForNarrative(prompt: string): Promise<LLMResponse> {
     throw new Error(`Anthropic API error: ${response.status}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const text = data.content[0].text;
 
   // Parse JSON response

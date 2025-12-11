@@ -1,0 +1,459 @@
+{
+  "product": "vision_board",
+  "price": "14.99",
+  "quantity": "999",
+  "generatedAt": "2024-12-11",
+  "totalListings": 75,
+  "listings": [
+    {
+      "id": "vb_001",
+      "title": "Post-Breakup Healing Vision Board | Fresh Start | Digital Manifestation Kit",
+      "tags": ["vision board", "breakup healing", "fresh start", "self love", "new chapter", "manifestation", "digital download", "printable art", "healing journey", "moving on", "self care", "wall decor", "2025 goals"],
+      "category": "healing_transitions"
+    },
+    {
+      "id": "vb_002",
+      "title": "1-Week Reset Vision Board | Transform Your Week | Clarity & Focus Kit",
+      "tags": ["vision board", "weekly reset", "productivity", "focus goals", "manifestation", "digital download", "motivation", "printable art", "goal setting", "mindset shift", "self care", "instant download", "planning"],
+      "category": "time_based"
+    },
+    {
+      "id": "vb_003",
+      "title": "New Year 2025 Vision Board | Your Best Year | Manifestation Printable",
+      "tags": ["vision board", "new year 2025", "goal setting", "manifestation", "digital download", "new beginnings", "printable art", "vision 2025", "resolutions", "fresh start", "motivation", "wall art", "planning"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_004",
+      "title": "Career Change Vision Board | New Path Awaits | Professional Growth Kit",
+      "tags": ["vision board", "career change", "new job", "professional", "manifestation", "digital download", "career goals", "printable art", "success", "ambition", "work goals", "motivation", "growth"],
+      "category": "career"
+    },
+    {
+      "id": "vb_005",
+      "title": "Self-Love Journey Vision Board | You Are Enough | Healing Manifestation",
+      "tags": ["vision board", "self love", "self care", "healing", "manifestation", "digital download", "printable art", "self worth", "confidence", "inner peace", "wellness", "wall decor", "empowerment"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_006",
+      "title": "Birthday Reset Vision Board | New Year of You | Celebration Goals",
+      "tags": ["vision board", "birthday", "new age", "celebration", "manifestation", "digital download", "printable art", "birthday gift", "personal goals", "fresh start", "milestone", "wall art", "gift idea"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_007",
+      "title": "Anxiety Relief Vision Board | Finding Calm | Peace & Serenity Kit",
+      "tags": ["vision board", "anxiety relief", "calm", "peace", "manifestation", "digital download", "mental health", "printable art", "serenity", "mindfulness", "stress relief", "self care", "wellness"],
+      "category": "mental_health"
+    },
+    {
+      "id": "vb_008",
+      "title": "Fitness Goals Vision Board | Strong Body Strong Mind | Health Manifest",
+      "tags": ["vision board", "fitness goals", "health", "workout", "manifestation", "digital download", "gym motivation", "printable art", "weight loss", "strength", "wellness", "body goals", "exercise"],
+      "category": "health"
+    },
+    {
+      "id": "vb_009",
+      "title": "Moving to New City Vision Board | Adventure Awaits | Fresh Start Kit",
+      "tags": ["vision board", "moving", "new city", "relocation", "manifestation", "digital download", "adventure", "printable art", "fresh start", "new home", "change", "excitement", "journey"],
+      "category": "life_changes"
+    },
+    {
+      "id": "vb_010",
+      "title": "Holiday Season Vision Board | Magical Moments | Christmas Manifestation",
+      "tags": ["vision board", "holiday", "christmas", "seasonal", "manifestation", "digital download", "festive", "printable art", "winter goals", "holiday gift", "celebration", "joy", "magic"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_011",
+      "title": "Divorce Recovery Vision Board | Stronger Than Ever | New Chapter Kit",
+      "tags": ["vision board", "divorce", "recovery", "new chapter", "manifestation", "digital download", "strength", "printable art", "rebuilding", "independence", "fresh start", "healing", "empowerment"],
+      "category": "healing_transitions"
+    },
+    {
+      "id": "vb_012",
+      "title": "1-Month Transformation Vision Board | 30 Days of Change | Goal Kit",
+      "tags": ["vision board", "30 day", "transformation", "monthly goals", "manifestation", "digital download", "challenge", "printable art", "motivation", "change", "progress", "habit", "growth"],
+      "category": "time_based"
+    },
+    {
+      "id": "vb_013",
+      "title": "Confidence Boost Vision Board | Unstoppable You | Self-Belief Kit",
+      "tags": ["vision board", "confidence", "self belief", "empowerment", "manifestation", "digital download", "courage", "printable art", "bold", "fearless", "strength", "motivation", "power"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_014",
+      "title": "Financial Freedom Vision Board | Abundance Mindset | Wealth Manifest",
+      "tags": ["vision board", "financial", "money goals", "abundance", "manifestation", "digital download", "wealth", "printable art", "prosperity", "success", "savings", "investment", "freedom"],
+      "category": "financial"
+    },
+    {
+      "id": "vb_015",
+      "title": "Relationship Goals Vision Board | Love Story 2025 | Couples Manifest",
+      "tags": ["vision board", "relationship", "couples", "love goals", "manifestation", "digital download", "romance", "printable art", "together", "partnership", "connection", "anniversary", "love"],
+      "category": "relationship"
+    },
+    {
+      "id": "vb_016",
+      "title": "Summer Vibes Vision Board | Sun & Adventure | Seasonal Goals Kit",
+      "tags": ["vision board", "summer", "beach", "adventure", "manifestation", "digital download", "vacation", "printable art", "sun", "travel", "fun", "seasonal", "warm weather"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_017",
+      "title": "Grief Processing Vision Board | Gentle Healing | Memorial Tribute Kit",
+      "tags": ["vision board", "grief", "healing", "memorial", "manifestation", "digital download", "loss", "printable art", "remembrance", "peace", "comfort", "tribute", "hope"],
+      "category": "healing_transitions"
+    },
+    {
+      "id": "vb_018",
+      "title": "Starting Over at 40 Vision Board | Midlife Renaissance | New Beginning",
+      "tags": ["vision board", "40s", "midlife", "new chapter", "manifestation", "digital download", "renaissance", "printable art", "reinvention", "wisdom", "growth", "change", "mature"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_019",
+      "title": "Promotion Goals Vision Board | Level Up Career | Success Manifest",
+      "tags": ["vision board", "promotion", "career level", "success", "manifestation", "digital download", "leadership", "printable art", "ambition", "corporate", "growth", "achievement", "boss"],
+      "category": "career"
+    },
+    {
+      "id": "vb_020",
+      "title": "Empty Nest Vision Board | New Freedom | Parent Reinvention Kit",
+      "tags": ["vision board", "empty nest", "parent", "freedom", "manifestation", "digital download", "new chapter", "printable art", "reinvention", "couples", "retirement", "travel", "rediscovery"],
+      "category": "life_changes"
+    },
+    {
+      "id": "vb_021",
+      "title": "Valentine's Day Vision Board | Love Manifest 2025 | Romance Goals",
+      "tags": ["vision board", "valentines", "love", "romance", "manifestation", "digital download", "february", "printable art", "couples gift", "heart", "relationship", "date ideas", "passion"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_022",
+      "title": "Sobriety Journey Vision Board | Clean & Clear | Recovery Strength",
+      "tags": ["vision board", "sobriety", "recovery", "clean", "manifestation", "digital download", "strength", "printable art", "wellness", "health", "milestone", "support", "journey"],
+      "category": "healing_transitions"
+    },
+    {
+      "id": "vb_023",
+      "title": "Morning Routine Vision Board | Rise & Shine | Productive Days Kit",
+      "tags": ["vision board", "morning routine", "productivity", "early bird", "manifestation", "digital download", "habits", "printable art", "sunrise", "energy", "motivation", "wellness", "ritual"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_024",
+      "title": "College Graduation Vision Board | Future Awaits | Career Launch Kit",
+      "tags": ["vision board", "graduation", "college", "career start", "manifestation", "digital download", "future", "printable art", "success", "achievement", "young adult", "milestone", "dreams"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_025",
+      "title": "Pregnancy Journey Vision Board | Baby on the Way | Motherhood Manifest",
+      "tags": ["vision board", "pregnancy", "baby", "motherhood", "manifestation", "digital download", "expecting", "printable art", "nursery", "family", "new mom", "baby shower", "parent"],
+      "category": "life_changes"
+    },
+    {
+      "id": "vb_026",
+      "title": "Travel Dreams Vision Board | Wanderlust 2025 | Adventure Goals",
+      "tags": ["vision board", "travel", "wanderlust", "adventure", "manifestation", "digital download", "vacation", "printable art", "explore", "bucket list", "destinations", "journey", "world"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_027",
+      "title": "Depression Recovery Vision Board | Light Returns | Hope & Healing",
+      "tags": ["vision board", "depression", "recovery", "mental health", "manifestation", "digital download", "hope", "printable art", "healing", "light", "wellness", "strength", "support"],
+      "category": "mental_health"
+    },
+    {
+      "id": "vb_028",
+      "title": "Business Launch Vision Board | Entrepreneur Dreams | Startup Manifest",
+      "tags": ["vision board", "business", "entrepreneur", "startup", "manifestation", "digital download", "boss", "printable art", "success", "hustle", "dreams", "small business", "founder"],
+      "category": "career"
+    },
+    {
+      "id": "vb_029",
+      "title": "Weight Loss Journey Vision Board | Healthy & Happy | Body Goals Kit",
+      "tags": ["vision board", "weight loss", "health", "fitness", "manifestation", "digital download", "diet", "printable art", "body goals", "wellness", "transformation", "motivation", "healthy"],
+      "category": "health"
+    },
+    {
+      "id": "vb_030",
+      "title": "Mother's Day Vision Board | Mom Life Goals | Maternal Celebration",
+      "tags": ["vision board", "mothers day", "mom", "maternal", "manifestation", "digital download", "gift for mom", "printable art", "mother", "family", "celebration", "love", "appreciation"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_031",
+      "title": "Minimalist Life Vision Board | Less Is More | Simplicity Goals",
+      "tags": ["vision board", "minimalist", "simple life", "declutter", "manifestation", "digital download", "clean", "printable art", "zen", "peaceful", "organize", "mindful", "space"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_032",
+      "title": "First Home Vision Board | Homeowner Dreams | House Goals Manifest",
+      "tags": ["vision board", "first home", "homeowner", "house goals", "manifestation", "digital download", "real estate", "printable art", "moving", "nest", "investment", "dream home", "buying"],
+      "category": "financial"
+    },
+    {
+      "id": "vb_033",
+      "title": "Spiritual Growth Vision Board | Soul Journey | Inner Peace Manifest",
+      "tags": ["vision board", "spiritual", "soul", "inner peace", "manifestation", "digital download", "meditation", "printable art", "faith", "mindfulness", "zen", "growth", "awakening"],
+      "category": "spiritual"
+    },
+    {
+      "id": "vb_034",
+      "title": "Back to School Vision Board | Academic Success | Student Goals Kit",
+      "tags": ["vision board", "back to school", "student", "academic", "manifestation", "digital download", "study", "printable art", "education", "learning", "grades", "success", "college"],
+      "category": "education"
+    },
+    {
+      "id": "vb_035",
+      "title": "Engagement Season Vision Board | Love Story Next | Wedding Dreams",
+      "tags": ["vision board", "engagement", "wedding", "bride", "manifestation", "digital download", "love story", "printable art", "proposal", "marriage", "future", "couples", "romance"],
+      "category": "relationship"
+    },
+    {
+      "id": "vb_036",
+      "title": "Retirement Vision Board | Golden Years | Next Chapter Dreams",
+      "tags": ["vision board", "retirement", "golden years", "senior", "manifestation", "digital download", "leisure", "printable art", "freedom", "travel", "relaxation", "bucket list", "new chapter"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_037",
+      "title": "Creativity Unleashed Vision Board | Artist Within | Creative Goals",
+      "tags": ["vision board", "creativity", "artist", "creative", "manifestation", "digital download", "art", "printable art", "inspiration", "passion", "hobby", "expression", "design"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_038",
+      "title": "Single & Thriving Vision Board | Solo Journey | Independence Goals",
+      "tags": ["vision board", "single life", "independence", "solo", "manifestation", "digital download", "thriving", "printable art", "self love", "freedom", "empowerment", "strong", "happy"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_039",
+      "title": "Fall Cozy Vision Board | Autumn Vibes | Seasonal Comfort Goals",
+      "tags": ["vision board", "fall", "autumn", "cozy", "manifestation", "digital download", "seasonal", "printable art", "hygge", "warm", "pumpkin", "comfort", "october"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_040",
+      "title": "ADHD Focus Vision Board | Clarity & Calm | Neurodivergent Goals",
+      "tags": ["vision board", "adhd", "focus", "neurodivergent", "manifestation", "digital download", "clarity", "printable art", "brain", "organization", "calm", "support", "mindset"],
+      "category": "mental_health"
+    },
+    {
+      "id": "vb_041",
+      "title": "Friendship Goals Vision Board | Squad Dreams | Bestie Manifest",
+      "tags": ["vision board", "friendship", "bestie", "squad goals", "manifestation", "digital download", "friends", "printable art", "bond", "connection", "memories", "girls", "loyalty"],
+      "category": "relationship"
+    },
+    {
+      "id": "vb_042",
+      "title": "Marathon Training Vision Board | Runner's Dream | Fitness Manifest",
+      "tags": ["vision board", "marathon", "running", "fitness", "manifestation", "digital download", "athlete", "printable art", "training", "endurance", "26.2", "race", "goals"],
+      "category": "health"
+    },
+    {
+      "id": "vb_043",
+      "title": "Work From Home Vision Board | Remote Life | Home Office Dreams",
+      "tags": ["vision board", "work from home", "remote work", "home office", "manifestation", "digital download", "wfh", "printable art", "productivity", "balance", "flexible", "career", "comfort"],
+      "category": "career"
+    },
+    {
+      "id": "vb_044",
+      "title": "Debt Free Vision Board | Financial Liberation | Money Freedom Kit",
+      "tags": ["vision board", "debt free", "financial", "freedom", "manifestation", "digital download", "money", "printable art", "budget", "savings", "liberation", "wealth", "goals"],
+      "category": "financial"
+    },
+    {
+      "id": "vb_045",
+      "title": "New Parent Vision Board | Baby Life Goals | First Year Dreams",
+      "tags": ["vision board", "new parent", "baby", "first year", "manifestation", "digital download", "parenting", "printable art", "family", "newborn", "milestone", "love", "journey"],
+      "category": "life_changes"
+    },
+    {
+      "id": "vb_046",
+      "title": "Spring Renewal Vision Board | Fresh Beginnings | Season of Growth",
+      "tags": ["vision board", "spring", "renewal", "fresh start", "manifestation", "digital download", "growth", "printable art", "bloom", "new", "seasonal", "april", "flowers"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_047",
+      "title": "40th Birthday Vision Board | Fabulous at Forty | Milestone Goals",
+      "tags": ["vision board", "40th birthday", "milestone", "fabulous", "manifestation", "digital download", "celebration", "printable art", "midlife", "party", "goals", "age", "wisdom"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_048",
+      "title": "Yoga Journey Vision Board | Mind Body Soul | Wellness Manifest",
+      "tags": ["vision board", "yoga", "wellness", "mindfulness", "manifestation", "digital download", "meditation", "printable art", "zen", "balance", "peace", "health", "spiritual"],
+      "category": "health"
+    },
+    {
+      "id": "vb_049",
+      "title": "Side Hustle Vision Board | Extra Income Goals | Hustle Manifest",
+      "tags": ["vision board", "side hustle", "extra income", "hustle", "manifestation", "digital download", "money", "printable art", "business", "goals", "passive", "entrepreneur", "gig"],
+      "category": "financial"
+    },
+    {
+      "id": "vb_050",
+      "title": "Toxic Relationship Recovery | Breaking Free | Healing Vision Board",
+      "tags": ["vision board", "toxic recovery", "healing", "breaking free", "manifestation", "digital download", "freedom", "printable art", "self worth", "boundaries", "strength", "escape", "new life"],
+      "category": "healing_transitions"
+    },
+    {
+      "id": "vb_051",
+      "title": "Sunday Reset Vision Board | Weekly Renewal | Self Care Ritual",
+      "tags": ["vision board", "sunday reset", "weekly", "self care", "manifestation", "digital download", "ritual", "printable art", "renewal", "planning", "rest", "recharge", "routine"],
+      "category": "time_based"
+    },
+    {
+      "id": "vb_052",
+      "title": "30th Birthday Vision Board | Thriving at Thirty | Milestone Dreams",
+      "tags": ["vision board", "30th birthday", "thirty", "milestone", "manifestation", "digital download", "celebration", "printable art", "adulthood", "goals", "party", "decade", "growth"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_053",
+      "title": "Gratitude Vision Board | Thankful Heart | Abundance Mindset Kit",
+      "tags": ["vision board", "gratitude", "thankful", "abundance", "manifestation", "digital download", "blessings", "printable art", "positive", "appreciation", "mindset", "joy", "grateful"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_054",
+      "title": "Career Pivot at 50 Vision Board | Reinvention | Second Act Dreams",
+      "tags": ["vision board", "career pivot", "50s", "reinvention", "manifestation", "digital download", "second act", "printable art", "change", "wisdom", "experience", "new path", "mature"],
+      "category": "career"
+    },
+    {
+      "id": "vb_055",
+      "title": "Couple's New Year Vision Board | Together 2025 | Relationship Goals",
+      "tags": ["vision board", "couples", "new year", "together", "manifestation", "digital download", "relationship", "printable art", "love", "partner", "goals", "anniversary", "bond"],
+      "category": "relationship"
+    },
+    {
+      "id": "vb_056",
+      "title": "Self-Discovery Vision Board | Finding Myself | Identity Journey Kit",
+      "tags": ["vision board", "self discovery", "identity", "finding myself", "manifestation", "digital download", "journey", "printable art", "growth", "awareness", "authentic", "soul", "inner"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_057",
+      "title": "Healthy Eating Vision Board | Nourish Goals | Nutrition Manifest",
+      "tags": ["vision board", "healthy eating", "nutrition", "diet", "manifestation", "digital download", "food", "printable art", "wellness", "clean eating", "meal prep", "health", "balance"],
+      "category": "health"
+    },
+    {
+      "id": "vb_058",
+      "title": "Job Loss Recovery Vision Board | Rising Again | Career Comeback",
+      "tags": ["vision board", "job loss", "recovery", "comeback", "manifestation", "digital download", "career", "printable art", "resilience", "strength", "opportunity", "new job", "hope"],
+      "category": "healing_transitions"
+    },
+    {
+      "id": "vb_059",
+      "title": "Christmas Gift Vision Board | Holiday Wishes | Festive Manifest",
+      "tags": ["vision board", "christmas gift", "holiday", "festive", "manifestation", "digital download", "present", "printable art", "december", "santa", "wishes", "seasonal", "joy"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_060",
+      "title": "Quarter-Life Crisis Vision Board | Finding Direction | 25 Goals",
+      "tags": ["vision board", "quarter life", "twenties", "direction", "manifestation", "digital download", "young adult", "printable art", "purpose", "career", "identity", "growth", "future"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_061",
+      "title": "Social Anxiety Vision Board | Confidence Building | Connection Goals",
+      "tags": ["vision board", "social anxiety", "confidence", "connection", "manifestation", "digital download", "courage", "printable art", "friends", "comfort", "growth", "social", "brave"],
+      "category": "mental_health"
+    },
+    {
+      "id": "vb_062",
+      "title": "Reading Goals Vision Board | Book Lover | Literary Dreams Kit",
+      "tags": ["vision board", "reading goals", "books", "bookworm", "manifestation", "digital download", "literary", "printable art", "library", "goals", "hobby", "knowledge", "reader"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_063",
+      "title": "Wedding Planning Vision Board | Dream Wedding | Bride Goals Kit",
+      "tags": ["vision board", "wedding", "bride", "planning", "manifestation", "digital download", "marriage", "printable art", "ceremony", "reception", "love", "celebration", "engaged"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_064",
+      "title": "Inner Peace Vision Board | Calm Within | Serenity Manifest",
+      "tags": ["vision board", "inner peace", "calm", "serenity", "manifestation", "digital download", "zen", "printable art", "tranquility", "mindfulness", "balance", "quiet", "stillness"],
+      "category": "spiritual"
+    },
+    {
+      "id": "vb_065",
+      "title": "60th Birthday Vision Board | Sixty & Sensational | Golden Milestone",
+      "tags": ["vision board", "60th birthday", "sixty", "milestone", "manifestation", "digital download", "golden", "printable art", "celebration", "wisdom", "senior", "party", "grateful"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_066",
+      "title": "Pet Parent Vision Board | Fur Baby Goals | Animal Lover Kit",
+      "tags": ["vision board", "pet parent", "fur baby", "dog mom", "manifestation", "digital download", "animals", "printable art", "cat mom", "puppy", "rescue", "love", "companion"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_067",
+      "title": "Burnout Recovery Vision Board | Rest & Restore | Healing Energy",
+      "tags": ["vision board", "burnout", "recovery", "rest", "manifestation", "digital download", "restore", "printable art", "energy", "self care", "balance", "wellness", "peace"],
+      "category": "mental_health"
+    },
+    {
+      "id": "vb_068",
+      "title": "Savings Challenge Vision Board | Money Goals | Financial Growth",
+      "tags": ["vision board", "savings", "money goals", "challenge", "manifestation", "digital download", "financial", "printable art", "budget", "wealth", "grow", "invest", "smart"],
+      "category": "financial"
+    },
+    {
+      "id": "vb_069",
+      "title": "New Relationship Vision Board | Love Found | Romance Manifest",
+      "tags": ["vision board", "new love", "relationship", "romance", "manifestation", "digital download", "dating", "printable art", "connection", "partner", "heart", "beginning", "couple"],
+      "category": "relationship"
+    },
+    {
+      "id": "vb_070",
+      "title": "Daily Affirmations Vision Board | Positive Mindset | Self Love Kit",
+      "tags": ["vision board", "affirmations", "positive", "mindset", "manifestation", "digital download", "daily", "printable art", "self love", "mantra", "believe", "power", "words"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_071",
+      "title": "50th Birthday Vision Board | Fifty & Fierce | Half Century Dreams",
+      "tags": ["vision board", "50th birthday", "fifty", "milestone", "manifestation", "digital download", "fierce", "printable art", "celebration", "fabulous", "half century", "party", "golden"],
+      "category": "milestone"
+    },
+    {
+      "id": "vb_072",
+      "title": "Learning New Skill Vision Board | Growth Mindset | Education Goals",
+      "tags": ["vision board", "new skill", "learning", "education", "manifestation", "digital download", "growth", "printable art", "knowledge", "hobby", "mastery", "course", "brain"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "vb_073",
+      "title": "Body Positivity Vision Board | Love Your Body | Acceptance Kit",
+      "tags": ["vision board", "body positive", "self love", "acceptance", "manifestation", "digital download", "confidence", "printable art", "beauty", "worth", "embrace", "health", "happy"],
+      "category": "emotional"
+    },
+    {
+      "id": "vb_074",
+      "title": "Christmas For Him Vision Board | His Holiday Dreams | Masculine Gift",
+      "tags": ["vision board", "christmas", "for him", "masculine", "manifestation", "digital download", "holiday gift", "printable art", "men", "goals", "husband", "boyfriend", "dad"],
+      "category": "seasonal"
+    },
+    {
+      "id": "vb_075",
+      "title": "Life After Loss Vision Board | Hope Returns | Grief to Growth",
+      "tags": ["vision board", "grief", "loss", "hope", "manifestation", "digital download", "healing", "printable art", "memorial", "growth", "peace", "forward", "remembrance"],
+      "category": "healing_transitions"
+    }
+  ]
+}

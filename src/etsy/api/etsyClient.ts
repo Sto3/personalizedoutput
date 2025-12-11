@@ -441,6 +441,34 @@ export class EtsyClient {
   }
 
   // ============================================================
+  // LISTING VIDEO
+  // ============================================================
+
+  /**
+   * Upload a video to a listing (Etsy supports 1 video per listing)
+   * Video requirements: MP4 format, max 100MB, max 1 minute
+   */
+  async uploadListingVideo(
+    listingId: number,
+    videoPath: string
+  ): Promise<{ video_id: number }> {
+    const creds = await this.getCredentials();
+
+    const file = await fileFromPath(videoPath);
+
+    const formData = new FormData();
+    formData.set('video', file, path.basename(videoPath));
+
+    return this.request<{ video_id: number }>(
+      `/application/shops/${creds.shopId}/listings/${listingId}/videos`,
+      {
+        method: 'POST',
+        formData
+      }
+    );
+  }
+
+  // ============================================================
   // DIGITAL DOWNLOADS
   // ============================================================
 

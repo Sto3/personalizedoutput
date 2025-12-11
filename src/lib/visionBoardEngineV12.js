@@ -214,16 +214,19 @@ function createAccentRect(w, h, color, rotation) {
 
 function createBanner(width, title, subtitle, colors, fonts) {
   const height = 62;
-  const displayTitle = fonts.titleTransform === 'uppercase' ? title.toUpperCase() : title;
+  // For Snell Roundhand (script), use Title Case. For Bodoni (masculine), use UPPERCASE
+  const displayTitle = fonts.titleTransform === 'uppercase'
+    ? title.toUpperCase()
+    : toTitleCase(title);  // Convert to Title Case for feminine/script fonts
   const titleSize = Math.min(30, Math.floor(width * 0.75 / displayTitle.length * 1.8));
 
   return `<svg width="${width}" height="${height}" xmlns="http://www.w3.org/2000/svg">
     <rect width="100%" height="100%" fill="${colors.banner}"/>
-    <text x="${width/2}" y="${subtitle ? 30 : 38}" text-anchor="middle"
+    <text x="${width/2}" y="${subtitle ? 28 : 38}" text-anchor="middle"
           font-family="${fonts.title}" font-size="${titleSize}px" font-weight="400"
           letter-spacing="${fonts.titleLetterSpacing}" fill="${colors.bannerText}">${escapeXml(displayTitle)}</text>
-    ${subtitle ? `<text x="${width/2}" y="50" text-anchor="middle" font-family="${FONTS.sans}"
-          font-size="11px" letter-spacing="0.15em" fill="${colors.bannerSubtext}">${escapeXml(subtitle.toUpperCase())}</text>` : ''}
+    ${subtitle ? `<text x="${width/2}" y="52" text-anchor="middle" font-family="${FONTS.sans}"
+          font-size="14px" letter-spacing="0.12em" fill="${colors.bannerSubtext}">${escapeXml(subtitle.toUpperCase())}</text>` : ''}
   </svg>`;
 }
 
@@ -341,6 +344,12 @@ function calculateGapPositions(canvasW, canvasH, bannerH) {
 
 function escapeXml(t) {
   return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+// Convert string to Title Case (for Snell Roundhand / feminine fonts)
+// "MY HEALING JOURNEY" -> "My Healing Journey"
+function toTitleCase(str) {
+  return str.toLowerCase().replace(/(?:^|\s)\S/g, char => char.toUpperCase());
 }
 
 function lighten(hex, pct) {

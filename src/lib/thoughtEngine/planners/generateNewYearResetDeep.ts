@@ -38,19 +38,20 @@ export async function generateNewYearResetPlannerDeep(
     generatedAt: new Date().toISOString(),
     sections,
     meaningModel: {
-      keyLifeAreas: determineLifeAreas(input),
-      timeframe: { label: '2025', startDate: 'Jan 1, 2025', endDate: 'Dec 31, 2025' },
+      productId: 'new_year_reflection_reset',
+      keyLifeAreas: determineLifeAreas(input) as any,
+      timeframe: { id: 'year_2025' as const, label: '2025', startDate: 'Jan 1, 2025', endDate: 'Dec 31, 2025' },
       topGoals: [
-        { label: input.oneWordForNextYear, importance: 5, lifeArea: 'personal' },
-        { label: input.nonNegotiableChange, importance: 5, lifeArea: 'personal' }
+        { id: 'goal-word', label: input.oneWordForNextYear, importance: 5 as const, lifeArea: 'self_discovery' as const },
+        { id: 'goal-change', label: input.nonNegotiableChange, importance: 5 as const, lifeArea: 'self_discovery' as const }
       ],
       majorTensions: [
-        { description: input.whatMightGetInWay }
+        { id: 'tension-block', lifeArea: 'self_discovery' as const, description: input.whatMightGetInWay }
       ],
       coreThemes: [
-        { label: 'Year Word', userWords: input.oneWordForNextYear },
-        { label: 'Desired Feeling', userWords: input.feelingYouWant },
-        { label: 'Pattern Noticed', userWords: input.patternNoticed }
+        { id: 'theme-word', label: 'Year Word', userWords: input.oneWordForNextYear },
+        { id: 'theme-feeling', label: 'Desired Feeling', userWords: input.feelingYouWant },
+        { id: 'theme-pattern', label: 'Pattern Noticed', userWords: input.patternNoticed }
       ],
       constraints: [],
       distilledSummary: `${input.firstName} described 2024 as: ${input.yearOverview.threeWordsToDescribe.join(', ')}. Looking ahead to a year of ${input.oneWordForNextYear}.`,
@@ -274,7 +275,7 @@ async function callLLMForPlannerSections(prompt: string): Promise<SectionOutput[
     throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const text = data.content[0].text;
 
   // Parse JSON response

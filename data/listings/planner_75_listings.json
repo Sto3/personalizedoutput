@@ -1,0 +1,459 @@
+{
+  "product": "planner",
+  "price": "14.99",
+  "quantity": "999",
+  "generatedAt": "2024-12-11",
+  "totalListings": 75,
+  "listings": [
+    {
+      "id": "pl_001",
+      "title": "Post-Breakup Processing Planner | Guided Healing | AI-Personalized PDF",
+      "tags": ["clarity planner", "breakup healing", "processing", "self help", "personalized", "digital download", "reflection", "healing journal", "guided prompts", "therapy", "self care", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_002",
+      "title": "Career Transition Clarity Planner | Find Your Path | Personalized Guide",
+      "tags": ["clarity planner", "career change", "job transition", "professional", "personalized", "digital download", "guidance", "career planning", "reflection", "goals", "next steps", "printable", "pdf"],
+      "category": "career"
+    },
+    {
+      "id": "pl_003",
+      "title": "Grief Processing Planner | Gentle Guidance | Personalized Support PDF",
+      "tags": ["clarity planner", "grief", "loss", "processing", "personalized", "digital download", "healing", "support", "guided", "memorial", "comfort", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_004",
+      "title": "Anxiety Management Planner | Calm Your Mind | AI-Guided Clarity",
+      "tags": ["clarity planner", "anxiety", "mental health", "calm", "personalized", "digital download", "management", "coping", "guided prompts", "peace", "wellness", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_005",
+      "title": "New Year Intention Planner | 2025 Vision | Personalized Goal Setting",
+      "tags": ["clarity planner", "new year", "intentions", "2025 goals", "personalized", "digital download", "planning", "resolution", "vision", "guided", "reflection", "printable", "pdf"],
+      "category": "seasonal"
+    },
+    {
+      "id": "pl_006",
+      "title": "Divorce Processing Planner | Navigate Change | Personalized Support",
+      "tags": ["clarity planner", "divorce", "processing", "healing", "personalized", "digital download", "guidance", "new chapter", "reflection", "strength", "support", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_007",
+      "title": "Morning Routine Planner | Start Strong | AI-Personalized Daily Guide",
+      "tags": ["clarity planner", "morning routine", "productivity", "daily", "personalized", "digital download", "habits", "ritual", "guided", "energy", "wellness", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_008",
+      "title": "Self-Discovery Planner | Know Yourself | Personalized Reflection Guide",
+      "tags": ["clarity planner", "self discovery", "identity", "reflection", "personalized", "digital download", "awareness", "growth", "guided prompts", "authentic", "journey", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_009",
+      "title": "Depression Recovery Planner | Light Returns | Gentle Guided Support",
+      "tags": ["clarity planner", "depression", "recovery", "mental health", "personalized", "digital download", "hope", "healing", "guided", "support", "wellness", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_010",
+      "title": "Wedding Planning Clarity | Stress-Free Bride | Personalized Organizer",
+      "tags": ["clarity planner", "wedding", "bride", "planning", "personalized", "digital download", "organized", "stress free", "checklist", "celebration", "love", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_011",
+      "title": "Habit Building Planner | 30-Day Transformation | Personalized Tracker",
+      "tags": ["clarity planner", "habit building", "30 day", "transformation", "personalized", "digital download", "tracker", "routine", "guided", "consistency", "goals", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_012",
+      "title": "New Parent Clarity Planner | First Year Guide | Personalized Support",
+      "tags": ["clarity planner", "new parent", "baby", "first year", "personalized", "digital download", "parenting", "guidance", "overwhelm", "support", "family", "printable", "pdf"],
+      "category": "life_changes"
+    },
+    {
+      "id": "pl_013",
+      "title": "Burnout Recovery Planner | Rest & Restore | Personalized Healing Guide",
+      "tags": ["clarity planner", "burnout", "recovery", "rest", "personalized", "digital download", "restore", "energy", "balance", "wellness", "self care", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_014",
+      "title": "College Decision Planner | Choose Your Future | Personalized Guide",
+      "tags": ["clarity planner", "college", "decision", "student", "personalized", "digital download", "future", "education", "choice", "guided", "planning", "printable", "pdf"],
+      "category": "education"
+    },
+    {
+      "id": "pl_015",
+      "title": "Evening Reflection Planner | Daily Wind Down | Personalized Ritual",
+      "tags": ["clarity planner", "evening", "reflection", "wind down", "personalized", "digital download", "ritual", "gratitude", "sleep", "peace", "daily", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_016",
+      "title": "Job Loss Recovery Planner | Rising Again | Personalized Career Guide",
+      "tags": ["clarity planner", "job loss", "recovery", "career", "personalized", "digital download", "resilience", "next steps", "guided", "opportunity", "comeback", "printable", "pdf"],
+      "category": "career"
+    },
+    {
+      "id": "pl_017",
+      "title": "Relationship Reflection Planner | Understanding Love | Personalized Guide",
+      "tags": ["clarity planner", "relationship", "reflection", "love", "personalized", "digital download", "couples", "communication", "guided", "growth", "connection", "printable", "pdf"],
+      "category": "relationship"
+    },
+    {
+      "id": "pl_018",
+      "title": "ADHD Focus Planner | Clarity & Organization | Personalized Support",
+      "tags": ["clarity planner", "adhd", "focus", "organization", "personalized", "digital download", "neurodivergent", "structure", "guided", "brain", "support", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_019",
+      "title": "Moving to New City Planner | Fresh Start Guide | Personalized Support",
+      "tags": ["clarity planner", "moving", "new city", "relocation", "personalized", "digital download", "fresh start", "transition", "guided", "adventure", "change", "printable", "pdf"],
+      "category": "life_changes"
+    },
+    {
+      "id": "pl_020",
+      "title": "Financial Clarity Planner | Money Mindset | Personalized Budget Guide",
+      "tags": ["clarity planner", "financial", "money", "budget", "personalized", "digital download", "wealth", "planning", "guided", "goals", "savings", "printable", "pdf"],
+      "category": "financial"
+    },
+    {
+      "id": "pl_021",
+      "title": "Midlife Reset Planner | Reinvention at 40+ | Personalized Guide",
+      "tags": ["clarity planner", "midlife", "40s", "reinvention", "personalized", "digital download", "reset", "new chapter", "guided", "wisdom", "growth", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_022",
+      "title": "Sobriety Support Planner | Clean Journey | Personalized Recovery Guide",
+      "tags": ["clarity planner", "sobriety", "recovery", "clean", "personalized", "digital download", "support", "journey", "guided", "strength", "milestone", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_023",
+      "title": "Confidence Building Planner | Unstoppable You | Personalized Growth",
+      "tags": ["clarity planner", "confidence", "self esteem", "growth", "personalized", "digital download", "courage", "belief", "guided", "strength", "empowerment", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_024",
+      "title": "Empty Nest Planner | Rediscover Yourself | Personalized New Chapter",
+      "tags": ["clarity planner", "empty nest", "parent", "rediscover", "personalized", "digital download", "new chapter", "freedom", "guided", "identity", "growth", "printable", "pdf"],
+      "category": "life_changes"
+    },
+    {
+      "id": "pl_025",
+      "title": "Sunday Reset Planner | Weekly Clarity | Personalized Ritual Guide",
+      "tags": ["clarity planner", "sunday reset", "weekly", "ritual", "personalized", "digital download", "planning", "reflection", "guided", "renewal", "routine", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_026",
+      "title": "Trauma Processing Planner | Gentle Healing | Personalized Support",
+      "tags": ["clarity planner", "trauma", "processing", "healing", "personalized", "digital download", "gentle", "support", "guided", "recovery", "safe space", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_027",
+      "title": "Business Launch Planner | Entrepreneur Clarity | Personalized Strategy",
+      "tags": ["clarity planner", "business", "entrepreneur", "startup", "personalized", "digital download", "strategy", "planning", "guided", "goals", "launch", "printable", "pdf"],
+      "category": "career"
+    },
+    {
+      "id": "pl_028",
+      "title": "Gratitude Practice Planner | Thankful Living | Personalized Journal",
+      "tags": ["clarity planner", "gratitude", "thankful", "practice", "personalized", "digital download", "positive", "daily", "guided", "blessings", "mindset", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_029",
+      "title": "Pregnancy Journey Planner | Expecting Clarity | Personalized Guide",
+      "tags": ["clarity planner", "pregnancy", "expecting", "baby", "personalized", "digital download", "journey", "preparation", "guided", "mother", "support", "printable", "pdf"],
+      "category": "life_changes"
+    },
+    {
+      "id": "pl_030",
+      "title": "Social Anxiety Planner | Building Connections | Personalized Support",
+      "tags": ["clarity planner", "social anxiety", "connections", "confidence", "personalized", "digital download", "courage", "support", "guided", "growth", "friends", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_031",
+      "title": "Retirement Planning Planner | Golden Years | Personalized Vision",
+      "tags": ["clarity planner", "retirement", "golden years", "planning", "personalized", "digital download", "future", "vision", "guided", "freedom", "dreams", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_032",
+      "title": "Weekly Clarity Planner | 7-Day Focus | Personalized Productivity",
+      "tags": ["clarity planner", "weekly", "7 day", "focus", "personalized", "digital download", "productivity", "planning", "guided", "goals", "organization", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_033",
+      "title": "Quarter-Life Clarity Planner | Finding Direction | Personalized Guide",
+      "tags": ["clarity planner", "quarter life", "twenties", "direction", "personalized", "digital download", "purpose", "career", "guided", "identity", "future", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_034",
+      "title": "Health & Wellness Planner | Mind-Body Balance | Personalized Guide",
+      "tags": ["clarity planner", "health", "wellness", "balance", "personalized", "digital download", "mind body", "holistic", "guided", "self care", "lifestyle", "printable", "pdf"],
+      "category": "health"
+    },
+    {
+      "id": "pl_035",
+      "title": "Toxic Relationship Recovery | Breaking Free | Personalized Healing",
+      "tags": ["clarity planner", "toxic recovery", "healing", "freedom", "personalized", "digital download", "boundaries", "strength", "guided", "self worth", "new life", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_036",
+      "title": "Monthly Reset Planner | 30-Day Clarity | Personalized Reflection",
+      "tags": ["clarity planner", "monthly", "reset", "30 day", "personalized", "digital download", "reflection", "goals", "guided", "progress", "planning", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_037",
+      "title": "Promotion Preparation Planner | Career Advancement | Personalized Guide",
+      "tags": ["clarity planner", "promotion", "career", "advancement", "personalized", "digital download", "preparation", "goals", "guided", "leadership", "success", "printable", "pdf"],
+      "category": "career"
+    },
+    {
+      "id": "pl_038",
+      "title": "Self-Love Journey Planner | You Are Enough | Personalized Growth",
+      "tags": ["clarity planner", "self love", "enough", "journey", "personalized", "digital download", "worth", "acceptance", "guided", "healing", "growth", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_039",
+      "title": "First Year of Marriage Planner | Newlywed Guide | Personalized Support",
+      "tags": ["clarity planner", "newlywed", "marriage", "first year", "personalized", "digital download", "couple", "adjustment", "guided", "love", "growth", "printable", "pdf"],
+      "category": "relationship"
+    },
+    {
+      "id": "pl_040",
+      "title": "Spiritual Growth Planner | Soul Journey | Personalized Reflection",
+      "tags": ["clarity planner", "spiritual", "soul", "growth", "personalized", "digital download", "faith", "journey", "guided", "meditation", "inner", "printable", "pdf"],
+      "category": "spiritual"
+    },
+    {
+      "id": "pl_041",
+      "title": "30th Birthday Clarity | Thriving at Thirty | Personalized Milestone",
+      "tags": ["clarity planner", "30th birthday", "thirty", "milestone", "personalized", "digital download", "reflection", "goals", "guided", "decade", "growth", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_042",
+      "title": "Fitness Goals Planner | Health Journey | Personalized Motivation",
+      "tags": ["clarity planner", "fitness", "health", "goals", "personalized", "digital download", "workout", "motivation", "guided", "body", "wellness", "printable", "pdf"],
+      "category": "health"
+    },
+    {
+      "id": "pl_043",
+      "title": "Long-Distance Relationship Planner | Stay Connected | Personalized Guide",
+      "tags": ["clarity planner", "long distance", "relationship", "connection", "personalized", "digital download", "couples", "communication", "guided", "love", "support", "printable", "pdf"],
+      "category": "relationship"
+    },
+    {
+      "id": "pl_044",
+      "title": "Mindfulness Practice Planner | Present Moment | Personalized Guide",
+      "tags": ["clarity planner", "mindfulness", "present", "meditation", "personalized", "digital download", "awareness", "peace", "guided", "calm", "practice", "printable", "pdf"],
+      "category": "spiritual"
+    },
+    {
+      "id": "pl_045",
+      "title": "Career Pivot at 50 Planner | Second Act | Personalized Strategy",
+      "tags": ["clarity planner", "career pivot", "50s", "second act", "personalized", "digital download", "reinvention", "strategy", "guided", "experience", "wisdom", "printable", "pdf"],
+      "category": "career"
+    },
+    {
+      "id": "pl_046",
+      "title": "Stress Management Planner | Finding Calm | Personalized Coping Guide",
+      "tags": ["clarity planner", "stress", "management", "calm", "personalized", "digital download", "coping", "relief", "guided", "balance", "wellness", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_047",
+      "title": "Holiday Season Planner | Peaceful Celebration | Personalized Guide",
+      "tags": ["clarity planner", "holiday", "christmas", "peaceful", "personalized", "digital download", "celebration", "planning", "guided", "joy", "family", "printable", "pdf"],
+      "category": "seasonal"
+    },
+    {
+      "id": "pl_048",
+      "title": "Creativity Unlocking Planner | Artist Within | Personalized Inspiration",
+      "tags": ["clarity planner", "creativity", "artist", "inspiration", "personalized", "digital download", "expression", "ideas", "guided", "passion", "flow", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_049",
+      "title": "40th Birthday Clarity | Fabulous at Forty | Personalized Milestone",
+      "tags": ["clarity planner", "40th birthday", "forty", "milestone", "personalized", "digital download", "reflection", "wisdom", "guided", "celebration", "goals", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_050",
+      "title": "Single Life Clarity Planner | Thriving Solo | Personalized Growth",
+      "tags": ["clarity planner", "single life", "solo", "thriving", "personalized", "digital download", "independence", "growth", "guided", "self love", "empowerment", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_051",
+      "title": "Weight Loss Journey Planner | Healthy Changes | Personalized Support",
+      "tags": ["clarity planner", "weight loss", "health", "journey", "personalized", "digital download", "motivation", "goals", "guided", "lifestyle", "transformation", "printable", "pdf"],
+      "category": "health"
+    },
+    {
+      "id": "pl_052",
+      "title": "Decision Making Planner | Clear Choice | Personalized Analysis Guide",
+      "tags": ["clarity planner", "decision", "choice", "analysis", "personalized", "digital download", "clarity", "options", "guided", "wisdom", "confidence", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_053",
+      "title": "Blended Family Planner | New Together | Personalized Guidance",
+      "tags": ["clarity planner", "blended family", "stepparent", "together", "personalized", "digital download", "family", "adjustment", "guided", "love", "patience", "printable", "pdf"],
+      "category": "life_changes"
+    },
+    {
+      "id": "pl_054",
+      "title": "Work-Life Balance Planner | Harmony Found | Personalized Strategy",
+      "tags": ["clarity planner", "work life", "balance", "harmony", "personalized", "digital download", "boundaries", "strategy", "guided", "wellness", "time", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_055",
+      "title": "50th Birthday Clarity | Fifty & Fierce | Personalized Milestone",
+      "tags": ["clarity planner", "50th birthday", "fifty", "milestone", "personalized", "digital download", "reflection", "wisdom", "guided", "celebration", "fierce", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_056",
+      "title": "Forgiveness Journey Planner | Letting Go | Personalized Healing",
+      "tags": ["clarity planner", "forgiveness", "letting go", "healing", "personalized", "digital download", "peace", "release", "guided", "freedom", "growth", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_057",
+      "title": "Side Hustle Planning | Extra Income Clarity | Personalized Strategy",
+      "tags": ["clarity planner", "side hustle", "income", "strategy", "personalized", "digital download", "business", "planning", "guided", "money", "goals", "printable", "pdf"],
+      "category": "financial"
+    },
+    {
+      "id": "pl_058",
+      "title": "Perfectionism Recovery Planner | Good Enough | Personalized Healing",
+      "tags": ["clarity planner", "perfectionism", "recovery", "healing", "personalized", "digital download", "acceptance", "release", "guided", "peace", "growth", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_059",
+      "title": "Engagement Season Planner | Yes to Forever | Personalized Guide",
+      "tags": ["clarity planner", "engagement", "bride", "planning", "personalized", "digital download", "wedding prep", "excited", "guided", "love", "future", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_060",
+      "title": "Boundary Setting Planner | Protect Your Peace | Personalized Guide",
+      "tags": ["clarity planner", "boundaries", "peace", "protection", "personalized", "digital download", "self care", "healthy", "guided", "relationships", "strength", "printable", "pdf"],
+      "category": "personal_growth"
+    },
+    {
+      "id": "pl_061",
+      "title": "Debt Freedom Planner | Financial Liberation | Personalized Strategy",
+      "tags": ["clarity planner", "debt free", "financial", "freedom", "personalized", "digital download", "budget", "strategy", "guided", "goals", "liberation", "printable", "pdf"],
+      "category": "financial"
+    },
+    {
+      "id": "pl_062",
+      "title": "Chronic Illness Planner | Daily Strength | Personalized Support",
+      "tags": ["clarity planner", "chronic illness", "strength", "support", "personalized", "digital download", "health", "daily", "guided", "spoons", "coping", "printable", "pdf"],
+      "category": "health"
+    },
+    {
+      "id": "pl_063",
+      "title": "Seasonal Transition Planner | Embrace Change | Personalized Guide",
+      "tags": ["clarity planner", "seasonal", "transition", "change", "personalized", "digital download", "nature", "rhythm", "guided", "flow", "renewal", "printable", "pdf"],
+      "category": "seasonal"
+    },
+    {
+      "id": "pl_064",
+      "title": "Couple's Communication Planner | Deeper Connection | Personalized Guide",
+      "tags": ["clarity planner", "couples", "communication", "connection", "personalized", "digital download", "relationship", "talking", "guided", "intimacy", "love", "printable", "pdf"],
+      "category": "relationship"
+    },
+    {
+      "id": "pl_065",
+      "title": "60th Birthday Clarity | Sensational Sixty | Personalized Milestone",
+      "tags": ["clarity planner", "60th birthday", "sixty", "milestone", "personalized", "digital download", "reflection", "golden", "guided", "celebration", "wisdom", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_066",
+      "title": "People Pleaser Recovery | Saying No | Personalized Healing Guide",
+      "tags": ["clarity planner", "people pleaser", "boundaries", "no", "personalized", "digital download", "recovery", "self care", "guided", "worth", "freedom", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_067",
+      "title": "Travel Planning Clarity | Dream Trip | Personalized Itinerary Guide",
+      "tags": ["clarity planner", "travel", "trip", "planning", "personalized", "digital download", "vacation", "adventure", "guided", "bucket list", "explore", "printable", "pdf"],
+      "category": "lifestyle"
+    },
+    {
+      "id": "pl_068",
+      "title": "Anger Management Planner | Finding Peace | Personalized Coping",
+      "tags": ["clarity planner", "anger", "management", "peace", "personalized", "digital download", "coping", "control", "guided", "emotions", "calm", "printable", "pdf"],
+      "category": "mental_health"
+    },
+    {
+      "id": "pl_069",
+      "title": "First-Gen College Planner | Breaking Through | Personalized Support",
+      "tags": ["clarity planner", "first gen", "college", "student", "personalized", "digital download", "support", "guidance", "breaking", "success", "family", "printable", "pdf"],
+      "category": "education"
+    },
+    {
+      "id": "pl_070",
+      "title": "Inner Child Healing Planner | Nurture Within | Personalized Journey",
+      "tags": ["clarity planner", "inner child", "healing", "nurture", "personalized", "digital download", "therapy", "growth", "guided", "love", "safety", "printable", "pdf"],
+      "category": "processing"
+    },
+    {
+      "id": "pl_071",
+      "title": "Remote Work Clarity Planner | WFH Success | Personalized Structure",
+      "tags": ["clarity planner", "remote work", "wfh", "structure", "personalized", "digital download", "productivity", "home office", "guided", "balance", "success", "printable", "pdf"],
+      "category": "career"
+    },
+    {
+      "id": "pl_072",
+      "title": "Menopause Journey Planner | Graceful Transition | Personalized Support",
+      "tags": ["clarity planner", "menopause", "transition", "women", "personalized", "digital download", "support", "health", "guided", "change", "wisdom", "printable", "pdf"],
+      "category": "health"
+    },
+    {
+      "id": "pl_073",
+      "title": "Birthday Reflection Planner | Your New Year | Personalized Goals",
+      "tags": ["clarity planner", "birthday", "reflection", "new year", "personalized", "digital download", "goals", "celebration", "guided", "milestone", "growth", "printable", "pdf"],
+      "category": "milestone"
+    },
+    {
+      "id": "pl_074",
+      "title": "Co-Parenting Clarity Planner | Children First | Personalized Guide",
+      "tags": ["clarity planner", "co parenting", "children", "divorce", "personalized", "digital download", "family", "communication", "guided", "peace", "support", "printable", "pdf"],
+      "category": "life_changes"
+    },
+    {
+      "id": "pl_075",
+      "title": "Life Purpose Planner | Find Your Why | Personalized Discovery Guide",
+      "tags": ["clarity planner", "life purpose", "why", "meaning", "personalized", "digital download", "discovery", "passion", "guided", "calling", "fulfillment", "printable", "pdf"],
+      "category": "personal_growth"
+    }
+  ]
+}

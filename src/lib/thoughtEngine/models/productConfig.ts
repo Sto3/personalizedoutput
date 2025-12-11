@@ -10,7 +10,7 @@ import { LifeAreaId, TimeframeId, ProductId } from './userInput';
 // TYPES
 // ============================================================
 
-export type ProductType = "planner" | "script";
+export type ProductType = "planner" | "script" | "image" | "cards";
 
 export interface SectionConfig {
   id: string;
@@ -175,13 +175,139 @@ export const SANTA_MESSAGE: ProductConfig = {
 };
 
 // ============================================================
+// VISION BOARD CONFIG
+// ============================================================
+
+export const VISION_BOARD: ProductConfig = {
+  id: "vision_board",
+  label: "AI-Powered Vision Board",
+  productType: "image",
+  primaryLifeArea: "self_discovery",
+  defaultTimeframe: "year_2025",
+  targetSessionMinutes: 15,
+  maxSessionMinutes: 25,
+  promptTemplateFile: "vision_board.txt",
+  sections: [
+    {
+      id: "theme",
+      title: "Board Theme",
+      description: "Central theme or word for the vision board",
+      required: true
+    },
+    {
+      id: "goals",
+      title: "Key Goals",
+      description: "3-5 main goals to visualize",
+      required: true
+    },
+    {
+      id: "imagery",
+      title: "Imagery & Colors",
+      description: "Visual style preferences",
+      required: false
+    }
+  ]
+};
+
+// ============================================================
+// CLARITY PLANNER CONFIG
+// ============================================================
+
+export const CLARITY_PLANNER: ProductConfig = {
+  id: "clarity_planner",
+  label: "Guided Clarity Planner",
+  productType: "planner",
+  primaryLifeArea: "self_discovery",
+  defaultTimeframe: "custom",
+  targetSessionMinutes: 20,
+  maxSessionMinutes: 30,
+  promptTemplateFile: "clarity_planner.txt",
+  pdfTemplateFile: "clarity_planner.html",
+  sections: [
+    {
+      id: "landscape",
+      title: "Understanding Your Landscape",
+      description: "Current situation overview",
+      targetLengthTokens: 400,
+      required: true
+    },
+    {
+      id: "emotional_terrain",
+      title: "Emotional Terrain",
+      description: "Feelings and emotional context",
+      targetLengthTokens: 350,
+      required: true
+    },
+    {
+      id: "values_desires",
+      title: "Values & Desires",
+      description: "What matters most and what you want",
+      targetLengthTokens: 400,
+      required: true
+    },
+    {
+      id: "obstacles_resources",
+      title: "Obstacles & Resources",
+      description: "What's in the way and what support exists",
+      targetLengthTokens: 400,
+      required: true
+    },
+    {
+      id: "clarity_synthesis",
+      title: "Your Path Forward",
+      description: "Key insights and actionable next steps",
+      targetLengthTokens: 500,
+      required: true
+    }
+  ]
+};
+
+// ============================================================
+// FLASH CARDS CONFIG
+// ============================================================
+
+export const FLASH_CARDS: ProductConfig = {
+  id: "flash_cards",
+  label: "Personalized Affirmation Flash Cards",
+  productType: "cards",
+  primaryLifeArea: "self_discovery",
+  defaultTimeframe: "custom",
+  targetSessionMinutes: 10,
+  maxSessionMinutes: 15,
+  promptTemplateFile: "flash_cards.txt",
+  sections: [
+    {
+      id: "theme",
+      title: "Card Theme",
+      description: "Central theme for the affirmations",
+      required: true
+    },
+    {
+      id: "affirmations",
+      title: "Affirmations",
+      description: "10 personalized affirmation cards",
+      required: true
+    },
+    {
+      id: "reflection_prompts",
+      title: "Reflection Prompts",
+      description: "5 daily reflection questions",
+      required: true
+    }
+  ]
+};
+
+// ============================================================
 // CONFIG REGISTRY
 // ============================================================
 
 export const PRODUCT_CONFIGS: Record<ProductId, ProductConfig> = {
   holiday_relationship_reset: HOLIDAY_RELATIONSHIP_RESET,
   new_year_reflection_reset: NEW_YEAR_REFLECTION_RESET,
-  santa_message: SANTA_MESSAGE
+  santa_message: SANTA_MESSAGE,
+  vision_board: VISION_BOARD,
+  clarity_planner: CLARITY_PLANNER,
+  flash_cards: FLASH_CARDS
 };
 
 export function getProductConfig(productId: ProductId): ProductConfig {

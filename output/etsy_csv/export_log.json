@@ -1,0 +1,8 @@
+{"timestamp":"2025-12-09T08:45:34.562Z","filePath":"output/etsy_csv/test_santa.csv","targetId":"shopuploader","productType":"santa_message","rowCount":5,"success":true}
+{"timestamp":"2025-12-09T10:33:01.560Z","filePath":"output/etsy_csv/test_vb_5.csv","targetId":"shopuploader","productType":"vision_board","rowCount":5,"success":true}
+{"timestamp":"2025-12-09T10:33:57.254Z","filePath":"output/etsy_csv/test_vb_3.csv","targetId":"shopuploader","productType":"vision_board","rowCount":3,"success":true}
+{"timestamp":"2025-12-09T10:35:46.075Z","filePath":"output/etsy_csv/vb_20_test.csv","targetId":"shopuploader","productType":"vision_board","rowCount":20,"success":true}
+{"timestamp":"2025-12-10T07:15:00.131Z","filePath":"output/etsy_csv/santa_100.csv","targetId":"shopuploader","productType":"santa_message","rowCount":100,"success":true}
+{"timestamp":"2025-12-10T07:15:06.838Z","filePath":"output/etsy_csv/vision_100.csv","targetId":"shopuploader","productType":"vision_board","rowCount":100,"success":true}
+{"timestamp":"2025-12-10T07:15:16.205Z","filePath":"output/etsy_csv/planner_100.csv","targetId":"shopuploader","productType":"planner","rowCount":100,"success":true}
+{"timestamp":"2025-12-10T07:15:16.646Z","filePath":"output/etsy_csv/flash_100.csv","targetId":"shopuploader","productType":"flash_cards","rowCount":100,"success":true}

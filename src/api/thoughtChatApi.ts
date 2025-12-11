@@ -52,8 +52,20 @@ import {
 // TYPES
 // ============================================================
 
+// Anthropic API Response types
+interface AnthropicContentBlock {
+  type: string;
+  text?: string;
+}
+
+interface AnthropicResponse {
+  content: AnthropicContentBlock[];
+  model?: string;
+  stop_reason?: string;
+}
+
 interface StartSessionRequest {
-  productId: 'santa_message' | 'holiday_reset' | 'new_year_reset';
+  productId: 'santa_message' | 'holiday_reset' | 'new_year_reset' | 'vision_board' | 'clarity_planner';
   token?: string; // Access token for santa_message product
   orderId?: string; // Etsy Order ID (required for production)
 }
@@ -303,6 +315,12 @@ router.post('/generate', async (req: Request, res: Response) => {
         break;
       case 'new_year_reset':
         result = await generateNewYearResetFromSession(session, orderId);
+        break;
+      case 'vision_board':
+        result = await generateVisionBoardFromSession(session, orderId);
+        break;
+      case 'clarity_planner':
+        result = await generateClarityPlannerFromSession(session, orderId);
         break;
       default:
         return res.status(400).json({
@@ -655,8 +673,8 @@ Write ONLY the script Santa will speak. No stage directions, no quotes, just the
     throw new Error(`Anthropic API error: ${response.status}`);
   }
 
-  const data = await response.json();
-  return data.content[0].text;
+  const data = await response.json() as AnthropicResponse;
+  return data.content[0].text || '';
 }
 
 async function generatePlannerFromChat(
@@ -734,8 +752,8 @@ Return as JSON: { "sections": [{ "id": "section_id", "title": "Section Title", "
     throw new Error(`Anthropic API error: ${response.status}`);
   }
 
-  const data = await response.json();
-  const text = data.content[0].text;
+  const data = await response.json() as AnthropicResponse;
+  const text = data.content[0].text || '';
 
   // Parse JSON response
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -746,7 +764,7 @@ Return as JSON: { "sections": [{ "id": "section_id", "title": "Section Title", "
   const parsed = JSON.parse(jsonMatch[0]);
 
   return {
-    productId,
+    productId: productId as any,
     title,
     generatedAt: new Date().toISOString(),
     sections: parsed.sections.map((s: any) => ({
@@ -755,8 +773,9 @@ Return as JSON: { "sections": [{ "id": "section_id", "title": "Section Title", "
       content: s.content
     })),
     meaningModel: {
+      productId: productId as any,
       keyLifeAreas: [],
-      timeframe: { label: productId === 'holiday_reset' ? 'Holiday Season' : '2025' },
+      timeframe: { id: 'custom' as const, label: productId === 'holiday_reset' ? 'Holiday Season' : '2025' },
       topGoals: [],
       majorTensions: [],
       coreThemes: [],
@@ -765,6 +784,202 @@ Return as JSON: { "sections": [{ "id": "section_id", "title": "Section Title", "
       emotionalWeather: input.feelingYouWant || input.whatPeaceLooksLike || 'Seeking clarity',
       opportunities: []
     }
+  };
+}
+
+async function generateVisionBoardFromSession(session: any, orderId?: string): Promise<{
+  imageUrl: string;
+  jobId?: string;
+}> {
+  const transcript = getConversationTranscript(session);
+
+  // Extract vision board parameters from conversation using Claude
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+
+  const extractionPrompt = `Based on this conversation, extract the key parameters for generating a vision board:
+
+<conversation_transcript>
+${transcript}
+</conversation_transcript>
+
+Return a JSON object with:
+{
+  "theme": "one word theme (e.g., 'abundance', 'clarity', 'growth')",
+  "goals": ["list of 3-5 specific goals"],
+  "aesthetic": "visual style preference (e.g., 'modern minimalist', 'warm earthy', 'bold vibrant')",
+  "colors": ["suggested color palette"],
+  "keywords": ["inspiring words/phrases to include"],
+  "seasonOfLife": "what season/phase they're in",
+  "coreDesire": "their deepest desire or intention"
+}`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      messages: [{ role: 'user', content: extractionPrompt }]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Anthropic API error: ${response.status}`);
+  }
+
+  const data = await response.json() as AnthropicResponse;
+  const text = data.content[0].text || '';
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+
+  if (!jsonMatch) {
+    throw new Error('Could not extract vision board parameters');
+  }
+
+  const visionParams = JSON.parse(jsonMatch[0]);
+
+  // Generate vision board using existing engine (placeholder for now - uses visionBoardEngineV12)
+  const outputDir = path.join(process.cwd(), 'outputs', 'visionboards');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const filenameBase = orderId || 'chat';
+  const filename = `vision-board-${filenameBase}-${Date.now()}.png`;
+  const filepath = path.join(outputDir, filename);
+
+  // For now, return placeholder - the actual vision board engine is already built
+  // This would call the visionBoardEngineV12 with the extracted parameters
+  console.log(`[ThoughtChat API] Vision board parameters extracted:`, visionParams);
+  console.log(`[ThoughtChat API] Would generate vision board to: ${filepath}`);
+
+  // Mark order as used
+  let jobId: string | undefined;
+  if (orderId) {
+    const usageRecord = markOrderIdUsed(orderId, 'vision_board', 'image', filename);
+    jobId = usageRecord.jobId;
+    console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
+  }
+
+  return {
+    imageUrl: `/outputs/visionboards/${filename}`,
+    jobId
+  };
+}
+
+async function generateClarityPlannerFromSession(session: any, orderId?: string): Promise<{
+  pdfUrl: string;
+  jobId?: string;
+}> {
+  const transcript = getConversationTranscript(session);
+
+  // Generate clarity planner content using conversation
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
+
+  const prompt = `You are creating a personalized Clarity Planner based on this substantive conversation:
+
+<conversation_transcript>
+${transcript}
+</conversation_transcript>
+
+Create a deeply personalized planner with these sections:
+1. "What You're Processing" - Reflect back their situation in their own words
+2. "The Heart of It" - What the core issue/desire really is
+3. "What You're Feeling" - The emotional landscape you observed
+4. "What You're Afraid Of" - The fears and concerns beneath the surface
+5. "What You Actually Want" - Their deepest hopes and desires
+6. "What's Getting in the Way" - The obstacles they've identified
+7. "The Wisdom You Already Have" - Insights they shared that they might not have noticed
+8. "Your Next Smallest Step" - One concrete action they can take
+9. "Reflection Prompts" - 5-7 personalized journaling questions
+10. "Permission Slip" - What they need to give themselves permission to do/feel/be
+
+Make each section deeply specific to THEIR situation. Use their exact words where powerful. This should feel like someone truly heard them.
+
+Return as JSON: { "sections": [{ "id": "section_id", "title": "Section Title", "content": "Content with markdown..." }] }`;
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01'
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 8000,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Anthropic API error: ${response.status}`);
+  }
+
+  const data = await response.json() as AnthropicResponse;
+  const text = data.content[0].text || '';
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error('No JSON found in response');
+  }
+
+  const parsed = JSON.parse(jsonMatch[0]);
+
+  const plannerOutput: PlannerOutput = {
+    productId: 'clarity_planner' as const,
+    title: 'Your Clarity Planner',
+    generatedAt: new Date().toISOString(),
+    sections: parsed.sections.map((s: any) => ({
+      id: s.id,
+      title: s.title,
+      content: s.content
+    })),
+    meaningModel: {
+      productId: 'clarity_planner' as const,
+      keyLifeAreas: [],
+      timeframe: { id: 'custom' as const, label: 'Your Journey' },
+      topGoals: [],
+      majorTensions: [],
+      coreThemes: [],
+      constraints: [],
+      distilledSummary: 'Generated from 30-minute reflection',
+      emotionalWeather: 'Seeking clarity',
+      opportunities: []
+    }
+  };
+
+  // Render to PDF
+  const outputDir = path.join(process.cwd(), 'outputs', 'planners');
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
+  }
+
+  const filenameBase = orderId || 'chat';
+  const filename = `clarity-planner-${filenameBase}-${Date.now()}.pdf`;
+  const filepath = path.join(outputDir, filename);
+
+  await renderPlannerToPDF(plannerOutput, filepath, {
+    orderId,
+    productId: 'clarity_planner'
+  });
+
+  // Mark order as used
+  let jobId: string | undefined;
+  if (orderId) {
+    const usageRecord = markOrderIdUsed(orderId, 'clarity_planner', 'pdf', filename);
+    jobId = usageRecord.jobId;
+    console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
+  }
+
+  return {
+    pdfUrl: `/outputs/planners/${filename}`,
+    jobId
   };
 }
 

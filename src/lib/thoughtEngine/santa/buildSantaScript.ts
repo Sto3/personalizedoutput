@@ -218,7 +218,7 @@ async function callLLMForSantaScript(
     throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   let script = data.content[0].text;
 
   // Clean up the script

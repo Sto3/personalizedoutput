@@ -376,6 +376,21 @@ app.get('/new-year-reset', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-newyear.html'));
 });
 
+// Vision Board form
+app.get('/vision-board', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-visionboard.html'));
+});
+
+// Generic Clarity Planner form
+app.get('/planner', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-planner.html'));
+});
+
+// Custom Flash Cards form
+app.get('/flash-cards', (req, res) => {
+  res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-flashcards.html'));
+});
+
 // ============================================================
 // API ROUTES
 // ============================================================

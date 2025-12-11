@@ -25,7 +25,7 @@ export interface OrderUsageRecord {
   productId: string;
   usedAt: string;
   jobId: string;
-  outputType: 'audio' | 'pdf' | 'both';
+  outputType: 'audio' | 'pdf' | 'image' | 'both';
   outputFilename?: string;
   metadata?: {
     customerEmail?: string;
@@ -215,7 +215,7 @@ export function hasOrderIdBeenUsed(orderId: string, productId: string): OrderUsa
 export function markOrderIdUsed(
   orderId: string,
   productId: string,
-  outputType: 'audio' | 'pdf' | 'both',
+  outputType: 'audio' | 'pdf' | 'image' | 'both',
   outputFilename?: string,
   metadata?: Record<string, unknown>
 ): OrderUsageRecord {

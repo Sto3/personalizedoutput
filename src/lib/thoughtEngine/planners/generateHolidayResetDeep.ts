@@ -40,15 +40,16 @@ export async function generateHolidayResetPlannerDeep(
     generatedAt: new Date().toISOString(),
     sections,
     meaningModel: {
-      keyLifeAreas: ['relationships', 'family', 'mental_health'],
-      timeframe: { label: 'Holiday Season', startDate: 'now', endDate: 'Jan 2' },
-      topGoals: [{ label: 'Navigate holidays with peace', importance: 5, lifeArea: 'relationships' }],
-      majorTensions: [{ description: input.coreTension.whatItLooksLike }],
+      productId: 'holiday_relationship_reset',
+      keyLifeAreas: ['relationship', 'family', 'health'] as any,
+      timeframe: { id: 'holiday_season' as const, label: 'Holiday Season', startDate: 'now', endDate: 'Jan 2' },
+      topGoals: [{ id: 'nav-peace', label: 'Navigate holidays with peace', importance: 5 as const, lifeArea: 'relationship' as const }],
+      majorTensions: [{ id: 'core-tension', lifeArea: 'family' as const, description: input.coreTension.whatItLooksLike }],
       coreThemes: [
-        { label: 'Family Dynamics', userWords: input.coreTension.withWhom },
-        { label: 'Self-Protection', userWords: input.whatPeaceLooksLike }
+        { id: 'theme-family', label: 'Family Dynamics', userWords: input.coreTension.withWhom },
+        { id: 'theme-self', label: 'Self-Protection', userWords: input.whatPeaceLooksLike }
       ],
-      constraints: input.constraints.map(c => ({ label: `${c.type}: ${c.description}` })),
+      constraints: input.constraints.map((c, i) => ({ id: `constraint-${i}`, label: `${c.type}: ${c.description}` })),
       distilledSummary: `Navigating ${RELATIONSHIP_CONTEXTS[input.primaryRelationship]} during the holidays, specifically ${HOLIDAY_CONTEXTS[input.holidayContext]}.`,
       emotionalWeather: input.coreTension.howItMakesYouFeel,
       opportunities: []
@@ -225,7 +226,7 @@ async function callLLMForPlannerSections(prompt: string): Promise<SectionOutput[
     throw new Error(`Anthropic API error: ${response.status} - ${errorText}`);
   }
 
-  const data = await response.json();
+  const data = await response.json() as any;
   const text = data.content[0].text;
 
   // Parse JSON response
