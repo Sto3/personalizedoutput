@@ -82,8 +82,123 @@ export const SANTA_VOICE = {
 // ElevenLabs models
 export const ELEVENLABS_MODELS = {
   TURBO_V2_5: 'eleven_turbo_v2_5',      // Fastest, good for most content
-  MULTILINGUAL_V2: 'eleven_multilingual_v2', // Best quality
+  MULTILINGUAL_V2: 'eleven_multilingual_v2', // Best quality, most natural
   FLASH_V2_5: 'eleven_flash_v2_5'       // Balanced speed/quality
+};
+
+/**
+ * Voice settings optimized for MAXIMUM NATURALNESS & HUMAN SOUND
+ *
+ * CRITICAL SETTINGS FOR HUMAN-SOUNDING VOICE:
+ * - stability: 0.25-0.35 = creates natural speech variation (NOT robotic)
+ * - similarity_boost: 0.70-0.80 = balances character with naturalness
+ * - style: 0.60-0.80 = adds emotional warmth and inflection
+ * - use_speaker_boost: true = improves clarity
+ *
+ * The KEY to sounding human is:
+ * 1. Lower stability (more variation like real speech)
+ * 2. Higher style (more emotional expression)
+ * 3. Using the multilingual_v2 model
+ * 4. SSML pauses in the text for breathing
+ */
+export const NATURAL_VOICE_SETTINGS = {
+  // For marketing/promotional content - energetic but warm
+  marketing: {
+    stability: 0.30,           // LOW = natural variation like real speech
+    similarity_boost: 0.75,    // Moderate = natural, not artificial
+    style: 0.65,               // HIGH = emotional warmth
+    use_speaker_boost: true
+  },
+  // For educational/lesson content - warm, friendly teacher
+  educational: {
+    stability: 0.28,           // LOW = conversational, not robotic
+    similarity_boost: 0.72,    // Natural character
+    style: 0.70,               // HIGH = warm, engaging teacher voice
+    use_speaker_boost: true
+  },
+  // For emotional storytelling - most expressive and human
+  emotional: {
+    stability: 0.25,           // VERY LOW = maximum natural variation
+    similarity_boost: 0.70,
+    style: 0.80,               // VERY HIGH = emotional, human feel
+    use_speaker_boost: true
+  },
+  // For personalized intros - warm, friendly, like talking to a friend
+  personalized: {
+    stability: 0.27,           // LOW = conversational
+    similarity_boost: 0.73,
+    style: 0.75,               // HIGH = warm, personal connection
+    use_speaker_boost: true
+  },
+  // NEW: Ultra-natural for demo intros - sounds like a real person
+  demo_intro: {
+    stability: 0.25,           // LOWEST = maximum naturalness
+    similarity_boost: 0.70,    // Natural character
+    style: 0.78,               // VERY HIGH = warm, human feel
+    use_speaker_boost: true
+  }
+};
+
+/**
+ * WARM CONVERSATIONAL VOICES - Best for human-sounding output
+ * These are specifically chosen for their natural, non-robotic qualities
+ */
+export const WARM_VOICES = {
+  // River - neutral, calm, conversational - MOST HUMAN SOUNDING
+  river: {
+    id: 'SAz9YHcvj6GT2YYXdXww',
+    name: 'River',
+    description: 'Calm, natural, gender-neutral voice. Most human-sounding.',
+    tone: 'calm-conversational',
+    bestFor: ['lessons', 'intros', 'educational']
+  },
+  // Will - young male, chill, conversational
+  will: {
+    id: 'bIHbv24MWmeRgasZH58o',
+    name: 'Will',
+    description: 'Young, chill, friendly male voice.',
+    tone: 'chill-friendly',
+    bestFor: ['kids_lessons', 'casual']
+  },
+  // Roger - classy, conversational male
+  roger: {
+    id: 'CwhRBWXzGAHq8TQ4Fs17',
+    name: 'Roger',
+    description: 'Easy-going, classy male voice for adult content.',
+    tone: 'warm-sophisticated',
+    bestFor: ['adult_lessons', 'professional']
+  },
+  // Matilda - upbeat, informative female
+  matilda: {
+    id: 'XrExE9yKIg1WjnnlVkGX',
+    name: 'Matilda',
+    description: 'Upbeat, warm female voice for educational content.',
+    tone: 'warm-educational',
+    bestFor: ['educational', 'kids']
+  },
+  // Chris - casual, conversational male
+  chris: {
+    id: 'iP95p4xoKVk53GoZ742B',
+    name: 'Chris',
+    description: 'Casual, friendly male voice.',
+    tone: 'casual-friendly',
+    bestFor: ['conversational', 'intros']
+  }
+};
+
+// Social media handles for CTA
+export const SOCIAL_HANDLES = {
+  tiktok: '@PersonalizedOutput',
+  instagram: '@PersonalizedOutput',
+  youtube: '@PersonalizedOutput',
+  default: '@PersonalizedOutput'
+};
+
+// CTA templates for video endings
+export const VIDEO_END_CTA = {
+  voiceover: 'Follow us for more at Personalized Output',
+  text: 'Follow @PersonalizedOutput for more',
+  textLong: 'Follow us @PersonalizedOutput'
 };
 
 // Get voice by product
