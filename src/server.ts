@@ -29,7 +29,7 @@ import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tok
 import { alertTrafficSpike, sendTestAlert, isAlertConfigured, sendDailySummary } from './lib/alerts/emailAlerts';
 
 // Import page renderers
-import { renderPremiumHomepage } from './pages/homepageV2';
+import { renderPremiumHomepageV3 } from './pages/homepageV3';
 import { renderLoginPage, renderSignupPage, renderForgotPasswordPage } from './pages/auth';
 import { renderDashboardPage, renderPricingPage } from './pages/dashboard';
 import { renderBlogListPage, renderBlogPostPage } from './pages/blog';
@@ -900,135 +900,11 @@ app.get('/admin/test-alert', async (req, res) => {
 });
 
 // ============================================================
-// BRANDED HOMEPAGE
+// BRANDED HOMEPAGE (Premium V3)
 // ============================================================
 
 app.get('/', (req, res) => {
-  res.send(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>personalizedoutput - Deeply Personalized Digital Experiences</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Lora', Georgia, serif;
-      background: linear-gradient(135deg, #fdfbf9 0%, #f5f0eb 100%);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px 20px;
-      color: #2c3e50;
-    }
-    .container {
-      max-width: 700px;
-      width: 100%;
-      text-align: center;
-    }
-    h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 2.8rem;
-      font-weight: 700;
-      color: #1a4d2e;
-      margin-bottom: 16px;
-      letter-spacing: -0.5px;
-    }
-    .tagline {
-      font-size: 1.2rem;
-      color: #5a6c7d;
-      margin-bottom: 50px;
-      line-height: 1.6;
-    }
-    .products {
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
-      margin-bottom: 60px;
-    }
-    .product-btn {
-      display: block;
-      padding: 22px 30px;
-      background: #fff;
-      border: 2px solid #e8e0d8;
-      border-radius: 12px;
-      text-decoration: none;
-      color: #2c3e50;
-      font-size: 1.15rem;
-      font-weight: 500;
-      transition: all 0.3s ease;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    }
-    .product-btn:hover {
-      border-color: #1a4d2e;
-      background: #1a4d2e;
-      color: #fff;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(26,77,46,0.15);
-    }
-    .product-btn.santa {
-      border-color: #c41e3a;
-    }
-    .product-btn.santa:hover {
-      background: #c41e3a;
-      border-color: #c41e3a;
-    }
-    .coming-soon {
-      background: #fff;
-      border-radius: 12px;
-      padding: 30px;
-      border: 1px dashed #d0c8c0;
-    }
-    .coming-soon h3 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.1rem;
-      color: #1a4d2e;
-      margin-bottom: 10px;
-    }
-    .coming-soon p {
-      font-size: 0.95rem;
-      color: #7a8a9a;
-      margin-bottom: 15px;
-    }
-    .coming-soon a {
-      color: #1a4d2e;
-      font-weight: 500;
-    }
-    .footer {
-      margin-top: auto;
-      padding-top: 40px;
-      font-size: 0.85rem;
-      color: #9aa5b1;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>personalizedoutput</h1>
-    <p class="tagline">Deeply personalized digital experiences — Santa messages, holiday resets, and New Year clarity sessions.</p>
-
-    <div class="products">
-      <a href="/santa" class="product-btn santa">Personalized Santa Message</a>
-      <a href="/holiday-reset" class="product-btn">Holiday Relationship Reset Planner</a>
-      <a href="/new-year-reset" class="product-btn">New Year Reset Planner</a>
-    </div>
-
-    <div class="coming-soon">
-      <h3>Coming Soon</h3>
-      <p>Join our email list for special launches and seasonal personalized experiences.</p>
-      <a href="/signup">Sign up for early access &rarr;</a>
-    </div>
-  </div>
-
-  <div class="footer">
-    &copy; ${new Date().getFullYear()} personalizedoutput
-  </div>
-</body>
-</html>
-  `);
+  res.send(renderPremiumHomepageV3());
 });
 
 // ============================================================
