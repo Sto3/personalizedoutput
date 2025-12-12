@@ -1,6 +1,7 @@
 /**
  * Video Generation Service
- * Creates marketing videos with ElevenLabs voiceovers and ffmpeg composition
+ * Creates marketing videos with ElevenLabs voiceovers, background music, and ffmpeg composition
+ * Supports both voiceover and silent demo formats with visual variety
  */
 
 import * as fs from 'fs';
@@ -15,35 +16,169 @@ const execAsync = promisify(exec);
 // Configuration
 const OUTPUT_DIR = path.join(process.cwd(), 'outputs', 'videos');
 const AUDIO_DIR = path.join(process.cwd(), 'outputs', 'audio');
+const MUSIC_DIR = path.join(process.cwd(), 'assets', 'music');
 const ASSETS_DIR = path.join(process.cwd(), 'assets', 'video');
 
 // Ensure directories exist
-[OUTPUT_DIR, AUDIO_DIR, ASSETS_DIR].forEach(dir => {
+[OUTPUT_DIR, AUDIO_DIR, MUSIC_DIR, ASSETS_DIR].forEach(dir => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 });
+
+// Visual style configurations for variety
+export const VISUAL_STYLES = {
+  gradient_warm: {
+    name: 'Warm Gradient',
+    colors: ['#e94560', '#ff6b6b', '#ffc93c'],
+    textColor: 'white',
+    accentColor: '#ffc93c'
+  },
+  gradient_cool: {
+    name: 'Cool Gradient',
+    colors: ['#667eea', '#764ba2', '#6B73FF'],
+    textColor: 'white',
+    accentColor: '#a8edea'
+  },
+  gradient_dark: {
+    name: 'Dark Premium',
+    colors: ['#1a1a2e', '#16213e', '#0f3460'],
+    textColor: 'white',
+    accentColor: '#e94560'
+  },
+  gradient_festive: {
+    name: 'Holiday Festive',
+    colors: ['#c41e3a', '#228b22', '#ffd700'],
+    textColor: 'white',
+    accentColor: '#ffd700'
+  },
+  gradient_ocean: {
+    name: 'Ocean Blue',
+    colors: ['#00c6ff', '#0072ff', '#005bea'],
+    textColor: 'white',
+    accentColor: '#00f260'
+  },
+  gradient_sunset: {
+    name: 'Sunset Glow',
+    colors: ['#f12711', '#f5af19', '#fc4a1a'],
+    textColor: 'white',
+    accentColor: '#f8b500'
+  },
+  gradient_purple: {
+    name: 'Purple Dream',
+    colors: ['#9d50bb', '#6e48aa', '#4776E6'],
+    textColor: 'white',
+    accentColor: '#ff9a9e'
+  },
+  gradient_minimal: {
+    name: 'Minimal Clean',
+    colors: ['#ffecd2', '#fcb69f', '#ffeaa7'],
+    textColor: '#2d3436',
+    accentColor: '#e17055'
+  }
+};
+
+// Text animation styles
+export const TEXT_STYLES = {
+  bold_center: { fontFile: 'Arial Bold', position: 'center', size: 42 },
+  elegant_top: { fontFile: 'Georgia Bold', position: 'top', size: 38 },
+  modern_bottom: { fontFile: 'Helvetica Bold', position: 'bottom', size: 40 },
+  dramatic_center: { fontFile: 'Impact', position: 'center', size: 48 }
+};
+
+// Video length presets
+export const VIDEO_LENGTHS = {
+  short: { target: 15, minDuration: 12, maxDuration: 20, wordsPerMinute: 180 },
+  medium: { target: 30, minDuration: 25, maxDuration: 40, wordsPerMinute: 150 },
+  long: { target: 60, minDuration: 50, maxDuration: 75, wordsPerMinute: 130 }
+};
 
 export interface VideoGenerationOptions {
   hook: MarketingHook;
   voice?: VoiceConfig;
   includeVoiceover: boolean;
   backgroundStyle: 'gradient' | 'product' | 'lifestyle';
+  visualStyle?: keyof typeof VISUAL_STYLES;
+  textStyle?: keyof typeof TEXT_STYLES;
+  videoLength?: keyof typeof VIDEO_LENGTHS;
   outputFormat: 'mp4' | 'mov';
   resolution: '1080x1920' | '1080x1080' | '1920x1080'; // Portrait, Square, Landscape
   includeCaptions: boolean;
   includeMusic: boolean;
+  musicVolume?: number; // 0-1, default 0.3 for voiceover, 0.6 for silent
 }
 
 export interface GeneratedVideo {
   id: string;
   path: string;
   audioPath?: string;
+  musicPath?: string;
   hook: MarketingHook;
   voice?: VoiceConfig;
   duration: number;
   resolution: string;
+  visualStyle: string;
+  videoType: 'voiceover' | 'silent';
   createdAt: Date;
+}
+
+// Royalty-free background music tracks (placeholder URLs - replace with actual tracks)
+export const BACKGROUND_MUSIC = {
+  uplifting: { name: 'Uplifting Corporate', mood: 'positive', bpm: 120 },
+  emotional: { name: 'Emotional Piano', mood: 'warm', bpm: 80 },
+  energetic: { name: 'Energetic Pop', mood: 'exciting', bpm: 140 },
+  festive: { name: 'Holiday Bells', mood: 'festive', bpm: 110 },
+  inspiring: { name: 'Inspiring Acoustic', mood: 'motivational', bpm: 100 },
+  calm: { name: 'Calm Ambient', mood: 'peaceful', bpm: 70 }
+};
+
+/**
+ * Select random visual style for variety
+ */
+export function getRandomVisualStyle(product: string): keyof typeof VISUAL_STYLES {
+  const styles = Object.keys(VISUAL_STYLES) as (keyof typeof VISUAL_STYLES)[];
+
+  // Prefer certain styles for certain products
+  const productPreferences: { [key: string]: (keyof typeof VISUAL_STYLES)[] } = {
+    santa: ['gradient_festive', 'gradient_warm', 'gradient_dark'],
+    vision_board: ['gradient_cool', 'gradient_purple', 'gradient_ocean', 'gradient_sunset'],
+    flash_cards: ['gradient_cool', 'gradient_minimal', 'gradient_ocean'],
+    clarity_planner: ['gradient_dark', 'gradient_cool', 'gradient_minimal'],
+    general: styles
+  };
+
+  const preferred = productPreferences[product] || styles;
+  return preferred[Math.floor(Math.random() * preferred.length)];
+}
+
+/**
+ * Select random text style for variety
+ */
+export function getRandomTextStyle(): keyof typeof TEXT_STYLES {
+  const styles = Object.keys(TEXT_STYLES) as (keyof typeof TEXT_STYLES)[];
+  return styles[Math.floor(Math.random() * styles.length)];
+}
+
+/**
+ * Get appropriate music mood for product/hook
+ */
+export function getMusicMoodForHook(hook: MarketingHook): keyof typeof BACKGROUND_MUSIC {
+  const toneToMood: { [key: string]: keyof typeof BACKGROUND_MUSIC } = {
+    warm: 'emotional',
+    excited: 'energetic',
+    curious: 'inspiring',
+    urgent: 'uplifting',
+    proud: 'uplifting',
+    hopeful: 'inspiring',
+    confident: 'energetic'
+  };
+
+  // Special case for Santa during holidays
+  if (hook.product === 'santa') {
+    return Math.random() > 0.5 ? 'festive' : 'emotional';
+  }
+
+  return toneToMood[hook.tone] || 'uplifting';
 }
 
 /**
@@ -104,19 +239,46 @@ async function getAudioDuration(audioPath: string): Promise<number> {
 }
 
 /**
- * Generate gradient background video
+ * Generate gradient background video with variety
  */
 async function generateGradientBackground(
   outputPath: string,
   duration: number,
   resolution: string,
-  colors: string[] = ['#e94560', '#1a1a2e', '#16213e']
+  visualStyle: keyof typeof VISUAL_STYLES = 'gradient_dark'
 ): Promise<void> {
   const [width, height] = resolution.split('x').map(Number);
+  const style = VISUAL_STYLES[visualStyle];
 
-  // Create animated gradient using ffmpeg
-  const ffmpegCmd = `ffmpeg -y -f lavfi -i "color=c=#1a1a2e:s=${width}x${height}:d=${duration}" \
-    -vf "geq=r='128+127*sin(2*PI*T/4+X/${width}*3.14)':g='50+50*sin(2*PI*T/4+Y/${height}*3.14)':b='96+96*sin(2*PI*T/4)'" \
+  // Parse colors to RGB for ffmpeg
+  const parseColor = (hex: string) => {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return { r, g, b };
+  };
+
+  const color1 = parseColor(style.colors[0]);
+  const color2 = parseColor(style.colors[1] || style.colors[0]);
+
+  // Create animated gradient with style-specific colors
+  // Different animation patterns for variety
+  const animationPatterns = [
+    // Horizontal wave
+    `geq=r='${color1.r}+${(color2.r - color1.r)}*sin(2*PI*T/5+X/${width}*3.14)*0.5+0.5':g='${color1.g}+${(color2.g - color1.g)}*sin(2*PI*T/5+X/${width}*3.14)*0.5+0.5':b='${color1.b}+${(color2.b - color1.b)}*sin(2*PI*T/5+X/${width}*3.14)*0.5+0.5'`,
+    // Vertical pulse
+    `geq=r='${color1.r}+${(color2.r - color1.r)/2}*sin(2*PI*T/4+Y/${height}*3.14)':g='${color1.g}+${(color2.g - color1.g)/2}*sin(2*PI*T/4+Y/${height}*3.14)':b='${color1.b}+${(color2.b - color1.b)/2}*sin(2*PI*T/4+Y/${height}*3.14)'`,
+    // Diagonal gradient
+    `geq=r='${color1.r}+${(color2.r - color1.r)/2}*sin(2*PI*T/6+(X+Y)/${Math.max(width, height)}*3.14)':g='${color1.g}+${(color2.g - color1.g)/2}*sin(2*PI*T/6+(X+Y)/${Math.max(width, height)}*3.14)':b='${color1.b}+${(color2.b - color1.b)/2}*sin(2*PI*T/6+(X+Y)/${Math.max(width, height)}*3.14)'`,
+    // Radial pulse
+    `geq=r='${color1.r}+${(color2.r - color1.r)/2}*sin(2*PI*T/4+hypot(X-${width/2},Y-${height/2})/${Math.min(width, height)}*6.28)':g='${color1.g}+${(color2.g - color1.g)/2}*sin(2*PI*T/4+hypot(X-${width/2},Y-${height/2})/${Math.min(width, height)}*6.28)':b='${color1.b}+${(color2.b - color1.b)/2}*sin(2*PI*T/4+hypot(X-${width/2},Y-${height/2})/${Math.min(width, height)}*6.28)'`
+  ];
+
+  // Randomly select animation pattern for variety
+  const pattern = animationPatterns[Math.floor(Math.random() * animationPatterns.length)];
+
+  const ffmpegCmd = `ffmpeg -y -f lavfi -i "color=c=${style.colors[0].replace('#', '0x')}:s=${width}x${height}:d=${duration}" \
+    -vf "${pattern}" \
     -t ${duration} -c:v libx264 -pix_fmt yuv420p "${outputPath}"`;
 
   await execAsync(ffmpegCmd);
@@ -186,181 +348,477 @@ async function combineAudioVideo(
 }
 
 /**
- * Create text overlay on video
+ * Create text overlay on video with style variety
  */
 async function addTextOverlay(
   inputVideo: string,
   outputVideo: string,
   mainText: string,
   ctaText: string,
-  duration: number
+  duration: number,
+  visualStyle: keyof typeof VISUAL_STYLES = 'gradient_dark',
+  textStyle: keyof typeof TEXT_STYLES = 'bold_center'
 ): Promise<void> {
+  const vStyle = VISUAL_STYLES[visualStyle];
+  const tStyle = TEXT_STYLES[textStyle];
+
   // Escape special characters for ffmpeg
   const escapeText = (t: string) => t.replace(/'/g, "'\\''").replace(/:/g, '\\:');
 
-  const mainEscaped = escapeText(mainText);
+  // Word wrap for long text (max ~6 words per line)
+  const wrapText = (text: string, maxWords: number = 6): string => {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    for (let i = 0; i < words.length; i += maxWords) {
+      lines.push(words.slice(i, i + maxWords).join(' '));
+    }
+    return lines.join('\\n');
+  };
+
+  const mainWrapped = wrapText(mainText);
+  const mainEscaped = escapeText(mainWrapped);
   const ctaEscaped = escapeText(ctaText);
 
-  // Calculate fade timing
-  const fadeInEnd = 0.5;
+  // Calculate timing
   const ctaStart = duration - 3;
 
+  // Position calculations based on text style
+  let mainY = 'h/2-th';
+  let ctaY = 'h/2+100';
+
+  if (tStyle.position === 'top') {
+    mainY = 'h/4';
+    ctaY = 'h*3/4';
+  } else if (tStyle.position === 'bottom') {
+    mainY = 'h*2/3-th';
+    ctaY = 'h*5/6';
+  }
+
+  // Font file paths (macOS)
+  const fontMap: { [key: string]: string } = {
+    'Arial Bold': '/System/Library/Fonts/Supplemental/Arial Bold.ttf',
+    'Georgia Bold': '/System/Library/Fonts/Supplemental/Georgia Bold.ttf',
+    'Helvetica Bold': '/System/Library/Fonts/Helvetica.ttc',
+    'Impact': '/System/Library/Fonts/Supplemental/Impact.ttf'
+  };
+  const fontFile = fontMap[tStyle.fontFile] || fontMap['Arial Bold'];
+
+  // Convert accent color to ffmpeg format
+  const accentHex = vStyle.accentColor.replace('#', '');
+  const textHex = vStyle.textColor === 'white' ? 'ffffff' : vStyle.textColor.replace('#', '');
+
   const ffmpegCmd = `ffmpeg -y -i "${inputVideo}" -vf "\
-drawtext=fontfile=/System/Library/Fonts/Supplemental/Arial Bold.ttf:text='${mainEscaped}':fontcolor=white:fontsize=42:x=(w-text_w)/2:y=h/2-th:enable='between(t,0,${ctaStart})',\
-drawtext=fontfile=/System/Library/Fonts/Supplemental/Arial Bold.ttf:text='${ctaEscaped}':fontcolor=#f8b500:fontsize=36:x=(w-text_w)/2:y=h/2+50:enable='between(t,${ctaStart},${duration})'\
+drawtext=fontfile='${fontFile}':text='${mainEscaped}':fontcolor=0x${textHex}:fontsize=${tStyle.size}:x=(w-text_w)/2:y=${mainY}:enable='between(t,0,${ctaStart})',\
+drawtext=fontfile='${fontFile}':text='${ctaEscaped}':fontcolor=0x${accentHex}:fontsize=${Math.round(tStyle.size * 0.85)}:x=(w-text_w)/2:y=${ctaY}:enable='between(t,${ctaStart},${duration})'\
 " -c:a copy "${outputVideo}"`;
 
   await execAsync(ffmpegCmd);
 }
 
 /**
- * Main video generation function
+ * Generate silent background music track using ffmpeg (synthesized)
+ * This is a placeholder - in production, use actual royalty-free music files
+ */
+async function generateBackgroundMusic(
+  outputPath: string,
+  duration: number,
+  mood: keyof typeof BACKGROUND_MUSIC
+): Promise<void> {
+  const music = BACKGROUND_MUSIC[mood];
+  // Generate a simple ambient tone as placeholder
+  // In production, this would select from pre-loaded royalty-free tracks
+  const freq = mood === 'festive' ? 440 : mood === 'energetic' ? 523 : 392;
+
+  const ffmpegCmd = `ffmpeg -y -f lavfi -i "sine=frequency=${freq}:duration=${duration}" \
+    -af "volume=0.1,lowpass=f=800,tremolo=f=2:d=0.3" \
+    -c:a aac -b:a 128k "${outputPath}"`;
+
+  await execAsync(ffmpegCmd);
+}
+
+/**
+ * Mix voiceover with background music
+ */
+async function mixAudioWithMusic(
+  voiceoverPath: string,
+  musicPath: string,
+  outputPath: string,
+  musicVolume: number = 0.3
+): Promise<void> {
+  // Mix voiceover (full volume) with background music (reduced volume)
+  const ffmpegCmd = `ffmpeg -y -i "${voiceoverPath}" -i "${musicPath}" \
+    -filter_complex "[1:a]volume=${musicVolume}[music];[0:a][music]amix=inputs=2:duration=first:dropout_transition=2" \
+    -c:a aac -b:a 192k "${outputPath}"`;
+
+  await execAsync(ffmpegCmd);
+}
+
+/**
+ * Main video generation function with full variety support
  */
 export async function generateMarketingVideo(options: VideoGenerationOptions): Promise<GeneratedVideo> {
-  const { hook, includeVoiceover, resolution, includeCaptions } = options;
+  const {
+    hook,
+    includeVoiceover,
+    resolution,
+    includeCaptions,
+    includeMusic,
+    musicVolume
+  } = options;
+
+  // Select visual and text styles for variety
+  const visualStyle = options.visualStyle || getRandomVisualStyle(hook.product);
+  const textStyle = options.textStyle || getRandomTextStyle();
   const voice = options.voice || getRandomNarratorVoice(hook.product);
 
-  const videoId = `${hook.id}_${Date.now()}`;
+  const videoType = includeVoiceover ? 'voiceover' : 'silent';
+  const videoId = `${hook.id}_${videoType}_${visualStyle}_${Date.now()}`;
   const tempVideoPath = path.join(OUTPUT_DIR, `${videoId}_temp.mp4`);
   const audioPath = path.join(AUDIO_DIR, `${videoId}.mp3`);
+  const musicPath = path.join(AUDIO_DIR, `${videoId}_music.aac`);
+  const mixedAudioPath = path.join(AUDIO_DIR, `${videoId}_mixed.aac`);
   const finalVideoPath = path.join(OUTPUT_DIR, `${videoId}.mp4`);
 
-  console.log(`\n[VIDEO] Generating marketing video: ${videoId}`);
+  console.log(`\n[VIDEO] ═══════════════════════════════════════════════`);
+  console.log(`[VIDEO] Generating: ${videoId}`);
+  console.log(`[VIDEO] Type: ${videoType.toUpperCase()}`);
+  console.log(`[VIDEO] Visual Style: ${VISUAL_STYLES[visualStyle].name}`);
   console.log(`[VIDEO] Hook: ${hook.hook.substring(0, 50)}...`);
   console.log(`[VIDEO] Resolution: ${resolution}`);
-  console.log(`[VIDEO] Voiceover: ${includeVoiceover ? voice.name : 'None'}`);
+  console.log(`[VIDEO] Voiceover: ${includeVoiceover ? voice.name : 'None (Silent Demo)'}`);
+  console.log(`[VIDEO] Music: ${includeMusic ? 'Yes' : 'No'}`);
 
   let duration: number;
   const fullScript = `${hook.hook} ${hook.cta}`;
 
-  // Step 1: Generate voiceover if needed
+  // Step 1: Determine duration and generate voiceover if needed
   if (includeVoiceover) {
     await generateVoiceover(fullScript, voice, audioPath);
     duration = await getAudioDuration(audioPath);
-    // Add padding
-    duration += 1.5;
+    duration += 1.5; // Add padding
   } else {
-    // Duration based on reading speed (~150 words/min for visual)
+    // For silent videos, use reading speed to determine duration
+    // Slightly faster for silent videos since text is on screen
     const wordCount = fullScript.split(' ').length;
-    duration = Math.max(5, (wordCount / 150) * 60 + 2);
+    duration = Math.max(8, (wordCount / 120) * 60 + 3);
   }
 
   console.log(`[VIDEO] Duration: ${duration.toFixed(1)}s`);
 
-  // Step 2: Generate background video
-  await generateGradientBackground(tempVideoPath, duration, resolution);
-  console.log(`[VIDEO] Background generated`);
+  // Step 2: Generate background video with selected visual style
+  await generateGradientBackground(tempVideoPath, duration, resolution, visualStyle);
+  console.log(`[VIDEO] ✓ Background generated (${VISUAL_STYLES[visualStyle].name})`);
 
-  // Step 3: Add text overlay
+  // Step 3: Add text overlay with selected text style
   const withTextPath = path.join(OUTPUT_DIR, `${videoId}_text.mp4`);
-  await addTextOverlay(tempVideoPath, withTextPath, hook.hook, hook.cta, duration);
-  console.log(`[VIDEO] Text overlay added`);
+  await addTextOverlay(tempVideoPath, withTextPath, hook.hook, hook.cta, duration, visualStyle, textStyle);
+  console.log(`[VIDEO] ✓ Text overlay added (${TEXT_STYLES[textStyle].position} position)`);
 
-  // Step 4: Combine with audio if voiceover
-  if (includeVoiceover) {
-    await combineAudioVideo(withTextPath, audioPath, finalVideoPath);
-    console.log(`[VIDEO] Audio combined`);
+  // Step 4: Handle audio - voiceover, music, or both
+  let finalAudioPath: string | undefined;
+
+  if (includeVoiceover && includeMusic) {
+    // Generate music and mix with voiceover
+    const musicMood = getMusicMoodForHook(hook);
+    await generateBackgroundMusic(musicPath, duration, musicMood);
+    await mixAudioWithMusic(audioPath, musicPath, mixedAudioPath, musicVolume || 0.25);
+    finalAudioPath = mixedAudioPath;
+    console.log(`[VIDEO] ✓ Audio mixed (voiceover + ${BACKGROUND_MUSIC[musicMood].name})`);
+  } else if (includeVoiceover) {
+    finalAudioPath = audioPath;
+    console.log(`[VIDEO] ✓ Voiceover ready`);
+  } else if (includeMusic) {
+    // Silent video with music only
+    const musicMood = getMusicMoodForHook(hook);
+    const silentMusicVolume = musicVolume || 0.6; // Louder music for silent videos
+    await generateBackgroundMusic(musicPath, duration, musicMood);
+    // Adjust volume for silent video
+    const adjustedMusicPath = path.join(AUDIO_DIR, `${videoId}_music_adjusted.aac`);
+    await execAsync(`ffmpeg -y -i "${musicPath}" -af "volume=${silentMusicVolume}" -c:a aac "${adjustedMusicPath}"`);
+    finalAudioPath = adjustedMusicPath;
+    console.log(`[VIDEO] ✓ Music track ready (${BACKGROUND_MUSIC[musicMood].name} @ ${silentMusicVolume * 100}% volume)`);
+  }
+
+  // Step 5: Combine video with audio
+  if (finalAudioPath) {
+    await combineAudioVideo(withTextPath, finalAudioPath, finalVideoPath);
+    console.log(`[VIDEO] ✓ Audio combined`);
   } else {
     fs.renameSync(withTextPath, finalVideoPath);
+    console.log(`[VIDEO] ✓ Silent video (no audio)`);
   }
 
   // Clean up temp files
-  if (fs.existsSync(tempVideoPath)) fs.unlinkSync(tempVideoPath);
-  if (fs.existsSync(withTextPath) && withTextPath !== finalVideoPath) {
-    try { fs.unlinkSync(withTextPath); } catch {}
-  }
+  const tempFiles = [tempVideoPath, withTextPath, musicPath, mixedAudioPath];
+  tempFiles.forEach(file => {
+    if (file && file !== finalVideoPath && fs.existsSync(file)) {
+      try { fs.unlinkSync(file); } catch {}
+    }
+  });
 
-  console.log(`[VIDEO] ✓ Complete: ${finalVideoPath}`);
+  console.log(`[VIDEO] ✓ Complete: ${path.basename(finalVideoPath)}`);
+  console.log(`[VIDEO] ═══════════════════════════════════════════════\n`);
 
   return {
     id: videoId,
     path: finalVideoPath,
     audioPath: includeVoiceover ? audioPath : undefined,
+    musicPath: includeMusic ? musicPath : undefined,
     hook,
     voice: includeVoiceover ? voice : undefined,
     duration,
     resolution,
+    visualStyle: VISUAL_STYLES[visualStyle].name,
+    videoType,
     createdAt: new Date()
   };
 }
 
 /**
- * Generate batch of marketing videos
+ * Options for batch video generation
+ */
+export interface BatchGenerationOptions {
+  product: MarketingHook['product'];
+  count: number;
+  includeVoiceover?: boolean; // true = voiceover videos, false = silent demos
+  includeMusic?: boolean;
+  resolutions?: VideoGenerationOptions['resolution'][];
+  generateBothFormats?: boolean; // If true, generates both voiceover AND silent versions
+}
+
+/**
+ * Generate batch of marketing videos with variety
  */
 export async function generateVideoBatch(
   product: MarketingHook['product'],
   count: number,
   includeVoiceover: boolean = true
 ): Promise<GeneratedVideo[]> {
+  return generateVideoBatchAdvanced({
+    product,
+    count,
+    includeVoiceover,
+    includeMusic: true,
+    generateBothFormats: false
+  });
+}
+
+/**
+ * Advanced batch generation with full variety options
+ */
+export async function generateVideoBatchAdvanced(
+  options: BatchGenerationOptions
+): Promise<GeneratedVideo[]> {
+  const {
+    product,
+    count,
+    includeVoiceover = true,
+    includeMusic = true,
+    resolutions = ['1080x1920'], // Default: Portrait for TikTok/Reels/Shorts
+    generateBothFormats = false
+  } = options;
+
   const hooks = getHooksByProduct(product);
   const selectedHooks = hooks.slice(0, Math.min(count, hooks.length));
 
-  console.log(`\n[BATCH] Generating ${selectedHooks.length} videos for ${product}`);
+  const totalVideos = generateBothFormats ? selectedHooks.length * 2 : selectedHooks.length;
+  console.log(`\n[BATCH] ════════════════════════════════════════════════════════`);
+  console.log(`[BATCH] Starting batch generation for: ${product.toUpperCase()}`);
+  console.log(`[BATCH] Hooks selected: ${selectedHooks.length}`);
+  console.log(`[BATCH] Generate both formats: ${generateBothFormats ? 'YES (voiceover + silent)' : 'NO'}`);
+  console.log(`[BATCH] Total videos to generate: ${totalVideos}`);
+  console.log(`[BATCH] ════════════════════════════════════════════════════════\n`);
 
   const results: GeneratedVideo[] = [];
+  let videoCount = 0;
 
   for (let i = 0; i < selectedHooks.length; i++) {
     const hook = selectedHooks[i];
-    console.log(`\n[BATCH] Progress: ${i + 1}/${selectedHooks.length}`);
 
-    try {
-      const video = await generateMarketingVideo({
-        hook,
-        includeVoiceover,
-        backgroundStyle: 'gradient',
-        outputFormat: 'mp4',
-        resolution: '1080x1920', // TikTok/Reels/Shorts format
-        includeCaptions: true,
-        includeMusic: false
-      });
-      results.push(video);
-    } catch (error) {
-      console.error(`[BATCH] Error generating video for hook ${hook.id}:`, error);
+    // Generate voiceover version
+    if (includeVoiceover || generateBothFormats) {
+      videoCount++;
+      console.log(`\n[BATCH] Progress: ${videoCount}/${totalVideos} (Voiceover)`);
+
+      try {
+        const video = await generateMarketingVideo({
+          hook,
+          includeVoiceover: true,
+          backgroundStyle: 'gradient',
+          outputFormat: 'mp4',
+          resolution: resolutions[Math.floor(Math.random() * resolutions.length)],
+          includeCaptions: true,
+          includeMusic
+        });
+        results.push(video);
+      } catch (error) {
+        console.error(`[BATCH] Error generating voiceover video for hook ${hook.id}:`, error);
+      }
+
+      // Rate limiting delay for ElevenLabs
+      if (videoCount < totalVideos) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
     }
 
-    // Small delay between videos to avoid rate limiting
-    if (includeVoiceover && i < selectedHooks.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+    // Generate silent version
+    if (!includeVoiceover || generateBothFormats) {
+      videoCount++;
+      console.log(`\n[BATCH] Progress: ${videoCount}/${totalVideos} (Silent Demo)`);
+
+      try {
+        const video = await generateMarketingVideo({
+          hook,
+          includeVoiceover: false,
+          backgroundStyle: 'gradient',
+          outputFormat: 'mp4',
+          resolution: resolutions[Math.floor(Math.random() * resolutions.length)],
+          includeCaptions: true,
+          includeMusic // Silent demos with music are great for scroll-without-sound
+        });
+        results.push(video);
+      } catch (error) {
+        console.error(`[BATCH] Error generating silent video for hook ${hook.id}:`, error);
+      }
     }
   }
 
-  console.log(`\n[BATCH] ✓ Complete: ${results.length}/${selectedHooks.length} videos generated`);
+  // Summary
+  console.log(`\n[BATCH] ════════════════════════════════════════════════════════`);
+  console.log(`[BATCH] ✓ BATCH COMPLETE`);
+  console.log(`[BATCH] Videos generated: ${results.length}/${totalVideos}`);
+
+  const voiceoverCount = results.filter(v => v.videoType === 'voiceover').length;
+  const silentCount = results.filter(v => v.videoType === 'silent').length;
+  console.log(`[BATCH] - Voiceover videos: ${voiceoverCount}`);
+  console.log(`[BATCH] - Silent demos: ${silentCount}`);
+  console.log(`[BATCH] Output directory: ${OUTPUT_DIR}`);
+  console.log(`[BATCH] ════════════════════════════════════════════════════════\n`);
+
   return results;
 }
 
 /**
+ * Full library generation options
+ */
+export interface FullLibraryOptions {
+  generateBothFormats?: boolean; // Generate both voiceover AND silent for each hook
+  includeMusic?: boolean;
+  productsToGenerate?: MarketingHook['product'][];
+  hooksPerProduct?: number; // Limit hooks per product (default: all)
+}
+
+/**
  * Generate ALL marketing videos (full library)
+ * This is the main automation command - generates 80+ unique videos
  */
 export async function generateFullVideoLibrary(
-  includeVoiceover: boolean = true
+  options: FullLibraryOptions = {}
 ): Promise<{ [product: string]: GeneratedVideo[] }> {
-  const products: MarketingHook['product'][] = ['santa', 'vision_board', 'flash_cards', 'clarity_planner', 'general'];
+  const {
+    generateBothFormats = true, // Default: generate BOTH voiceover and silent
+    includeMusic = true,
+    productsToGenerate = ['santa', 'vision_board', 'flash_cards', 'clarity_planner', 'general'],
+    hooksPerProduct = 100
+  } = options;
+
   const results: { [product: string]: GeneratedVideo[] } = {};
 
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log('  FULL VIDEO LIBRARY GENERATION');
-  console.log('═══════════════════════════════════════════════════════════════\n');
+  // Count total expected videos
+  let totalHooks = 0;
+  for (const product of productsToGenerate) {
+    const hooks = getHooksByProduct(product);
+    totalHooks += Math.min(hooks.length, hooksPerProduct);
+  }
+  const expectedVideos = generateBothFormats ? totalHooks * 2 : totalHooks;
 
-  for (const product of products) {
-    console.log(`\n▶ Generating ${product} videos...`);
-    results[product] = await generateVideoBatch(product, 100, includeVoiceover);
+  console.log('\n');
+  console.log('╔═══════════════════════════════════════════════════════════════════════╗');
+  console.log('║          FULL VIDEO LIBRARY GENERATION - AUTOMATED PIPELINE          ║');
+  console.log('╠═══════════════════════════════════════════════════════════════════════╣');
+  console.log(`║  Products: ${productsToGenerate.join(', ').padEnd(53)}║`);
+  console.log(`║  Hooks per product: ${hooksPerProduct.toString().padEnd(45)}║`);
+  console.log(`║  Total hooks: ${totalHooks.toString().padEnd(51)}║`);
+  console.log(`║  Generate both formats: ${generateBothFormats ? 'YES' : 'NO'.padEnd(40)}║`);
+  console.log(`║  Expected videos: ${expectedVideos.toString().padEnd(46)}║`);
+  console.log(`║  Background music: ${includeMusic ? 'YES' : 'NO'.padEnd(43)}║`);
+  console.log('╚═══════════════════════════════════════════════════════════════════════╝');
+  console.log('\n');
+
+  const startTime = Date.now();
+
+  for (const product of productsToGenerate) {
+    console.log(`\n▶ Generating ${product.toUpperCase()} videos...`);
+
+    results[product] = await generateVideoBatchAdvanced({
+      product,
+      count: hooksPerProduct,
+      includeVoiceover: true,
+      includeMusic,
+      generateBothFormats
+    });
   }
 
-  // Summary
-  console.log('\n═══════════════════════════════════════════════════════════════');
-  console.log('  GENERATION COMPLETE');
-  console.log('═══════════════════════════════════════════════════════════════\n');
+  const endTime = Date.now();
+  const durationMins = ((endTime - startTime) / 1000 / 60).toFixed(1);
+
+  // Final summary
+  console.log('\n');
+  console.log('╔═══════════════════════════════════════════════════════════════════════╗');
+  console.log('║                    GENERATION COMPLETE                                ║');
+  console.log('╠═══════════════════════════════════════════════════════════════════════╣');
 
   let total = 0;
+  let totalVoiceover = 0;
+  let totalSilent = 0;
+
   for (const [product, videos] of Object.entries(results)) {
-    console.log(`  ${product}: ${videos.length} videos`);
+    const voiceover = videos.filter(v => v.videoType === 'voiceover').length;
+    const silent = videos.filter(v => v.videoType === 'silent').length;
+    console.log(`║  ${product.padEnd(20)} ${videos.length} videos (${voiceover} voiceover, ${silent} silent)`.padEnd(71) + '║');
     total += videos.length;
+    totalVoiceover += voiceover;
+    totalSilent += silent;
   }
-  console.log(`\n  TOTAL: ${total} videos`);
-  console.log(`  Output directory: ${OUTPUT_DIR}`);
+
+  console.log('╠═══════════════════════════════════════════════════════════════════════╣');
+  console.log(`║  TOTAL: ${total} videos`.padEnd(71) + '║');
+  console.log(`║  - Voiceover videos: ${totalVoiceover}`.padEnd(71) + '║');
+  console.log(`║  - Silent demos: ${totalSilent}`.padEnd(71) + '║');
+  console.log(`║  Duration: ${durationMins} minutes`.padEnd(71) + '║');
+  console.log(`║  Output: ${OUTPUT_DIR}`.padEnd(71) + '║');
+  console.log('╚═══════════════════════════════════════════════════════════════════════╝');
+  console.log('\n');
+
+  // Generate manifest file for tracking
+  const manifest = {
+    generatedAt: new Date().toISOString(),
+    totalVideos: total,
+    voiceoverCount: totalVoiceover,
+    silentCount: totalSilent,
+    durationMinutes: parseFloat(durationMins),
+    products: Object.fromEntries(
+      Object.entries(results).map(([product, videos]) => [
+        product,
+        videos.map(v => ({
+          id: v.id,
+          path: v.path,
+          type: v.videoType,
+          style: v.visualStyle,
+          duration: v.duration,
+          hook: v.hook.hook.substring(0, 50) + '...'
+        }))
+      ])
+    )
+  };
+
+  const manifestPath = path.join(OUTPUT_DIR, 'video_manifest.json');
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+  console.log(`[MANIFEST] Saved to: ${manifestPath}\n`);
 
   return results;
 }
 
-// Export for CLI usage
-export { MARKETING_HOOKS, NARRATOR_VOICES };
+// Re-export from dependencies for CLI usage
+export { MARKETING_HOOKS } from './marketingHooks';
+export { NARRATOR_VOICES } from './voiceConfig';

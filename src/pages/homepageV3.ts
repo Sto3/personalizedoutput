@@ -1062,7 +1062,7 @@ export function renderPremiumHomepageV3(): string {
               Santa Messages - Limited Time
             </div>
             <h1>Create Gifts That <span class="highlight">Really Know</span> Your People</h1>
-            <p>AI-powered personalization that mentions specific moments, achievements, and details about your loved ones. Not generic. Impossibly personal.</p>
+            <p>Powered by Thought Organizer™ AI — our personalization technology that mentions specific moments, achievements, and details about your loved ones. Not generic. Impossibly personal.</p>
             <div class="hero-buttons">
               <a href="/santa" class="btn btn-primary">
                 🎅 Create Santa Message — $19
@@ -1264,7 +1264,7 @@ export function renderPremiumHomepageV3(): string {
         <div class="footer-inner">
           <div class="footer-brand">
             <a href="/" class="logo">personalized<span>output</span></a>
-            <p>Create deeply personalized digital experiences that make people say "How did it know that about me?"</p>
+            <p>Powered by Thought Organizer™ AI — creating deeply personalized digital experiences that make people say "How did it know that about me?"</p>
           </div>
           <div class="footer-section">
             <h4>Products</h4>
@@ -1293,7 +1293,7 @@ export function renderPremiumHomepageV3(): string {
           </div>
         </div>
         <div class="footer-bottom">
-          <div>© ${new Date().getFullYear()} Personalized Output. All rights reserved.</div>
+          <div>© ${new Date().getFullYear()} Personalized Output. Thought Organizer™ is a trademark of Personalized Output LLC. All rights reserved.</div>
           <div class="footer-social">
             <a href="#">📸</a>
             <a href="#">🎵</a>

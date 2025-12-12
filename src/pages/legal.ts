@@ -450,6 +450,7 @@ export function renderCopyrightPage(): string {
           <h3>Trademarks</h3>
           <ul>
             <li>"Personalized Output" name and logo</li>
+            <li>"Thought Organizer™" AI methodology and system</li>
             <li>"Deep Personalization" methodology</li>
             <li>Product names and branding</li>
           </ul>
