@@ -21,10 +21,14 @@ const BLOG_FILE = path.join(process.cwd(), 'data', 'blog_posts.json');
 
 /**
  * Get all published blog posts
+ * Falls back to file-based posts if Supabase returns empty or errors
  */
 export async function getPublishedPosts(): Promise<BlogPost[]> {
+  // Always try file-based posts first (includes default posts)
+  const filePosts = getPostsFromFile().filter(p => p.published);
+
   if (!isSupabaseServiceConfigured()) {
-    return getPostsFromFile().filter(p => p.published);
+    return filePosts;
   }
 
   const supabase = getSupabaseServiceClient();
@@ -37,19 +41,29 @@ export async function getPublishedPosts(): Promise<BlogPost[]> {
 
   if (error) {
     console.error('[Blog] Error fetching posts:', error);
-    return [];
+    // Fall back to file-based posts on error
+    return filePosts;
   }
 
-  return data as BlogPost[];
+  // If Supabase has posts, use them; otherwise fall back to file-based
+  if (data && data.length > 0) {
+    return data as BlogPost[];
+  }
+
+  return filePosts;
 }
 
 /**
  * Get a single blog post by slug
+ * Falls back to file-based posts if not found in Supabase
  */
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
+  // Always try file-based posts first for fallback
+  const filePosts = getPostsFromFile();
+  const filePost = filePosts.find(p => p.slug === slug && p.published) || null;
+
   if (!isSupabaseServiceConfigured()) {
-    const posts = getPostsFromFile();
-    return posts.find(p => p.slug === slug && p.published) || null;
+    return filePost;
   }
 
   const supabase = getSupabaseServiceClient();
@@ -61,8 +75,9 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
     .eq('published', true)
     .single();
 
-  if (error) {
-    return null;
+  if (error || !data) {
+    // Fall back to file-based post
+    return filePost;
   }
 
   return data as BlogPost;
