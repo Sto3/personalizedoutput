@@ -29,9 +29,9 @@ export function renderBlogListPage(posts: BlogPost[]): string {
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
           font-family: 'Inter', -apple-system, sans-serif;
-          background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+          background: #f8fafc;
           min-height: 100vh;
-          color: #fff;
+          color: #0f172a;
         }
         .container {
           max-width: 1000px;
@@ -43,17 +43,17 @@ export function renderBlogListPage(posts: BlogPost[]): string {
         }
         .back-link {
           display: inline-block;
-          color: rgba(255,255,255,0.6);
+          color: #64748b;
           text-decoration: none;
           margin-bottom: 24px;
         }
-        .back-link:hover { color: #fff; }
+        .back-link:hover { color: #0f172a; }
         h1 {
           font-size: 2.5rem;
           margin-bottom: 12px;
         }
         .tagline {
-          color: rgba(255,255,255,0.7);
+          color: #64748b;
           font-size: 1.125rem;
         }
         .posts-grid {
@@ -62,17 +62,18 @@ export function renderBlogListPage(posts: BlogPost[]): string {
           gap: 24px;
         }
         .post-card {
-          background: rgba(255,255,255,0.1);
-          backdrop-filter: blur(10px);
+          background: #ffffff;
           border-radius: 16px;
           overflow: hidden;
-          transition: transform 0.2s;
+          transition: transform 0.2s, box-shadow 0.2s;
           text-decoration: none;
           color: inherit;
           display: block;
+          box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 2px 4px rgba(0,0,0,0.1);
         }
         .post-card:hover {
           transform: translateY(-4px);
+          box-shadow: 0 10px 15px rgba(0,0,0,0.08), 0 4px 6px rgba(0,0,0,0.1);
         }
         .post-image {
           height: 180px;
@@ -87,7 +88,7 @@ export function renderBlogListPage(posts: BlogPost[]): string {
         }
         .post-date {
           font-size: 0.75rem;
-          color: rgba(255,255,255,0.5);
+          color: #94a3b8;
           margin-bottom: 8px;
         }
         .post-title {
@@ -95,10 +96,11 @@ export function renderBlogListPage(posts: BlogPost[]): string {
           font-weight: 600;
           margin-bottom: 12px;
           line-height: 1.3;
+          color: #0f172a;
         }
         .post-excerpt {
           font-size: 0.875rem;
-          color: rgba(255,255,255,0.7);
+          color: #475569;
           line-height: 1.6;
         }
         .tags {
@@ -110,9 +112,9 @@ export function renderBlogListPage(posts: BlogPost[]): string {
         .tag {
           font-size: 0.75rem;
           padding: 4px 10px;
-          background: rgba(255,255,255,0.1);
+          background: rgba(233, 69, 96, 0.1);
           border-radius: 12px;
-          color: rgba(255,255,255,0.7);
+          color: #e94560;
         }
       </style>
     </head>
