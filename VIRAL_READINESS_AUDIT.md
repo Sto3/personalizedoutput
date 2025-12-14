@@ -14,8 +14,8 @@
 | **Ideogram** | Pay-as-you-go | Varies | ~$0.02/image | YES |
 | **Render** | Free | 750 hrs/mo | Free | UPGRADE NEEDED |
 | **Stripe** | Standard | Unlimited | 2.9% + $0.30 | YES |
-| **Supabase** | Free | 500MB DB | Free | UPGRADE NEEDED |
-| **Resend** | Not configured | - | - | SETUP NEEDED |
+| **Supabase** | Pro ($10/mo) | 8GB DB | $10/mo | YES |
+| **Resend** | Free | 100 emails/day | Free | YES |
 
 ---
 

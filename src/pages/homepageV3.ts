@@ -219,6 +219,26 @@ export function renderPremiumHomepageV3(): string {
           0%, 100% { box-shadow: var(--shadow-glow-primary); }
           50% { box-shadow: 0 0 60px rgba(233, 69, 96, 0.5), 0 0 100px rgba(233, 69, 96, 0.3); }
         }
+        @keyframes iconBounce {
+          0%, 100% { transform: translateY(0) scale(1); }
+          50% { transform: translateY(-4px) scale(1.1); }
+        }
+        @keyframes buttonShimmer {
+          0% { left: -100%; }
+          100% { left: 100%; }
+        }
+        @keyframes gradientRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes staggerFade {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes heroLoad {
+          from { opacity: 0; transform: translateY(40px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
         .fade-in {
           opacity: 0;
           animation: fadeInUp 0.8s ease forwards;
@@ -227,6 +247,17 @@ export function renderPremiumHomepageV3(): string {
         .fade-in-delay-2 { animation-delay: 0.2s; }
         .fade-in-delay-3 { animation-delay: 0.3s; }
         .fade-in-delay-4 { animation-delay: 0.4s; }
+
+        /* Page load animations */
+        .hero-content {
+          animation: heroLoad 1s ease-out 0.2s both;
+        }
+        .hero-visual {
+          animation: heroLoad 1s ease-out 0.4s both;
+        }
+        .hero-badge {
+          animation: heroLoad 0.8s ease-out 0.1s both;
+        }
 
         /* Scroll-triggered animations */
         .reveal {
@@ -332,8 +363,126 @@ export function renderPremiumHomepageV3(): string {
           background: none;
           border: none;
           color: var(--text-primary);
-          font-size: 1.5rem;
           cursor: pointer;
+          padding: 8px;
+          flex-direction: column;
+          gap: 5px;
+          z-index: 1001;
+        }
+        .hamburger-line {
+          display: block;
+          width: 24px;
+          height: 2px;
+          background: var(--text-primary);
+          border-radius: 2px;
+          transition: all 0.3s ease;
+        }
+        .mobile-menu-btn.active .hamburger-line:nth-child(1) {
+          transform: rotate(45deg) translate(5px, 5px);
+        }
+        .mobile-menu-btn.active .hamburger-line:nth-child(2) {
+          opacity: 0;
+        }
+        .mobile-menu-btn.active .hamburger-line:nth-child(3) {
+          transform: rotate(-45deg) translate(5px, -5px);
+        }
+
+        /* Mobile Menu Overlay & Drawer */
+        .mobile-menu-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.7);
+          backdrop-filter: blur(4px);
+          -webkit-backdrop-filter: blur(4px);
+          z-index: 998;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
+        }
+        .mobile-menu-overlay.active {
+          opacity: 1;
+          visibility: visible;
+        }
+        .mobile-menu {
+          position: fixed;
+          top: 0;
+          right: 0;
+          width: 280px;
+          max-width: 85vw;
+          height: 100vh;
+          background: var(--dark-surface);
+          border-left: 1px solid var(--glass-border);
+          z-index: 999;
+          transform: translateX(100%);
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+          flex-direction: column;
+          box-shadow: -20px 0 40px rgba(0, 0, 0, 0.5);
+        }
+        .mobile-menu.active {
+          transform: translateX(0);
+        }
+        .mobile-menu-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 20px 24px;
+          border-bottom: 1px solid var(--glass-border);
+        }
+        .mobile-close-btn {
+          background: none;
+          border: none;
+          color: var(--text-primary);
+          font-size: 2rem;
+          cursor: pointer;
+          padding: 4px;
+          line-height: 1;
+          transition: color 0.2s ease;
+        }
+        .mobile-close-btn:hover {
+          color: var(--primary);
+        }
+        .mobile-menu-links {
+          display: flex;
+          flex-direction: column;
+          padding: 24px;
+          gap: 8px;
+          flex: 1;
+        }
+        .mobile-link {
+          color: var(--text-secondary);
+          text-decoration: none;
+          font-size: 1.1rem;
+          font-weight: 500;
+          padding: 14px 16px;
+          border-radius: 12px;
+          transition: all 0.2s ease;
+        }
+        .mobile-link:hover {
+          color: var(--text-primary);
+          background: var(--glass-bg);
+        }
+        .mobile-cta {
+          margin-top: 16px;
+          padding: 16px 24px;
+          background: var(--gradient-primary);
+          color: white;
+          border-radius: 12px;
+          text-decoration: none;
+          font-weight: 600;
+          text-align: center;
+          transition: all 0.3s ease;
+          box-shadow: 0 4px 15px rgba(233, 69, 96, 0.3);
+        }
+        .mobile-cta:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 25px rgba(233, 69, 96, 0.4);
+        }
+        body.menu-open {
+          overflow: hidden;
         }
 
         /* Hero Section */
@@ -432,17 +581,22 @@ export function renderPremiumHomepageV3(): string {
         .btn-primary::before {
           content: '';
           position: absolute;
-          inset: 0;
-          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
-          transform: translateX(-100%);
-          transition: transform 0.6s ease;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+          transition: none;
         }
         .btn-primary:hover {
           transform: translateY(-3px) scale(1.02);
           box-shadow: var(--shadow-lg), var(--shadow-glow-primary);
         }
         .btn-primary:hover::before {
-          transform: translateX(100%);
+          animation: buttonShimmer 0.6s ease-out;
+        }
+        .btn-primary:active {
+          transform: translateY(-1px) scale(0.99);
         }
         .btn-secondary {
           background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
@@ -468,54 +622,114 @@ export function renderPremiumHomepageV3(): string {
           box-shadow: 0 12px 40px rgba(248, 181, 0, 0.45);
         }
 
-        /* Hero Video/Visual */
+        /* Hero Visual - Demo Preview Card */
         .hero-visual {
           position: relative;
         }
-        .hero-video-container {
-          position: relative;
+        .demo-preview-card {
+          background: linear-gradient(135deg, rgba(26, 26, 36, 0.95) 0%, rgba(26, 26, 36, 0.85) 100%);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
           border-radius: 24px;
+          border: 1px solid rgba(255,255,255,0.12);
           overflow: hidden;
-          background: var(--dark-card);
-          border: 1px solid var(--glass-border);
-          aspect-ratio: 9/16;
-          max-height: 600px;
-          box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+          box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 60px rgba(233, 69, 96, 0.15);
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .hero-video-placeholder {
-          width: 100%;
-          height: 100%;
+        .demo-preview-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 50px 100px rgba(0,0,0,0.6), 0 0 80px rgba(233, 69, 96, 0.25);
+        }
+        .demo-card-header {
           display: flex;
-          flex-direction: column;
+          justify-content: space-between;
           align-items: center;
-          justify-content: center;
-          background: linear-gradient(180deg, var(--dark-card) 0%, var(--dark-elevated) 100%);
-          padding: 40px;
+          padding: 16px 20px;
+          background: rgba(0,0,0,0.2);
+          border-bottom: 1px solid var(--glass-border);
+        }
+        .demo-card-badge {
+          background: var(--gradient-primary);
+          padding: 4px 12px;
+          border-radius: 100px;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.05em;
+        }
+        .demo-duration {
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        }
+        .demo-card-content {
+          padding: 40px 32px;
           text-align: center;
         }
-        .hero-video-placeholder .play-icon {
-          width: 80px;
-          height: 80px;
+        .demo-emoji {
+          font-size: 4rem;
+          margin-bottom: 20px;
+          animation: float 3s ease-in-out infinite;
+        }
+        .demo-title {
+          font-size: 1.5rem;
+          font-weight: 700;
+          margin-bottom: 12px;
+        }
+        .demo-subtitle {
+          color: var(--text-secondary);
+          font-size: 0.95rem;
+          margin-bottom: 28px;
+          line-height: 1.6;
+        }
+        .demo-play-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 12px;
+          padding: 16px 32px;
           background: var(--gradient-primary);
+          color: white;
+          border-radius: 100px;
+          text-decoration: none;
+          font-weight: 600;
+          transition: all 0.3s ease;
+          box-shadow: 0 8px 24px rgba(233, 69, 96, 0.4);
+        }
+        .demo-play-btn:hover {
+          transform: scale(1.05);
+          box-shadow: 0 12px 32px rgba(233, 69, 96, 0.5);
+        }
+        .play-circle {
+          width: 32px;
+          height: 32px;
+          background: rgba(255,255,255,0.2);
           border-radius: 50%;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 2rem;
-          margin-bottom: 24px;
-          cursor: pointer;
+          font-size: 0.8rem;
+        }
+        .demo-card-footer {
+          padding: 20px 24px;
+          background: rgba(74, 222, 128, 0.1);
+          border-top: 1px solid rgba(74, 222, 128, 0.2);
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 4px;
+        }
+        .demo-result {
+          color: #4ade80;
+          font-weight: 600;
+          font-size: 1rem;
+        }
+        .demo-author {
+          color: var(--text-muted);
+          font-size: 0.85rem;
+        }
+        .btn-arrow {
           transition: transform 0.3s ease;
         }
-        .hero-video-placeholder .play-icon:hover {
-          transform: scale(1.1);
-        }
-        .hero-video-placeholder h3 {
-          font-size: 1.25rem;
-          margin-bottom: 8px;
-        }
-        .hero-video-placeholder p {
-          color: var(--text-muted);
-          font-size: 0.9rem;
+        .btn-primary:hover .btn-arrow {
+          transform: translateX(4px);
         }
         .floating-card {
           position: absolute;
@@ -634,6 +848,20 @@ export function renderPremiumHomepageV3(): string {
           position: relative;
           box-shadow: var(--shadow-md);
         }
+        .product-card::before {
+          content: '';
+          position: absolute;
+          inset: -2px;
+          border-radius: 26px;
+          background: conic-gradient(from 0deg, transparent 0%, rgba(233, 69, 96, 0.5) 25%, rgba(248, 181, 0, 0.5) 50%, rgba(233, 69, 96, 0.5) 75%, transparent 100%);
+          opacity: 0;
+          transition: opacity 0.5s ease;
+          z-index: -1;
+        }
+        .product-card:hover::before {
+          opacity: 1;
+          animation: gradientRotate 3s linear infinite;
+        }
         .product-card::after {
           content: '';
           position: absolute;
@@ -693,6 +921,10 @@ export function renderPremiumHomepageV3(): string {
           align-items: center;
           justify-content: center;
           font-size: 2.5rem;
+          transition: transform 0.3s ease;
+        }
+        .product-card:hover .product-icon {
+          animation: iconBounce 0.6s ease;
         }
         .product-content {
           flex: 1;
@@ -887,137 +1119,68 @@ export function renderPremiumHomepageV3(): string {
         }
         .testimonial-info .name {
           font-weight: 600;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .verified-badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          background: rgba(74, 222, 128, 0.15);
+          color: #4ade80;
+          font-size: 0.7rem;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 100px;
+          border: 1px solid rgba(74, 222, 128, 0.3);
+        }
+        .verified-badge::before {
+          content: '✓';
+          font-size: 0.6rem;
         }
         .testimonial-info .product {
           font-size: 0.85rem;
           color: var(--text-muted);
         }
 
-        /* Social Section */
-        .social-section {
-          padding: 100px 24px;
+        /* Social Proof Banner */
+        .social-proof-banner {
+          padding: 20px 24px;
+          background: linear-gradient(90deg, rgba(233, 69, 96, 0.1), rgba(248, 181, 0, 0.1), rgba(233, 69, 96, 0.1));
+          border-top: 1px solid var(--glass-border);
+          border-bottom: 1px solid var(--glass-border);
         }
-        .social-grid {
+        .social-proof-inner {
           max-width: 1200px;
           margin: 0 auto;
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-        }
-        .social-card {
-          background: linear-gradient(135deg, rgba(26, 26, 36, 0.85) 0%, rgba(26, 26, 36, 0.6) 100%);
-          backdrop-filter: blur(16px) saturate(150%);
-          -webkit-backdrop-filter: blur(16px) saturate(150%);
-          border-radius: 20px;
-          overflow: hidden;
-          border: 1px solid rgba(255,255,255,0.1);
-          box-shadow: var(--shadow-md);
-          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .social-card:hover {
-          transform: translateY(-8px);
-          box-shadow: var(--shadow-lg);
-          border-color: rgba(255,255,255,0.15);
-        }
-        .social-video-container {
-          position: relative;
-          width: 100%;
-          padding-bottom: 177.78%; /* 9:16 aspect ratio */
-          background: var(--dark-elevated);
-        }
-        .social-video-container iframe,
-        .social-video-container video {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          border: none;
-        }
-        .social-video-placeholder {
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
           display: flex;
-          flex-direction: column;
+          justify-content: center;
           align-items: center;
-          justify-content: center;
-          background: linear-gradient(180deg, rgba(26, 26, 36, 0.9) 0%, rgba(233, 69, 96, 0.2) 100%);
-          padding: 24px;
-          text-align: center;
-        }
-        .social-video-placeholder .platform-icon {
-          font-size: 3rem;
-          margin-bottom: 16px;
-        }
-        .social-video-placeholder h4 {
-          font-size: 1.1rem;
-          margin-bottom: 8px;
-        }
-        .social-video-placeholder p {
-          font-size: 0.85rem;
-          color: var(--text-muted);
-          margin-bottom: 16px;
-        }
-        .social-video-placeholder .coming-soon {
-          padding: 8px 16px;
-          background: rgba(233, 69, 96, 0.2);
-          border: 1px solid rgba(233, 69, 96, 0.3);
-          border-radius: 100px;
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: var(--primary-light);
-        }
-        .social-links-bar {
-          max-width: 800px;
-          margin: 48px auto 0;
-          display: flex;
-          justify-content: center;
           gap: 24px;
           flex-wrap: wrap;
         }
-        .social-link-btn {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          padding: 14px 24px;
-          background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
-          border: 1px solid rgba(255,255,255,0.12);
-          border-radius: 12px;
-          color: var(--text-primary);
-          text-decoration: none;
+        .social-stat {
+          font-size: 0.9rem;
           font-weight: 500;
-          font-size: 0.95rem;
-          transition: all 0.3s ease;
+          color: var(--text-secondary);
         }
-        .social-link-btn:hover {
-          background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
-          transform: translateY(-2px);
-          box-shadow: var(--shadow-md);
-        }
-        .social-link-btn .icon {
-          font-size: 1.25rem;
-        }
-        @media (max-width: 1024px) {
-          .social-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
+        .social-divider {
+          color: var(--text-muted);
         }
         @media (max-width: 768px) {
-          .social-grid {
-            grid-template-columns: 1fr;
-            max-width: 400px;
+          .social-proof-inner {
+            gap: 12px;
           }
-          .social-links-bar {
+          .social-stat {
+            font-size: 0.8rem;
+          }
+          .social-divider {
+            display: none;
+          }
+          .social-proof-inner {
             flex-direction: column;
-            align-items: center;
-          }
-          .social-link-btn {
-            width: 100%;
-            max-width: 300px;
-            justify-content: center;
+            text-align: center;
           }
         }
 
@@ -1155,155 +1318,77 @@ export function renderPremiumHomepageV3(): string {
           transform: translateY(-2px);
         }
 
-        /* Topics Section */
+        /* Topics Section - Simplified */
         .topics-section {
-          padding: 100px 24px;
+          padding: 80px 24px;
           background: var(--dark-surface);
         }
-        .be-specific-banner {
-          max-width: 800px;
-          margin: 24px auto 0;
-          padding: 20px 28px;
-          background: linear-gradient(135deg, rgba(248, 181, 0, 0.15), rgba(233, 69, 96, 0.1));
-          border: 1px solid rgba(248, 181, 0, 0.3);
-          border-radius: 16px;
-          font-size: 1rem;
-          line-height: 1.6;
-          color: var(--text-primary);
-        }
-        .be-specific-banner .tip-icon {
-          margin-right: 8px;
-        }
-        .be-specific-banner em {
-          color: var(--accent);
-          font-style: normal;
-          font-weight: 600;
-        }
-        .topic-classification {
-          max-width: 1200px;
-          margin: 40px auto 32px;
-        }
-        .classification-header {
-          display: flex;
-          justify-content: center;
-          gap: 32px;
-          flex-wrap: wrap;
-        }
-        .class-item {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 0.9rem;
-          color: var(--text-secondary);
-        }
-        .class-dot {
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-        }
-        .class-item.green .class-dot { background: #4ade80; }
-        .class-item.yellow .class-dot { background: #facc15; }
-        .class-item.red .class-dot { background: #f87171; }
-        .topics-grid {
-          max-width: 1200px;
-          margin: 0 auto;
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 24px;
-        }
-        .topic-category {
-          background: linear-gradient(135deg, rgba(26, 26, 36, 0.85) 0%, rgba(26, 26, 36, 0.6) 100%);
-          backdrop-filter: blur(16px) saturate(150%);
-          -webkit-backdrop-filter: blur(16px) saturate(150%);
-          border-radius: 20px;
-          padding: 28px;
-          border: 1px solid rgba(255,255,255,0.1);
-          box-shadow: var(--shadow-md);
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .topic-category:hover {
-          transform: translateY(-4px);
-          box-shadow: var(--shadow-lg);
-          border-color: rgba(255,255,255,0.15);
-        }
-        .topic-category h3 {
-          font-size: 1.1rem;
-          margin-bottom: 16px;
-          font-weight: 600;
-        }
-        .topic-tags {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 10px;
-        }
-        .topic-tag {
-          padding: 6px 14px;
-          border-radius: 100px;
-          font-size: 0.85rem;
-          font-weight: 500;
-          border: 1px solid transparent;
-        }
-        .topic-tag.green {
-          background: rgba(74, 222, 128, 0.15);
-          border-color: rgba(74, 222, 128, 0.3);
-          color: #4ade80;
-        }
-        .topic-tag.yellow {
-          background: rgba(250, 204, 21, 0.15);
-          border-color: rgba(250, 204, 21, 0.3);
-          color: #facc15;
-        }
-        .topic-tag.red {
-          background: rgba(248, 113, 113, 0.15);
-          border-color: rgba(248, 113, 113, 0.3);
-          color: #f87171;
-        }
-        .be-specific-examples {
-          max-width: 900px;
+        .topics-simple-grid {
+          max-width: 1000px;
           margin: 48px auto 0;
-          background: var(--dark-card);
-          border-radius: 20px;
-          padding: 32px;
-          border: 1px solid var(--glass-border);
-        }
-        .be-specific-examples h4 {
-          text-align: center;
-          font-size: 1.25rem;
-          margin-bottom: 24px;
-          color: var(--accent);
-        }
-        .example-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 16px;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 20px;
         }
-        .example {
-          padding: 16px;
-          background: var(--dark-elevated);
+        .topic-card-simple {
+          background: linear-gradient(135deg, rgba(26, 26, 36, 0.8) 0%, rgba(26, 26, 36, 0.6) 100%);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border-radius: 16px;
+          padding: 24px;
+          border: 1px solid rgba(255,255,255,0.08);
+          text-align: center;
+          transition: all 0.3s ease;
+        }
+        .topic-card-simple:hover {
+          transform: translateY(-4px);
+          border-color: rgba(233, 69, 96, 0.3);
+          box-shadow: 0 12px 32px rgba(0,0,0,0.3);
+        }
+        .topic-card-simple .topic-icon {
+          font-size: 2rem;
+          display: block;
+          margin-bottom: 12px;
+        }
+        .topic-card-simple h3 {
+          font-size: 1rem;
+          font-weight: 600;
+          margin-bottom: 8px;
+        }
+        .topic-card-simple p {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          line-height: 1.5;
+        }
+        .specificity-tip {
+          max-width: 700px;
+          margin: 40px auto 0;
+        }
+        .tip-content {
+          display: flex;
+          align-items: flex-start;
+          gap: 16px;
+          padding: 20px 24px;
+          background: linear-gradient(135deg, rgba(248, 181, 0, 0.1), rgba(233, 69, 96, 0.05));
+          border: 1px solid rgba(248, 181, 0, 0.2);
           border-radius: 12px;
         }
-        .example-label {
-          font-size: 0.7rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          margin-bottom: 8px;
-          padding: 4px 10px;
-          border-radius: 4px;
-          display: inline-block;
+        .tip-content .tip-icon {
+          font-size: 1.5rem;
+          flex-shrink: 0;
         }
-        .example-label.bad {
-          background: rgba(248, 113, 113, 0.2);
-          color: #f87171;
-        }
-        .example-label.good {
-          background: rgba(74, 222, 128, 0.2);
-          color: #4ade80;
-        }
-        .example-text {
+        .tip-text {
           font-size: 0.95rem;
           color: var(--text-secondary);
-          font-style: italic;
+          line-height: 1.6;
+        }
+        .tip-text strong {
+          color: var(--accent);
+        }
+        .tip-text em {
+          color: var(--primary-light);
+          font-style: normal;
+          font-weight: 600;
         }
         .cta-buttons {
           display: flex;
@@ -1312,11 +1397,13 @@ export function renderPremiumHomepageV3(): string {
           flex-wrap: wrap;
         }
         @media (max-width: 768px) {
-          .example-grid {
-            grid-template-columns: 1fr;
+          .topics-simple-grid {
+            grid-template-columns: repeat(2, 1fr);
           }
-          .classification-header {
-            gap: 16px;
+        }
+        @media (max-width: 480px) {
+          .topics-simple-grid {
+            grid-template-columns: 1fr;
           }
         }
 
@@ -1371,73 +1458,39 @@ export function renderPremiumHomepageV3(): string {
           margin-bottom: 40px;
         }
 
-        /* Footer */
+        /* Footer - Simplified */
         .footer {
-          padding: 80px 24px 40px;
+          padding: 48px 24px;
           background: var(--dark-bg);
           border-top: 1px solid var(--glass-border);
         }
-        .footer-inner {
-          max-width: 1400px;
+        .footer-simple {
+          max-width: 800px;
           margin: 0 auto;
-          display: grid;
-          grid-template-columns: 2fr repeat(3, 1fr);
-          gap: 60px;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 24px;
         }
-        .footer-brand .logo {
-          margin-bottom: 20px;
-          display: inline-block;
+        .footer-links-row {
+          display: flex;
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 24px;
         }
-        .footer-brand p {
-          color: var(--text-muted);
-          font-size: 0.95rem;
-          line-height: 1.7;
-          max-width: 300px;
-        }
-        .footer-section h4 {
-          font-size: 0.85rem;
-          text-transform: uppercase;
-          letter-spacing: 0.1em;
-          color: var(--text-muted);
-          margin-bottom: 24px;
-        }
-        .footer-links {
-          list-style: none;
-        }
-        .footer-links li {
-          margin-bottom: 14px;
-        }
-        .footer-links a {
+        .footer-links-row a {
           color: var(--text-secondary);
           text-decoration: none;
-          font-size: 0.95rem;
+          font-size: 0.9rem;
           transition: color 0.2s;
         }
-        .footer-links a:hover {
+        .footer-links-row a:hover {
           color: var(--text-primary);
         }
-        .footer-bottom {
-          max-width: 1400px;
-          margin: 60px auto 0;
-          padding-top: 32px;
-          border-top: 1px solid var(--glass-border);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+        .footer-copyright {
           color: var(--text-muted);
-          font-size: 0.875rem;
-        }
-        .footer-social {
-          display: flex;
-          gap: 16px;
-        }
-        .footer-social a {
-          color: var(--text-muted);
-          font-size: 1.25rem;
-          transition: color 0.2s;
-        }
-        .footer-social a:hover {
-          color: var(--primary);
+          font-size: 0.85rem;
         }
 
         /* Responsive */
@@ -1466,20 +1519,17 @@ export function renderPremiumHomepageV3(): string {
           .testimonials-grid { grid-template-columns: 1fr; }
           .pricing-grid { grid-template-columns: 1fr; max-width: 450px; }
           .pricing-card.popular { transform: none; }
-          .footer-inner { grid-template-columns: 1fr 1fr; }
         }
         @media (max-width: 768px) {
           .nav-links { display: none; }
-          .mobile-menu-btn { display: block; }
+          .mobile-menu-btn { display: flex; }
           .hero { padding: 120px 20px 80px; }
           .hero-content h1 { font-size: 2rem; }
           .hero-buttons { flex-direction: column; width: 100%; }
           .btn { width: 100%; }
           .stats-inner { flex-direction: column; gap: 24px; }
           .steps { grid-template-columns: 1fr; }
-          .footer-inner { grid-template-columns: 1fr; text-align: center; }
-          .footer-brand p { margin: 0 auto; }
-          .footer-bottom { flex-direction: column; gap: 16px; }
+          .footer-links-row { gap: 16px; }
         }
       </style>
     </head>
@@ -1497,45 +1547,80 @@ export function renderPremiumHomepageV3(): string {
             <a href="/login" class="nav-link">Login</a>
             <a href="/demo-lessons" class="nav-cta">Listen to Demos</a>
           </div>
-          <button class="mobile-menu-btn">☰</button>
+          <button class="mobile-menu-btn" aria-label="Open menu">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+          </button>
         </div>
       </nav>
+
+      <!-- Mobile Menu Drawer -->
+      <div class="mobile-menu-overlay" id="mobile-overlay"></div>
+      <div class="mobile-menu" id="mobile-menu">
+        <div class="mobile-menu-header">
+          <a href="/" class="logo">personalized<span>output</span></a>
+          <button class="mobile-close-btn" aria-label="Close menu">&times;</button>
+        </div>
+        <div class="mobile-menu-links">
+          <a href="#how-it-works" class="mobile-link">How It Works</a>
+          <a href="#products" class="mobile-link">Products</a>
+          <a href="#pricing" class="mobile-link">Pricing</a>
+          <a href="/blog" class="mobile-link">Blog</a>
+          <a href="/login" class="mobile-link">Login</a>
+          <a href="/demo-lessons" class="mobile-cta">Listen to Demos</a>
+        </div>
+      </div>
 
       <section class="hero">
         <div class="hero-inner">
           <div class="hero-content">
             <div class="hero-badge">
               <span class="pulse"></span>
-              Thought Organizer™ - NOW LIVE
+              AI-Powered Personalization
             </div>
-            <h1>Learn Anything Through <span class="highlight">What You Love</span></h1>
-            <p>Our Thought Organizer™ AI creates personalized lessons that use YOUR passions to teach what you need. Kids learn fractions through dinosaurs. Adults master mortgages through their bakery business. Learning finally clicks.</p>
+            <h1><span class="highlight">Finally understand</span> that thing you've been avoiding</h1>
+            <p>We turn YOUR interests into the teaching method. Your child loves dinosaurs? That's how we'll teach fractions. You own a bakery? That's how we'll explain mortgages. 30-minute lessons that actually stick.</p>
             <div class="hero-buttons">
               <a href="/demo-lessons" class="btn btn-primary">
-                🧠 Watch Demo Lessons
+                Listen to Demo Lessons
+                <span class="btn-arrow">→</span>
               </a>
               <a href="#products" class="btn btn-secondary">
-                Explore All Products
+                See All Products
               </a>
             </div>
           </div>
           <div class="hero-visual">
-            <div class="hero-video-container">
-              <div class="hero-video-placeholder" id="hero-video">
-                <div class="play-icon">▶</div>
-                <h3>See It In Action</h3>
-                <p>Watch Joe learn fractions through dinosaurs</p>
+            <!-- Demo Card instead of video placeholder -->
+            <div class="demo-preview-card">
+              <div class="demo-card-header">
+                <span class="demo-card-badge">DEMO</span>
+                <span class="demo-duration">32 min</span>
+              </div>
+              <div class="demo-card-content">
+                <div class="demo-emoji">🦕</div>
+                <h3 class="demo-title">Fractions with Dinosaurs</h3>
+                <p class="demo-subtitle">Watch Joe (age 7) learn fractions using T-Rex hunting scenarios</p>
+                <a href="/demo-lessons" class="demo-play-btn">
+                  <span class="play-circle">▶</span>
+                  <span>Listen Now</span>
+                </a>
+              </div>
+              <div class="demo-card-footer">
+                <span class="demo-result">"He asked for MORE math!"</span>
+                <span class="demo-author">— Joe's Mom</span>
               </div>
             </div>
             <div class="floating-card left">
-              <div class="fc-icon">🧠</div>
-              <div class="fc-title">Thought Organizer™</div>
-              <div class="fc-value">Passions → Learning</div>
+              <div class="fc-icon">✓</div>
+              <div class="fc-title">Real result</div>
+              <div class="fc-value">"Finally clicked"</div>
             </div>
             <div class="floating-card right">
-              <div class="fc-icon">👨‍👩‍👧‍👦</div>
-              <div class="fc-title">For Everyone</div>
-              <div class="fc-value">Kids & Adults</div>
+              <div class="fc-icon">✓</div>
+              <div class="fc-title">All ages</div>
+              <div class="fc-value">Kids + Adults</div>
             </div>
           </div>
         </div>
@@ -1637,7 +1722,7 @@ export function renderPremiumHomepageV3(): string {
               <div class="testimonial-author">
                 <div class="testimonial-avatar">${t.author.charAt(0)}</div>
                 <div class="testimonial-info">
-                  <div class="name">${t.author}</div>
+                  <div class="name">${t.author}<span class="verified-badge">Verified</span></div>
                   <div class="product">${t.product}</div>
                 </div>
               </div>
@@ -1646,58 +1731,14 @@ export function renderPremiumHomepageV3(): string {
         </div>
       </section>
 
-      <!-- See Us On Social Section -->
-      <section class="social-section" id="social">
-        <div class="section-header">
-          <span class="section-eyebrow">See Us On Social</span>
-          <h2>Watch Personalized Learning in Action</h2>
-          <p>Short videos showing real lessons, real reactions, and real results.</p>
-        </div>
-        <div class="social-grid">
-          <div class="social-card">
-            <div class="social-video-container">
-              <div class="social-video-placeholder">
-                <div class="platform-icon">📱</div>
-                <h4>Joe Learns Fractions</h4>
-                <p>Watch Joe master fractions through dinosaurs!</p>
-                <span class="coming-soon">Video Coming Soon</span>
-              </div>
-            </div>
-          </div>
-          <div class="social-card">
-            <div class="social-video-container">
-              <div class="social-video-placeholder">
-                <div class="platform-icon">🎬</div>
-                <h4>Parent Reactions</h4>
-                <p>Mom sees her child ask for MORE homework</p>
-                <span class="coming-soon">Video Coming Soon</span>
-              </div>
-            </div>
-          </div>
-          <div class="social-card">
-            <div class="social-video-container">
-              <div class="social-video-placeholder">
-                <div class="platform-icon">✨</div>
-                <h4>Adult Learning Wins</h4>
-                <p>Adults finally understanding finance</p>
-                <span class="coming-soon">Video Coming Soon</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="social-links-bar">
-          <a href="https://tiktok.com/@personalizedoutput" target="_blank" rel="noopener" class="social-link-btn">
-            <span class="icon">🎵</span>
-            <span>Follow on TikTok</span>
-          </a>
-          <a href="https://instagram.com/personalizedoutput" target="_blank" rel="noopener" class="social-link-btn">
-            <span class="icon">📸</span>
-            <span>Follow on Instagram</span>
-          </a>
-          <a href="https://youtube.com/@personalizedoutput" target="_blank" rel="noopener" class="social-link-btn">
-            <span class="icon">▶️</span>
-            <span>Subscribe on YouTube</span>
-          </a>
+      <!-- Social Proof Banner - Minimal -->
+      <section class="social-proof-banner">
+        <div class="social-proof-inner">
+          <span class="social-stat">2,847+ lessons created</span>
+          <span class="social-divider">•</span>
+          <span class="social-stat">98% satisfaction rate</span>
+          <span class="social-divider">•</span>
+          <span class="social-stat">Used by parents & educators worldwide</span>
         </div>
       </section>
 
@@ -1754,123 +1795,52 @@ export function renderPremiumHomepageV3(): string {
         </div>
       </section>
 
-      <!-- Topics & Be Specific Section -->
+      <!-- Topics Section - Simplified -->
       <section class="topics-section" id="topics">
         <div class="section-header">
           <span class="section-eyebrow">What Can You Learn?</span>
           <h2>Virtually Any Topic</h2>
-          <p class="be-specific-banner">
+          <p>The more specific your input, the more personalized your lesson.</p>
+        </div>
+
+        <div class="topics-simple-grid">
+          <div class="topic-card-simple">
+            <span class="topic-icon">📐</span>
+            <h3>Math</h3>
+            <p>Fractions, algebra, percentages, geometry</p>
+          </div>
+          <div class="topic-card-simple">
+            <span class="topic-icon">🔬</span>
+            <h3>Science</h3>
+            <p>Solar system, biology, chemistry, physics</p>
+          </div>
+          <div class="topic-card-simple">
+            <span class="topic-icon">💰</span>
+            <h3>Finance</h3>
+            <p>Mortgages, investing, budgeting, taxes</p>
+          </div>
+          <div class="topic-card-simple">
+            <span class="topic-icon">🌍</span>
+            <h3>History</h3>
+            <p>Historical events, civilizations, languages</p>
+          </div>
+          <div class="topic-card-simple">
+            <span class="topic-icon">💻</span>
+            <h3>Tech</h3>
+            <p>Coding basics, AI, internet safety</p>
+          </div>
+          <div class="topic-card-simple">
+            <span class="topic-icon">🎨</span>
+            <h3>Life Skills</h3>
+            <p>Communication, time management, cooking</p>
+          </div>
+        </div>
+
+        <div class="specificity-tip">
+          <div class="tip-content">
             <span class="tip-icon">💡</span>
-            <strong>Be Specific = Magic Output</strong> — The more specific your input, the more personalized your lesson. "Fractions" is okay. "Fractions using dinosaur hunting scenarios for my 6-year-old who loves T-Rex" is <em>magical</em>.
-          </p>
-        </div>
-
-        <div class="topic-classification">
-          <div class="classification-header">
-            <div class="class-item green">
-              <span class="class-dot"></span>
-              <span class="class-label">Works Great</span>
-            </div>
-            <div class="class-item yellow">
-              <span class="class-dot"></span>
-              <span class="class-label">Good with Specificity</span>
-            </div>
-            <div class="class-item red">
-              <span class="class-dot"></span>
-              <span class="class-label">Needs Extra Detail</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="topics-grid">
-          <div class="topic-category">
-            <h3>📐 Math & Numbers</h3>
-            <div class="topic-tags">
-              <span class="topic-tag green">Fractions</span>
-              <span class="topic-tag green">Multiplication</span>
-              <span class="topic-tag green">Basic Algebra</span>
-              <span class="topic-tag green">Percentages</span>
-              <span class="topic-tag yellow">Geometry</span>
-              <span class="topic-tag yellow">Statistics</span>
-              <span class="topic-tag yellow">Calculus Basics</span>
-            </div>
-          </div>
-          <div class="topic-category">
-            <h3>🔬 Science</h3>
-            <div class="topic-tags">
-              <span class="topic-tag green">Solar System</span>
-              <span class="topic-tag green">Weather</span>
-              <span class="topic-tag green">Human Body</span>
-              <span class="topic-tag green">Animals & Habitats</span>
-              <span class="topic-tag yellow">Chemistry Basics</span>
-              <span class="topic-tag yellow">Physics Concepts</span>
-              <span class="topic-tag yellow">Biology</span>
-            </div>
-          </div>
-          <div class="topic-category">
-            <h3>💰 Finance & Business</h3>
-            <div class="topic-tags">
-              <span class="topic-tag green">Mortgages</span>
-              <span class="topic-tag green">Interest Rates</span>
-              <span class="topic-tag green">Budgeting</span>
-              <span class="topic-tag green">Investing Basics</span>
-              <span class="topic-tag yellow">Taxes</span>
-              <span class="topic-tag yellow">Business Planning</span>
-              <span class="topic-tag red">Advanced Trading</span>
-            </div>
-          </div>
-          <div class="topic-category">
-            <h3>🌍 Languages & History</h3>
-            <div class="topic-tags">
-              <span class="topic-tag green">Spanish Basics</span>
-              <span class="topic-tag green">French Basics</span>
-              <span class="topic-tag green">Historical Events</span>
-              <span class="topic-tag yellow">Grammar Rules</span>
-              <span class="topic-tag yellow">World Wars</span>
-              <span class="topic-tag yellow">Ancient Civilizations</span>
-            </div>
-          </div>
-          <div class="topic-category">
-            <h3>🎨 Life Skills</h3>
-            <div class="topic-tags">
-              <span class="topic-tag green">Cooking Basics</span>
-              <span class="topic-tag green">Time Management</span>
-              <span class="topic-tag green">Communication</span>
-              <span class="topic-tag yellow">Emotional Intelligence</span>
-              <span class="topic-tag yellow">Public Speaking</span>
-              <span class="topic-tag yellow">Critical Thinking</span>
-            </div>
-          </div>
-          <div class="topic-category">
-            <h3>💻 Technology</h3>
-            <div class="topic-tags">
-              <span class="topic-tag green">Internet Safety</span>
-              <span class="topic-tag green">How Computers Work</span>
-              <span class="topic-tag yellow">Coding Basics</span>
-              <span class="topic-tag yellow">AI Fundamentals</span>
-              <span class="topic-tag red">Advanced Programming</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="be-specific-examples">
-          <h4>The Specificity Secret</h4>
-          <div class="example-grid">
-            <div class="example">
-              <div class="example-label bad">Generic</div>
-              <div class="example-text">"Teach fractions"</div>
-            </div>
-            <div class="example">
-              <div class="example-label good">Specific</div>
-              <div class="example-text">"Teach fractions to my 7-year-old who loves Minecraft, using blocks and building"</div>
-            </div>
-            <div class="example">
-              <div class="example-label bad">Generic</div>
-              <div class="example-text">"Explain mortgages"</div>
-            </div>
-            <div class="example">
-              <div class="example-label good">Specific</div>
-              <div class="example-text">"Explain mortgages using my bakery business as the example - I understand flour costs and delivery fees"</div>
+            <div class="tip-text">
+              <strong>Pro tip:</strong> "Fractions" is okay. "Fractions using dinosaur hunting scenarios for my 6-year-old who loves T-Rex" is <em>magical</em>.
             </div>
           </div>
         </div>
@@ -1890,48 +1860,69 @@ export function renderPremiumHomepageV3(): string {
       </section>
 
       <footer class="footer">
-        <div class="footer-inner">
-          <div class="footer-brand">
-            <a href="/" class="logo">personalized<span>output</span></a>
-            <p>Powered by Thought Organizer™ AI — creating deeply personalized digital experiences that make people say "How did it know that about me?"</p>
+        <div class="footer-simple">
+          <a href="/" class="logo">personalized<span>output</span></a>
+          <div class="footer-links-row">
+            <a href="/demo-lessons">Demo</a>
+            <a href="#products">Products</a>
+            <a href="#pricing">Pricing</a>
+            <a href="/blog">Blog</a>
+            <a href="mailto:hello@personalizedoutput.com">Contact</a>
+            <a href="/privacy">Privacy</a>
           </div>
-          <div class="footer-section">
-            <h4>Products</h4>
-            <ul class="footer-links">
-              <li><a href="/demo-lessons">Learning Sessions</a></li>
-              <li><a href="/santa">Santa Message</a></li>
-              <li><a href="/vision-board">Vision Board</a></li>
-              <li><a href="/flash-cards">Flash Cards</a></li>
-            </ul>
-          </div>
-          <div class="footer-section">
-            <h4>Company</h4>
-            <ul class="footer-links">
-              <li><a href="/pricing">Pricing</a></li>
-              <li><a href="/blog">Blog</a></li>
-              <li><a href="mailto:hello@personalizedoutput.com">Contact</a></li>
-            </ul>
-          </div>
-          <div class="footer-section">
-            <h4>Legal</h4>
-            <ul class="footer-links">
-              <li><a href="/terms">Terms</a></li>
-              <li><a href="/privacy">Privacy</a></li>
-              <li><a href="/copyright">Copyright</a></li>
-            </ul>
-          </div>
-        </div>
-        <div class="footer-bottom">
-          <div>© ${new Date().getFullYear()} Personalized Output. Thought Organizer™ is a trademark of Personalized Output LLC. All rights reserved.</div>
-          <div class="footer-social">
-            <a href="#">📸</a>
-            <a href="#">🎵</a>
-            <a href="#">📌</a>
+          <div class="footer-copyright">
+            © ${new Date().getFullYear()} Personalized Output LLC
           </div>
         </div>
       </footer>
 
       <script>
+        // Mobile Menu Functionality
+        const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
+        const mobileMenu = document.getElementById('mobile-menu');
+        const mobileOverlay = document.getElementById('mobile-overlay');
+        const mobileCloseBtn = document.querySelector('.mobile-close-btn');
+        const mobileLinks = document.querySelectorAll('.mobile-link, .mobile-cta');
+
+        function openMobileMenu() {
+          mobileMenu.classList.add('active');
+          mobileOverlay.classList.add('active');
+          mobileMenuBtn.classList.add('active');
+          document.body.classList.add('menu-open');
+        }
+
+        function closeMobileMenu() {
+          mobileMenu.classList.remove('active');
+          mobileOverlay.classList.remove('active');
+          mobileMenuBtn.classList.remove('active');
+          document.body.classList.remove('menu-open');
+        }
+
+        mobileMenuBtn.addEventListener('click', () => {
+          if (mobileMenu.classList.contains('active')) {
+            closeMobileMenu();
+          } else {
+            openMobileMenu();
+          }
+        });
+
+        mobileCloseBtn.addEventListener('click', closeMobileMenu);
+        mobileOverlay.addEventListener('click', closeMobileMenu);
+
+        // Close menu when clicking a link
+        mobileLinks.forEach(link => {
+          link.addEventListener('click', () => {
+            closeMobileMenu();
+          });
+        });
+
+        // Close menu on escape key
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape' && mobileMenu.classList.contains('active')) {
+            closeMobileMenu();
+          }
+        });
+
         // Nav scroll effect
         window.addEventListener('scroll', () => {
           const nav = document.querySelector('.nav');
@@ -1942,7 +1933,7 @@ export function renderPremiumHomepageV3(): string {
           }
         });
 
-        // Smooth scroll for anchor links
+        // Smooth scroll for anchor links (including mobile menu links)
         document.querySelectorAll('a[href^="#"]').forEach(anchor => {
           anchor.addEventListener('click', function(e) {
             e.preventDefault();
@@ -1982,10 +1973,10 @@ export function renderPremiumHomepageV3(): string {
           });
         }
 
-        // Scroll reveal animations
+        // Enhanced scroll reveal animations with stagger
         const observerOptions = {
           root: null,
-          rootMargin: '0px',
+          rootMargin: '0px 0px -50px 0px',
           threshold: 0.1
         };
 
@@ -1993,26 +1984,49 @@ export function renderPremiumHomepageV3(): string {
           entries.forEach(entry => {
             if (entry.isIntersecting) {
               entry.target.classList.add('visible');
-              // Add staggered delay to children
-              const children = entry.target.querySelectorAll('.reveal-child');
-              children.forEach((child, index) => {
-                setTimeout(() => {
-                  child.classList.add('visible');
-                }, index * 100);
-              });
+              revealObserver.unobserve(entry.target);
             }
           });
         }, observerOptions);
 
-        // Observe all sections and cards
-        document.querySelectorAll('.product-card, .testimonial-card, .pricing-card, .topic-category, .step, .social-card').forEach(el => {
+        // Helper to add staggered reveals to groups
+        function setupStaggeredReveal(selector, containerSelector) {
+          const containers = containerSelector ? document.querySelectorAll(containerSelector) : [document];
+          containers.forEach(container => {
+            const items = container.querySelectorAll(selector);
+            items.forEach((el, index) => {
+              el.classList.add('reveal');
+              el.style.transitionDelay = (index * 0.1) + 's';
+              revealObserver.observe(el);
+            });
+          });
+        }
+
+        // Staggered product cards
+        setupStaggeredReveal('.product-card', '.products-grid');
+
+        // Staggered testimonials
+        setupStaggeredReveal('.testimonial-card', '.testimonials-grid');
+
+        // Staggered pricing cards
+        setupStaggeredReveal('.pricing-card', '.pricing-grid');
+
+        // Staggered steps
+        setupStaggeredReveal('.step', '.steps');
+
+        // Staggered topic cards
+        setupStaggeredReveal('.topic-card-simple', '.topics-simple-grid');
+
+        // Observe section headers (no stagger, just reveal)
+        document.querySelectorAll('.section-header').forEach(el => {
           el.classList.add('reveal');
           revealObserver.observe(el);
         });
 
-        // Observe section headers
-        document.querySelectorAll('.section-header').forEach(el => {
+        // Stats bar reveal
+        document.querySelectorAll('.stat').forEach((el, index) => {
           el.classList.add('reveal');
+          el.style.transitionDelay = (index * 0.15) + 's';
           revealObserver.observe(el);
         });
       </script>

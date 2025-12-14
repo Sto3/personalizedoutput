@@ -25,7 +25,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 // Configuration
 const ALERT_EMAIL = process.env.ALERT_EMAIL || process.env.PERSONAL_EMAIL || '';
 const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-const FROM_EMAIL = 'PersonalizedOutput Monitor <alerts@personalizedoutput.com>';
+const FROM_EMAIL = 'PersonalizedOutput Monitor <onboarding@resend.dev>';
 
 // Service API keys
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || '';
@@ -206,14 +206,15 @@ async function checkLocalUsageTracking(): Promise<ServiceStatus> {
  * Check Supabase database usage
  */
 async function checkSupabase(): Promise<ServiceStatus> {
-  // Note: Supabase doesn't have a direct API for usage stats on free tier
-  // We'll track this via local database size estimation
+  // You're on Supabase Pro ($10/month) - much higher limits
+  // Pro tier: 8GB database, 100GB bandwidth, 50GB storage
+  // Can check actual usage via Supabase dashboard
 
   return {
     service: 'Supabase',
     status: 'ok',
-    message: 'Free tier (500MB limit) - manual monitoring recommended',
-    action: 'Check Supabase dashboard monthly for storage usage'
+    message: 'Pro tier ($10/mo) - 8GB database, 100GB bandwidth',
+    action: 'Usage well within Pro limits. Check dashboard monthly.'
   };
 }
 

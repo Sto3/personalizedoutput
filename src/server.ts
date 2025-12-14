@@ -21,6 +21,7 @@ dotenv.config();
 import santaApiDeep from './api/santaApiDeep';
 import plannerApi from './api/plannerApi';
 import thoughtChatApi from './api/thoughtChatApi';
+import referralApi from './api/referralApi';
 
 // Import token store for order-based access control
 import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tokenStore';
@@ -844,6 +845,9 @@ app.use('/api/planner', plannerApi);
 
 // Thought Chat API (Chat-based experience for all products)
 app.use('/api/thought-chat', thoughtChatApi);
+
+// Referral System API (Learn With Friends)
+app.use('/api/referral', referralApi);
 
 // ============================================================
 // STRIPE WEBHOOK (must be before body parser for raw body)

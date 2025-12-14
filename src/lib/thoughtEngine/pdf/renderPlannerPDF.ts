@@ -18,7 +18,42 @@ export interface PDFMetadata {
   productId?: string;
   jobId?: string;
   version?: string;
+  customerEmail?: string;
+  referralCode?: string;
 }
+
+// Learning continuity - recommended next products based on current product
+const LEARNING_PATHS: Record<string, { next: string[]; description: string }> = {
+  'holiday_relationship_reset': {
+    next: ['new_year_reflection_reset', 'clarity_planner'],
+    description: 'You\'ve reflected on your holiday relationships. Now set intentions for the year ahead or gain deeper clarity on your path forward.'
+  },
+  'new_year_reflection_reset': {
+    next: ['clarity_planner', 'vision_board'],
+    description: 'You\'ve set your intentions for the year. Now clarify your path forward or visualize your goals with a custom vision board.'
+  },
+  'clarity_planner': {
+    next: ['vision_board', 'flash_cards'],
+    description: 'You\'ve gained clarity on your direction. Now visualize your goals or learn something new to support your journey.'
+  },
+  'vision_board': {
+    next: ['clarity_planner', 'flash_cards'],
+    description: 'You\'ve visualized your goals. Now create a plan to achieve them or learn skills to support your vision.'
+  },
+  'flash_cards': {
+    next: ['clarity_planner', 'vision_board'],
+    description: 'You\'ve expanded your knowledge. Now clarify how to apply it or visualize where it takes you.'
+  }
+};
+
+const PRODUCT_NAMES: Record<string, string> = {
+  'holiday_relationship_reset': 'Holiday Relationship Reset',
+  'new_year_reflection_reset': 'New Year Reflection',
+  'clarity_planner': 'Clarity Planner',
+  'vision_board': 'Custom Vision Board',
+  'flash_cards': 'Personalized Flash Cards',
+  'santa_message': 'Santa Voice Message'
+};
 
 // ============================================================
 // MAIN FUNCTION
@@ -231,6 +266,142 @@ function buildPlannerHtml(output: PlannerOutput, metadata?: PDFMetadata): string
       text-align: center;
     }
 
+    /* Learning Continuity Section */
+    .continuity-section {
+      page-break-before: always;
+      padding: 0.5in 0;
+    }
+
+    .continuity-header {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 22pt;
+      font-weight: 600;
+      color: #4A4A4A;
+      text-align: center;
+      margin-bottom: 0.3in;
+    }
+
+    .continuity-intro {
+      text-align: center;
+      font-style: italic;
+      color: #6B6B6B;
+      max-width: 6in;
+      margin: 0 auto 0.4in auto;
+      font-size: 11pt;
+    }
+
+    .next-steps-grid {
+      display: flex;
+      gap: 0.3in;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 0.5in;
+    }
+
+    .next-step-card {
+      background: linear-gradient(135deg, #F8F6F4 0%, #F0ECE8 100%);
+      border: 1px solid #E0DCD8;
+      border-radius: 8px;
+      padding: 0.25in;
+      width: 2.8in;
+      text-align: center;
+    }
+
+    .next-step-card h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 14pt;
+      font-weight: 600;
+      color: #4A4A4A;
+      margin-bottom: 0.1in;
+    }
+
+    .next-step-card p {
+      font-size: 9pt;
+      color: #6B6B6B;
+      margin-bottom: 0.15in;
+    }
+
+    .next-step-card .visit-link {
+      font-size: 9pt;
+      color: #8B7355;
+      font-weight: 600;
+    }
+
+    .referral-box {
+      background: linear-gradient(135deg, #8B7355 0%, #6B5745 100%);
+      color: white;
+      border-radius: 8px;
+      padding: 0.35in;
+      text-align: center;
+      margin: 0.4in auto;
+      max-width: 5.5in;
+    }
+
+    .referral-box h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 18pt;
+      font-weight: 600;
+      margin-bottom: 0.15in;
+    }
+
+    .referral-box p {
+      font-size: 10pt;
+      margin-bottom: 0.15in;
+      opacity: 0.95;
+    }
+
+    .referral-code {
+      background: rgba(255,255,255,0.2);
+      padding: 0.1in 0.3in;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 14pt;
+      letter-spacing: 2px;
+      display: inline-block;
+      margin: 0.1in 0;
+    }
+
+    .referral-benefit {
+      font-size: 11pt;
+      font-weight: 600;
+      margin-top: 0.1in;
+    }
+
+    .progress-tracker {
+      background: #F5F2EF;
+      border-radius: 8px;
+      padding: 0.3in;
+      margin: 0.4in auto;
+      max-width: 5.5in;
+    }
+
+    .progress-tracker h3 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 16pt;
+      font-weight: 600;
+      color: #4A4A4A;
+      margin-bottom: 0.2in;
+      text-align: center;
+    }
+
+    .progress-checklist {
+      list-style: none;
+      padding: 0;
+    }
+
+    .progress-checklist li {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.12in;
+      font-size: 10pt;
+    }
+
+    .progress-checklist li::before {
+      content: "☐";
+      margin-right: 0.15in;
+      font-size: 14pt;
+    }
+
     @media print {
       body {
         background: white;
@@ -260,6 +431,8 @@ function buildPlannerHtml(output: PlannerOutput, metadata?: PDFMetadata): string
   <main>
     ${sectionsHtml}
   </main>
+
+  ${buildContinuitySection(metadata)}
 
   <footer class="footer">
     <p>This planner is a tool for organizing your thoughts. It is not a substitute for professional advice.</p>
@@ -334,4 +507,113 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
-export { buildPlannerHtml };
+/**
+ * Generate a unique referral code from order ID
+ */
+function generateReferralCode(orderId?: string): string {
+  if (!orderId) {
+    // Generate random code if no order ID
+    return 'FRIEND' + Math.random().toString(36).substring(2, 8).toUpperCase();
+  }
+  // Use last 6 chars of order ID + random suffix
+  const base = orderId.slice(-4).toUpperCase();
+  const suffix = Math.random().toString(36).substring(2, 4).toUpperCase();
+  return `FRIEND${base}${suffix}`;
+}
+
+/**
+ * Build the Learning Continuity section for PDFs
+ */
+function buildContinuitySection(metadata?: PDFMetadata): string {
+  const productId = metadata?.productId || '';
+  const learningPath = LEARNING_PATHS[productId];
+  const referralCode = metadata?.referralCode || generateReferralCode(metadata?.orderId);
+
+  // Build next steps cards
+  let nextStepsHtml = '';
+  if (learningPath && learningPath.next.length > 0) {
+    const cards = learningPath.next.map(nextProductId => {
+      const productName = PRODUCT_NAMES[nextProductId] || nextProductId;
+      return `
+        <div class="next-step-card">
+          <h3>${escapeHtml(productName)}</h3>
+          <p>Continue your growth journey</p>
+          <div class="visit-link">personalizedoutput.com</div>
+        </div>
+      `;
+    }).join('');
+
+    nextStepsHtml = `
+      <div class="next-steps-grid">
+        ${cards}
+      </div>
+    `;
+  }
+
+  // Build progress tracker based on product
+  let progressItems: string[] = [];
+  if (productId === 'holiday_relationship_reset') {
+    progressItems = [
+      'Read through your entire planner',
+      'Identify your top 3 priorities',
+      'Share one insight with someone you trust',
+      'Schedule your first "check-in" with yourself',
+      'Complete one action item this week'
+    ];
+  } else if (productId === 'new_year_reflection_reset') {
+    progressItems = [
+      'Review your 2024 reflections',
+      'Choose your word or theme for 2025',
+      'Set up your Q1 focus area',
+      'Share your intentions with an accountability partner',
+      'Schedule monthly check-ins in your calendar'
+    ];
+  } else if (productId === 'clarity_planner') {
+    progressItems = [
+      'Re-read your core insights',
+      'Identify your highest-leverage action',
+      'Remove one obstacle this week',
+      'Celebrate one small win',
+      'Revisit this planner in 30 days'
+    ];
+  } else {
+    progressItems = [
+      'Review your personalized content',
+      'Identify one immediate action',
+      'Share what you learned',
+      'Apply one insight this week',
+      'Consider your next step'
+    ];
+  }
+
+  const progressHtml = progressItems.map(item => `<li>${escapeHtml(item)}</li>`).join('');
+
+  return `
+    <section class="continuity-section">
+      <h2 class="continuity-header">Continue Your Journey</h2>
+
+      <p class="continuity-intro">
+        ${learningPath ? escapeHtml(learningPath.description) : 'Your growth doesn\'t stop here. Explore more personalized tools to support your journey.'}
+      </p>
+
+      ${nextStepsHtml}
+
+      <div class="progress-tracker">
+        <h3>Your Progress Checklist</h3>
+        <ul class="progress-checklist">
+          ${progressHtml}
+        </ul>
+      </div>
+
+      <div class="referral-box">
+        <h3>Learn With Friends</h3>
+        <p>Share the gift of personalized learning! Give friends 15% off their first order.</p>
+        <div class="referral-code">${escapeHtml(referralCode)}</div>
+        <p class="referral-benefit">You'll also get 15% off your next purchase when they order!</p>
+        <p style="font-size: 9pt; opacity: 0.8; margin-top: 0.15in;">Visit personalizedoutput.com and enter code at checkout</p>
+      </div>
+    </section>
+  `;
+}
+
+export { buildPlannerHtml, generateReferralCode };
