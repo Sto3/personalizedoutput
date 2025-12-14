@@ -173,6 +173,7 @@ app.use('/dev', express.static(path.join(process.cwd(), 'dev')));
 app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
 app.use('/listing-images', express.static(path.join(process.cwd(), 'public', 'listing-images')));
 app.use('/digital-downloads', express.static(path.join(process.cwd(), 'public', 'digital-downloads')));
+app.use('/demos', express.static(path.join(process.cwd(), 'public', 'demos')));
 
 // ============================================================
 // PRODUCTION ROUTES - Clean URLs for Etsy buyers
@@ -486,6 +487,281 @@ app.get('/planner', (req, res) => {
 app.get('/flash-cards', (req, res) => {
   trackEvent('page', 'flash-cards');
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-flashcards.html'));
+});
+
+// Redirect /demos to /demo-lessons
+app.get('/demos', (req, res) => {
+  res.redirect(301, '/demo-lessons');
+});
+
+// Demo Lessons showcase page - shows sample personalized AUDIO lessons (40-second intros)
+app.get('/demo-lessons', (req, res) => {
+  trackEvent('page', 'demo-lessons');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Listen to Demo Lessons | Thought Organizer - Personalized Output</title>
+  <meta name="description" content="Listen to 40-second audio previews of personalized lessons. Hear how we transform what you LOVE into what you NEED to learn.">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #e94560, #ff6b6b, #ffc93c);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle {
+      text-align: center;
+      color: #a8edea;
+      font-size: 1.2rem;
+      margin-bottom: 1rem;
+    }
+    .preview-badge {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .preview-badge span {
+      background: rgba(233, 69, 96, 0.3);
+      border: 1px solid #e94560;
+      padding: 0.4rem 1rem;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      color: #ffc93c;
+    }
+    .tagline {
+      text-align: center;
+      color: rgba(255,255,255,0.7);
+      font-size: 1rem;
+      margin-bottom: 3rem;
+      font-style: italic;
+    }
+    .demos-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+    .demo-card {
+      background: rgba(255,255,255,0.08);
+      border-radius: 16px;
+      padding: 1.5rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .demo-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 30px rgba(0,0,0,0.3);
+      background: rgba(255,255,255,0.1);
+    }
+    .demo-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    .demo-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+    .demo-icon.kid { background: linear-gradient(135deg, #4facfe, #00f2fe); }
+    .demo-icon.creative { background: linear-gradient(135deg, #a855f7, #ec4899); }
+    .demo-icon.adult { background: linear-gradient(135deg, #f59e0b, #ef4444); }
+    .demo-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: #ffc93c;
+    }
+    .demo-subtitle {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .demo-description {
+      color: rgba(255,255,255,0.8);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 1rem;
+    }
+    .audio-player {
+      width: 100%;
+      margin-bottom: 1rem;
+    }
+    .audio-player audio {
+      width: 100%;
+      height: 50px;
+    }
+    .demo-tags {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    .tag {
+      background: rgba(255,255,255,0.12);
+      padding: 0.25rem 0.75rem;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      color: #a8edea;
+    }
+    .full-lesson-note {
+      text-align: center;
+      margin-top: 0.75rem;
+      padding: 0.5rem;
+      background: rgba(255,199,60,0.1);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #ffc93c;
+    }
+    .cta-section {
+      text-align: center;
+      margin-top: 3rem;
+      padding: 2rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 16px;
+    }
+    .cta-button {
+      display: inline-block;
+      background: linear-gradient(90deg, #e94560, #ff6b6b);
+      color: white;
+      padding: 1rem 2.5rem;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+      transition: transform 0.2s;
+    }
+    .cta-button:hover { transform: scale(1.05); }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 2rem;
+      color: #a8edea;
+      text-decoration: none;
+    }
+    .back-link:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      h1 { font-size: 1.8rem; }
+      .demo-header { flex-direction: column; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Listen to Demo Lessons</h1>
+    <p class="subtitle">40-Second Audio Previews - Personalized by AI</p>
+    <div class="preview-badge"><span>PREVIEW INTROS - Full 10-minute lessons available</span></div>
+    <p class="tagline">Hear how we transform what you LOVE into what you NEED to learn</p>
+
+    <div class="demos-list">
+      <div class="demo-card">
+        <div class="demo-header">
+          <div class="demo-icon kid">🦖</div>
+          <div>
+            <h3 class="demo-title">Joe's Preview: Dinosaurs → Fractions</h3>
+            <p class="demo-subtitle">6 years old • Math</p>
+          </div>
+        </div>
+        <p class="demo-description">
+          Joe loves dinosaurs! Listen to how we introduce fractions using T-Rex pizza and Brontosaurus cake -
+          concepts that immediately click because they connect to what he already loves.
+        </p>
+        <div class="audio-player">
+          <audio controls preload="metadata">
+            <source src="/demos/joe-dinosaurs-fractions.mp3" type="audio/mpeg">
+            Your browser doesn't support audio playback.
+          </audio>
+        </div>
+        <div class="demo-tags">
+          <span class="tag">Kid-Friendly</span>
+          <span class="tag">Fractions</span>
+          <span class="tag">Warm Male Voice</span>
+        </div>
+        <div class="full-lesson-note">This is a 40-second preview. Full 10-minute lesson ready instantly!</div>
+      </div>
+
+      <div class="demo-card">
+        <div class="demo-header">
+          <div class="demo-icon creative">🎨</div>
+          <div>
+            <h3 class="demo-title">Maya's Preview: Art → Solar System</h3>
+            <p class="demo-subtitle">10 years old • Science</p>
+          </div>
+        </div>
+        <p class="demo-description">
+          Maya is passionate about art! Hear how we teach her the solar system as a canvas masterpiece -
+          with colors, textures, and composition she already understands.
+        </p>
+        <div class="audio-player">
+          <audio controls preload="metadata">
+            <source src="/demos/maya-art-solar-system.mp3" type="audio/mpeg">
+            Your browser doesn't support audio playback.
+          </audio>
+        </div>
+        <div class="demo-tags">
+          <span class="tag">Creative Learner</span>
+          <span class="tag">Astronomy</span>
+          <span class="tag">Warm Female Voice</span>
+        </div>
+        <div class="full-lesson-note">This is a 40-second preview. Full 10-minute lesson ready instantly!</div>
+      </div>
+
+      <div class="demo-card">
+        <div class="demo-header">
+          <div class="demo-icon adult">🥐</div>
+          <div>
+            <h3 class="demo-title">Sarah's Preview: Bakery → Mortgage</h3>
+            <p class="demo-subtitle">Adult • Finance</p>
+          </div>
+        </div>
+        <p class="demo-description">
+          Sarah runs a bakery and wants to understand her mortgage. Listen to how we explain principal and interest
+          using dough batches and energy bills - concepts she already masters daily.
+        </p>
+        <div class="audio-player">
+          <audio controls preload="metadata">
+            <source src="/demos/sarah-bakery-mortgage.mp3" type="audio/mpeg">
+            Your browser doesn't support audio playback.
+          </audio>
+        </div>
+        <div class="demo-tags">
+          <span class="tag">Adult Learning</span>
+          <span class="tag">Financial Literacy</span>
+          <span class="tag">Professional Voice</span>
+        </div>
+        <div class="full-lesson-note">This is a 40-second preview. Full 10-minute lesson ready instantly!</div>
+      </div>
+    </div>
+
+    <div class="cta-section">
+      <p style="margin-bottom: 1rem; color: rgba(255,255,255,0.9); font-size: 1.1rem;">
+        <strong>Be Specific = Magic Output</strong>
+      </p>
+      <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.7);">
+        Tell us exactly what someone loves and what they need to learn. The more specific you are, the more magical the lesson!
+      </p>
+      <a href="/flash-cards" class="cta-button">Create Your Personalized Lesson</a>
+    </div>
+
+    <a href="/" class="back-link">&larr; Back to Home</a>
+  </div>
+</body>
+</html>`;
+  res.send(html);
 });
 
 // ============================================================
