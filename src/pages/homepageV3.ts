@@ -893,6 +893,134 @@ export function renderPremiumHomepageV3(): string {
           color: var(--text-muted);
         }
 
+        /* Social Section */
+        .social-section {
+          padding: 100px 24px;
+        }
+        .social-grid {
+          max-width: 1200px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        .social-card {
+          background: linear-gradient(135deg, rgba(26, 26, 36, 0.85) 0%, rgba(26, 26, 36, 0.6) 100%);
+          backdrop-filter: blur(16px) saturate(150%);
+          -webkit-backdrop-filter: blur(16px) saturate(150%);
+          border-radius: 20px;
+          overflow: hidden;
+          border: 1px solid rgba(255,255,255,0.1);
+          box-shadow: var(--shadow-md);
+          transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .social-card:hover {
+          transform: translateY(-8px);
+          box-shadow: var(--shadow-lg);
+          border-color: rgba(255,255,255,0.15);
+        }
+        .social-video-container {
+          position: relative;
+          width: 100%;
+          padding-bottom: 177.78%; /* 9:16 aspect ratio */
+          background: var(--dark-elevated);
+        }
+        .social-video-container iframe,
+        .social-video-container video {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          border: none;
+        }
+        .social-video-placeholder {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          background: linear-gradient(180deg, rgba(26, 26, 36, 0.9) 0%, rgba(233, 69, 96, 0.2) 100%);
+          padding: 24px;
+          text-align: center;
+        }
+        .social-video-placeholder .platform-icon {
+          font-size: 3rem;
+          margin-bottom: 16px;
+        }
+        .social-video-placeholder h4 {
+          font-size: 1.1rem;
+          margin-bottom: 8px;
+        }
+        .social-video-placeholder p {
+          font-size: 0.85rem;
+          color: var(--text-muted);
+          margin-bottom: 16px;
+        }
+        .social-video-placeholder .coming-soon {
+          padding: 8px 16px;
+          background: rgba(233, 69, 96, 0.2);
+          border: 1px solid rgba(233, 69, 96, 0.3);
+          border-radius: 100px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          color: var(--primary-light);
+        }
+        .social-links-bar {
+          max-width: 800px;
+          margin: 48px auto 0;
+          display: flex;
+          justify-content: center;
+          gap: 24px;
+          flex-wrap: wrap;
+        }
+        .social-link-btn {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 14px 24px;
+          background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.03) 100%);
+          border: 1px solid rgba(255,255,255,0.12);
+          border-radius: 12px;
+          color: var(--text-primary);
+          text-decoration: none;
+          font-weight: 500;
+          font-size: 0.95rem;
+          transition: all 0.3s ease;
+        }
+        .social-link-btn:hover {
+          background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%);
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-md);
+        }
+        .social-link-btn .icon {
+          font-size: 1.25rem;
+        }
+        @media (max-width: 1024px) {
+          .social-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 768px) {
+          .social-grid {
+            grid-template-columns: 1fr;
+            max-width: 400px;
+          }
+          .social-links-bar {
+            flex-direction: column;
+            align-items: center;
+          }
+          .social-link-btn {
+            width: 100%;
+            max-width: 300px;
+            justify-content: center;
+          }
+        }
+
         /* Pricing Section */
         .pricing {
           padding: 120px 24px;
@@ -1518,6 +1646,61 @@ export function renderPremiumHomepageV3(): string {
         </div>
       </section>
 
+      <!-- See Us On Social Section -->
+      <section class="social-section" id="social">
+        <div class="section-header">
+          <span class="section-eyebrow">See Us On Social</span>
+          <h2>Watch Personalized Learning in Action</h2>
+          <p>Short videos showing real lessons, real reactions, and real results.</p>
+        </div>
+        <div class="social-grid">
+          <div class="social-card">
+            <div class="social-video-container">
+              <div class="social-video-placeholder">
+                <div class="platform-icon">📱</div>
+                <h4>Joe Learns Fractions</h4>
+                <p>Watch Joe master fractions through dinosaurs!</p>
+                <span class="coming-soon">Video Coming Soon</span>
+              </div>
+            </div>
+          </div>
+          <div class="social-card">
+            <div class="social-video-container">
+              <div class="social-video-placeholder">
+                <div class="platform-icon">🎬</div>
+                <h4>Parent Reactions</h4>
+                <p>Mom sees her child ask for MORE homework</p>
+                <span class="coming-soon">Video Coming Soon</span>
+              </div>
+            </div>
+          </div>
+          <div class="social-card">
+            <div class="social-video-container">
+              <div class="social-video-placeholder">
+                <div class="platform-icon">✨</div>
+                <h4>Adult Learning Wins</h4>
+                <p>Adults finally understanding finance</p>
+                <span class="coming-soon">Video Coming Soon</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="social-links-bar">
+          <a href="https://tiktok.com/@personalizedoutput" target="_blank" rel="noopener" class="social-link-btn">
+            <span class="icon">🎵</span>
+            <span>Follow on TikTok</span>
+          </a>
+          <a href="https://instagram.com/personalizedoutput" target="_blank" rel="noopener" class="social-link-btn">
+            <span class="icon">📸</span>
+            <span>Follow on Instagram</span>
+          </a>
+          <a href="https://youtube.com/@personalizedoutput" target="_blank" rel="noopener" class="social-link-btn">
+            <span class="icon">▶️</span>
+            <span>Subscribe on YouTube</span>
+          </a>
+        </div>
+      </section>
+
       <section class="pricing" id="pricing">
         <div class="section-header">
           <span class="section-eyebrow">Pricing</span>
@@ -1822,7 +2005,7 @@ export function renderPremiumHomepageV3(): string {
         }, observerOptions);
 
         // Observe all sections and cards
-        document.querySelectorAll('.product-card, .testimonial-card, .pricing-card, .topic-category, .step').forEach(el => {
+        document.querySelectorAll('.product-card, .testimonial-card, .pricing-card, .topic-category, .step, .social-card').forEach(el => {
           el.classList.add('reveal');
           revealObserver.observe(el);
         });
