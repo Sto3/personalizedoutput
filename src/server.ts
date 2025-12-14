@@ -175,6 +175,16 @@ app.use('/listing-images', express.static(path.join(process.cwd(), 'public', 'li
 app.use('/digital-downloads', express.static(path.join(process.cwd(), 'public', 'digital-downloads')));
 app.use('/demos', express.static(path.join(process.cwd(), 'public', 'demos')));
 
+// PWA files - serve manifest.json and sw.js from public folder
+app.get('/manifest.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/manifest+json');
+  res.sendFile(path.join(process.cwd(), 'public', 'manifest.json'));
+});
+app.get('/sw.js', (req, res) => {
+  res.setHeader('Content-Type', 'application/javascript');
+  res.sendFile(path.join(process.cwd(), 'public', 'sw.js'));
+});
+
 // ============================================================
 // PRODUCTION ROUTES - Clean URLs for Etsy buyers
 // ============================================================
