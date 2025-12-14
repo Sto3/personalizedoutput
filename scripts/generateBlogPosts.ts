@@ -36,63 +36,79 @@ interface BlogPost {
   updated_at: string;
 }
 
-// Topics relevant to PersonalizedOutput products
+// Educational thought-leadership topics (NOT how-to guides)
+// Focus: Science of learning, success stories, positioning as thought leaders
 const BLOG_TOPICS = [
   {
-    category: 'Thought Organizer / Personalized Learning',
+    category: 'Science of Personalized Learning',
     topics: [
-      'How personalized learning increases retention by 300%',
-      'Why learning through interests works (the science)',
-      'How to help ADHD kids focus through their passions',
-      'Adult learning: Why we forget what we read',
-      'Teaching abstract concepts through concrete interests',
-      'The connection between emotion and memory in learning',
-      'How to make math fun for kids who hate math',
-      'Learning a new language through your hobbies',
-      'Financial literacy through everyday interests',
-      'Why traditional education fails visual learners',
+      'Why Children Learn Better Through Their Interests: The Science',
+      'The Problem with One-Size-Fits-All Education',
+      'Visual Learners vs Auditory Learners: Why It Actually Matters',
+      'Why Adults Struggle to Learn New Skills (And How to Fix It)',
+      'The Power of Connecting New Knowledge to Existing Passions',
+      'How Emotion Drives Memory: The Neuroscience of Interest-Based Learning',
+      'Why Your Child Remembers Dinosaur Facts But Forgets Math',
+      'The Hidden Cost of Boring Education',
+      'What Finland Knows About Learning That America Forgot',
+      'The Attention Economy: Why Traditional Learning Is Losing',
     ]
   },
   {
-    category: 'Vision Boards & Goal Setting',
+    category: 'Success Stories & Case Studies',
     topics: [
-      'The psychology behind why vision boards work',
-      'Digital vs physical vision boards: pros and cons',
-      'Goal setting mistakes that sabotage your success',
-      'How to create goals that stick (not resolutions)',
-      'Vision boards for couples: aligning your dreams',
-      'Career pivot planning with visual goal setting',
+      'How Emma Finally Understood Fractions Through Dinosaurs',
+      'The Baker Who Finally Understood Her Mortgage',
+      'When Learning Stopped Being a Battle: A Parent\'s Story',
+      'How a 45-Year-Old Finally Learned to Code',
+      'The ADHD Child Who Asked for More Homework',
+      'From Math Anxiety to Math Confidence: One Family\'s Journey',
+      'The Skeptical Dad Who Became Our Biggest Advocate',
     ]
   },
   {
-    category: 'Personalization & AI',
+    category: 'Education Philosophy',
     topics: [
-      'How AI is revolutionizing personalized experiences',
-      'The gift of being seen: why personalization matters',
-      'Generic vs personalized: the emotional impact difference',
-      'How AI knows what resonates with you',
-      'The future of AI-powered education',
+      'Why We Built Personalized Learning Sessions (Our Story)',
+      'The Future of Education Is Personal',
+      'School Teaches Subjects. We Teach People.',
+      'Why Every Child Deserves a Personal Tutor',
+      'The Democratization of Elite Education',
+      'What AI Gets Right That Classrooms Get Wrong',
+      'Learning Should Feel Like Discovery, Not Obligation',
     ]
   },
   {
-    category: 'Parenting & Kids',
+    category: 'For Parents',
     topics: [
-      'Screen time that actually helps kids learn',
-      'How to discover your child\'s learning style',
-      'Making homework a battle-free zone',
-      'Teaching kids about money through their interests',
-      'The magic of personalized stories for kids',
-      'Why generic educational content bores kids',
+      'How to Know If Your Child Is a Visual, Auditory, or Kinesthetic Learner',
+      'The After-School Learning That Actually Works',
+      'Why Your Smart Kid Struggles in School',
+      'Screen Time That Builds Instead of Destroys',
+      'What to Do When Your Child Says I Hate Math',
+      'The Homework Battle: Why It Happens and How to End It',
+      'Raising Lifelong Learners in a TikTok World',
     ]
   },
   {
-    category: 'Self-Improvement & Clarity',
+    category: 'For Adults',
     topics: [
-      'Finding clarity when life feels overwhelming',
-      'The power of asking yourself the right questions',
-      'Breaking decision paralysis with structured reflection',
-      'Why journaling works (and how to make it personal)',
-      'Dealing with analysis paralysis in life decisions',
+      'It\'s Not Too Late to Learn: The Adult Learning Advantage',
+      'Why Adults Learn Differently (And Better)',
+      'Finally Understanding Finance: A Guide for the Rest of Us',
+      'Learning New Skills After 40: What the Research Says',
+      'The Impostor Syndrome of Adult Learners',
+      'From Confused to Confident: Adult Learning Success Stories',
+    ]
+  },
+  {
+    category: 'Goal Setting & Vision',
+    topics: [
+      'The Psychology Behind Why Vision Boards Actually Work',
+      'Goal Setting That Sticks: Beyond New Year\'s Resolutions',
+      'Why Visualization Works: The Neuroscience',
+      'Creating Clarity in an Overwhelmed Life',
+      'The Power of Seeing Your Future Self',
     ]
   }
 ];
@@ -134,24 +150,37 @@ function getRandomTopic(existingPosts: BlogPost[]): { category: string; topic: s
 async function generateBlogPost(topic: string, category: string): Promise<Omit<BlogPost, 'id' | 'created_at' | 'updated_at'>> {
   const anthropic = new Anthropic();
 
-  const prompt = `Generate an SEO-optimized blog post for PersonalizedOutput.com about: "${topic}"
+  const prompt = `Generate an educational thought-leadership blog post for PersonalizedOutput.com about: "${topic}"
+
+IMPORTANT: This is NOT a how-to guide or product tutorial. This is thought-leadership content that:
+- Positions PersonalizedOutput as experts in personalized learning
+- Provides genuine educational value
+- Tells stories and shares insights
+- Naturally leads readers to consider personalized learning (without being salesy)
 
 Context:
-- PersonalizedOutput.com sells AI-powered personalized products:
-  - 10-Minute Personalized Lessons (Thought Organizer™): Lessons that teach concepts through the learner's interests
-  - Personalized Santa Messages: Custom audio messages from Santa
-  - Custom Vision Boards: AI-generated vision boards for goals
-  - Custom Flash Cards: Learning cards built around interests
-  - Clarity Planners: Guided reflection for life decisions
+- PersonalizedOutput.com offers 30-Minute Personalized Learning Sessions (Thought Organizer™)
+- Sessions teach ANY subject through the learner's existing interests and passions
+- Works for all ages: kids learning fractions through dinosaurs, adults understanding mortgages through their bakery
+- Also offers: Custom Vision Boards, Flash Cards, Santa Messages
 
-The blog post should:
-1. Be 800-1200 words
-2. Be informative and valuable (not just a sales pitch)
-3. Include practical tips readers can use
-4. Naturally mention relevant products where appropriate (without being pushy)
-5. Be written in a warm, conversational tone
-6. Include compelling subheadings (use ## for h2, ### for h3)
-7. End with a call-to-action linking to a relevant product
+Blog Post Structure:
+1. HOOK: Start with a relatable problem, story, or surprising fact
+2. SCIENCE/INSIGHT: Explain why this matters (research, psychology, real examples)
+3. STORY: Include a specific example or mini case study
+4. THE PROBLEM: What traditional education/learning gets wrong
+5. THE SOLUTION: How personalized learning addresses this (subtle, not salesy)
+6. SOFT CTA: End with curiosity-driven call-to-action like "Want to see what a personalized lesson looks like?"
+
+Writing Guidelines:
+- 800-1200 words
+- Warm, conversational, authoritative tone
+- Use ## for h2 and ### for h3 headings
+- NO "how-to" or step-by-step instructions
+- NO product tutorials
+- Focus on WHY personalized learning matters, not HOW to use our product
+- Stories > Lists
+- Emotion > Information
 
 Return a JSON object with this exact structure:
 {

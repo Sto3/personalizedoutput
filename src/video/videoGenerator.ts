@@ -9,7 +9,14 @@ import * as path from 'path';
 import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { MarketingHook, MARKETING_HOOKS, getHooksByProduct } from './marketingHooks';
-import { VoiceConfig, NARRATOR_VOICES, getRandomNarratorVoice, ELEVENLABS_MODELS } from './voiceConfig';
+import {
+  VoiceConfig,
+  NARRATOR_VOICES,
+  getRandomNarratorVoice,
+  ELEVENLABS_MODELS,
+  NATURAL_VOICE_SETTINGS,
+  VIDEO_END_CTA
+} from './voiceConfig';
 
 const execAsync = promisify(exec);
 
@@ -183,18 +190,30 @@ export function getMusicMoodForHook(hook: MarketingHook): keyof typeof BACKGROUN
 
 /**
  * Generate voiceover audio using ElevenLabs API
+ *
+ * OPTIMIZED FOR MAXIMUM NATURALNESS:
+ * - Uses multilingual_v2 model (highest quality, most natural)
+ * - Lower stability = more natural speech variation
+ * - Higher similarity_boost = maintains voice character
+ * - Style parameter adds emotional inflection
+ * - Speaker boost for clarity
  */
 export async function generateVoiceover(
   text: string,
   voice: VoiceConfig,
-  outputPath: string
+  outputPath: string,
+  voiceType: 'marketing' | 'educational' | 'emotional' | 'personalized' = 'marketing'
 ): Promise<string> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) {
     throw new Error('ELEVENLABS_API_KEY not configured');
   }
 
-  console.log(`[TTS] Generating voiceover with ${voice.name}...`);
+  // Get natural voice settings based on content type
+  const voiceSettings = NATURAL_VOICE_SETTINGS[voiceType];
+
+  console.log(`[TTS] Generating voiceover with ${voice.name} (${voiceType} mode)...`);
+  console.log(`[TTS] Settings: stability=${voiceSettings.stability}, style=${voiceSettings.style}`);
   console.log(`[TTS] Text: "${text.substring(0, 100)}..."`);
 
   const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice.id}`, {
@@ -206,13 +225,9 @@ export async function generateVoiceover(
     },
     body: JSON.stringify({
       text,
-      model_id: ELEVENLABS_MODELS.TURBO_V2_5,
-      voice_settings: {
-        stability: 0.5,
-        similarity_boost: 0.75,
-        style: 0.3,
-        use_speaker_boost: true
-      }
+      // Use multilingual_v2 for BEST quality and most natural sound
+      model_id: ELEVENLABS_MODELS.MULTILINGUAL_V2,
+      voice_settings: voiceSettings
     })
   });
 
@@ -379,19 +394,27 @@ async function addTextOverlay(
   const mainEscaped = escapeText(mainWrapped);
   const ctaEscaped = escapeText(ctaText);
 
-  // Calculate timing
-  const ctaStart = duration - 3;
+  // Follow CTA at the END of ALL videos
+  const followCtaText = VIDEO_END_CTA.text;
+  const followCtaEscaped = escapeText(followCtaText);
+
+  // Calculate timing - main text, then CTA, then Follow CTA at very end
+  const ctaStart = duration - 4.5;  // Product CTA starts 4.5s before end
+  const followCtaStart = duration - 2.5;  // Follow CTA last 2.5 seconds
 
   // Position calculations based on text style
   let mainY = 'h/2-th';
   let ctaY = 'h/2+100';
+  let followCtaY = 'h*7/8';  // Bottom of screen for Follow CTA
 
   if (tStyle.position === 'top') {
     mainY = 'h/4';
     ctaY = 'h*3/4';
+    followCtaY = 'h*7/8';
   } else if (tStyle.position === 'bottom') {
     mainY = 'h*2/3-th';
     ctaY = 'h*5/6';
+    followCtaY = 'h*11/12';
   }
 
   // Font file paths (macOS)
@@ -407,9 +430,14 @@ async function addTextOverlay(
   const accentHex = vStyle.accentColor.replace('#', '');
   const textHex = vStyle.textColor === 'white' ? 'ffffff' : vStyle.textColor.replace('#', '');
 
+  // Build ffmpeg command with THREE text overlays:
+  // 1. Main hook text (first part of video)
+  // 2. Product CTA (middle/end)
+  // 3. Follow @PersonalizedOutput CTA (ALWAYS at end of ALL videos)
   const ffmpegCmd = `ffmpeg -y -i "${inputVideo}" -vf "\
 drawtext=fontfile='${fontFile}':text='${mainEscaped}':fontcolor=0x${textHex}:fontsize=${tStyle.size}:x=(w-text_w)/2:y=${mainY}:enable='between(t,0,${ctaStart})',\
-drawtext=fontfile='${fontFile}':text='${ctaEscaped}':fontcolor=0x${accentHex}:fontsize=${Math.round(tStyle.size * 0.85)}:x=(w-text_w)/2:y=${ctaY}:enable='between(t,${ctaStart},${duration})'\
+drawtext=fontfile='${fontFile}':text='${ctaEscaped}':fontcolor=0x${accentHex}:fontsize=${Math.round(tStyle.size * 0.85)}:x=(w-text_w)/2:y=${ctaY}:enable='between(t,${ctaStart},${duration})',\
+drawtext=fontfile='${fontFile}':text='${followCtaEscaped}':fontcolor=0x${accentHex}:fontsize=${Math.round(tStyle.size * 0.6)}:x=(w-text_w)/2:y=${followCtaY}:enable='between(t,${followCtaStart},${duration})'\
 " -c:a copy "${outputVideo}"`;
 
   await execAsync(ffmpegCmd);
@@ -489,18 +517,23 @@ export async function generateMarketingVideo(options: VideoGenerationOptions): P
   console.log(`[VIDEO] Music: ${includeMusic ? 'Yes' : 'No'}`);
 
   let duration: number;
-  const fullScript = `${hook.hook} ${hook.cta}`;
+
+  // Build full script - ALWAYS include Follow CTA at the end for voiceover
+  const productScript = `${hook.hook} ${hook.cta}`;
+  const fullScript = includeVoiceover
+    ? `${productScript} ... ${VIDEO_END_CTA.voiceover}`  // Add "Follow us for more at Personalized Output"
+    : productScript;
 
   // Step 1: Determine duration and generate voiceover if needed
   if (includeVoiceover) {
-    await generateVoiceover(fullScript, voice, audioPath);
+    await generateVoiceover(fullScript, voice, audioPath, 'marketing');
     duration = await getAudioDuration(audioPath);
     duration += 1.5; // Add padding
   } else {
     // For silent videos, use reading speed to determine duration
-    // Slightly faster for silent videos since text is on screen
-    const wordCount = fullScript.split(' ').length;
-    duration = Math.max(8, (wordCount / 120) * 60 + 3);
+    // Add extra time for Follow CTA text at the end
+    const wordCount = productScript.split(' ').length;
+    duration = Math.max(10, (wordCount / 120) * 60 + 5);  // Extra time for Follow CTA
   }
 
   console.log(`[VIDEO] Duration: ${duration.toFixed(1)}s`);

@@ -14,9 +14,9 @@ export function renderPremiumHomepageV3(): string {
   const products = [
     {
       id: 'thought-organizer',
-      name: '10-Minute Personalized Lessons',
+      name: '30-Minute Personalized Learning Sessions',
       icon: '🧠',
-      description: 'Revolutionary lessons that teach what you NEED using what you LOVE. Our Thought Organizer™ AI connects your passions to any subject — making learning feel effortless. For kids AND adults.',
+      description: 'Complete learning sessions that teach what you NEED using what you LOVE. Our Thought Organizer™ AI connects your passions to any subject — making learning feel effortless. All ages welcome.',
       href: '/demo-lessons',
       price: 29,
       tag: 'NEW',
@@ -71,15 +71,15 @@ export function renderPremiumHomepageV3(): string {
 
   const testimonials = [
     {
-      quote: "I finally understand my mortgage because they explained it using my bakery! 20 years of confusion, gone in 10 minutes.",
+      quote: "I finally understand my mortgage because they explained it using my bakery! 20 years of confusion, finally clear.",
       author: "Sarah K.",
-      product: "10-Min Lesson",
+      product: "Learning Session",
       rating: 5,
     },
     {
       quote: "My son learned fractions through dinosaurs. He asked for MORE math homework. I didn't know that was possible.",
       author: "Michael R.",
-      product: "10-Min Lesson",
+      product: "Learning Session",
       rating: 5,
     },
     {
@@ -1272,16 +1272,16 @@ export function renderPremiumHomepageV3(): string {
       <section class="stats-bar">
         <div class="stats-inner">
           <div class="stat">
-            <div class="stat-value">10 min</div>
-            <div class="stat-label">Personalized Lessons</div>
+            <div class="stat-value">30 min</div>
+            <div class="stat-label">Complete Sessions</div>
           </div>
           <div class="stat">
             <div class="stat-value">ANY</div>
             <div class="stat-label">Interest → Subject</div>
           </div>
           <div class="stat">
-            <div class="stat-value">Kids</div>
-            <div class="stat-label">AND Adults</div>
+            <div class="stat-value">All Ages</div>
+            <div class="stat-label">Kids + Adults</div>
           </div>
           <div class="stat">
             <div class="stat-value">100%</div>
@@ -1571,7 +1571,7 @@ export function renderPremiumHomepageV3(): string {
           <div class="footer-section">
             <h4>Products</h4>
             <ul class="footer-links">
-              <li><a href="/demo-lessons">10-Min Lessons</a></li>
+              <li><a href="/demo-lessons">Learning Sessions</a></li>
               <li><a href="/santa">Santa Message</a></li>
               <li><a href="/vision-board">Vision Board</a></li>
               <li><a href="/flash-cards">Flash Cards</a></li>
