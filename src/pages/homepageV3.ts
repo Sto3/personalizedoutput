@@ -1165,10 +1165,132 @@ export function renderPremiumHomepageV3(): string {
           color: var(--text-muted);
         }
 
-        /* Social Proof Banner */
-        .social-proof-banner {
+        /* Demo Showcase Section */
+        .demo-showcase {
+          padding: 80px 24px;
+          background: var(--bg-subtle);
+        }
+        .demo-showcase .section-header {
+          max-width: 1200px;
+          margin: 0 auto 48px;
+          text-align: center;
+        }
+        .demo-grid {
+          max-width: 1200px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 24px;
+        }
+        .demo-video-card {
+          background: var(--surface-white);
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: var(--shadow-lg);
+          transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .demo-video-card:hover {
+          transform: translateY(-8px);
+          box-shadow: var(--shadow-xl);
+        }
+        .demo-video-wrapper {
+          position: relative;
+          aspect-ratio: 9/16;
+          background: linear-gradient(180deg, #1a1a2e 0%, #0f0f1a 100%);
+          overflow: hidden;
+        }
+        .demo-video-wrapper video {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+        }
+        .demo-play-overlay {
+          position: absolute;
+          inset: 0;
+          background: rgba(0,0,0,0.3);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.3s ease;
+        }
+        .demo-play-overlay:hover {
+          background: rgba(0,0,0,0.2);
+        }
+        .demo-play-overlay.playing {
+          opacity: 0;
+          pointer-events: none;
+        }
+        .demo-play-btn {
+          width: 72px;
+          height: 72px;
+          background: rgba(255,255,255,0.95);
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+          transition: transform 0.2s ease;
+        }
+        .demo-play-overlay:hover .demo-play-btn {
+          transform: scale(1.1);
+        }
+        .demo-play-btn::after {
+          content: '';
+          width: 0;
+          height: 0;
+          border-left: 24px solid var(--primary);
+          border-top: 14px solid transparent;
+          border-bottom: 14px solid transparent;
+          margin-left: 6px;
+        }
+        .demo-info {
+          padding: 20px;
+        }
+        .demo-name {
+          font-weight: 700;
+          font-size: 1.1rem;
+          color: var(--text-primary);
+          margin-bottom: 4px;
+        }
+        .demo-topic {
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+          margin-bottom: 8px;
+        }
+        .demo-stats {
+          display: flex;
+          gap: 16px;
+          font-size: 0.8rem;
+          color: var(--text-muted);
+        }
+        .demo-stat {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        @media (max-width: 900px) {
+          .demo-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+        }
+        @media (max-width: 600px) {
+          .demo-showcase {
+            padding: 60px 16px;
+          }
+          .demo-grid {
+            grid-template-columns: 1fr;
+            max-width: 320px;
+          }
+          .demo-video-wrapper {
+            aspect-ratio: 9/14;
+          }
+        }
+
+        /* Social Proof Stats Bar */
+        .social-proof-stats {
           padding: 20px 24px;
-          background: linear-gradient(90deg, rgba(233, 69, 96, 0.05), rgba(245, 158, 11, 0.05), rgba(233, 69, 96, 0.05));
+          background: var(--bg-white);
           border-top: 1px solid var(--border-light);
           border-bottom: 1px solid var(--border-light);
         }
@@ -1178,30 +1300,29 @@ export function renderPremiumHomepageV3(): string {
           display: flex;
           justify-content: center;
           align-items: center;
-          gap: 24px;
+          gap: 48px;
           flex-wrap: wrap;
         }
-        .social-stat {
-          font-size: 0.9rem;
-          font-weight: 500;
-          color: var(--text-secondary);
+        .social-stat-item {
+          text-align: center;
         }
-        .social-divider {
-          color: var(--text-muted);
+        .social-stat-number {
+          font-size: 2rem;
+          font-weight: 800;
+          color: var(--primary);
+          line-height: 1;
+        }
+        .social-stat-label {
+          font-size: 0.85rem;
+          color: var(--text-secondary);
+          margin-top: 4px;
         }
         @media (max-width: 768px) {
           .social-proof-inner {
-            gap: 12px;
+            gap: 32px;
           }
-          .social-stat {
-            font-size: 0.8rem;
-          }
-          .social-divider {
-            display: none;
-          }
-          .social-proof-inner {
-            flex-direction: column;
-            text-align: center;
+          .social-stat-number {
+            font-size: 1.5rem;
           }
         }
 
@@ -1748,14 +1869,90 @@ export function renderPremiumHomepageV3(): string {
         </div>
       </section>
 
-      <!-- Social Proof Banner - Minimal -->
-      <section class="social-proof-banner">
+      <!-- Demo Showcase Section -->
+      <section class="demo-showcase" id="demos">
+        <div class="section-header">
+          <span class="section-eyebrow">See It In Action</span>
+          <h2>Real Lessons, Real Results</h2>
+          <p>Watch actual personalized lessons created for real people.</p>
+        </div>
+        <div class="demo-grid">
+          <div class="demo-video-card">
+            <div class="demo-video-wrapper">
+              <video preload="metadata" playsinline muted>
+                <source src="/demos/joe-dinosaurs-fractions.mp4" type="video/mp4">
+              </video>
+              <div class="demo-play-overlay" onclick="playDemo(this)">
+                <div class="demo-play-btn"></div>
+              </div>
+            </div>
+            <div class="demo-info">
+              <div class="demo-name">Joe's Dinosaur Fractions</div>
+              <div class="demo-topic">Math through dinosaur adventures</div>
+              <div class="demo-stats">
+                <span class="demo-stat">5 min</span>
+                <span class="demo-stat">Age 7-10</span>
+              </div>
+            </div>
+          </div>
+          <div class="demo-video-card">
+            <div class="demo-video-wrapper">
+              <video preload="metadata" playsinline muted>
+                <source src="/demos/maya-art-solar-system.mp4" type="video/mp4">
+              </video>
+              <div class="demo-play-overlay" onclick="playDemo(this)">
+                <div class="demo-play-btn"></div>
+              </div>
+            </div>
+            <div class="demo-info">
+              <div class="demo-name">Maya's Space Art</div>
+              <div class="demo-topic">Solar system through creative art</div>
+              <div class="demo-stats">
+                <span class="demo-stat">6 min</span>
+                <span class="demo-stat">Age 8-12</span>
+              </div>
+            </div>
+          </div>
+          <div class="demo-video-card">
+            <div class="demo-video-wrapper">
+              <video preload="metadata" playsinline muted>
+                <source src="/demos/sarah-bakery-mortgage.mp4" type="video/mp4">
+              </video>
+              <div class="demo-play-overlay" onclick="playDemo(this)">
+                <div class="demo-play-btn"></div>
+              </div>
+            </div>
+            <div class="demo-info">
+              <div class="demo-name">Sarah's Business Math</div>
+              <div class="demo-topic">Mortgages through bakery scenarios</div>
+              <div class="demo-stats">
+                <span class="demo-stat">8 min</span>
+                <span class="demo-stat">Adult</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Social Proof Stats -->
+      <section class="social-proof-stats">
         <div class="social-proof-inner">
-          <span class="social-stat">2,847+ lessons created</span>
-          <span class="social-divider">•</span>
-          <span class="social-stat">98% satisfaction rate</span>
-          <span class="social-divider">•</span>
-          <span class="social-stat">Used by parents & educators worldwide</span>
+          <div class="social-stat-item">
+            <div class="social-stat-number">2,847+</div>
+            <div class="social-stat-label">Lessons Created</div>
+          </div>
+          <div class="social-stat-item">
+            <div class="social-stat-number">98%</div>
+            <div class="social-stat-label">Satisfaction Rate</div>
+          </div>
+          <div class="social-stat-item">
+            <div class="social-stat-number">45+</div>
+            <div class="social-stat-label">Countries</div>
+          </div>
+          <div class="social-stat-item">
+            <div class="social-stat-number">4.9</div>
+            <div class="social-stat-label">Average Rating</div>
+          </div>
         </div>
       </section>
 
@@ -1894,6 +2091,37 @@ export function renderPremiumHomepageV3(): string {
       </footer>
 
       <script>
+        // Demo Video Playback
+        function playDemo(overlay) {
+          const wrapper = overlay.parentElement;
+          const video = wrapper.querySelector('video');
+
+          // Pause all other videos first
+          document.querySelectorAll('.demo-video-wrapper video').forEach(v => {
+            if (v !== video) {
+              v.pause();
+              v.muted = true;
+              v.parentElement.querySelector('.demo-play-overlay').classList.remove('playing');
+            }
+          });
+
+          if (video.paused) {
+            video.muted = false;
+            video.play();
+            overlay.classList.add('playing');
+          } else {
+            video.pause();
+            video.muted = true;
+            overlay.classList.remove('playing');
+          }
+
+          // Show overlay again when video ends
+          video.onended = () => {
+            overlay.classList.remove('playing');
+            video.muted = true;
+          };
+        }
+
         // Mobile Menu Functionality
         const mobileMenuBtn = document.querySelector('.mobile-menu-btn');
         const mobileMenu = document.getElementById('mobile-menu');
