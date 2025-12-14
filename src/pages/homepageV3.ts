@@ -13,6 +13,17 @@
 export function renderPremiumHomepageV3(): string {
   const products = [
     {
+      id: 'thought-organizer',
+      name: '10-Minute Personalized Lessons',
+      icon: '🧠',
+      description: 'Revolutionary lessons that teach what you NEED using what you LOVE. Our Thought Organizer™ AI connects your passions to any subject — making learning feel effortless. For kids AND adults.',
+      href: '/demo-lessons',
+      price: 29,
+      tag: 'NEW',
+      featured: true,
+      benefits: ['Uses YOUR interests to teach', 'Kids: dinosaurs → fractions', 'Adults: bakery → mortgages'],
+    },
+    {
       id: 'santa',
       name: 'Personalized Santa Message',
       icon: '🎅',
@@ -20,7 +31,7 @@ export function renderPremiumHomepageV3(): string {
       href: '/santa',
       price: 19,
       tag: 'Holiday Special',
-      featured: true,
+      featured: false,
       benefits: ['2-3 minute personalized audio', 'Mentions specific achievements', 'Downloadable MP3 file'],
     },
     {
@@ -38,7 +49,7 @@ export function renderPremiumHomepageV3(): string {
       id: 'flash-cards',
       name: 'Custom Flash Cards',
       icon: '📚',
-      description: 'Learning cards built around YOUR child\'s interests, struggles, and unique learning style.',
+      description: 'Learning cards built around YOUR interests and unique learning style. Works for kids and adults alike.',
       href: '/flash-cards',
       price: 14,
       tag: null,
@@ -60,21 +71,21 @@ export function renderPremiumHomepageV3(): string {
 
   const testimonials = [
     {
-      quote: "My daughter played the Santa message 14 times. She couldn't believe Santa knew about her science fair project.",
-      author: "Sarah M.",
-      product: "Santa Message",
+      quote: "I finally understand my mortgage because they explained it using my bakery! 20 years of confusion, gone in 10 minutes.",
+      author: "Sarah K.",
+      product: "10-Min Lesson",
+      rating: 5,
+    },
+    {
+      quote: "My son learned fractions through dinosaurs. He asked for MORE math homework. I didn't know that was possible.",
+      author: "Michael R.",
+      product: "10-Min Lesson",
       rating: 5,
     },
     {
       quote: "I cried. The vision board captured exactly what I've been feeling but couldn't articulate.",
       author: "Jessica T.",
       product: "Vision Board",
-      rating: 5,
-    },
-    {
-      quote: "My son actually WANTS to study now. The flash cards are all about dinosaurs and space - his obsessions.",
-      author: "Michael R.",
-      product: "Flash Cards",
       rating: 5,
     },
   ];
@@ -85,14 +96,21 @@ export function renderPremiumHomepageV3(): string {
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>personalizedoutput - Deeply Personalized Digital Experiences</title>
-      <meta name="description" content="Create deeply personalized Santa messages, vision boards, flash cards, and life planners using AI. Not generic templates - impossibly personal digital experiences.">
-      <meta name="keywords" content="personalized santa message, custom vision board 2025, personalized flash cards, AI gifts, personalized gifts">
+      <title>personalizedoutput - Learn Anything Through What You Love</title>
+      <meta name="description" content="Thought Organizer™ AI creates personalized lessons that use YOUR passions to teach what you need. Kids learn fractions through dinosaurs. Adults master mortgages through their business. For kids AND adults.">
+      <meta name="keywords" content="personalized learning, AI lessons, learn through interests, thought organizer, personalized education, kids learning, adult learning">
       <link rel="canonical" href="https://personalizedoutput.com">
       <meta property="og:title" content="personalizedoutput - Deeply Personalized Digital Experiences">
       <meta property="og:description" content="AI-powered personalization that makes people say 'How did it know that about me?'">
       <meta property="og:type" content="website">
       <meta property="og:url" content="https://personalizedoutput.com">
+      <!-- PWA Support -->
+      <link rel="manifest" href="/manifest.json">
+      <meta name="theme-color" content="#e94560">
+      <meta name="apple-mobile-web-app-capable" content="yes">
+      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+      <meta name="apple-mobile-web-app-title" content="PersonalizedOutput">
+      <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
@@ -890,6 +908,162 @@ export function renderPremiumHomepageV3(): string {
           transform: translateY(-2px);
         }
 
+        /* Topics Section */
+        .topics-section {
+          padding: 100px 24px;
+          background: var(--dark-surface);
+        }
+        .be-specific-banner {
+          max-width: 800px;
+          margin: 24px auto 0;
+          padding: 20px 28px;
+          background: linear-gradient(135deg, rgba(248, 181, 0, 0.15), rgba(233, 69, 96, 0.1));
+          border: 1px solid rgba(248, 181, 0, 0.3);
+          border-radius: 16px;
+          font-size: 1rem;
+          line-height: 1.6;
+          color: var(--text-primary);
+        }
+        .be-specific-banner .tip-icon {
+          margin-right: 8px;
+        }
+        .be-specific-banner em {
+          color: var(--accent);
+          font-style: normal;
+          font-weight: 600;
+        }
+        .topic-classification {
+          max-width: 1200px;
+          margin: 40px auto 32px;
+        }
+        .classification-header {
+          display: flex;
+          justify-content: center;
+          gap: 32px;
+          flex-wrap: wrap;
+        }
+        .class-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          font-size: 0.9rem;
+          color: var(--text-secondary);
+        }
+        .class-dot {
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+        }
+        .class-item.green .class-dot { background: #4ade80; }
+        .class-item.yellow .class-dot { background: #facc15; }
+        .class-item.red .class-dot { background: #f87171; }
+        .topics-grid {
+          max-width: 1200px;
+          margin: 0 auto;
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+          gap: 24px;
+        }
+        .topic-category {
+          background: var(--dark-card);
+          border-radius: 20px;
+          padding: 28px;
+          border: 1px solid var(--glass-border);
+        }
+        .topic-category h3 {
+          font-size: 1.1rem;
+          margin-bottom: 16px;
+          font-weight: 600;
+        }
+        .topic-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+        }
+        .topic-tag {
+          padding: 6px 14px;
+          border-radius: 100px;
+          font-size: 0.85rem;
+          font-weight: 500;
+          border: 1px solid transparent;
+        }
+        .topic-tag.green {
+          background: rgba(74, 222, 128, 0.15);
+          border-color: rgba(74, 222, 128, 0.3);
+          color: #4ade80;
+        }
+        .topic-tag.yellow {
+          background: rgba(250, 204, 21, 0.15);
+          border-color: rgba(250, 204, 21, 0.3);
+          color: #facc15;
+        }
+        .topic-tag.red {
+          background: rgba(248, 113, 113, 0.15);
+          border-color: rgba(248, 113, 113, 0.3);
+          color: #f87171;
+        }
+        .be-specific-examples {
+          max-width: 900px;
+          margin: 48px auto 0;
+          background: var(--dark-card);
+          border-radius: 20px;
+          padding: 32px;
+          border: 1px solid var(--glass-border);
+        }
+        .be-specific-examples h4 {
+          text-align: center;
+          font-size: 1.25rem;
+          margin-bottom: 24px;
+          color: var(--accent);
+        }
+        .example-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .example {
+          padding: 16px;
+          background: var(--dark-elevated);
+          border-radius: 12px;
+        }
+        .example-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.1em;
+          margin-bottom: 8px;
+          padding: 4px 10px;
+          border-radius: 4px;
+          display: inline-block;
+        }
+        .example-label.bad {
+          background: rgba(248, 113, 113, 0.2);
+          color: #f87171;
+        }
+        .example-label.good {
+          background: rgba(74, 222, 128, 0.2);
+          color: #4ade80;
+        }
+        .example-text {
+          font-size: 0.95rem;
+          color: var(--text-secondary);
+          font-style: italic;
+        }
+        .cta-buttons {
+          display: flex;
+          gap: 16px;
+          justify-content: center;
+          flex-wrap: wrap;
+        }
+        @media (max-width: 768px) {
+          .example-grid {
+            grid-template-columns: 1fr;
+          }
+          .classification-header {
+            gap: 16px;
+          }
+        }
+
         /* CTA Section */
         .cta {
           padding: 120px 24px;
@@ -1048,7 +1222,7 @@ export function renderPremiumHomepageV3(): string {
             <a href="#how-it-works" class="nav-link">How It Works</a>
             <a href="#pricing" class="nav-link">Pricing</a>
             <a href="/login" class="nav-link">Login</a>
-            <a href="/santa" class="nav-cta">Create Santa Message</a>
+            <a href="/demo-lessons" class="nav-cta">Watch Demo Lessons</a>
           </div>
           <button class="mobile-menu-btn">☰</button>
         </div>
@@ -1059,13 +1233,13 @@ export function renderPremiumHomepageV3(): string {
           <div class="hero-content">
             <div class="hero-badge">
               <span class="pulse"></span>
-              Santa Messages - Limited Time
+              Thought Organizer™ - NOW LIVE
             </div>
-            <h1>Create Gifts That <span class="highlight">Really Know</span> Your People</h1>
-            <p>Powered by Thought Organizer™ AI — our personalization technology that mentions specific moments, achievements, and details about your loved ones. Not generic. Impossibly personal.</p>
+            <h1>Learn Anything Through <span class="highlight">What You Love</span></h1>
+            <p>Our Thought Organizer™ AI creates personalized lessons that use YOUR passions to teach what you need. Kids learn fractions through dinosaurs. Adults master mortgages through their bakery business. Learning finally clicks.</p>
             <div class="hero-buttons">
-              <a href="/santa" class="btn btn-primary">
-                🎅 Create Santa Message — $19
+              <a href="/demo-lessons" class="btn btn-primary">
+                🧠 Watch Demo Lessons
               </a>
               <a href="#products" class="btn btn-secondary">
                 Explore All Products
@@ -1076,19 +1250,19 @@ export function renderPremiumHomepageV3(): string {
             <div class="hero-video-container">
               <div class="hero-video-placeholder" id="hero-video">
                 <div class="play-icon">▶</div>
-                <h3>Watch the Magic</h3>
-                <p>See a real Santa message in action</p>
+                <h3>See It In Action</h3>
+                <p>Watch Joe learn fractions through dinosaurs</p>
               </div>
             </div>
             <div class="floating-card left">
-              <div class="fc-icon">🎯</div>
-              <div class="fc-title">Deep Personalization</div>
-              <div class="fc-value">20+ data points</div>
+              <div class="fc-icon">🧠</div>
+              <div class="fc-title">Thought Organizer™</div>
+              <div class="fc-value">Passions → Learning</div>
             </div>
             <div class="floating-card right">
-              <div class="fc-icon">⭐</div>
-              <div class="fc-title">Customer Rating</div>
-              <div class="fc-value">5.0 stars</div>
+              <div class="fc-icon">👨‍👩‍👧‍👦</div>
+              <div class="fc-title">For Everyone</div>
+              <div class="fc-value">Kids & Adults</div>
             </div>
           </div>
         </div>
@@ -1097,20 +1271,20 @@ export function renderPremiumHomepageV3(): string {
       <section class="stats-bar">
         <div class="stats-inner">
           <div class="stat">
-            <div class="stat-value">4</div>
-            <div class="stat-label">Product Types</div>
+            <div class="stat-value">10 min</div>
+            <div class="stat-label">Personalized Lessons</div>
           </div>
           <div class="stat">
-            <div class="stat-value">20+</div>
-            <div class="stat-label">Personalization Points</div>
+            <div class="stat-value">ANY</div>
+            <div class="stat-label">Interest → Subject</div>
           </div>
           <div class="stat">
-            <div class="stat-value">$14</div>
-            <div class="stat-label">Starting Price</div>
+            <div class="stat-value">Kids</div>
+            <div class="stat-label">AND Adults</div>
           </div>
           <div class="stat">
             <div class="stat-value">100%</div>
-            <div class="stat-label">Unique Outputs</div>
+            <div class="stat-label">Unique to YOU</div>
           </div>
         </div>
       </section>
@@ -1252,11 +1426,138 @@ export function renderPremiumHomepageV3(): string {
         </div>
       </section>
 
+      <!-- Topics & Be Specific Section -->
+      <section class="topics-section" id="topics">
+        <div class="section-header">
+          <span class="section-eyebrow">What Can You Learn?</span>
+          <h2>Virtually Any Topic</h2>
+          <p class="be-specific-banner">
+            <span class="tip-icon">💡</span>
+            <strong>Be Specific = Magic Output</strong> — The more specific your input, the more personalized your lesson. "Fractions" is okay. "Fractions using dinosaur hunting scenarios for my 6-year-old who loves T-Rex" is <em>magical</em>.
+          </p>
+        </div>
+
+        <div class="topic-classification">
+          <div class="classification-header">
+            <div class="class-item green">
+              <span class="class-dot"></span>
+              <span class="class-label">Works Great</span>
+            </div>
+            <div class="class-item yellow">
+              <span class="class-dot"></span>
+              <span class="class-label">Good with Specificity</span>
+            </div>
+            <div class="class-item red">
+              <span class="class-dot"></span>
+              <span class="class-label">Needs Extra Detail</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="topics-grid">
+          <div class="topic-category">
+            <h3>📐 Math & Numbers</h3>
+            <div class="topic-tags">
+              <span class="topic-tag green">Fractions</span>
+              <span class="topic-tag green">Multiplication</span>
+              <span class="topic-tag green">Basic Algebra</span>
+              <span class="topic-tag green">Percentages</span>
+              <span class="topic-tag yellow">Geometry</span>
+              <span class="topic-tag yellow">Statistics</span>
+              <span class="topic-tag yellow">Calculus Basics</span>
+            </div>
+          </div>
+          <div class="topic-category">
+            <h3>🔬 Science</h3>
+            <div class="topic-tags">
+              <span class="topic-tag green">Solar System</span>
+              <span class="topic-tag green">Weather</span>
+              <span class="topic-tag green">Human Body</span>
+              <span class="topic-tag green">Animals & Habitats</span>
+              <span class="topic-tag yellow">Chemistry Basics</span>
+              <span class="topic-tag yellow">Physics Concepts</span>
+              <span class="topic-tag yellow">Biology</span>
+            </div>
+          </div>
+          <div class="topic-category">
+            <h3>💰 Finance & Business</h3>
+            <div class="topic-tags">
+              <span class="topic-tag green">Mortgages</span>
+              <span class="topic-tag green">Interest Rates</span>
+              <span class="topic-tag green">Budgeting</span>
+              <span class="topic-tag green">Investing Basics</span>
+              <span class="topic-tag yellow">Taxes</span>
+              <span class="topic-tag yellow">Business Planning</span>
+              <span class="topic-tag red">Advanced Trading</span>
+            </div>
+          </div>
+          <div class="topic-category">
+            <h3>🌍 Languages & History</h3>
+            <div class="topic-tags">
+              <span class="topic-tag green">Spanish Basics</span>
+              <span class="topic-tag green">French Basics</span>
+              <span class="topic-tag green">Historical Events</span>
+              <span class="topic-tag yellow">Grammar Rules</span>
+              <span class="topic-tag yellow">World Wars</span>
+              <span class="topic-tag yellow">Ancient Civilizations</span>
+            </div>
+          </div>
+          <div class="topic-category">
+            <h3>🎨 Life Skills</h3>
+            <div class="topic-tags">
+              <span class="topic-tag green">Cooking Basics</span>
+              <span class="topic-tag green">Time Management</span>
+              <span class="topic-tag green">Communication</span>
+              <span class="topic-tag yellow">Emotional Intelligence</span>
+              <span class="topic-tag yellow">Public Speaking</span>
+              <span class="topic-tag yellow">Critical Thinking</span>
+            </div>
+          </div>
+          <div class="topic-category">
+            <h3>💻 Technology</h3>
+            <div class="topic-tags">
+              <span class="topic-tag green">Internet Safety</span>
+              <span class="topic-tag green">How Computers Work</span>
+              <span class="topic-tag yellow">Coding Basics</span>
+              <span class="topic-tag yellow">AI Fundamentals</span>
+              <span class="topic-tag red">Advanced Programming</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="be-specific-examples">
+          <h4>The Specificity Secret</h4>
+          <div class="example-grid">
+            <div class="example">
+              <div class="example-label bad">Generic</div>
+              <div class="example-text">"Teach fractions"</div>
+            </div>
+            <div class="example">
+              <div class="example-label good">Specific</div>
+              <div class="example-text">"Teach fractions to my 7-year-old who loves Minecraft, using blocks and building"</div>
+            </div>
+            <div class="example">
+              <div class="example-label bad">Generic</div>
+              <div class="example-text">"Explain mortgages"</div>
+            </div>
+            <div class="example">
+              <div class="example-label good">Specific</div>
+              <div class="example-text">"Explain mortgages using my bakery business as the example - I understand flour costs and delivery fees"</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="cta">
         <div class="cta-inner">
-          <h2>Ready to Create Something Special?</h2>
-          <p>Start with a Santa message for the holidays, or try any of our personalized products.</p>
-          <a href="/santa" class="btn btn-primary">Create Santa Message — $19</a>
+          <h2>Ready to Learn Your Way?</h2>
+          <p>Watch real demo lessons and see how Thought Organizer™ connects what you love to what you need to learn. For kids AND adults.</p>
+          <div class="cta-buttons">
+            <a href="/demo-lessons" class="btn btn-primary">Listen to Demo Lessons</a>
+            <button id="pwa-install-btn" class="btn btn-secondary" style="display: none;">
+              📱 Install App
+            </button>
+          </div>
         </div>
       </section>
 
@@ -1269,10 +1570,10 @@ export function renderPremiumHomepageV3(): string {
           <div class="footer-section">
             <h4>Products</h4>
             <ul class="footer-links">
+              <li><a href="/demo-lessons">10-Min Lessons</a></li>
               <li><a href="/santa">Santa Message</a></li>
               <li><a href="/vision-board">Vision Board</a></li>
               <li><a href="/flash-cards">Flash Cards</a></li>
-              <li><a href="/planner">Clarity Planner</a></li>
             </ul>
           </div>
           <div class="footer-section">
@@ -1323,6 +1624,35 @@ export function renderPremiumHomepageV3(): string {
             }
           });
         });
+
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+              .then(reg => console.log('[PWA] Service Worker registered'))
+              .catch(err => console.log('[PWA] SW registration failed:', err));
+          });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        const installBtn = document.getElementById('pwa-install-btn');
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          if (installBtn) installBtn.style.display = 'inline-flex';
+        });
+        if (installBtn) {
+          installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+              deferredPrompt.prompt();
+              const { outcome } = await deferredPrompt.userChoice;
+              console.log('[PWA] Install outcome:', outcome);
+              deferredPrompt = null;
+              installBtn.style.display = 'none';
+            }
+          });
+        }
       </script>
     </body>
     </html>
