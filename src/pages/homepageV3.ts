@@ -1218,11 +1218,12 @@ export function renderPremiumHomepageV3(): string {
         <div class="nav-inner">
           <a href="/" class="logo">personalized<span>output</span></a>
           <div class="nav-links">
-            <a href="#products" class="nav-link">Products</a>
             <a href="#how-it-works" class="nav-link">How It Works</a>
+            <a href="#products" class="nav-link">Products</a>
             <a href="#pricing" class="nav-link">Pricing</a>
+            <a href="/blog" class="nav-link">Blog</a>
             <a href="/login" class="nav-link">Login</a>
-            <a href="/demo-lessons" class="nav-cta">Watch Demo Lessons</a>
+            <a href="/demo-lessons" class="nav-cta">Listen to Demos</a>
           </div>
           <button class="mobile-menu-btn">☰</button>
         </div>
