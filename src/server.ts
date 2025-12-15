@@ -175,6 +175,8 @@ app.use('/assets', express.static(path.join(process.cwd(), 'assets')));
 app.use('/listing-images', express.static(path.join(process.cwd(), 'public', 'listing-images')));
 app.use('/digital-downloads', express.static(path.join(process.cwd(), 'public', 'digital-downloads')));
 app.use('/demos', express.static(path.join(process.cwd(), 'public', 'demos')));
+app.use('/santa-demos', express.static(path.join(process.cwd(), 'public', 'santa-demos')));
+app.use('/social-videos', express.static(path.join(process.cwd(), 'public', 'social-videos')));
 
 // PWA files - serve manifest.json and sw.js from public folder
 app.get('/manifest.json', (req, res) => {
@@ -505,7 +507,7 @@ app.get('/demos', (req, res) => {
   res.redirect(301, '/demo-lessons');
 });
 
-// Demo Lessons showcase page - shows sample personalized AUDIO lessons (40-second intros)
+// Demo Lessons showcase page - shows sample personalized VIDEO lessons (40-second intros) + Santa demos
 app.get('/demo-lessons', (req, res) => {
   trackEvent('page', 'demo-lessons');
   const html = `<!DOCTYPE html>
@@ -513,8 +515,8 @@ app.get('/demo-lessons', (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Listen to Demo Lessons | Thought Organizer - Personalized Output</title>
-  <meta name="description" content="Listen to 40-second audio previews of personalized lessons. Hear how we transform what you LOVE into what you NEED to learn.">
+  <title>Watch Demo Videos | Personalized Output</title>
+  <meta name="description" content="Watch demo videos of personalized lessons and Santa messages. See how we transform what you LOVE into what you NEED to learn.">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -524,7 +526,7 @@ app.get('/demo-lessons', (req, res) => {
       min-height: 100vh;
       padding: 2rem;
     }
-    .container { max-width: 1000px; margin: 0 auto; }
+    .container { max-width: 1200px; margin: 0 auto; }
     h1 {
       text-align: center;
       font-size: 2.5rem;
@@ -537,107 +539,74 @@ app.get('/demo-lessons', (req, res) => {
       text-align: center;
       color: #a8edea;
       font-size: 1.2rem;
-      margin-bottom: 1rem;
-    }
-    .preview-badge {
-      text-align: center;
       margin-bottom: 2rem;
     }
-    .preview-badge span {
-      background: rgba(233, 69, 96, 0.3);
-      border: 1px solid #e94560;
-      padding: 0.4rem 1rem;
-      border-radius: 20px;
-      font-size: 0.85rem;
-      color: #ffc93c;
+    .section-title {
+      font-size: 1.8rem;
+      margin: 3rem 0 1.5rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid rgba(255,255,255,0.2);
     }
-    .tagline {
-      text-align: center;
-      color: rgba(255,255,255,0.7);
-      font-size: 1rem;
-      margin-bottom: 3rem;
-      font-style: italic;
-    }
-    .demos-list {
-      display: flex;
-      flex-direction: column;
+    .section-title.lessons { color: #4facfe; }
+    .section-title.santa { color: #ff6b6b; }
+
+    /* Video Grid */
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
       gap: 1.5rem;
     }
-    .demo-card {
+    .video-card {
       background: rgba(255,255,255,0.08);
       border-radius: 16px;
-      padding: 1.5rem;
+      overflow: hidden;
       border: 1px solid rgba(255,255,255,0.15);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    .demo-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 15px 30px rgba(0,0,0,0.3);
-      background: rgba(255,255,255,0.1);
+    .video-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 20px 40px rgba(0,0,0,0.4);
     }
-    .demo-header {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      margin-bottom: 1rem;
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9/16;
+      background: #000;
     }
-    .demo-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.5rem;
-      flex-shrink: 0;
+    .video-wrapper video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
-    .demo-icon.kid { background: linear-gradient(135deg, #4facfe, #00f2fe); }
-    .demo-icon.creative { background: linear-gradient(135deg, #a855f7, #ec4899); }
-    .demo-icon.adult { background: linear-gradient(135deg, #f59e0b, #ef4444); }
-    .demo-title {
-      font-size: 1.2rem;
+    .video-info {
+      padding: 1rem;
+    }
+    .video-title {
+      font-size: 1rem;
       font-weight: 600;
       color: #ffc93c;
+      margin-bottom: 0.25rem;
     }
-    .demo-subtitle {
-      font-size: 0.9rem;
+    .video-subtitle {
+      font-size: 0.85rem;
       color: rgba(255,255,255,0.6);
-    }
-    .demo-description {
-      color: rgba(255,255,255,0.8);
-      font-size: 0.95rem;
-      line-height: 1.6;
-      margin-bottom: 1rem;
-    }
-    .audio-player {
-      width: 100%;
-      margin-bottom: 1rem;
-    }
-    .audio-player audio {
-      width: 100%;
-      height: 50px;
     }
     .demo-tags {
       display: flex;
       gap: 0.5rem;
       flex-wrap: wrap;
+      margin-top: 0.75rem;
     }
     .tag {
       background: rgba(255,255,255,0.12);
-      padding: 0.25rem 0.75rem;
-      border-radius: 15px;
-      font-size: 0.8rem;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.75rem;
       color: #a8edea;
     }
-    .full-lesson-note {
-      text-align: center;
-      margin-top: 0.75rem;
-      padding: 0.5rem;
-      background: rgba(255,199,60,0.1);
-      border-radius: 8px;
-      font-size: 0.85rem;
-      color: #ffc93c;
-    }
+    .tag.santa { background: rgba(255,107,107,0.2); color: #ff6b6b; }
+
+    /* CTA Section */
     .cta-section {
       text-align: center;
       margin-top: 3rem;
@@ -649,14 +618,16 @@ app.get('/demo-lessons', (req, res) => {
       display: inline-block;
       background: linear-gradient(90deg, #e94560, #ff6b6b);
       color: white;
-      padding: 1rem 2.5rem;
+      padding: 1rem 2rem;
       border-radius: 30px;
       text-decoration: none;
       font-weight: 600;
-      font-size: 1.1rem;
+      font-size: 1rem;
+      margin: 0.5rem;
       transition: transform 0.2s;
     }
     .cta-button:hover { transform: scale(1.05); }
+    .cta-button.santa { background: linear-gradient(90deg, #8B0000, #c41e3a); }
     .back-link {
       display: block;
       text-align: center;
@@ -667,108 +638,445 @@ app.get('/demo-lessons', (req, res) => {
     .back-link:hover { text-decoration: underline; }
     @media (max-width: 768px) {
       h1 { font-size: 1.8rem; }
-      .demo-header { flex-direction: column; text-align: center; }
+      .video-grid { grid-template-columns: 1fr; }
+      body { padding: 1rem; }
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Listen to Demo Lessons</h1>
-    <p class="subtitle">40-Second Audio Previews - Personalized by AI</p>
-    <div class="preview-badge"><span>PREVIEW INTROS - Full 10-minute lessons available</span></div>
-    <p class="tagline">Hear how we transform what you LOVE into what you NEED to learn</p>
+    <h1>Watch Our Demo Videos</h1>
+    <p class="subtitle">See the magic of personalization in action</p>
 
-    <div class="demos-list">
-      <div class="demo-card">
-        <div class="demo-header">
-          <div class="demo-icon kid">🦖</div>
-          <div>
-            <h3 class="demo-title">Joe's Preview: Dinosaurs → Fractions</h3>
-            <p class="demo-subtitle">6 years old • Math</p>
+    <!-- LESSON DEMOS -->
+    <h2 class="section-title lessons">📚 Personalized Lesson Previews</h2>
+    <p style="color: rgba(255,255,255,0.7); margin-bottom: 1.5rem;">40-second previews showing how we transform interests into learning</p>
+
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata" poster="">
+            <source src="/demos/joe-dinosaurs-fractions.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Joe: Dinosaurs → Fractions</h3>
+          <p class="video-subtitle">6 years old • Learning fractions through T-Rex</p>
+          <div class="demo-tags">
+            <span class="tag">Kid-Friendly</span>
+            <span class="tag">Math</span>
           </div>
         </div>
-        <p class="demo-description">
-          Joe loves dinosaurs! Listen to how we introduce fractions using T-Rex pizza and Brontosaurus cake -
-          concepts that immediately click because they connect to what he already loves.
-        </p>
-        <div class="audio-player">
-          <audio controls preload="metadata">
-            <source src="/demos/joe-dinosaurs-fractions.mp3" type="audio/mpeg">
-            Your browser doesn't support audio playback.
-          </audio>
-        </div>
-        <div class="demo-tags">
-          <span class="tag">Kid-Friendly</span>
-          <span class="tag">Fractions</span>
-          <span class="tag">Warm Male Voice</span>
-        </div>
-        <div class="full-lesson-note">This is a 40-second preview. Full 10-minute lesson ready instantly!</div>
       </div>
 
-      <div class="demo-card">
-        <div class="demo-header">
-          <div class="demo-icon creative">🎨</div>
-          <div>
-            <h3 class="demo-title">Maya's Preview: Art → Solar System</h3>
-            <p class="demo-subtitle">10 years old • Science</p>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/demos/maya-art-solar-system.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Maya: Art → Solar System</h3>
+          <p class="video-subtitle">10 years old • Astronomy through art</p>
+          <div class="demo-tags">
+            <span class="tag">Creative</span>
+            <span class="tag">Science</span>
           </div>
         </div>
-        <p class="demo-description">
-          Maya is passionate about art! Hear how we teach her the solar system as a canvas masterpiece -
-          with colors, textures, and composition she already understands.
-        </p>
-        <div class="audio-player">
-          <audio controls preload="metadata">
-            <source src="/demos/maya-art-solar-system.mp3" type="audio/mpeg">
-            Your browser doesn't support audio playback.
-          </audio>
-        </div>
-        <div class="demo-tags">
-          <span class="tag">Creative Learner</span>
-          <span class="tag">Astronomy</span>
-          <span class="tag">Warm Female Voice</span>
-        </div>
-        <div class="full-lesson-note">This is a 40-second preview. Full 10-minute lesson ready instantly!</div>
       </div>
 
-      <div class="demo-card">
-        <div class="demo-header">
-          <div class="demo-icon adult">🥐</div>
-          <div>
-            <h3 class="demo-title">Sarah's Preview: Bakery → Mortgage</h3>
-            <p class="demo-subtitle">Adult • Finance</p>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/demos/sarah-bakery-mortgage.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Sarah: Bakery → Mortgage</h3>
+          <p class="video-subtitle">Adult • Understanding mortgages through baking</p>
+          <div class="demo-tags">
+            <span class="tag">Adult</span>
+            <span class="tag">Finance</span>
           </div>
         </div>
-        <p class="demo-description">
-          Sarah runs a bakery and wants to understand her mortgage. Listen to how we explain principal and interest
-          using dough batches and energy bills - concepts she already masters daily.
-        </p>
-        <div class="audio-player">
-          <audio controls preload="metadata">
-            <source src="/demos/sarah-bakery-mortgage.mp3" type="audio/mpeg">
-            Your browser doesn't support audio playback.
-          </audio>
-        </div>
-        <div class="demo-tags">
-          <span class="tag">Adult Learning</span>
-          <span class="tag">Financial Literacy</span>
-          <span class="tag">Professional Voice</span>
-        </div>
-        <div class="full-lesson-note">This is a 40-second preview. Full 10-minute lesson ready instantly!</div>
       </div>
     </div>
 
+    <!-- SANTA DEMOS -->
+    <h2 class="section-title santa">🎅 Santa Message Demos</h2>
+    <p style="color: rgba(255,255,255,0.7); margin-bottom: 1.5rem;">30-40 second emotional peak clips - each showing different personalization types</p>
+
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/emma_grandmother.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Emma: Grandmother in Heaven</h3>
+          <p class="video-subtitle">Santa mentions her grandmother watching over</p>
+          <div class="demo-tags">
+            <span class="tag santa">Emotional</span>
+            <span class="tag santa">Memorial</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/liam_pet.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Liam: Pet by Name</h3>
+          <p class="video-subtitle">Santa knows about his dog Biscuit</p>
+          <div class="demo-tags">
+            <span class="tag santa">Personal</span>
+            <span class="tag santa">Pets</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/sophia_achievement.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Sophia: Learning to Read</h3>
+          <p class="video-subtitle">Santa celebrates her reading achievement</p>
+          <div class="demo-tags">
+            <span class="tag santa">Achievement</span>
+            <span class="tag santa">Proud</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/noah_sibling.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Noah: Being a Big Brother</h3>
+          <p class="video-subtitle">Santa recognizes his care for baby Lucas</p>
+          <div class="demo-tags">
+            <span class="tag santa">Sibling</span>
+            <span class="tag santa">Kind</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/olivia_hardship.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Olivia: New School Courage</h3>
+          <p class="video-subtitle">Santa acknowledges her bravery starting fresh</p>
+          <div class="demo-tags">
+            <span class="tag santa">Hardship</span>
+            <span class="tag santa">Brave</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/jackson_wish.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Jackson: Secret Telescope Wish</h3>
+          <p class="video-subtitle">Santa heard his whispered wish</p>
+          <div class="demo-tags">
+            <span class="tag santa">Secret Wish</span>
+            <span class="tag santa">Magic</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/ava_hobby.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Ava: Painting Sunsets</h3>
+          <p class="video-subtitle">Santa sees her art talent</p>
+          <div class="demo-tags">
+            <span class="tag santa">Hobby</span>
+            <span class="tag santa">Artist</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/lucas_kindness.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Lucas: Helping Grandma</h3>
+          <p class="video-subtitle">Santa saw him carry her groceries</p>
+          <div class="demo-tags">
+            <span class="tag santa">Kindness</span>
+            <span class="tag santa">Grandma</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
     <div class="cta-section">
       <p style="margin-bottom: 1rem; color: rgba(255,255,255,0.9); font-size: 1.1rem;">
-        <strong>Be Specific = Magic Output</strong>
+        <strong>Ready to create your own?</strong>
       </p>
-      <p style="margin-bottom: 1.5rem; color: rgba(255,255,255,0.7);">
-        Tell us exactly what someone loves and what they need to learn. The more specific you are, the more magical the lesson!
-      </p>
-      <a href="/flash-cards" class="cta-button">Create Your Personalized Lesson</a>
+      <a href="/flash-cards" class="cta-button">Create Personalized Lesson</a>
+      <a href="/santa" class="cta-button santa">Create Santa Message</a>
     </div>
 
     <a href="/" class="back-link">&larr; Back to Home</a>
+  </div>
+</body>
+</html>`;
+  res.send(html);
+});
+
+// Social Videos page - TikTok/Reels style marketing videos
+app.get('/social', (req, res) => {
+  trackEvent('page', 'social');
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social Videos | Personalized Output</title>
+  <meta name="description" content="TikTok and Reels marketing videos for personalized lessons, Santa messages, and more.">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 100%);
+      color: white;
+      min-height: 100vh;
+      padding: 2rem;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 {
+      text-align: center;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      background: linear-gradient(90deg, #ff6b6b, #ffc93c, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .subtitle { text-align: center; color: #a8edea; font-size: 1.2rem; margin-bottom: 2rem; }
+    .section-title {
+      font-size: 1.5rem;
+      margin: 2.5rem 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+    .video-card {
+      background: rgba(255,255,255,0.05);
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .video-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .video-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 9/16;
+      background: #000;
+    }
+    .video-wrapper video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .video-info {
+      padding: 0.75rem;
+    }
+    .video-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #ffc93c;
+    }
+    .video-type {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 0.25rem;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 2rem;
+      color: #a8edea;
+      text-decoration: none;
+    }
+    .back-link:hover { text-decoration: underline; }
+    @media (max-width: 768px) {
+      h1 { font-size: 1.8rem; }
+      .video-grid { grid-template-columns: repeat(2, 1fr); }
+      body { padding: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Social Media Videos</h1>
+    <p class="subtitle">TikTok & Reels ready - download and post!</p>
+
+    <h2 class="section-title">🎅 Santa Messages</h2>
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/santa_emotional_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Emotional Hook #1</div>
+          <div class="video-type">Silent • Dark gradient</div>
+        </div>
+      </div>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/santa_emotional_02.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Emotional Hook #2</div>
+          <div class="video-type">Voiceover • Festive</div>
+        </div>
+      </div>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/santa_urgency_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Urgency Hook</div>
+          <div class="video-type">Voiceover • Warm</div>
+        </div>
+      </div>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/santa_curiosity_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Curiosity Hook</div>
+          <div class="video-type">Voiceover • Dark</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title">🎯 Vision Boards</h2>
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/vision_urgency_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Vision Board Urgency</div>
+          <div class="video-type">Voiceover • Sunset</div>
+        </div>
+      </div>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/vision_transform_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Vision Transform</div>
+          <div class="video-type">Voiceover • Sunset</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title">📚 Flash Cards / Lessons</h2>
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/flash_curiosity_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Flash Cards Curiosity</div>
+          <div class="video-type">Voiceover • Minimal</div>
+        </div>
+      </div>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/clarity_transform_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Clarity Planner Transform</div>
+          <div class="video-type">Voiceover • Dark</div>
+        </div>
+      </div>
+    </div>
+
+    <h2 class="section-title">🎄 General / Holiday</h2>
+    <div class="video-grid">
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/general_brand_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Brand Overview</div>
+          <div class="video-type">Voiceover • Purple</div>
+        </div>
+      </div>
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/social-videos/general_holiday_01.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <div class="video-title">Holiday Special</div>
+          <div class="video-type">Voiceover • Festive</div>
+        </div>
+      </div>
+    </div>
+
+    <a href="/demo-lessons" class="back-link">&larr; Back to Demo Videos</a>
   </div>
 </body>
 </html>`;
