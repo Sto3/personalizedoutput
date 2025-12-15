@@ -135,17 +135,22 @@ Use this checklist for EVERY new voice we create:
 ```
 **Character:** Warm, deep, grandfatherly American. Gentle pacing. Comforting.
 
-### Lesson Narrator (Needs Fine-Tuning)
+### Lesson Narrator (PERFECTED - December 15, 2024)
 ```javascript
-// Current settings (from voiceConfig.ts) - NEED ADJUSTMENT
+// PERFECTED settings for warm female educational narrator
 {
-  stability: 0.28,          // Too low - may be inconsistent
-  similarity_boost: 0.72,
-  style: 0.70,              // May be too high - could be theatrical
-  use_speaker_boost: true
+  voice_id: 'EXAVITQu4vr4xnSDxMaL',  // Sarah voice
+  stability: 0.68,           // PERFECTED: Same as Santa - natural variation
+  similarity_boost: 0.82,    // PERFECTED: Same as Santa - character consistency
+  style: 0.32,               // PERFECTED: Same as Santa - warm but genuine
+  model_id: 'eleven_monolingual_v1'
 }
 ```
-**Target Character:** Warm teacher. Engaging but not over-excited. Natural pace.
+**Character:** Warm, caring tutor. Natural teaching pace. Like a real person explaining to a child/adult.
+**Reference Files:**
+- `/outputs/audio/demo-lesson-joe-3min_*.mp3` (162.6s - fractions lesson)
+- `/outputs/audio/demo-lesson-maya-3min_*.mp3` (204.3s - solar system lesson)
+- `/outputs/audio/demo-lesson-sarah-3min_*.mp3` (199.3s - mortgage lesson)
 
 ### Marketing Narrator (Needs Fine-Tuning)
 ```javascript

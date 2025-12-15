@@ -1,12 +1,13 @@
 /**
  * Order Validation Module
  *
- * Central module for validating and tracking Etsy order IDs across all products.
+ * Central module for validating and tracking order/token usage across all products.
  * Provides one-time-use protection for personalized outputs.
+ * Works with Stripe orders (primary) and legacy Etsy orders.
  *
  * Functions:
- * - sanitizeOrderId(input): Normalize order ID format
- * - verifyEtsyOrder(orderId): Validate order ID format (later: Etsy API integration)
+ * - sanitizeOrderId(input): Normalize order/token format
+ * - verifyOrder(orderId): Validate order/token format
  * - hasOrderIdBeenUsed(orderId, productId): Check if order has been redeemed
  * - markOrderIdUsed(orderId, productId, metadata): Mark order as used after generation
  * - getOrderUsageRecord(orderId, productId): Get full usage record
@@ -124,15 +125,15 @@ export function sanitizeOrderId(input: string): string {
 }
 
 /**
- * Verify an Etsy order ID is valid
+ * Verify an order ID or token is valid
  *
- * For now: validates format (4-20 alphanumeric characters)
- * Future: integrate with Etsy API to verify real orders
+ * Validates format (4-20 alphanumeric characters).
+ * Works with Stripe checkout tokens and legacy Etsy order IDs.
  *
- * @param orderId - The order ID to validate
+ * @param orderId - The order ID or token to validate
  * @returns Validation result with sanitized order ID if valid
  */
-export function verifyEtsyOrder(orderId: string): OrderValidationResult {
+export function verifyOrder(orderId: string): OrderValidationResult {
   // Sanitize first
   const sanitized = sanitizeOrderId(orderId);
 
@@ -140,7 +141,7 @@ export function verifyEtsyOrder(orderId: string): OrderValidationResult {
   if (!sanitized) {
     return {
       valid: false,
-      error: 'Order ID is required. Please enter your Etsy Order ID.'
+      error: 'Order ID is required.'
     };
   }
 
@@ -307,7 +308,7 @@ export function validateOrderForGeneration(
   productId: string
 ): { valid: true; sanitizedOrderId: string } | { valid: false; error: string } {
   // First, verify the format
-  const verification = verifyEtsyOrder(orderId);
+  const verification = verifyOrder(orderId);
   if (!verification.valid) {
     return { valid: false, error: verification.error || 'Invalid order ID' };
   }
@@ -317,7 +318,7 @@ export function validateOrderForGeneration(
   if (usageCheck.used) {
     return {
       valid: false,
-      error: 'Your Etsy Order ID has already been redeemed for its personalized message.'
+      error: 'This order has already been redeemed for its personalized output.'
     };
   }
 

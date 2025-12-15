@@ -63,19 +63,37 @@ const DEMO_LESSONS: DemoLesson[] = [
     subject: 'fractions',
     targetAudience: 'kid',
     visualStyle: 'gradient_warm',
-    script: `Hey Joe! Ready for some dinosaur math?
+    script: `Hey Joe! Ready for some dinosaur math? Today we're going to learn about fractions - and we're going to do it with your favorite dinosaurs!
 
-Imagine a T-Rex pizza split into 4 pieces. You eat 1 piece. That's one-fourth, or 1 over 4.
+... Let me tell you a story. ...
 
-Now imagine a Brontosaurus cake cut into 2 pieces. You share half with your friend. That's one-half, or 1 over 2.
+Imagine you're a paleontologist at a dinosaur dig site. You and three friends found a HUGE fossil, and you need to split it into equal parts so everyone can study it.
 
-Which piece is bigger?
+... If you cut that fossil into four equal pieces, each piece is called one-fourth. We write it like this: one... over... four. The bottom number tells you how many total pieces. The top number tells you how many pieces you have.
 
-The one-half piece! Because when you split something in fewer pieces, each piece is bigger.
+So if you take one piece to study, you have one-fourth of the fossil. ...
 
-Just like how a T-Rex and Brontosaurus both share food differently with their dino-friends!
+But wait - what if a T-Rex shows up? T-Rex is really big and scary, so he only wants to share with ONE friend. So he cuts HIS fossil into just two pieces.
 
-You're learning fractions, Joe, one dinosaur at a time!`
+... Each piece of T-Rex's fossil is one-half - that's one over two. ...
+
+Here's the cool part, Joe. Which piece do you think is BIGGER? The one-fourth piece from your dig, or the one-half piece from T-Rex?
+
+... The one-half piece is bigger! Even though the number "four" seems bigger than "two", when you cut something into FEWER pieces, each piece is LARGER.
+
+Think of it like dinosaur eggs. If a mama dinosaur has two eggs, each egg is bigger than if she had four eggs, right? Same thing with fractions! ...
+
+Let's try another one. A Brontosaurus found a delicious prehistoric plant and wants to share it with two friends. That's three dinosaurs total. ...
+
+They cut the plant into three equal pieces. Each piece is one-third - one over three.
+
+Now, which is bigger: one-third or one-half? ...
+
+... One-half is bigger! Because two is less than three, so the pieces are bigger. ...
+
+You're learning fractions, Joe, one dinosaur at a time! And here's a super secret: every time you share something with friends, you're doing fractions. Pizza night? Fractions. Halloween candy? Fractions. You're already a fraction expert!
+
+Great job today, Joe. Keep thinking like a dinosaur scientist!`
   },
   {
     id: 'maya_art_solar_system',
@@ -84,20 +102,40 @@ You're learning fractions, Joe, one dinosaur at a time!`
     interest: 'art',
     subject: 'solar system',
     targetAudience: 'kid',
-    visualStyle: 'gradient_purple',  // Purple Dream for artistic feel
-    script: `Hey Maya! Let's paint the solar system today!
+    visualStyle: 'gradient_purple',
+    script: `Hey Maya! Today we're going to paint the solar system - and I know you're an amazing artist, so this is going to be beautiful!
 
-Picture your canvas. In the center, paint a big, bright yellow sun - that's our star!
+... Grab your canvas in your mind. We're about to create something incredible. ...
 
-Now add 8 circles spinning around it. The first 4 are rocky - like sketching with charcoal. Mercury, Venus, Earth, Mars.
+First, right in the center, we need our star - the Sun. Paint a giant, glowing yellow circle. But here's an artist's secret: don't just use yellow. Add orange at the edges, and tiny white spots in the center to show how incredibly hot it is. The Sun is like a giant ball of fire in space! ...
 
-The outer 4 are gas giants - fluffy like watercolors! Jupiter, Saturn, Uranus, Neptune.
+Now, imagine drawing invisible circles around your sun - like ripples in a pond. These are called orbits, and each planet travels along its own circle.
 
-Think of the asteroid belt between Mars and Jupiter like scattered paint drops!
+... The first planet is Mercury - the smallest one! Paint a tiny gray circle, like a pebble. Mercury is so close to the Sun that it gets incredibly hot during the day - over 800 degrees!
 
-Each planet is a different color: rusty red Mars, swirly blue Neptune, ringed golden Saturn.
+Second is Venus. Paint this one a creamy yellowish-white. Venus is covered in thick clouds that trap heat, making it even HOTTER than Mercury, even though it's farther away. ...
 
-You're not just learning planets, Maya - you're creating a masterpiece of the cosmos!`
+Third is our home - Earth! ... Use beautiful blue for the oceans, green and brown for the land, and swirl some white clouds across it. Earth is the only planet we know that has life - that's where you and me are right now!
+
+Fourth is Mars - the red planet! ... Mix your red and orange and brown together. Mars looks rusty because its soil contains iron that rusted, just like an old bicycle left in the rain.
+
+Now, Maya, here's where your painting gets REALLY interesting. ...
+
+Between Mars and the next planet, there's the asteroid belt. Paint tiny dots scattered in a ring - like you're flicking your paintbrush! These are millions of rocks floating in space.
+
+Fifth planet - Jupiter! Make this one HUGE, Maya - bigger than all the other planets combined! ... Use orange and white and tan, and paint swirling bands across it. See that little red spot? That's a storm bigger than Earth that's been raging for hundreds of years!
+
+Sixth is Saturn - every artist's favorite! ... Paint a beautiful golden yellow ball, but then add those famous rings! The rings are made of ice and rock, and they sparkle in the sunlight.
+
+... Seventh is Uranus - paint this one a pale, icy blue. Uranus is tilted on its side, like someone knocked it over! It spins like a rolling ball instead of like a spinning top.
+
+And finally, Neptune - the last planet! ... Use your deepest, richest blue. Neptune has the fastest winds in the solar system - over a thousand miles per hour!
+
+Maya, you've just painted our entire solar system! Eight planets, one star, and an asteroid belt. ...
+
+Here's a way to remember the order: My Very Excited Mother Just Served Us Nachos. Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune! ...
+
+You're not just learning planets, Maya - you're creating a masterpiece of the cosmos! Keep painting, keep exploring, and keep asking questions!`
   },
   {
     id: 'sarah_bakery_mortgage',
@@ -106,18 +144,44 @@ You're not just learning planets, Maya - you're creating a masterpiece of the co
     interest: 'running her bakery',
     subject: 'understanding her mortgage',
     targetAudience: 'adult',
-    visualStyle: 'gradient_dark',  // Dark Premium for professional adult content
-    script: `Sarah, let's talk about your mortgage the way you think about your bakery.
+    visualStyle: 'gradient_dark',
+    script: `Sarah, let's talk about your mortgage - but let's talk about it the way YOU think about your business. Because honestly? A mortgage works a lot like running your bakery.
 
-Your mortgage is like a big batch of dough you're paying back over time. The principal is the actual dough - the original amount you borrowed.
+... Think of your mortgage as one really big batch of dough you're paying back over time. ...
 
-The interest? That's like the oven's energy bill - the cost of having that dough in your space.
+The principal - that's the actual amount you borrowed to buy your house. Think of it like your initial flour order - it's the core ingredient that everything else builds on.
 
-When you make a payment, part pays down the dough, part covers the energy bill. Early on, more goes to interest. Over time, more chips away at the actual amount.
+The interest? That's the cost of borrowing that money. Think of it like your oven's energy bill. You need energy to bake, and the bank needs interest to lend. It's the price of having that dough working in your kitchen.
 
-Just like your bakery, you can pay extra to work through that dough faster - and save on that energy bill.
+... Now here's where it gets interesting. When you make your monthly payment, it doesn't all go to the same place.
 
-Your mortgage isn't a mystery, Sarah - it's just another recipe to master.`
+Part of your payment goes toward the principal - actually reducing how much dough you owe. And part goes toward the interest - paying that energy bill.
+
+Here's the tricky part, Sarah. ... In the early years of your mortgage, most of your payment goes to interest. It's like when you first turn on your oven - it takes a lot of energy just to heat up.
+
+But over time, as you pay down more of the principal, less interest accumulates. More of each payment chips away at the actual amount owed. ... Like an oven that's already hot - it takes less energy to maintain.
+
+This is called amortization - fancy word, simple concept. At first, you're mostly paying for the privilege of borrowing. By the end, you're mostly paying off the actual debt. ...
+
+Let's look at a real example. Say your house cost 300,000 dollars. At a 6 percent interest rate over 30 years, your monthly payment is about 1,800 dollars.
+
+In your first payment, maybe 1,500 dollars goes to interest and only 300 goes to principal. ... But by year 15? About half goes to each. And by year 28? Most of your payment is finally reducing what you actually owe.
+
+... Here's where your bakery brain can really help you. ...
+
+Extra payments. Just like in your bakery, if you can work ahead - do extra prep work now - you save time and money later. An extra hundred dollars toward your mortgage principal each month can save you tens of thousands in interest over the life of the loan. And it can knock YEARS off your mortgage.
+
+Think of it this way: every extra dollar toward principal is like prepping dough the night before. You're not paying interest on money you've already paid back. ...
+
+And refinancing? That's like renegotiating your flour supplier's contract when prices drop. If interest rates go down, you might be able to get a new loan at a lower rate. You're still paying back the same dough, but the energy cost is lower. ...
+
+The key insight, Sarah? Your mortgage isn't a mystery. It's not some complicated financial instrument designed to confuse you. It's just another recipe to master.
+
+Principal is your ingredients. Interest is your operating cost. Time is your oven temperature. And extra payments? That's your competitive advantage.
+
+... You run a successful bakery. You understand inventory, cash flow, and customer value. You already have all the skills you need to master this mortgage.
+
+Now go bake something delicious, Sarah. You've got this!`
   }
 ];
 

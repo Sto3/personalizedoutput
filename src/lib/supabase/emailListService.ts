@@ -20,7 +20,7 @@ import {
  */
 export async function addToEmailList(
   email: string,
-  source: 'etsy_fulfillment' | 'website_signup' | 'referral',
+  source: 'etsy_fulfillment' | 'website_signup' | 'website_purchase' | 'referral',
   interests?: string[],
   userId?: string
 ): Promise<{ success: boolean; error: string | null }> {

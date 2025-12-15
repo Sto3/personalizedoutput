@@ -67,7 +67,7 @@ interface AnthropicResponse {
 interface StartSessionRequest {
   productId: 'santa_message' | 'holiday_reset' | 'new_year_reset' | 'vision_board' | 'clarity_planner';
   token?: string; // Access token for santa_message product
-  orderId?: string; // Etsy Order ID (required for production)
+  orderId?: string; // Order ID from Stripe checkout (required for production)
 }
 
 interface ContinueSessionRequest {
@@ -79,7 +79,7 @@ interface GenerateRequest {
   sessionId: string;
   forceGenerate?: boolean;
   token?: string; // Access token for santa_message product
-  orderId?: string; // Etsy Order ID (can be passed here or will use session's orderId)
+  orderId?: string; // Order ID (can be passed here or will use session's orderId)
 }
 
 // ============================================================

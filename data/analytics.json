@@ -1,0 +1,36 @@
+{
+  "startTime": "2025-12-15T17:46:17.698Z",
+  "pageViews": {
+    "demo-lessons": 8,
+    "vision-board": 3,
+    "flash-cards": 5,
+    "blog": 8,
+    "blog-personalized-santa-message-guide": 1,
+    "blog-personalized-flash-cards-learning": 1,
+    "blog-navigating-difficult-family-holidays": 1,
+    "blog-year-end-reflection-guide": 1,
+    "blog-vision-board-guide-2025": 1,
+    "pricing": 3,
+    "how-it-works": 1,
+    "learning-session": 6,
+    "clarity-planner": 1,
+    "thought-organizer": 2,
+    "purchase-success": 1,
+    "product-santa": 1,
+    "product-flash-cards": 1,
+    "product-vision-board": 1,
+    "product-holiday-reset": 1,
+    "product-new-year-reset": 1,
+    "holiday-reset": 1,
+    "new-year-reset": 1
+  },
+  "apiCalls": {},
+  "generations": {},
+  "hourlyTraffic": {
+    "2025-12-15T17": 8,
+    "2025-12-15T18": 12,
+    "2025-12-15T19": 10,
+    "2025-12-15T20": 20
+  },
+  "lastUpdated": "2025-12-15T20:47:36.524Z"
+}

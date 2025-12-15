@@ -22,6 +22,7 @@ import santaApiDeep from './api/santaApiDeep';
 import plannerApi from './api/plannerApi';
 import thoughtChatApi from './api/thoughtChatApi';
 import referralApi from './api/referralApi';
+import checkoutApi from './api/checkoutApi';
 
 // Import token store for order-based access control
 import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tokenStore';
@@ -34,10 +35,16 @@ import { startMonitoring as startUsageMonitoring, checkAllUsage, getUsageState }
 
 // Import page renderers
 import { renderPremiumHomepageV3 } from './pages/homepageV3';
+import { renderPremiumHomepageV4 } from './pages/homepageV4';
+import { renderProductsPage } from './pages/products';
+import { renderHowItWorksPage } from './pages/howItWorks';
 import { renderLoginPage, renderSignupPage, renderForgotPasswordPage } from './pages/auth';
-import { renderDashboardPage, renderPricingPage } from './pages/dashboard';
+import { renderDashboardPage } from './pages/dashboard';
+import { renderPricingPageNew } from './pages/pricing';
+import { renderDemoLessonsPage } from './pages/demoLessons';
 import { renderBlogListPage, renderBlogPostPage } from './pages/blog';
 import { renderTermsPage, renderPrivacyPage, renderCopyrightPage } from './pages/legal';
+import { renderProductPage, renderSuccessPage } from './pages/productPages';
 
 // Import Supabase services
 import { isSupabaseConfigured, isSupabaseServiceConfigured } from './lib/supabase/client';
@@ -236,61 +243,91 @@ app.get('/santa', (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Session Error - personalizedoutput</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <title>Session Error | Personalized Output</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --coral: #E85A6B;
+      --coral-light: #F08B96;
+      --navy: #1a1a2e;
+      --navy-light: #2d2d4a;
+      --purple: #7C3AED;
+      --purple-light: #A78BFA;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Lora', Georgia, serif;
-      background: linear-gradient(135deg, #fdfbf9 0%, #f5f0eb 100%);
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 50%, #fafafa 100%);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px 20px;
-      color: #2c3e50;
+      color: var(--navy);
     }
     .container {
-      max-width: 500px;
+      max-width: 480px;
       width: 100%;
       text-align: center;
       background: #fff;
-      padding: 50px 40px;
-      border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      padding: 56px 48px;
+      border-radius: 24px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.04);
     }
-    .icon { font-size: 3rem; margin-bottom: 20px; }
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 24px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));
+    }
     h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 1.6rem;
-      color: #c41e3a;
+      font-family: 'Bodoni Moda', Georgia, serif;
+      font-size: 1.75rem;
+      font-weight: 500;
+      color: var(--navy);
       margin-bottom: 16px;
+      line-height: 1.3;
     }
     p {
       font-size: 1rem;
-      color: #5a6c7d;
-      line-height: 1.6;
-      margin-bottom: 30px;
+      color: #64748b;
+      line-height: 1.7;
+      margin-bottom: 32px;
     }
     .btn {
       display: inline-block;
-      padding: 14px 28px;
-      background: #1a4d2e;
+      padding: 16px 36px;
+      background: var(--coral);
       color: #fff;
       text-decoration: none;
-      border-radius: 8px;
+      border-radius: 50px;
       font-size: 1rem;
-      font-weight: 500;
-      transition: background 0.2s;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(232, 90, 107, 0.3);
     }
-    .btn:hover { background: #15412a; }
+    .btn:hover {
+      background: var(--coral-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(232, 90, 107, 0.4);
+    }
     .support {
-      margin-top: 25px;
+      margin-top: 32px;
       font-size: 0.9rem;
-      color: #9aa5b1;
+      color: #94a3b8;
     }
-    .support a { color: #1a4d2e; }
+    .support a {
+      color: var(--purple);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .support a:hover { text-decoration: underline; }
+    @media (max-width: 600px) {
+      .container { padding: 40px 28px; }
+      h1 { font-size: 1.5rem; }
+      .icon { font-size: 3rem; }
+    }
   </style>
 </head>
 <body>
@@ -306,136 +343,222 @@ app.get('/santa', (req, res) => {
     `);
   }
 
-  // No token - show the order ID capture form
+  // No token - show the order ID capture form with premium styling
   res.send(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Start Your Santa Message - personalizedoutput</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+  <title>Start Your Santa Message | Personalized Output</title>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
+    :root {
+      --coral: #E85A6B;
+      --coral-light: #F08B96;
+      --navy: #1a1a2e;
+      --navy-light: #2d2d4a;
+      --purple: #7C3AED;
+      --purple-light: #A78BFA;
+    }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: 'Lora', Georgia, serif;
-      background: linear-gradient(135deg, #fdfbf9 0%, #f5f0eb 100%);
+      font-family: 'Inter', -apple-system, sans-serif;
+      background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 50%, #fafafa 100%);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 40px 20px;
-      color: #2c3e50;
+      color: var(--navy);
     }
     .container {
-      max-width: 500px;
+      max-width: 480px;
       width: 100%;
       text-align: center;
     }
-    .santa-icon { font-size: 4rem; margin-bottom: 20px; }
+    .back-link {
+      display: inline-block;
+      margin-bottom: 32px;
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.2s;
+    }
+    .back-link:hover { color: var(--coral); }
+    .santa-icon {
+      font-size: 5rem;
+      margin-bottom: 24px;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));
+    }
     h1 {
-      font-family: 'Playfair Display', Georgia, serif;
-      font-size: 2rem;
-      color: #c41e3a;
+      font-family: 'Bodoni Moda', Georgia, serif;
+      font-size: 2.25rem;
+      font-weight: 500;
+      color: var(--navy);
       margin-bottom: 16px;
+      line-height: 1.2;
+    }
+    h1 .highlight {
+      color: var(--coral);
+      font-style: italic;
     }
     .description {
-      font-size: 1.05rem;
-      color: #5a6c7d;
-      margin-bottom: 35px;
-      line-height: 1.6;
+      font-size: 1rem;
+      color: #64748b;
+      margin-bottom: 32px;
+      line-height: 1.7;
     }
-    form {
+    .form-card {
       background: #fff;
-      padding: 35px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+      padding: 40px;
+      border-radius: 24px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.06);
+      border: 1px solid rgba(0,0,0,0.04);
       text-align: left;
+    }
+    .form-group {
+      margin-bottom: 24px;
     }
     label {
       display: block;
-      font-size: 0.9rem;
-      font-weight: 500;
-      color: #4a5568;
-      margin-bottom: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     input {
       width: 100%;
-      padding: 14px 16px;
+      padding: 16px 18px;
       font-size: 1rem;
-      font-family: 'Lora', Georgia, serif;
-      border: 2px solid #e8e0d8;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      transition: border-color 0.2s;
+      font-family: 'Inter', sans-serif;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      transition: all 0.2s;
+      background: #fafafa;
     }
     input:focus {
       outline: none;
-      border-color: #c41e3a;
+      border-color: var(--purple);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+    }
+    input::placeholder {
+      color: #94a3b8;
     }
     button {
       width: 100%;
-      padding: 16px;
-      background: #c41e3a;
+      padding: 18px;
+      background: var(--coral);
       color: #fff;
       border: none;
-      border-radius: 8px;
+      border-radius: 50px;
       font-size: 1.1rem;
-      font-family: 'Lora', Georgia, serif;
-      font-weight: 500;
+      font-family: 'Inter', sans-serif;
+      font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: all 0.3s;
+      box-shadow: 0 4px 20px rgba(232, 90, 107, 0.3);
     }
-    button:hover { background: #a31830; }
+    button:hover {
+      background: var(--coral-light);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(232, 90, 107, 0.4);
+    }
+    button:disabled {
+      background: #cbd5e1;
+      transform: none;
+      box-shadow: none;
+      cursor: not-allowed;
+    }
     .help-text {
-      margin-top: 20px;
+      margin-top: 24px;
       font-size: 0.85rem;
-      color: #9aa5b1;
+      color: #94a3b8;
       text-align: center;
+      line-height: 1.6;
     }
     .error-message {
-      background: #fee2e2;
+      background: #fef2f2;
       border: 1px solid #fecaca;
       color: #dc2626;
-      padding: 14px 16px;
-      border-radius: 8px;
-      margin-bottom: 20px;
+      padding: 16px 18px;
+      border-radius: 12px;
+      margin-bottom: 24px;
       font-size: 0.95rem;
       display: none;
+    }
+    .secure-badge {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 24px;
+      font-size: 0.8rem;
+      color: #64748b;
+    }
+    .secure-badge svg {
+      width: 16px;
+      height: 16px;
+    }
+    @media (max-width: 600px) {
+      .container { padding: 0 16px; }
+      h1 { font-size: 1.75rem; }
+      .form-card { padding: 28px; }
+      .santa-icon { font-size: 4rem; }
     }
   </style>
 </head>
 <body>
   <div class="container">
+    <a href="/" class="back-link">&larr; Back to home</a>
     <div class="santa-icon">🎅</div>
-    <h1>Start Your Personalized Santa Message</h1>
-    <p class="description">To begin creating your personalized Santa message, please enter your Etsy Order ID and email. This helps us securely connect your purchase to your session.</p>
+    <h1>Create Your <span class="highlight">Santa Message</span></h1>
+    <p class="description">Enter your order details below to begin creating a magical, personalized message from Santa.</p>
 
-    <form id="claimForm" action="/api/santa/claim" method="POST">
-      <div id="errorMessage" class="error-message"></div>
+    <div class="form-card">
+      <form id="claimForm" action="/api/santa/claim" method="POST">
+        <div id="errorMessage" class="error-message"></div>
 
-      <label for="orderId">Etsy Order ID *</label>
-      <input type="text" id="orderId" name="orderId" placeholder="e.g., 1234567890" required>
+        <div class="form-group">
+          <label for="orderId">Order ID</label>
+          <input type="text" id="orderId" name="orderId" placeholder="Enter your order ID" required>
+        </div>
 
-      <label for="email">Email Address *</label>
-      <input type="email" id="email" name="email" placeholder="you@example.com" required>
+        <div class="form-group">
+          <label for="email">Email Address</label>
+          <input type="email" id="email" name="email" placeholder="you@example.com" required>
+        </div>
 
-      <input type="hidden" name="productId" value="santa_message">
+        <input type="hidden" name="productId" value="santa_message">
 
-      <button type="submit">Continue to Santa Message</button>
+        <button type="submit">Continue to Create Message</button>
 
-      <p class="help-text">You can find your Order ID in your Etsy purchase confirmation email.</p>
-    </form>
+        <p class="help-text">You'll find your Order ID in your purchase confirmation email.</p>
+
+        <div class="secure-badge">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          Secure • One-time use per purchase
+        </div>
+      </form>
+    </div>
   </div>
 
   <script>
     const form = document.getElementById('claimForm');
     const errorDiv = document.getElementById('errorMessage');
+    const submitBtn = form.querySelector('button[type="submit"]');
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       errorDiv.style.display = 'none';
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verifying...';
 
       const formData = new FormData(form);
       const data = {
@@ -458,10 +581,14 @@ app.get('/santa', (req, res) => {
         } else {
           errorDiv.textContent = result.error || 'Something went wrong. Please try again.';
           errorDiv.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Continue to Create Message';
         }
       } catch (err) {
         errorDiv.textContent = 'Unable to connect. Please check your internet and try again.';
         errorDiv.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Continue to Create Message';
       }
     });
   </script>
@@ -505,6 +632,64 @@ app.get('/flash-cards', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-flashcards.html'));
 });
 
+// ============================================================
+// PRODUCT DETAIL PAGES (Premium pages with Stripe checkout)
+// ============================================================
+
+// Learning Session product page
+app.get('/learning-session', (req, res) => {
+  trackEvent('page', 'learning-session');
+  res.send(renderProductPage('learning_session'));
+});
+
+// Flash Cards product page (different from the form above)
+app.get('/product/flash-cards', (req, res) => {
+  trackEvent('page', 'product-flash-cards');
+  res.send(renderProductPage('flash_cards'));
+});
+
+// Vision Board product page
+app.get('/product/vision-board', (req, res) => {
+  trackEvent('page', 'product-vision-board');
+  res.send(renderProductPage('vision_board'));
+});
+
+// Santa Message product page
+app.get('/product/santa', (req, res) => {
+  trackEvent('page', 'product-santa');
+  res.send(renderProductPage('santa_message'));
+});
+
+// Holiday Reset product page
+app.get('/product/holiday-reset', (req, res) => {
+  trackEvent('page', 'product-holiday-reset');
+  res.send(renderProductPage('holiday_reset'));
+});
+
+// New Year Reset product page
+app.get('/product/new-year-reset', (req, res) => {
+  trackEvent('page', 'product-new-year-reset');
+  res.send(renderProductPage('new_year_reset'));
+});
+
+// Clarity Planner product page
+app.get('/clarity-planner', (req, res) => {
+  trackEvent('page', 'clarity-planner');
+  res.send(renderProductPage('clarity_planner'));
+});
+
+// Thought Organizer product page
+app.get('/thought-organizer', (req, res) => {
+  trackEvent('page', 'thought-organizer');
+  res.send(renderProductPage('thought_organizer'));
+});
+
+// Purchase Success page
+app.get('/purchase/success', (req, res) => {
+  trackEvent('page', 'purchase-success');
+  res.send(renderSuccessPage());
+});
+
 // Redirect /demos to /demo-lessons
 app.get('/demos', (req, res) => {
   res.redirect(301, '/demo-lessons');
@@ -513,7 +698,12 @@ app.get('/demos', (req, res) => {
 // Demo Lessons showcase page - shows sample personalized VIDEO lessons (40-second intros) + Santa demos
 app.get('/demo-lessons', (req, res) => {
   trackEvent('page', 'demo-lessons');
-  const html = `<!DOCTYPE html>
+  res.send(renderDemoLessonsPage());
+});
+
+// OLD demo-lessons inline HTML - now replaced by renderDemoLessonsPage() above
+// Keeping as reference in case needed
+const OLD_DEMO_LESSONS_HTML_ARCHIVED = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -852,8 +1042,6 @@ app.get('/demo-lessons', (req, res) => {
   </div>
 </body>
 </html>`;
-  res.send(html);
-});
 
 // Social Videos page - TikTok/Reels style marketing videos
 app.get('/social', (req, res) => {
@@ -1160,6 +1348,9 @@ app.use('/api/thought-chat', thoughtChatApi);
 // Referral System API (Learn With Friends)
 app.use('/api/referral', referralApi);
 
+// Checkout API (Direct product purchases via Stripe)
+app.use('/api/checkout', checkoutApi);
+
 // ============================================================
 // STRIPE WEBHOOK (must be before body parser for raw body)
 // ============================================================
@@ -1314,7 +1505,20 @@ app.get('/dashboard', async (req, res) => {
 // Pricing page
 app.get('/pricing', (req, res) => {
   trackEvent('page', 'pricing');
-  res.send(renderPricingPage());
+  res.send(renderPricingPageNew());
+});
+
+// Products page
+app.get('/products', async (req, res) => {
+  trackEvent('page', 'products');
+  const html = await renderProductsPage();
+  res.send(html);
+});
+
+// How It Works page
+app.get('/how-it-works', (req, res) => {
+  trackEvent('page', 'how-it-works');
+  res.send(renderHowItWorksPage());
 });
 
 // ============================================================
@@ -1504,8 +1708,10 @@ app.get('/admin/test-alert', async (req, res) => {
 // BRANDED HOMEPAGE (Premium V3)
 // ============================================================
 
-app.get('/', (req, res) => {
-  res.send(renderPremiumHomepageV3());
+app.get('/', async (req, res) => {
+  // Use new V4 homepage with dynamic product ordering
+  const html = await renderPremiumHomepageV4();
+  res.send(html);
 });
 
 // ============================================================
