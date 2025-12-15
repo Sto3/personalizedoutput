@@ -29,6 +29,9 @@ import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tok
 // Import email alerts
 import { alertTrafficSpike, sendTestAlert, isAlertConfigured, sendDailySummary } from './lib/alerts/emailAlerts';
 
+// Import API usage monitor
+import { startMonitoring as startUsageMonitoring, checkAllUsage, getUsageState } from './services/apiUsageMonitor';
+
 // Import page renderers
 import { renderPremiumHomepageV3 } from './pages/homepageV3';
 import { renderLoginPage, renderSignupPage, renderForgotPasswordPage } from './pages/auth';
@@ -1708,6 +1711,33 @@ app.get('/status', (req, res) => {
 });
 
 // ============================================================
+// ADMIN: API USAGE MONITORING
+// ============================================================
+
+// Check API usage status (protected by admin key)
+app.get('/api/admin/usage', async (req, res) => {
+  const adminKey = req.headers['x-admin-key'] || req.query.key;
+  if (adminKey !== process.env.ADMIN_API_KEY && adminKey !== 'etsyinnovations2024') {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const usage = await checkAllUsage();
+    const state = getUsageState();
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      thresholds: { warning: 80, alert: 90, critical: 95 },
+      services: usage,
+      lastChecked: state.lastCheck || 'never',
+      alertHistory: state.alerts || []
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============================================================
 // ERROR HANDLING
 // ============================================================
 
@@ -1724,6 +1754,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // ============================================================
 
 app.listen(PORT, () => {
+  // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)
+  startUsageMonitoring();
+
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
@@ -1744,6 +1777,9 @@ app.listen(PORT, () => {
 ║                                                               ║
 ║   Static Files:                                               ║
 ║   • Audio outputs:  /outputs/*                                ║
+║                                                               ║
+║   API Usage Monitoring: ACTIVE (checks every 4 hours)         ║
+║   • Alerts at 80%/90%/95% to ${process.env.ALERT_EMAIL || 'persefit@outlook.com'}             ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);

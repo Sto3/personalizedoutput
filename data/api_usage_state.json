@@ -1,0 +1,52 @@
+{
+  "lastCheck": "2025-12-15T15:01:01.121Z",
+  "services": {
+    "ElevenLabs": {
+      "service": "ElevenLabs",
+      "used": 55425,
+      "limit": 169068,
+      "percentUsed": 33,
+      "unit": "characters",
+      "status": "ok",
+      "message": "55,425 / 169,068 chars (33%)",
+      "resetDate": "2026-01-05T11:00:30.000Z"
+    },
+    "Anthropic Claude": {
+      "service": "Anthropic Claude",
+      "used": 0,
+      "limit": 50,
+      "percentUsed": 0,
+      "unit": "dollars",
+      "status": "unknown",
+      "message": "Usage tracking not yet collecting data"
+    },
+    "Ideogram": {
+      "service": "Ideogram",
+      "used": 0,
+      "limit": 400,
+      "percentUsed": 0,
+      "unit": "images",
+      "status": "unknown",
+      "message": "Usage tracking not yet collecting data"
+    },
+    "Supabase": {
+      "service": "Supabase",
+      "used": 0,
+      "limit": 8,
+      "percentUsed": 0,
+      "unit": "GB database",
+      "status": "ok",
+      "message": "Pro tier - 8GB DB, 50GB storage, 100GB bandwidth"
+    },
+    "Render": {
+      "service": "Render",
+      "used": 0,
+      "limit": 750,
+      "percentUsed": 0,
+      "unit": "hours",
+      "status": "ok",
+      "message": "Free tier - 750 hrs/month, auto-sleep after 15 min"
+    }
+  },
+  "alerts": []
+}
