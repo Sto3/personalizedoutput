@@ -63,18 +63,9 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="hero-texture"></div>
         </div>
         <div class="hero-inner container">
-          <h1>
-            Personalized experiences powerful enough to
-            <span class="highlight">heal, inspire,</span> and make you <span class="highlight">smile</span>
-          </h1>
+          <h1>Personalized experiences powerful enough to <span class="highlight">heal, inspire,</span> and make you <span class="highlight">smile</span></h1>
           <p class="hero-subtitle">
-            Personalized products work because they transform the ordinary into the extraordinary.
-            A child pays attention when their favorite dinosaur teaches fractions. An adult finally
-            understands mortgages because we explained it through their bakery. A vision board
-            captures exactly who you are. We exist to create these moments — products so personal
-            that people say "How did it know that about me?" What makes us different: we don't just
-            insert names into templates. We build every product from scratch around the specific
-            person — their interests, their goals, their story.
+            Personalized products work because they transform the ordinary into the extraordinary. A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages because we explained it through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal that customers tell us: "I'm so thankful for a product I can fine-tune to exactly what I truly need — it's unbelievable."</em>
           </p>
           <div class="hero-buttons">
             <a href="#products" class="btn btn-primary btn-hero">
@@ -89,16 +80,11 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
       <!-- Product Showcase - Horizontal Scrollable Cards -->
       <section class="products-showcase" id="products">
-        <div class="products-scroll-container">
+        <span class="section-eyebrow products-label">Our Products</span>
+        <div class="products-scroll-container" id="productsScrollContainer">
           <div class="products-scroll" id="productsScroll">
             ${orderedProducts.map((p, index) => renderScrollableProductCard(p, index)).join('')}
           </div>
-        </div>
-        <div class="scroll-indicator">
-          <span>Scroll to explore</span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M5 12h14M12 5l7 7-7 7"/>
-          </svg>
         </div>
       </section>
 
@@ -482,7 +468,7 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
-       HERO SECTION - Clean White Design
+       HERO SECTION - Compact Premium Design
        ================================================ */
     .hero {
       min-height: auto;
@@ -490,7 +476,7 @@ function getHomepageStyles(): string {
       align-items: center;
       justify-content: center;
       text-align: center;
-      padding: 100px 24px 50px;
+      padding: 80px 24px 20px;
       position: relative;
       background: #ffffff;
       overflow: hidden;
@@ -514,16 +500,18 @@ function getHomepageStyles(): string {
     .hero-inner {
       position: relative;
       z-index: 1;
-      max-width: 800px;
+      max-width: 1100px;
+      width: 100%;
     }
 
     .hero h1 {
       font-family: 'Bodoni Moda', serif;
-      font-size: clamp(2rem, 4vw, 3rem);
+      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
       font-weight: 400;
-      line-height: 1.15;
-      margin-bottom: 16px;
+      line-height: 1.2;
+      margin-bottom: 12px;
       color: var(--navy);
+      white-space: nowrap;
     }
 
     .hero h1 .highlight {
@@ -532,23 +520,32 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-size: 1rem;
-      line-height: 1.6;
-      color: #555;
-      max-width: 550px;
-      margin: 0 auto 24px;
+      font-family: 'Cormorant Garamond', 'Georgia', serif;
+      font-size: 1.05rem;
+      line-height: 1.65;
+      color: #444;
+      max-width: 950px;
+      margin: 0 auto 18px;
+      font-weight: 400;
+    }
+
+    .hero-subtitle em {
+      font-family: 'Great Vibes', cursive;
+      font-style: normal;
+      font-size: 1.15em;
+      color: var(--purple);
     }
 
     .hero-buttons {
       display: flex;
       justify-content: center;
-      gap: 16px;
+      gap: 14px;
       flex-wrap: wrap;
     }
 
     .btn-hero {
-      padding: 14px 28px;
-      font-size: 0.95rem;
+      padding: 12px 24px;
+      font-size: 0.9rem;
       border-radius: 100px;
       background: var(--coral);
       color: white;
@@ -579,11 +576,24 @@ function getHomepageStyles(): string {
 
     /* ================================================
        PRODUCTS SHOWCASE - Horizontal Scrollable Cards
+       Triangle/Perspective Layout - Cards rotate TOWARD center
        ================================================ */
     .products-showcase {
       padding: 10px 0 40px;
       background: #fff;
       overflow: hidden;
+      position: relative;
+    }
+
+    .products-label {
+      display: block;
+      text-align: center;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--coral);
+      margin-bottom: 12px;
     }
 
     .products-scroll-container {
@@ -592,8 +602,8 @@ function getHomepageStyles(): string {
       overflow-y: visible;
       scrollbar-width: none;
       -ms-overflow-style: none;
-      padding: 40px 0 60px;
-      scroll-snap-type: x mandatory;
+      padding: 30px 0 50px;
+      scroll-snap-type: x proximity; /* proximity for smoother scrolling */
       scroll-behavior: smooth;
     }
 
@@ -603,10 +613,11 @@ function getHomepageStyles(): string {
 
     .products-scroll {
       display: flex;
-      gap: 20px;
+      gap: 24px;
       padding: 0 calc(50vw - 180px);
       width: max-content;
-      perspective: 1000px;
+      perspective: 1200px;
+      transform-style: preserve-3d;
     }
 
     .scroll-product-card {
@@ -615,41 +626,58 @@ function getHomepageStyles(): string {
       text-decoration: none;
       display: block;
       scroll-snap-align: center;
-      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       transform-style: preserve-3d;
-      /* Default state: cards appear smaller/faded with 3D rotation */
-      transform: scale(0.75) rotateY(25deg) translateZ(-100px);
-      opacity: 0.5;
+      /* Default state: cards appear smaller/faded - positioned on left by default */
+      transform: scale(0.72) rotateY(30deg) translateZ(-120px);
+      opacity: 0.4;
       filter: blur(2px);
     }
 
-    /* Active/center card styling via JS */
+    /* Active/center card - no rotation, full scale, pop forward */
     .scroll-product-card.active {
-      transform: scale(1) rotateY(0deg) translateZ(80px);
+      transform: scale(1) rotateY(0deg) translateZ(60px);
       opacity: 1;
       filter: blur(0);
       z-index: 10;
     }
 
-    /* Adjacent cards - true 3D perspective with rotateY */
+    /* LEFT adjacent card - rotates RIGHT (positive rotateY) toward center */
     .scroll-product-card.adjacent-left {
-      transform: scale(0.88) rotateY(20deg) translateZ(-30px) translateX(40px);
-      opacity: 0.85;
+      transform: scale(0.85) rotateY(28deg) translateZ(-40px) translateX(30px);
+      opacity: 0.9;
       filter: blur(0);
       z-index: 5;
     }
 
+    /* RIGHT adjacent card - rotates LEFT (negative rotateY) toward center */
     .scroll-product-card.adjacent-right {
-      transform: scale(0.88) rotateY(-20deg) translateZ(-30px) translateX(-40px);
-      opacity: 0.85;
+      transform: scale(0.85) rotateY(-28deg) translateZ(-40px) translateX(-30px);
+      opacity: 0.9;
       filter: blur(0);
       z-index: 5;
     }
 
-    /* Far cards - more dramatic 3D rotation */
+    /* Far LEFT cards - more dramatic rotation RIGHT toward center */
+    .scroll-product-card.far-left {
+      transform: scale(0.65) rotateY(40deg) translateZ(-180px) translateX(60px);
+      opacity: 0.3;
+      filter: blur(3px);
+      z-index: 1;
+    }
+
+    /* Far RIGHT cards - more dramatic rotation LEFT toward center */
+    .scroll-product-card.far-right {
+      transform: scale(0.65) rotateY(-40deg) translateZ(-180px) translateX(-60px);
+      opacity: 0.3;
+      filter: blur(3px);
+      z-index: 1;
+    }
+
+    /* Legacy far class for compatibility */
     .scroll-product-card.far {
-      transform: scale(0.7) rotateY(35deg) translateZ(-150px);
-      opacity: 0.35;
+      transform: scale(0.65) rotateY(40deg) translateZ(-180px);
+      opacity: 0.3;
       filter: blur(3px);
       z-index: 1;
     }
@@ -786,23 +814,32 @@ function getHomepageStyles(): string {
     @media (max-width: 768px) {
       .scroll-product-card {
         width: 280px;
-        /* Disable 3D effects on mobile - use simpler scroll */
-        transform: scale(0.95);
-        opacity: 0.8;
-        filter: none;
+        /* Simpler 3D effects on mobile */
+        transform: scale(0.9) rotateY(20deg);
+        opacity: 0.7;
+        filter: blur(1px);
       }
       .scroll-product-card.active {
-        transform: scale(1);
+        transform: scale(1) rotateY(0deg);
         opacity: 1;
+        filter: none;
       }
-      .scroll-product-card.adjacent-left,
+      .scroll-product-card.adjacent-left {
+        transform: scale(0.92) rotateY(15deg);
+        opacity: 0.85;
+        filter: none;
+      }
       .scroll-product-card.adjacent-right {
-        transform: scale(0.95);
-        opacity: 0.8;
+        transform: scale(0.92) rotateY(-15deg);
+        opacity: 0.85;
+        filter: none;
       }
+      .scroll-product-card.far-left,
+      .scroll-product-card.far-right,
       .scroll-product-card.far {
-        transform: scale(0.9);
-        opacity: 0.5;
+        transform: scale(0.8) rotateY(25deg);
+        opacity: 0.4;
+        filter: blur(2px);
       }
       .products-scroll {
         padding: 0 calc(50vw - 140px);
@@ -1204,7 +1241,10 @@ function getHomepageStyles(): string {
 
 function getHomepageScripts(): string {
   return `
-    // 3D Carousel Effect for Product Cards
+    // 3D Triangle Carousel Effect for Product Cards
+    // Cards on LEFT rotate RIGHT (toward center)
+    // Cards on RIGHT rotate LEFT (toward center)
+    // Creates a triangle/vanishing point effect
     function init3DCarousel() {
       const container = document.querySelector('.products-scroll-container');
       const cards = document.querySelectorAll('.scroll-product-card');
@@ -1221,36 +1261,53 @@ function getHomepageScripts(): string {
           const absDistance = Math.abs(distanceFromCenter);
 
           // Remove all positioning classes
-          card.classList.remove('active', 'adjacent-left', 'adjacent-right', 'far');
+          card.classList.remove('active', 'adjacent-left', 'adjacent-right', 'far-left', 'far-right', 'far');
 
-          // Apply class based on position
+          // Apply class based on position - directional for triangle effect
           if (absDistance < 100) {
+            // Center card - no rotation
             card.classList.add('active');
-          } else if (absDistance < 350) {
+          } else if (absDistance < 400) {
+            // Adjacent cards - slight rotation toward center
             if (distanceFromCenter < 0) {
-              card.classList.add('adjacent-left');
+              card.classList.add('adjacent-left'); // rotates RIGHT toward center
             } else {
-              card.classList.add('adjacent-right');
+              card.classList.add('adjacent-right'); // rotates LEFT toward center
             }
           } else {
-            card.classList.add('far');
+            // Far cards - strong rotation toward center
+            if (distanceFromCenter < 0) {
+              card.classList.add('far-left'); // rotates strongly RIGHT toward center
+            } else {
+              card.classList.add('far-right'); // rotates strongly LEFT toward center
+            }
           }
         });
       }
 
-      // Update on scroll
-      container.addEventListener('scroll', updateCardPositions);
+      // Update on scroll with throttling for smooth performance
+      let ticking = false;
+      container.addEventListener('scroll', () => {
+        if (!ticking) {
+          requestAnimationFrame(() => {
+            updateCardPositions();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      });
 
-      // Initial update
-      updateCardPositions();
-
-      // Center the first card initially
+      // Center on the MIDDLE card initially (not first card)
+      // This ensures cards are visible on BOTH sides when page loads
       setTimeout(() => {
-        const firstCard = cards[0];
-        if (firstCard) {
-          const scrollLeft = firstCard.offsetLeft - (container.offsetWidth / 2) + (firstCard.offsetWidth / 2);
+        const middleIndex = Math.floor(cards.length / 2);
+        const middleCard = cards[middleIndex];
+        if (middleCard) {
+          const scrollLeft = middleCard.offsetLeft - (container.offsetWidth / 2) + (middleCard.offsetWidth / 2);
           container.scrollLeft = Math.max(0, scrollLeft);
         }
+        // Update positions after centering
+        setTimeout(updateCardPositions, 50);
       }, 100);
     }
 
