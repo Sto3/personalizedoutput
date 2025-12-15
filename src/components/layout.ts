@@ -368,14 +368,14 @@ function renderMegaMenu(productsByCategory: Record<string, ProductInfo[]>): stri
 
 function getProductIcon(productId: string): string {
   const icons: Record<string, string> = {
-    santa_message: '🎅',
+    santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
     learning_session: '🧠',
     holiday_reset: '🎄',
     new_year_reset: '✨',
     clarity_planner: '💡',
-    thought_organizer: '🧠',
+    thought_organizer: '✨',
   };
   return icons[productId] || '📦';
 }

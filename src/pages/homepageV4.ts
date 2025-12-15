@@ -68,10 +68,13 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             <span class="highlight">heal, inspire,</span> and make you <span class="highlight">smile</span>
           </h1>
           <p class="hero-subtitle">
-            A child's eyes light up hearing Santa say their name. An adult finally
-            understands mortgages because we explained it through their bakery.
-            A grieving widow finds comfort in a vision board that captures exactly
-            who her husband was. These aren't templates — they're transformations.
+            Personalized products work because they transform the ordinary into the extraordinary.
+            A child pays attention when their favorite dinosaur teaches fractions. An adult finally
+            understands mortgages because we explained it through their bakery. A vision board
+            captures exactly who you are. We exist to create these moments — products so personal
+            that people say "How did it know that about me?" What makes us different: we don't just
+            insert names into templates. We build every product from scratch around the specific
+            person — their interests, their goals, their story.
           </p>
           <div class="hero-buttons">
             <a href="#products" class="btn btn-primary btn-hero">
@@ -115,20 +118,20 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step-connector"></div>
           <div class="step">
             <div class="step-number">2</div>
-            <h3>Answer Questions</h3>
-            <p>Tell us specific details about your person's interests and goals.</p>
+            <h3>Experience Personalization</h3>
+            <p>Have an immersive, conversational experience where you share details about your person — their interests, achievements, dreams, and personality.</p>
           </div>
           <div class="step-connector"></div>
           <div class="step">
             <div class="step-number">3</div>
             <h3>We Create Magic</h3>
-            <p>Our Thought Organizer™ weaves your details into something uniquely personal.</p>
+            <p>Our powerful and immersive Personalization Experience weaves your details into something uniquely personal.</p>
           </div>
           <div class="step-connector"></div>
           <div class="step">
             <div class="step-number">4</div>
             <h3>Download & Share</h3>
-            <p>Get your digital file instantly. Watch their reaction.</p>
+            <p>After your Personalization Experience, your product is delivered instantly. Watch their reaction.</p>
           </div>
         </div>
       </section>
@@ -204,16 +207,16 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 }
 
 function renderScrollableProductCard(product: ProductWithScore, index: number): string {
-  // Unique icons - no duplicates, distinctive Santa, unique Thought Organizer
+  // Unique icons - distinctive for each product
   const icons: Record<string, string> = {
-    santa_message: '<svg viewBox="0 0 100 100" width="64" height="64"><circle cx="50" cy="50" r="45" fill="#c41e3a"/><circle cx="50" cy="35" r="15" fill="#ffe4c4"/><ellipse cx="50" cy="48" rx="8" ry="6" fill="#c41e3a"/><circle cx="42" cy="32" r="3" fill="#2d2d2d"/><circle cx="58" cy="32" r="3" fill="#2d2d2d"/><path d="M40 38 Q50 45 60 38" stroke="#c41e3a" stroke-width="2" fill="none"/><path d="M20 25 Q50 5 80 25 L75 35 Q50 20 25 35 Z" fill="#fff"/><circle cx="75" cy="30" r="8" fill="#fff"/><rect x="20" y="55" width="60" height="35" rx="5" fill="#c41e3a"/><rect x="45" y="55" width="10" height="35" fill="#111"/><circle cx="50" cy="72" r="4" fill="#ffd700"/></svg>',
+    santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🎓',
+    learning_session: '🧠',
     holiday_reset: '🎄',
     new_year_reset: '🌟',
     clarity_planner: '💡',
-    thought_organizer: '<svg viewBox="0 0 100 100" width="64" height="64"><defs><linearGradient id="toPurple" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#7C3AED"/><stop offset="100%" stop-color="#A78BFA"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="url(#toPurple)" opacity="0.15"/><circle cx="50" cy="35" r="18" fill="none" stroke="url(#toPurple)" stroke-width="3"/><path d="M35 50 Q35 75 50 75 Q65 75 65 50" fill="none" stroke="url(#toPurple)" stroke-width="3"/><circle cx="30" cy="45" r="6" fill="url(#toPurple)"/><circle cx="70" cy="45" r="6" fill="url(#toPurple)"/><circle cx="50" cy="60" r="6" fill="url(#toPurple)"/><path d="M30 45 L50 35" stroke="url(#toPurple)" stroke-width="2"/><path d="M70 45 L50 35" stroke="url(#toPurple)" stroke-width="2"/><path d="M50 60 L50 53" stroke="url(#toPurple)" stroke-width="2"/><text x="50" y="90" text-anchor="middle" font-size="12" fill="#7C3AED" font-weight="600">™</text></svg>',
+    thought_organizer: '✨',
   };
 
   const categoryLabels: Record<string, string> = {
@@ -416,16 +419,16 @@ function renderFeatureCards(products: ProductWithScore[]): string {
 }
 
 function renderProductCard(product: ProductWithScore, index: number): string {
-  // Unique icons - no duplicates
+  // Unique icons - distinctive for each product
   const icons: Record<string, string> = {
-    santa_message: '🎅🏻',
+    santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🎓',
+    learning_session: '🧠',
     holiday_reset: '🎄',
     new_year_reset: '🌟',
     clarity_planner: '💡',
-    thought_organizer: '💭',
+    thought_organizer: '✨',
   };
 
   const benefits: Record<string, string[]> = {
@@ -608,96 +611,100 @@ function getHomepageStyles(): string {
 
     .scroll-product-card {
       flex-shrink: 0;
-      width: 320px;
+      width: 360px;
       text-decoration: none;
       display: block;
       scroll-snap-align: center;
-      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
       transform-style: preserve-3d;
-      /* Default state: cards appear smaller/faded */
-      transform: scale(0.85) rotateY(5deg);
-      opacity: 0.6;
-      filter: blur(1px);
+      /* Default state: cards appear smaller/faded with 3D rotation */
+      transform: scale(0.75) rotateY(25deg) translateZ(-100px);
+      opacity: 0.5;
+      filter: blur(2px);
     }
 
     /* Active/center card styling via JS */
     .scroll-product-card.active {
-      transform: scale(1) rotateY(0deg) translateZ(50px);
+      transform: scale(1) rotateY(0deg) translateZ(80px);
       opacity: 1;
       filter: blur(0);
       z-index: 10;
     }
 
-    /* Adjacent cards */
+    /* Adjacent cards - true 3D perspective with rotateY */
     .scroll-product-card.adjacent-left {
-      transform: scale(0.9) rotateY(8deg) translateX(30px);
-      opacity: 0.8;
-      filter: blur(0.5px);
+      transform: scale(0.88) rotateY(20deg) translateZ(-30px) translateX(40px);
+      opacity: 0.85;
+      filter: blur(0);
       z-index: 5;
     }
 
     .scroll-product-card.adjacent-right {
-      transform: scale(0.9) rotateY(-8deg) translateX(-30px);
-      opacity: 0.8;
-      filter: blur(0.5px);
+      transform: scale(0.88) rotateY(-20deg) translateZ(-30px) translateX(-40px);
+      opacity: 0.85;
+      filter: blur(0);
       z-index: 5;
     }
 
-    /* Far cards */
+    /* Far cards - more dramatic 3D rotation */
     .scroll-product-card.far {
-      transform: scale(0.75) rotateY(15deg);
-      opacity: 0.4;
-      filter: blur(2px);
+      transform: scale(0.7) rotateY(35deg) translateZ(-150px);
+      opacity: 0.35;
+      filter: blur(3px);
       z-index: 1;
     }
 
     .scroll-card-inner {
-      background: var(--white);
-      border: 1px solid #e8e8e8;
-      border-radius: 24px;
-      padding: 28px;
+      background: linear-gradient(145deg, var(--navy) 0%, #0f0f1a 100%);
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      border-radius: 28px;
+      padding: 36px 32px;
       height: 100%;
-      min-height: 320px;
+      min-height: 400px;
       position: relative;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
+                  0 0 40px rgba(124, 58, 237, 0.1);
     }
 
     .scroll-product-card.active .scroll-card-inner {
-      box-shadow: 0 25px 80px rgba(124, 58, 237, 0.2),
-                  0 0 0 2px var(--purple-light);
-      border-color: var(--purple-light);
+      box-shadow: 0 35px 100px rgba(0, 0, 0, 0.5),
+                  0 0 60px rgba(124, 58, 237, 0.25),
+                  0 0 0 2px var(--purple);
+      border-color: var(--purple);
     }
 
     .scroll-product-card:hover .scroll-card-inner {
-      transform: translateY(-8px);
-      box-shadow: 0 20px 60px rgba(124, 58, 237, 0.15),
-                  0 0 0 2px var(--purple-light);
-      border-color: var(--purple-light);
+      transform: translateY(-12px);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45),
+                  0 0 50px rgba(124, 58, 237, 0.2),
+                  0 0 0 2px var(--purple);
+      border-color: var(--purple);
     }
 
     .scroll-card-badge {
       position: absolute;
-      top: 20px;
-      left: 20px;
-      background: var(--off-white);
-      color: var(--navy);
-      padding: 6px 12px;
+      top: 24px;
+      left: 24px;
+      background: rgba(255, 255, 255, 0.1);
+      color: rgba(255, 255, 255, 0.85);
+      padding: 8px 14px;
       border-radius: 100px;
       font-size: 0.7rem;
       font-weight: 600;
       letter-spacing: 0.02em;
+      border: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .scroll-card-popular {
       position: absolute;
-      top: 20px;
-      right: 20px;
+      top: 24px;
+      right: 24px;
       background: linear-gradient(135deg, var(--coral), var(--purple));
       color: white;
-      padding: 6px 12px;
+      padding: 8px 14px;
       border-radius: 100px;
       font-size: 0.65rem;
       font-weight: 700;
@@ -706,53 +713,54 @@ function getHomepageStyles(): string {
     }
 
     .scroll-card-icon {
-      font-size: 3rem;
-      margin: 30px 0 16px;
+      font-size: 5rem;
+      margin: 40px 0 24px;
       text-align: center;
+      filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
     }
 
     .scroll-card-title {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.4rem;
+      font-size: 1.6rem;
       font-weight: 500;
-      color: var(--navy);
-      margin-bottom: 10px;
+      color: white;
+      margin-bottom: 12px;
       text-align: center;
     }
 
     .scroll-card-desc {
-      font-size: 0.9rem;
-      color: #666;
-      line-height: 1.6;
+      font-size: 0.95rem;
+      color: rgba(255, 255, 255, 0.7);
+      line-height: 1.7;
       text-align: center;
       flex-grow: 1;
-      margin-bottom: 20px;
+      margin-bottom: 24px;
     }
 
     .scroll-card-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-top: 16px;
-      border-top: 1px solid #eee;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
     }
 
     .scroll-card-price {
       font-family: 'Inter', sans-serif;
-      font-size: 1.5rem;
+      font-size: 1.75rem;
       font-weight: 700;
-      color: var(--navy);
+      color: white;
     }
 
     .scroll-card-cta {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 600;
       color: var(--coral);
       transition: all 0.3s ease;
     }
 
     .scroll-product-card:hover .scroll-card-cta {
-      color: var(--purple);
+      color: var(--purple-light);
       transform: translateX(4px);
     }
 

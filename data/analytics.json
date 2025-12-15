@@ -4,12 +4,12 @@
     "demo-lessons": 8,
     "vision-board": 3,
     "flash-cards": 5,
-    "blog": 8,
-    "blog-personalized-santa-message-guide": 1,
+    "blog": 11,
+    "blog-personalized-santa-message-guide": 3,
     "blog-personalized-flash-cards-learning": 1,
-    "blog-navigating-difficult-family-holidays": 1,
-    "blog-year-end-reflection-guide": 1,
-    "blog-vision-board-guide-2025": 1,
+    "blog-navigating-difficult-family-holidays": 2,
+    "blog-year-end-reflection-guide": 3,
+    "blog-vision-board-guide-2025": 3,
     "pricing": 3,
     "how-it-works": 1,
     "learning-session": 6,
@@ -30,7 +30,8 @@
     "2025-12-15T17": 8,
     "2025-12-15T18": 12,
     "2025-12-15T19": 10,
-    "2025-12-15T20": 20
+    "2025-12-15T20": 20,
+    "2025-12-15T22": 10
   },
-  "lastUpdated": "2025-12-15T20:47:36.524Z"
+  "lastUpdated": "2025-12-15T22:30:57.209Z"
 }
