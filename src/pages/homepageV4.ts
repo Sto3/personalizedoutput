@@ -190,7 +190,7 @@ function renderScrollableProductCard(product: ProductWithScore, index: number): 
 
   return `
     <div class="swiper-slide">
-    <a href="/${product.slug}" class="scroll-product-card" style="--card-delay: ${index * 0.1}s">
+    <a href="/product/${product.slug}" class="scroll-product-card" style="--card-delay: ${index * 0.1}s">
       <div class="scroll-card-inner">
         <div class="scroll-card-badge">${categoryLabels[product.category]}</div>
         ${product.salesScore > 0 ? '<div class="scroll-card-popular">Popular</div>' : ''}
