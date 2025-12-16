@@ -27,7 +27,7 @@ interface ProductPageContent {
 
 const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
   learning_session: {
-    heroSubtitle: 'Personalized Education',
+    heroSubtitle: 'Personalized Audio Education',
     heroDescription: 'A 30-minute audio lesson that uses what they already love to teach what they need to learn. Not a generic template - every word is crafted around their specific interests.',
     features: [
       { icon: '🎯', title: 'Interest-Based Learning', description: 'We take their passion - dinosaurs, baking, video games - and weave the lesson around it.' },
@@ -47,11 +47,34 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
       { question: 'How personal does it get?', answer: 'Very. We mention their name, reference their specific interests (their favorite dinosaur, their pet\'s name), and create scenarios they\'d find exciting.' },
       { question: 'What if they don\'t like it?', answer: 'We offer a full refund within 7 days if the lesson doesn\'t meet your expectations. No questions asked.' },
     ],
-    testimonials: [
-      { name: 'Sarah M.', location: 'Austin, TX', quote: 'My son finally understood fractions after months of struggling. The dinosaur theme made it click instantly.', rating: 5 },
-      { name: 'Michael R.', location: 'Denver, CO', quote: 'Worth every penny. My daughter asks to listen to "her lesson" every day. She\'s ahead of her class now.', rating: 5 },
-    ],
+    testimonials: [],
     deliverables: ['30-minute MP3 audio lesson', 'Professional narration', 'Companion PDF guide with key concepts', 'Unlimited replays'],
+    guarantee: '7-day money-back guarantee if you\'re not completely satisfied',
+  },
+
+  video_learning_session: {
+    heroSubtitle: 'Personalized Video Education',
+    heroDescription: 'A 30-minute video lesson that combines engaging visuals with personalized content. Watch their eyes light up as concepts come alive through animation and storytelling tailored to their interests.',
+    features: [
+      { icon: '🎬', title: 'Visual Learning', description: 'Dynamic animations and graphics that make abstract concepts concrete and memorable.' },
+      { icon: '🎯', title: 'Interest-Based Content', description: 'Everything from the examples to the visuals is customized to what they love.' },
+      { icon: '🧠', title: 'Multi-Sensory Engagement', description: 'Combines audio narration with visual storytelling for deeper understanding.' },
+      { icon: '📱', title: 'Watch Anywhere', description: 'MP4 format works on any device - tablet, phone, computer, or TV.' },
+    ],
+    processSteps: [
+      { step: 1, title: 'Tell Us About Them', description: 'Share their interests, age, and what they need to learn. The more details, the more personal.' },
+      { step: 2, title: 'We Create the Video', description: 'Custom animations and visuals are created around their specific interests.' },
+      { step: 3, title: 'Professional Production', description: 'Your lesson is produced with engaging narration and polished visuals.' },
+      { step: 4, title: 'Instant Download', description: 'Receive your MP4 video file ready to watch anywhere, anytime.' },
+    ],
+    faqs: [
+      { question: 'What age range is this for?', answer: 'We create video lessons for ages 4-14 primarily, but also serve adults learning new concepts. The visual style and complexity adjust to match the learner.' },
+      { question: 'How is this different from audio lessons?', answer: 'Video lessons include animated visuals, on-screen graphics, and visual demonstrations that make complex concepts easier to understand. Perfect for visual learners.' },
+      { question: 'What subjects work best for video?', answer: 'Math, science, geography, and any topic with visual or spatial components shine in video format. Abstract concepts become concrete when you can see them.' },
+      { question: 'What if they don\'t like it?', answer: 'We offer a full refund within 7 days if the lesson doesn\'t meet your expectations. No questions asked.' },
+    ],
+    testimonials: [],
+    deliverables: ['30-minute MP4 video lesson', 'Custom animations and visuals', 'Professional narration', 'Companion PDF guide with key concepts', 'Unlimited replays'],
     guarantee: '7-day money-back guarantee if you\'re not completely satisfied',
   },
 
@@ -258,7 +281,8 @@ export function renderProductPage(productId: ProductType): string {
     santa_message: '🎅',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🧠',
+    learning_session: '🎧',
+    video_learning_session: '🎬',
     holiday_reset: '🎄',
     new_year_reset: '✨',
     clarity_planner: '💡',

@@ -88,17 +88,32 @@ export function renderPricingPageNew(): string {
 
             <div class="price-card">
               <div class="price-badge">For Kids</div>
-              <div class="price-icon">🧠</div>
-              <h3>Learning Session</h3>
+              <div class="price-icon">🎧</div>
+              <h3>Audio Lesson</h3>
               <p class="price-desc">30-min personalized audio lesson</p>
-              <div class="price-amount">$20</div>
+              <div class="price-amount">$23</div>
               <ul class="price-features">
                 <li>30-min custom lesson</li>
                 <li>Based on their interests</li>
                 <li>Professional narration</li>
-                <li>Downloadable audio</li>
+                <li>Downloadable MP3</li>
               </ul>
               <a href="/learning-session" class="btn btn-secondary">Create Lesson</a>
+            </div>
+
+            <div class="price-card">
+              <div class="price-badge">For Kids</div>
+              <div class="price-icon">🎬</div>
+              <h3>Video Lesson</h3>
+              <p class="price-desc">30-min personalized video lesson</p>
+              <div class="price-amount">$33</div>
+              <ul class="price-features">
+                <li>30-min custom video</li>
+                <li>Custom animations</li>
+                <li>Professional production</li>
+                <li>Downloadable MP4</li>
+              </ul>
+              <a href="/video-lesson" class="btn btn-secondary">Create Video</a>
             </div>
 
             <!-- Adult Products -->
@@ -189,8 +204,8 @@ export function renderPricingPageNew(): string {
             <div class="guarantee-icon">🛡️</div>
             <h2>100% Satisfaction Guarantee</h2>
             <p>
-              Not happy with your personalized creation? We'll revise it until it's perfect
-              or give you a full refund. No questions asked.
+              Not happy with your personalized creation? We'll give you a full refund.
+              No questions asked, no hoops to jump through.
             </p>
           </div>
         </div>
@@ -210,8 +225,8 @@ export function renderPricingPageNew(): string {
               <p>Most products are delivered within minutes of purchase. Complex creations like learning sessions may take up to 30 minutes.</p>
             </div>
             <div class="faq-item">
-              <h3>Can I get revisions?</h3>
-              <p>Yes! If something isn't quite right, we'll revise your creation for free. Just reach out to our support team.</p>
+              <h3>What if I'm not satisfied?</h3>
+              <p>We offer a 100% satisfaction guarantee. If you're not happy with your personalized creation, we'll give you a full refund — no questions asked.</p>
             </div>
             <div class="faq-item">
               <h3>What formats do I receive?</h3>

@@ -274,6 +274,7 @@ export function renderNavigation(options: NavOptions = {}): string {
           </div>
 
           <a href="/pricing" class="nav-link ${currentPage === 'pricing' ? 'active' : ''}">Pricing</a>
+          <a href="/social" class="nav-link ${currentPage === 'social' ? 'active' : ''}">Videos</a>
           <a href="/blog" class="nav-link ${currentPage === 'blog' ? 'active' : ''}">Blog</a>
           <a href="/login" class="nav-link ${currentPage === 'login' ? 'active' : ''}">Login</a>
           <a href="/demo-lessons" class="nav-cta">Listen to Demos</a>
@@ -303,6 +304,7 @@ export function renderNavigation(options: NavOptions = {}): string {
           `).join('')}
         </div>
         <a href="/pricing" class="mobile-link">Pricing</a>
+        <a href="/social" class="mobile-link">Videos</a>
         <a href="/blog" class="mobile-link">Blog</a>
         <a href="/login" class="mobile-link">Login</a>
         <a href="/demo-lessons" class="mobile-cta">Listen to Demos</a>
@@ -371,7 +373,8 @@ function getProductIcon(productId: string): string {
     santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🧠',
+    learning_session: '🎧',
+    video_learning_session: '🎬',
     holiday_reset: '🎄',
     new_year_reset: '✨',
     clarity_planner: '💡',
@@ -382,7 +385,7 @@ function getProductIcon(productId: string): string {
 
 export function getNavigationStyles(): string {
   return `
-    /* Navigation */
+    /* Navigation - PURPLE header per Round 6 */
     .nav {
       position: fixed;
       top: 0;
@@ -390,15 +393,15 @@ export function getNavigationStyles(): string {
       right: 0;
       z-index: 1000;
       padding: 16px 24px;
-      background: rgba(10, 10, 15, 0.95);
+      background: rgba(124, 58, 237, 0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.15);
       transition: all var(--transition-normal);
     }
     .nav.scrolled {
       padding: 12px 24px;
-      background: rgba(10, 10, 15, 0.98);
+      background: rgba(124, 58, 237, 0.98);
     }
     .nav-inner {
       max-width: var(--container-max);
@@ -763,7 +766,7 @@ export function renderFooter(): string {
         <div class="footer-main">
           <div class="footer-brand">
             <a href="/" class="logo">personalized<span>output</span></a>
-            <p class="footer-tagline">AI-powered personalization that makes people say "How did it know that about me?"</p>
+            <p class="footer-tagline">Products so personal that customers tell us: "I'm so thankful for a product I can fine-tune to exactly what I truly need — it's unbelievable."</p>
           </div>
 
           <div class="footer-links">
@@ -907,7 +910,7 @@ export interface PageOptions {
 export function renderPageStart(options: PageOptions): string {
   const {
     title,
-    description = 'AI-powered personalization that makes people say "How did it know that about me?"',
+    description = 'Products so personal that customers tell us: "I\'m so thankful for a product I can fine-tune to exactly what I truly need — it\'s unbelievable."',
     canonical = 'https://personalizedoutput.com',
     currentPage = '',
     includeNavigation = true,
@@ -943,7 +946,11 @@ export function renderPageStart(options: PageOptions): string {
       <!-- Fonts -->
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=Great+Vibes&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=Great+Vibes&family=Cormorant+Garamond:wght@400;500;600&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+      <!-- Swiper.js for smooth carousel -->
+      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css">
+      <script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
 
       ${additionalHead}
 

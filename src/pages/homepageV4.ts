@@ -32,59 +32,56 @@ export async function renderPremiumHomepageV4(): Promise<string> {
   // plus peek cards on each side
   const featuredProducts = orderedProducts.slice(0, 5); // Center 3 + 2 peek cards
 
-  const testimonials = [
-    {
-      quote: "I finally understand my mortgage because they explained it using my bakery! 20 years of confusion, finally clear.",
-      author: "Sarah K.",
-      product: "Learning Session",
-      rating: 5,
-    },
-    {
-      quote: "My son learned fractions through dinosaurs. He asked for MORE math homework. I didn't know that was possible.",
-      author: "Michael R.",
-      product: "Learning Session",
-      rating: 5,
-    },
-    {
-      quote: "I cried. The vision board captured exactly what I've been feeling but couldn't articulate.",
-      author: "Jessica T.",
-      product: "Vision Board",
-      rating: 5,
-    },
-  ];
+  // Reviews section removed until we have real customer reviews
 
   const pageStyles = getHomepageStyles();
   const pageContent = `
     <main>
-      <!-- Hero Section - Clean Premium Design -->
+      <!-- Hero Section - BLACK background, Split Layout (Round 6) -->
       <section class="hero">
-        <div class="hero-background">
-          <!-- Subtle texture dots pattern -->
-          <div class="hero-texture"></div>
-        </div>
         <div class="hero-inner container">
-          <h1>Personalized experiences powerful enough to <span class="highlight">heal, inspire,</span> and make you <span class="highlight">smile</span></h1>
-          <p class="hero-subtitle">
-            Personalized products work because they transform the ordinary into the extraordinary. A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages because we explained it through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal that customers tell us: "I'm so thankful for a product I can fine-tune to exactly what I truly need — it's unbelievable."</em>
-          </p>
-          <div class="hero-buttons">
-            <a href="#products" class="btn btn-primary btn-hero">
-              Start Personalizing Today
-            </a>
-            <a href="/how-it-works" class="btn btn-secondary btn-hero-outline">
-              See How It Works
-            </a>
+          <div class="hero-split">
+            <div class="hero-left">
+              <h1>PERSONALIZED EXPERIENCES <span class="highlight">POWERFUL ENOUGH</span> TO HEAL, INSPIRE, AND MAKE YOU <span class="highlight">SMILE</span></h1>
+            </div>
+            <div class="hero-right">
+              <p class="hero-subtitle">
+                A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal customers say "it's unbelievable."</em>
+              </p>
+              <div class="hero-buttons">
+                <a href="#products" class="btn btn-primary btn-hero">
+                  Start Personalizing Today
+                </a>
+                <a href="/how-it-works" class="btn btn-secondary btn-hero-outline">
+                  See How It Works
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- Product Showcase - Horizontal Scrollable Cards -->
+      <!-- Product Showcase - Swiper.js Carousel -->
       <section class="products-showcase" id="products">
         <span class="section-eyebrow products-label">Our Products</span>
-        <div class="products-scroll-container" id="productsScrollContainer">
-          <div class="products-scroll" id="productsScroll">
+        <div class="swiper products-swiper" id="productsSwiper">
+          <div class="swiper-wrapper">
             ${orderedProducts.map((p, index) => renderScrollableProductCard(p, index)).join('')}
           </div>
+        </div>
+        <!-- Swiper Navigation -->
+        <div class="swiper-nav-container">
+          <button class="swiper-btn swiper-btn-prev" aria-label="Previous product">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 18l-6-6 6-6"/>
+            </svg>
+          </button>
+          <div class="swiper-pagination-custom"></div>
+          <button class="swiper-btn swiper-btn-next" aria-label="Next product">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M9 18l6-6-6-6"/>
+            </svg>
+          </button>
         </div>
       </section>
 
@@ -104,7 +101,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step-connector"></div>
           <div class="step">
             <div class="step-number">2</div>
-            <h3>Experience Personalization</h3>
+            <h3>Personalization Experience</h3>
             <p>Have an immersive, conversational experience where you share details about your person — their interests, achievements, dreams, and personality.</p>
           </div>
           <div class="step-connector"></div>
@@ -117,7 +114,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step">
             <div class="step-number">4</div>
             <h3>Download & Share</h3>
-            <p>After your Personalization Experience, your product is delivered instantly. Watch their reaction.</p>
+            <p>Your personalized product is delivered instantly. Download it forever or share directly with the lucky recipient.</p>
           </div>
         </div>
       </section>
@@ -134,28 +131,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         </div>
       </section>
 
-      <!-- Social Proof -->
-      <section class="social-proof section">
-        <div class="section-header">
-          <span class="section-eyebrow">Real Results</span>
-          <h2>What Our Customers Say</h2>
-        </div>
-        <div class="testimonials-grid container">
-          ${testimonials.map(t => `
-            <div class="testimonial-card">
-              <div class="testimonial-stars">${'★'.repeat(t.rating)}</div>
-              <blockquote class="testimonial-quote">"${t.quote}"</blockquote>
-              <div class="testimonial-author">
-                <div class="testimonial-avatar">${t.author.charAt(0)}</div>
-                <div class="testimonial-info">
-                  <div class="name">${t.author} <span class="verified">✓ Verified</span></div>
-                  <div class="product">${t.product}</div>
-                </div>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </section>
+      <!-- Reviews section will be added when we have real customer feedback -->
 
       <!-- Final CTA -->
       <section class="final-cta section">
@@ -198,7 +174,8 @@ function renderScrollableProductCard(product: ProductWithScore, index: number): 
     santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🧠',
+    learning_session: '🎧',
+    video_learning_session: '🎬',
     holiday_reset: '🎄',
     new_year_reset: '🌟',
     clarity_planner: '💡',
@@ -212,6 +189,7 @@ function renderScrollableProductCard(product: ProductWithScore, index: number): 
   };
 
   return `
+    <div class="swiper-slide">
     <a href="/${product.slug}" class="scroll-product-card" style="--card-delay: ${index * 0.1}s">
       <div class="scroll-card-inner">
         <div class="scroll-card-badge">${categoryLabels[product.category]}</div>
@@ -225,6 +203,7 @@ function renderScrollableProductCard(product: ProductWithScore, index: number): 
         </div>
       </div>
     </a>
+    </div>
   `;
 }
 
@@ -410,7 +389,8 @@ function renderProductCard(product: ProductWithScore, index: number): string {
     santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🧠',
+    learning_session: '🎧',
+    video_learning_session: '🎬',
     holiday_reset: '🎄',
     new_year_reset: '🌟',
     clarity_planner: '💡',
@@ -421,7 +401,8 @@ function renderProductCard(product: ProductWithScore, index: number): string {
     santa_message: ['2-3 min personalized audio', 'Mentions specific achievements', 'Downloadable MP3'],
     vision_board: ['High-res digital download', 'Personalized imagery', 'Print-ready format'],
     flash_cards: ['50+ personalized cards', 'Tailored to learning style', 'Printable PDF'],
-    learning_session: ['Uses YOUR interests', 'Works for any topic', '30-min complete lesson'],
+    learning_session: ['Uses YOUR interests', 'Works for any topic', '30-min audio lesson'],
+    video_learning_session: ['Custom animations', 'Visual storytelling', '30-min video lesson'],
     holiday_reset: ['Guided reflection', 'Year-end clarity', 'Personalized prompts'],
     new_year_reset: ['Goal setting framework', 'Personalized action plan', 'Monthly check-ins'],
     clarity_planner: ['20+ page PDF', 'Actionable steps', 'Reflection exercises'],
@@ -468,119 +449,130 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
-       HERO SECTION - Compact Premium Design
+       HERO SECTION - BLACK Background, Split Layout (Round 6)
        ================================================ */
     .hero {
       min-height: auto;
       display: flex;
       align-items: center;
-      justify-content: center;
-      text-align: center;
-      padding: 80px 24px 20px;
+      padding: 120px 24px 60px;
       position: relative;
-      background: #ffffff;
+      background: #0a0a0f;
       overflow: hidden;
-    }
-
-    .hero-background {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-
-    /* Subtle dot texture pattern - clean, premium */
-    .hero-texture {
-      position: absolute;
-      inset: 0;
-      background-image: radial-gradient(circle at 1px 1px, rgba(0,0,0,0.03) 1px, transparent 0);
-      background-size: 32px 32px;
     }
 
     .hero-inner {
       position: relative;
       z-index: 1;
-      max-width: 1100px;
+      max-width: 1400px;
       width: 100%;
+    }
+
+    /* Split Layout - Headline Left, Subheading Right */
+    .hero-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+    }
+
+    .hero-left {
+      /* Headlines on left */
+    }
+
+    .hero-right {
+      /* Subheading and CTA on right */
     }
 
     .hero h1 {
       font-family: 'Bodoni Moda', serif;
-      font-size: clamp(1.6rem, 3.5vw, 2.4rem);
-      font-weight: 400;
-      line-height: 1.2;
-      margin-bottom: 12px;
-      color: var(--navy);
-      white-space: nowrap;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.15;
+      margin-bottom: 0;
+      color: white;
+      font-variant: small-caps;
+      letter-spacing: 0.05em;
     }
 
     .hero h1 .highlight {
-      color: var(--purple);
+      color: var(--coral);
       font-style: italic;
+      font-variant: normal;
     }
 
     .hero-subtitle {
       font-family: 'Cormorant Garamond', 'Georgia', serif;
-      font-size: 1.05rem;
-      line-height: 1.65;
-      color: #444;
-      max-width: 950px;
-      margin: 0 auto 18px;
+      font-size: 1.15rem;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0 0 24px;
       font-weight: 400;
     }
 
     .hero-subtitle em {
       font-family: 'Great Vibes', cursive;
       font-style: normal;
-      font-size: 1.15em;
-      color: var(--purple);
+      font-size: 1.2em;
+      color: var(--coral-light);
     }
 
     .hero-buttons {
       display: flex;
-      justify-content: center;
       gap: 14px;
       flex-wrap: wrap;
     }
 
     .btn-hero {
-      padding: 12px 24px;
-      font-size: 0.9rem;
+      padding: 14px 28px;
+      font-size: 0.95rem;
       border-radius: 100px;
       background: var(--coral);
       color: white;
       text-decoration: none;
       font-weight: 600;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(232, 90, 107, 0.3);
+      box-shadow: 0 4px 20px rgba(232, 90, 107, 0.4);
     }
 
     .btn-hero:hover {
       background: var(--coral-light);
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(232, 90, 107, 0.4);
+      box-shadow: 0 8px 30px rgba(232, 90, 107, 0.5);
     }
 
     .btn-hero-outline {
       background: transparent;
-      border: 2px solid var(--navy);
-      color: var(--navy);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      color: white;
       box-shadow: none;
     }
 
     .btn-hero-outline:hover {
-      background: var(--navy);
-      color: white;
-      box-shadow: 0 8px 30px rgba(26, 26, 46, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      border-color: white;
+      box-shadow: 0 8px 30px rgba(255, 255, 255, 0.1);
+    }
+
+    @media (max-width: 900px) {
+      .hero-split {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        text-align: center;
+      }
+      .hero-buttons {
+        justify-content: center;
+      }
     }
 
     /* ================================================
-       PRODUCTS SHOWCASE - Horizontal Scrollable Cards
+       PRODUCTS SHOWCASE - Swiper.js Carousel
        Triangle/Perspective Layout - Cards rotate TOWARD center
+       PURPLE background per Round 6
        ================================================ */
     .products-showcase {
-      padding: 10px 0 40px;
-      background: #fff;
+      padding: 40px 0 60px;
+      background: var(--purple);
       overflow: hidden;
       position: relative;
     }
@@ -596,28 +588,77 @@ function getHomepageStyles(): string {
       margin-bottom: 12px;
     }
 
-    .products-scroll-container {
+    /* Swiper Container */
+    .products-swiper {
       width: 100%;
-      overflow-x: auto;
-      overflow-y: visible;
-      scrollbar-width: none;
-      -ms-overflow-style: none;
       padding: 30px 0 50px;
-      scroll-snap-type: x proximity; /* proximity for smoother scrolling */
-      scroll-behavior: smooth;
+      overflow: visible;
     }
 
-    .products-scroll-container::-webkit-scrollbar {
-      display: none;
-    }
-
-    .products-scroll {
-      display: flex;
-      gap: 24px;
-      padding: 0 calc(50vw - 180px);
-      width: max-content;
+    .products-swiper .swiper-wrapper {
+      align-items: center;
       perspective: 1200px;
       transform-style: preserve-3d;
+    }
+
+    .products-swiper .swiper-slide {
+      width: 360px;
+      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transform-style: preserve-3d;
+    }
+
+    /* Swiper Navigation */
+    .swiper-nav-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 24px;
+      margin-top: 20px;
+    }
+
+    .swiper-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+
+    .swiper-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.1);
+    }
+
+    .swiper-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .swiper-pagination-custom {
+      display: flex;
+      gap: 8px;
+    }
+
+    .swiper-pagination-custom .swiper-pagination-bullet {
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+
+    .swiper-pagination-custom .swiper-pagination-bullet-active {
+      background: var(--coral);
+      width: 28px;
+      border-radius: 5px;
     }
 
     .scroll-product-card {
@@ -644,7 +685,7 @@ function getHomepageStyles(): string {
 
     /* LEFT adjacent card - rotates RIGHT (positive rotateY) toward center */
     .scroll-product-card.adjacent-left {
-      transform: scale(0.85) rotateY(28deg) translateZ(-40px) translateX(30px);
+      transform: scale(0.85) rotateY(28deg) translateZ(-40px) translateX(15px);
       opacity: 0.9;
       filter: blur(0);
       z-index: 5;
@@ -652,7 +693,7 @@ function getHomepageStyles(): string {
 
     /* RIGHT adjacent card - rotates LEFT (negative rotateY) toward center */
     .scroll-product-card.adjacent-right {
-      transform: scale(0.85) rotateY(-28deg) translateZ(-40px) translateX(-30px);
+      transform: scale(0.85) rotateY(-28deg) translateZ(-40px) translateX(-15px);
       opacity: 0.9;
       filter: blur(0);
       z-index: 5;
@@ -660,7 +701,7 @@ function getHomepageStyles(): string {
 
     /* Far LEFT cards - more dramatic rotation RIGHT toward center */
     .scroll-product-card.far-left {
-      transform: scale(0.65) rotateY(40deg) translateZ(-180px) translateX(60px);
+      transform: scale(0.65) rotateY(40deg) translateZ(-180px) translateX(30px);
       opacity: 0.3;
       filter: blur(3px);
       z-index: 1;
@@ -668,7 +709,7 @@ function getHomepageStyles(): string {
 
     /* Far RIGHT cards - more dramatic rotation LEFT toward center */
     .scroll-product-card.far-right {
-      transform: scale(0.65) rotateY(-40deg) translateZ(-180px) translateX(-60px);
+      transform: scale(0.65) rotateY(-40deg) translateZ(-180px) translateX(-30px);
       opacity: 0.3;
       filter: blur(3px);
       z-index: 1;
@@ -1241,78 +1282,103 @@ function getHomepageStyles(): string {
 
 function getHomepageScripts(): string {
   return `
-    // 3D Triangle Carousel Effect for Product Cards
-    // Cards on LEFT rotate RIGHT (toward center)
-    // Cards on RIGHT rotate LEFT (toward center)
-    // Creates a triangle/vanishing point effect
-    function init3DCarousel() {
-      const container = document.querySelector('.products-scroll-container');
-      const cards = document.querySelectorAll('.scroll-product-card');
-      if (!container || cards.length === 0) return;
-
-      function updateCardPositions() {
-        const containerRect = container.getBoundingClientRect();
-        const containerCenter = containerRect.left + containerRect.width / 2;
-
-        cards.forEach((card, index) => {
-          const cardRect = card.getBoundingClientRect();
-          const cardCenter = cardRect.left + cardRect.width / 2;
-          const distanceFromCenter = cardCenter - containerCenter;
-          const absDistance = Math.abs(distanceFromCenter);
-
-          // Remove all positioning classes
-          card.classList.remove('active', 'adjacent-left', 'adjacent-right', 'far-left', 'far-right', 'far');
-
-          // Apply class based on position - directional for triangle effect
-          if (absDistance < 100) {
-            // Center card - no rotation
-            card.classList.add('active');
-          } else if (absDistance < 400) {
-            // Adjacent cards - slight rotation toward center
-            if (distanceFromCenter < 0) {
-              card.classList.add('adjacent-left'); // rotates RIGHT toward center
-            } else {
-              card.classList.add('adjacent-right'); // rotates LEFT toward center
-            }
-          } else {
-            // Far cards - strong rotation toward center
-            if (distanceFromCenter < 0) {
-              card.classList.add('far-left'); // rotates strongly RIGHT toward center
-            } else {
-              card.classList.add('far-right'); // rotates strongly LEFT toward center
-            }
-          }
-        });
+    // Swiper.js Carousel with 3D Effects
+    // Cards rotate toward center for triangle/vanishing point effect
+    function initProductsSwiper() {
+      if (typeof Swiper === 'undefined') {
+        console.warn('Swiper not loaded');
+        return;
       }
 
-      // Update on scroll with throttling for smooth performance
-      let ticking = false;
-      container.addEventListener('scroll', () => {
-        if (!ticking) {
-          requestAnimationFrame(() => {
-            updateCardPositions();
-            ticking = false;
-          });
-          ticking = true;
+      const swiperEl = document.querySelector('.products-swiper');
+      if (!swiperEl) return;
+
+      const swiper = new Swiper('.products-swiper', {
+        // Slide settings
+        slidesPerView: 'auto',
+        centeredSlides: true,
+        spaceBetween: 12,
+        grabCursor: true,
+
+        // Speed and smoothness
+        speed: 600,
+
+        // Loop for infinite scroll
+        loop: true,
+
+        // Auto-play (optional - disabled for manual control)
+        // autoplay: { delay: 4000, disableOnInteraction: false },
+
+        // Responsive breakpoints
+        breakpoints: {
+          320: { slidesPerView: 1.2, spaceBetween: 16 },
+          480: { slidesPerView: 1.5, spaceBetween: 16 },
+          768: { slidesPerView: 2.5, spaceBetween: 16 },
+          1024: { slidesPerView: 3, spaceBetween: 12 },
+          1400: { slidesPerView: 4, spaceBetween: 12 }
+        },
+
+        // Navigation buttons
+        navigation: {
+          nextEl: '.swiper-btn-next',
+          prevEl: '.swiper-btn-prev',
+        },
+
+        // Pagination
+        pagination: {
+          el: '.swiper-pagination-custom',
+          clickable: true,
+          dynamicBullets: true,
+        },
+
+        // Custom 3D Effect on slide change
+        on: {
+          slideChange: function() {
+            update3DEffect(this);
+          },
+          init: function() {
+            update3DEffect(this);
+          }
         }
       });
 
-      // Center on the MIDDLE card initially (not first card)
-      // This ensures cards are visible on BOTH sides when page loads
-      setTimeout(() => {
-        const middleIndex = Math.floor(cards.length / 2);
-        const middleCard = cards[middleIndex];
-        if (middleCard) {
-          const scrollLeft = middleCard.offsetLeft - (container.offsetWidth / 2) + (middleCard.offsetWidth / 2);
-          container.scrollLeft = Math.max(0, scrollLeft);
-        }
-        // Update positions after centering
-        setTimeout(updateCardPositions, 50);
-      }, 100);
+      // 3D rotation effect - cards rotate TOWARD center
+      function update3DEffect(swiper) {
+        const slides = swiper.slides;
+        const activeIndex = swiper.activeIndex;
+
+        slides.forEach((slide, index) => {
+          const card = slide.querySelector('.scroll-product-card');
+          if (!card) return;
+
+          // Calculate real index accounting for loop
+          let realIndex = index;
+          if (swiper.params.loop) {
+            realIndex = parseInt(slide.getAttribute('data-swiper-slide-index') || index);
+          }
+
+          const diff = index - activeIndex;
+          const absDiff = Math.abs(diff);
+
+          // Remove previous classes
+          card.classList.remove('active', 'adjacent-left', 'adjacent-right', 'far-left', 'far-right');
+
+          if (absDiff === 0) {
+            // Center card
+            card.classList.add('active');
+          } else if (absDiff === 1) {
+            // Adjacent cards
+            card.classList.add(diff < 0 ? 'adjacent-left' : 'adjacent-right');
+          } else {
+            // Far cards
+            card.classList.add(diff < 0 ? 'far-left' : 'far-right');
+          }
+        });
+      }
     }
 
-    // Initialize 3D Carousel
-    init3DCarousel();
+    // Initialize Swiper
+    initProductsSwiper();
 
     // Scroll reveal animations
     const revealElements = document.querySelectorAll('.step, .testimonial-card, .product-card, .feature-card');

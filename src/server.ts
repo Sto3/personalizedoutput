@@ -54,6 +54,7 @@ import { addToEmailList } from './lib/supabase/emailListService';
 
 // Import Stripe services
 import { isStripeConfigured, createCheckoutSession, createPortalSession, constructWebhookEvent, handleWebhookEvent } from './lib/stripe/stripeService';
+import { handleInboundWebhook } from './services/emailTriageService';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -636,10 +637,16 @@ app.get('/flash-cards', (req, res) => {
 // PRODUCT DETAIL PAGES (Premium pages with Stripe checkout)
 // ============================================================
 
-// Learning Session product page
+// Learning Session product page (Audio)
 app.get('/learning-session', (req, res) => {
   trackEvent('page', 'learning-session');
   res.send(renderProductPage('learning_session'));
+});
+
+// Video Learning Session product page
+app.get('/video-lesson', (req, res) => {
+  trackEvent('page', 'video-lesson');
+  res.send(renderProductPage('video_learning_session'));
 });
 
 // Flash Cards product page (different from the form above)
@@ -1277,6 +1284,19 @@ app.get('/social', (req, res) => {
 // ============================================================
 // API ROUTES
 // ============================================================
+
+// Inbound Email Webhook (for Resend inbound emails)
+// Configure Resend webhook to POST to: https://personalizedoutput.com/api/email/inbound
+app.post('/api/email/inbound', async (req, res) => {
+  try {
+    console.log('[EmailWebhook] Received inbound email');
+    await handleInboundWebhook(req.body);
+    res.status(200).json({ ok: true });
+  } catch (error) {
+    console.error('[EmailWebhook] Error:', error);
+    res.status(500).json({ error: 'Failed to process email' });
+  }
+});
 
 // Santa Order Claim endpoint (before router to ensure it's hit first)
 app.post('/api/santa/claim', (req, res) => {
@@ -1985,7 +2005,7 @@ app.listen(PORT, () => {
 ║   • Audio outputs:  /outputs/*                                ║
 ║                                                               ║
 ║   API Usage Monitoring: ACTIVE (checks every 4 hours)         ║
-║   • Alerts at 80%/90%/95% to ${process.env.ALERT_EMAIL || 'persefit@outlook.com'}             ║
+║   • Alerts at 80%/90%/95% to ${process.env.ALERT_EMAIL || 'support@personalizedoutput.com'}   ║
 ║                                                               ║
 ╚═══════════════════════════════════════════════════════════════╝
   `);
