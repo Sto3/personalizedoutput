@@ -45,15 +45,16 @@ export function renderBlogListPage(posts: BlogPost[]): string {
           color: var(--navy);
         }
 
-        /* Navigation Header */
+        /* Navigation Header - PURPLE like homepage */
         .nav-header {
-          background: #ffffff;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+          background: rgba(124, 58, 237, 0.95);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           padding: 20px 0;
           position: sticky;
           top: 0;
           z-index: 100;
-          box-shadow: 0 2px 20px rgba(0, 0, 0, 0.03);
+          box-shadow: 0 4px 20px rgba(124, 58, 237, 0.25);
         }
 
         .nav-container {
@@ -69,12 +70,12 @@ export function renderBlogListPage(posts: BlogPost[]): string {
           font-family: 'Bodoni Moda', serif;
           font-size: 1.5rem;
           font-weight: 500;
-          color: var(--navy);
+          color: #ffffff;
           text-decoration: none;
         }
 
         .nav-link {
-          color: #64748b;
+          color: rgba(255, 255, 255, 0.85);
           text-decoration: none;
           font-size: 0.875rem;
           font-weight: 500;
@@ -85,7 +86,7 @@ export function renderBlogListPage(posts: BlogPost[]): string {
         }
 
         .nav-link:hover {
-          color: var(--purple);
+          color: #ffffff;
         }
 
         /* Hero Section */
@@ -662,15 +663,16 @@ export function renderBlogPostPage(post: BlogPost): string {
           color: var(--navy);
         }
 
-        /* Navigation Header */
+        /* Navigation Header - PURPLE like homepage */
         .nav-header {
-          background: #ffffff;
-          border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+          background: rgba(124, 58, 237, 0.95);
+          backdrop-filter: blur(20px);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
           padding: 20px 0;
           position: sticky;
           top: 0;
           z-index: 100;
-          box-shadow: 0 2px 20px rgba(0, 0, 0, 0.03);
+          box-shadow: 0 4px 20px rgba(124, 58, 237, 0.25);
         }
 
         .nav-container {
@@ -686,12 +688,12 @@ export function renderBlogPostPage(post: BlogPost): string {
           font-family: 'Bodoni Moda', serif;
           font-size: 1.5rem;
           font-weight: 500;
-          color: var(--navy);
+          color: #ffffff;
           text-decoration: none;
         }
 
         .nav-link {
-          color: #64748b;
+          color: rgba(255, 255, 255, 0.85);
           text-decoration: none;
           font-size: 0.875rem;
           font-weight: 500;
@@ -699,7 +701,7 @@ export function renderBlogPostPage(post: BlogPost): string {
         }
 
         .nav-link:hover {
-          color: var(--purple);
+          color: #ffffff;
         }
 
         /* Article Header */
