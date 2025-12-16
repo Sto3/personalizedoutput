@@ -23,6 +23,7 @@ import plannerApi from './api/plannerApi';
 import thoughtChatApi from './api/thoughtChatApi';
 import referralApi from './api/referralApi';
 import checkoutApi from './api/checkoutApi';
+import supportReplyApi from './api/supportReplyApi';
 
 // Import token store for order-based access control
 import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tokenStore';
@@ -1318,6 +1319,9 @@ app.use('/api/referral', referralApi);
 
 // Checkout API (Direct product purchases via Stripe)
 app.use('/api/checkout', checkoutApi);
+
+// Support email reply API (admin only)
+app.use('/api/support', supportReplyApi);
 
 // ============================================================
 // STRIPE WEBHOOK (must be before body parser for raw body)
