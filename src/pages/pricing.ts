@@ -123,7 +123,7 @@ export function renderPricingPageNew(): string {
               <div class="price-icon">🎯</div>
               <h3>Vision Board</h3>
               <p class="price-desc">Custom digital vision board + guide</p>
-              <div class="price-amount">$25</div>
+              <div class="price-amount">$15</div>
               <ul class="price-features">
                 <li>Custom-designed board</li>
                 <li>Personalized imagery</li>
@@ -184,7 +184,7 @@ export function renderPricingPageNew(): string {
               <div class="price-icon">🧠</div>
               <h3>Thought Organizer™</h3>
               <p class="price-desc">Transform scattered thoughts into clarity</p>
-              <div class="price-amount">$35</div>
+              <div class="price-amount">$20</div>
               <ul class="price-features">
                 <li>Custom thought system</li>
                 <li>Based on how you think</li>

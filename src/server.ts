@@ -1149,133 +1149,79 @@ app.get('/social', (req, res) => {
     <h1>Social Media Videos</h1>
     <p class="subtitle">TikTok & Reels ready - download and post!</p>
 
-    <h2 class="section-title">🎅 Santa Messages</h2>
+    <h2 class="section-title">🎅 PERFECTED Santa Demos (Fine-tuned Voice)</h2>
     <div class="video-grid">
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/santa_emotional_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Emotional Hook #1</div>
-          <div class="video-type">Silent • Dark gradient</div>
-        </div>
-      </div>
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/santa_emotional_02.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Emotional Hook #2</div>
-          <div class="video-type">Voiceover • Festive</div>
-        </div>
-      </div>
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/santa_urgency_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Urgency Hook</div>
-          <div class="video-type">Voiceover • Warm</div>
-        </div>
-      </div>
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/santa_curiosity_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Curiosity Hook</div>
-          <div class="video-type">Voiceover • Dark</div>
-        </div>
-      </div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_emma_grandmother_1765808901787.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Emma - Grandmother Story</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_liam_pet_1765808915933.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Liam - Pet Story</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_sophia_achievement_1765808929619.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Sophia - Achievement</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_noah_sibling_1765808944340.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Noah - Sibling Story</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_olivia_hardship_1765808957971.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Olivia - Hardship</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_jackson_wish_1765808971755.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Jackson - Wish</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_ava_hobby_1765808985541.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Ava - Hobby</div><div class="video-type">Perfected Voice</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_perfected_lucas_kindness_1765808999292.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Lucas - Kindness</div><div class="video-type">Perfected Voice</div></div></div>
     </div>
 
-    <h2 class="section-title">🎯 Vision Boards</h2>
+    <h2 class="section-title">🎅 Santa Hook Videos</h2>
     <div class="video-grid">
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/vision_urgency_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Vision Board Urgency</div>
-          <div class="video-type">Voiceover • Sunset</div>
-        </div>
-      </div>
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/vision_transform_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Vision Transform</div>
-          <div class="video-type">Voiceover • Sunset</div>
-        </div>
-      </div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_emotional_01_voiceover_gradient_warm_1765802209931.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Emotional Hook #1</div><div class="video-type">Voiceover • Warm</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_emotional_02_voiceover_gradient_festive_1765802240078.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Emotional Hook #2</div><div class="video-type">Voiceover • Festive</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_emotional_04_voiceover_gradient_warm_1765802272159.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Emotional Hook #4</div><div class="video-type">Voiceover • Warm</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_urgency_01_voiceover_gradient_warm_1765802299792.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Urgency Hook #1</div><div class="video-type">Voiceover • Warm</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_urgency_02_voiceover_gradient_warm_1765802324686.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Urgency Hook #2</div><div class="video-type">Voiceover • Warm</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_curiosity_01_voiceover_gradient_dark_1765802353144.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Curiosity Hook</div><div class="video-type">Voiceover • Dark</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_social_01_voiceover_gradient_warm_1765802381138.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Social Proof Hook</div><div class="video-type">Voiceover • Warm</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/santa_transform_01_voiceover_gradient_festive_1765802414722.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Transform Hook</div><div class="video-type">Voiceover • Festive</div></div></div>
     </div>
 
-    <h2 class="section-title">📚 Flash Cards / Lessons</h2>
+    <h2 class="section-title">🎯 Vision Board Videos</h2>
     <div class="video-grid">
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/flash_curiosity_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Flash Cards Curiosity</div>
-          <div class="video-type">Voiceover • Minimal</div>
-        </div>
-      </div>
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/clarity_transform_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Clarity Planner Transform</div>
-          <div class="video-type">Voiceover • Dark</div>
-        </div>
-      </div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_reveal_1_1765803779084.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Reveal #1</div><div class="video-type">Reveal Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_reveal_2_1765803781597.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Reveal #2</div><div class="video-type">Reveal Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_reveal_3_1765803784012.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Reveal #3</div><div class="video-type">Reveal Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_reveal_4_1765803786417.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Reveal #4</div><div class="video-type">Reveal Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_reveal_5_1765803788851.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Reveal #5</div><div class="video-type">Reveal Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_emotional_01_voiceover_gradient_ocean_1765802447878.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Emotional</div><div class="video-type">Voiceover • Ocean</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_urgency_01_voiceover_gradient_cool_1765802477689.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Urgency #1</div><div class="video-type">Voiceover • Cool</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_urgency_02_voiceover_gradient_sunset_1765802508075.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Urgency #2</div><div class="video-type">Voiceover • Sunset</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_curiosity_01_voiceover_gradient_purple_1765802531636.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Curiosity</div><div class="video-type">Voiceover • Purple</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_transform_01_voiceover_gradient_sunset_1765802556186.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Transform</div><div class="video-type">Voiceover • Sunset</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/vision_social_01_voiceover_gradient_purple_1765802581060.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Vision Social Proof</div><div class="video-type">Voiceover • Purple</div></div></div>
     </div>
 
-    <h2 class="section-title">🎄 General / Holiday</h2>
+    <h2 class="section-title">📚 Lesson Demos</h2>
     <div class="video-grid">
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/general_brand_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Brand Overview</div>
-          <div class="video-type">Voiceover • Purple</div>
-        </div>
-      </div>
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/social-videos/general_holiday_01.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <div class="video-title">Holiday Special</div>
-          <div class="video-type">Voiceover • Festive</div>
-        </div>
-      </div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/lesson_clip_demo_joe_dinosaurs_fractions_1765540710481_1765803798437.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Joe - Dinosaurs & Fractions</div><div class="video-type">Lesson Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/lesson_clip_demo_maya_art_solar_system_1765540722252_1765803799989.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Maya - Art & Solar System</div><div class="video-type">Lesson Demo</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/lesson_clip_demo_sarah_bakery_mortgage_1765540734646_1765803801529.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Sarah - Bakery & Mortgage</div><div class="video-type">Lesson Demo</div></div></div>
     </div>
 
-    <a href="/demo-lessons" class="back-link">&larr; Back to Demo Videos</a>
+    <h2 class="section-title">📝 Flash Cards & Lessons Hook Videos</h2>
+    <div class="video-grid">
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/flash_emotional_01_voiceover_gradient_cool_1765802605277.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Flash Emotional</div><div class="video-type">Voiceover • Cool</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/flash_problem_01_voiceover_gradient_cool_1765802635420.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Flash Problem/Solution</div><div class="video-type">Voiceover • Cool</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/flash_curiosity_01_voiceover_gradient_minimal_1765802659882.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Flash Curiosity</div><div class="video-type">Voiceover • Minimal</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/flash_transform_01_voiceover_gradient_ocean_1765802680108.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Flash Transform</div><div class="video-type">Voiceover • Ocean</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/flash_social_01_voiceover_gradient_ocean_1765802709374.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Flash Social Proof</div><div class="video-type">Voiceover • Ocean</div></div></div>
+    </div>
+
+    <h2 class="section-title">💡 Clarity Planner Videos</h2>
+    <div class="video-grid">
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/clarity_emotional_01_voiceover_gradient_dark_1765802738498.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Clarity Emotional</div><div class="video-type">Voiceover • Dark</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/clarity_problem_01_voiceover_gradient_dark_1765802770441.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Clarity Problem/Solution</div><div class="video-type">Voiceover • Dark</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/clarity_transform_01_voiceover_gradient_dark_1765802792442.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Clarity Transform</div><div class="video-type">Voiceover • Dark</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/clarity_curiosity_01_voiceover_gradient_minimal_1765802819816.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Clarity Curiosity</div><div class="video-type">Voiceover • Minimal</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/clarity_urgency_01_voiceover_gradient_dark_1765802841888.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Clarity Urgency</div><div class="video-type">Voiceover • Dark</div></div></div>
+    </div>
+
+    <h2 class="section-title">🎄 General / Brand Videos</h2>
+    <div class="video-grid">
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/general_brand_01_voiceover_gradient_purple_1765802868517.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Brand Overview #1</div><div class="video-type">Voiceover • Purple</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/general_brand_02_voiceover_gradient_minimal_1765802893166.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Brand Overview #2</div><div class="video-type">Voiceover • Minimal</div></div></div>
+      <div class="video-card"><div class="video-wrapper"><video controls preload="metadata"><source src="/social-videos/general_holiday_01_voiceover_gradient_festive_1765802915891.mp4" type="video/mp4"></video></div><div class="video-info"><div class="video-title">Holiday Special</div><div class="video-type">Voiceover • Festive</div></div></div>
+    </div>
+
+    <p style="text-align: center; color: rgba(255,255,255,0.5); margin-top: 2rem; font-size: 0.9rem;">55 total videos available for TikTok/Reels marketing</p>
+    <a href="/" class="back-link">&larr; Back to Home</a>
   </div>
 </body>
 </html>`;

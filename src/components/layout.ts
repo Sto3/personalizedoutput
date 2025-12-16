@@ -385,7 +385,7 @@ function getProductIcon(productId: string): string {
 
 export function getNavigationStyles(): string {
   return `
-    /* Navigation - PURPLE header per Round 6 */
+    /* Navigation - BLACK header */
     .nav {
       position: fixed;
       top: 0;
@@ -393,15 +393,15 @@ export function getNavigationStyles(): string {
       right: 0;
       z-index: 1000;
       padding: 16px 24px;
-      background: rgba(124, 58, 237, 0.95);
+      background: rgba(10, 10, 15, 0.95);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255,255,255,0.15);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
       transition: all var(--transition-normal);
     }
     .nav.scrolled {
       padding: 12px 24px;
-      background: rgba(124, 58, 237, 0.98);
+      background: rgba(10, 10, 15, 0.98);
     }
     .nav-inner {
       max-width: var(--container-max);
@@ -796,9 +796,9 @@ export function renderFooter(): string {
 
         <div class="footer-bottom">
           <p class="footer-copyright">
-            © ${currentYear} Personalized Output LLC. All rights reserved.
+            © ${currentYear} Personalized Output. All rights reserved.
             <br>
-            <span class="footer-tm">Thought Organizer™ is a trademark of Personalized Output LLC.</span>
+            <span class="footer-tm">Thought Organizer™ is a trademark of Personalized Output.</span>
           </p>
         </div>
       </div>

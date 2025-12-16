@@ -21,6 +21,7 @@ export type ProductType =
   | 'vision_board'
   | 'flash_cards'
   | 'learning_session'
+  | 'video_learning_session'
   | 'holiday_reset'
   | 'new_year_reset'
   | 'clarity_planner'
@@ -40,6 +41,56 @@ export interface ProductInfo {
   createdAt: Date; // For new product boost calculation
 }
 
+// ============================================================
+// PRODUCT SUBCATEGORIES
+// ============================================================
+
+export interface ProductSubcategory {
+  id: string;
+  name: string;
+  description: string;
+  parentProduct: ProductType;
+  suggestedTitle?: string;  // For personalized titles like "Jane's 2025 Glow-Up"
+}
+
+export const VISION_BOARD_SUBCATEGORIES: ProductSubcategory[] = [
+  { id: 'new_year_2025', name: 'New Year 2025 Goals', description: 'Manifest your best year yet', parentProduct: 'vision_board', suggestedTitle: "{name}'s 2025 Vision" },
+  { id: 'birthday', name: 'Birthday Vision Board', description: 'Celebrate your new chapter', parentProduct: 'vision_board', suggestedTitle: "{name}'s Birthday Vision" },
+  { id: 'relationship', name: 'Relationship Goals', description: 'Visualize your ideal partnership', parentProduct: 'vision_board', suggestedTitle: "{name}'s Love Vision" },
+  { id: 'career_levelup', name: 'Career Level-Up', description: 'Climb to the next level professionally', parentProduct: 'vision_board', suggestedTitle: "{name}'s Career Level-Up" },
+  { id: 'job_search', name: 'Job Search Vision', description: 'Attract your dream opportunity', parentProduct: 'vision_board', suggestedTitle: "{name}'s Dream Job Vision" },
+  { id: 'graduate', name: 'Just Graduated', description: 'Launch into your new beginning', parentProduct: 'vision_board', suggestedTitle: "{name}'s Post-Grad Vision" },
+  { id: 'health_wellness', name: 'Health & Wellness', description: 'Your healthiest self awaits', parentProduct: 'vision_board', suggestedTitle: "{name}'s Wellness Vision" },
+  { id: 'one_month_reset', name: '1-Month Reset', description: 'Focused transformation in 30 days', parentProduct: 'vision_board', suggestedTitle: "{name}'s 30-Day Reset" },
+  { id: 'one_week_motivation', name: '1-Week Motivation', description: 'Quick boost to crush this week', parentProduct: 'vision_board', suggestedTitle: "{name}'s Power Week" },
+  { id: 'glow_up', name: 'Glow-Up Board', description: 'Your complete transformation vision', parentProduct: 'vision_board', suggestedTitle: "{name}'s 2025 Glow-Up" },
+  { id: 'financial', name: 'Financial Goals', description: 'Build your wealth vision', parentProduct: 'vision_board', suggestedTitle: "{name}'s Money Vision" },
+  { id: 'self_love', name: 'Self-Love Board', description: 'Celebrate and nurture yourself', parentProduct: 'vision_board', suggestedTitle: "{name}'s Self-Love Vision" },
+  { id: 'general', name: 'General Vision Board', description: 'For any vision or goal not listed above', parentProduct: 'vision_board', suggestedTitle: "{name}'s Vision Board" },
+];
+
+export const THOUGHT_ORGANIZER_SUBCATEGORIES: ProductSubcategory[] = [
+  { id: 'breakup', name: 'Breakup Processing', description: 'Navigate heartbreak with clarity', parentProduct: 'thought_organizer' },
+  { id: 'career_crossroads', name: 'Career Crossroads', description: 'Find direction at a career turning point', parentProduct: 'thought_organizer' },
+  { id: 'grief_loss', name: 'Grief & Loss', description: 'Process loss with gentle guidance', parentProduct: 'thought_organizer' },
+  { id: 'divorce', name: 'Divorce Recovery', description: 'Rebuild and rediscover yourself', parentProduct: 'thought_organizer' },
+  { id: 'empty_nest', name: 'Empty Nest Transition', description: 'Redefine your purpose and identity', parentProduct: 'thought_organizer' },
+  { id: 'retirement', name: 'Retirement Planning', description: 'Design your next chapter', parentProduct: 'thought_organizer' },
+  { id: 'major_decision', name: 'Major Life Decision', description: 'Get clarity on a big choice', parentProduct: 'thought_organizer' },
+  { id: 'new_chapter', name: 'New Chapter', description: 'Embrace a fresh start', parentProduct: 'thought_organizer' },
+  { id: 'new_parent', name: 'New Parent Clarity', description: 'Navigate parenthood overwhelm', parentProduct: 'thought_organizer' },
+  { id: 'relationship_checkin', name: 'Relationship Check-In', description: 'Evaluate and improve your relationship', parentProduct: 'thought_organizer' },
+  { id: 'health_journey', name: 'Health Journey', description: 'Process health challenges with clarity', parentProduct: 'thought_organizer' },
+  { id: 'financial_reset', name: 'Financial Reset', description: 'Get clear on money and goals', parentProduct: 'thought_organizer' },
+  { id: 'general', name: 'General Clarity Session', description: 'For any life situation not listed above', parentProduct: 'thought_organizer' },
+];
+
+export const ALL_SUBCATEGORIES = [...VISION_BOARD_SUBCATEGORIES, ...THOUGHT_ORGANIZER_SUBCATEGORIES];
+
+export function getSubcategoriesForProduct(productType: ProductType): ProductSubcategory[] {
+  return ALL_SUBCATEGORIES.filter(sub => sub.parentProduct === productType);
+}
+
 // Product catalog - single source of truth
 export const PRODUCTS: Record<ProductType, ProductInfo> = {
   santa_message: {
@@ -54,13 +105,23 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
   },
   learning_session: {
     id: 'learning_session',
-    name: '30-Minute Learning Session',
-    description: 'Personalized lesson that uses what you love to teach what you need',
-    price: 2999, // $29.99
+    name: '30-Minute Audio Lesson',
+    description: 'Personalized audio lesson that uses what you love to teach what you need',
+    price: 2299, // $22.99
     category: 'kids', // Also available for adults
     slug: 'learning-session',
     isActive: true,
     createdAt: new Date('2024-12-01'),
+  },
+  video_learning_session: {
+    id: 'video_learning_session',
+    name: '30-Minute Video Lesson',
+    description: 'Personalized video lesson with visuals that brings learning to life',
+    price: 3299, // $32.99
+    category: 'kids', // Also available for adults
+    slug: 'video-lesson',
+    isActive: true,
+    createdAt: new Date('2024-12-15'),
   },
   flash_cards: {
     id: 'flash_cards',
@@ -76,7 +137,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     id: 'vision_board',
     name: 'Custom Vision Board',
     description: 'A beautiful, personalized vision board for your goals',
-    price: 2499, // $24.99
+    price: 1499, // $14.99
     category: 'adults',
     slug: 'vision-board',
     isActive: true,
@@ -116,7 +177,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     id: 'thought_organizer',
     name: 'Thought Organizer™',
     description: 'Transform your ideas into actionable insights',
-    price: 3999, // $39.99
+    price: 1999, // $19.99
     category: 'life_planning',
     slug: 'thought-organizer',
     isActive: true,
