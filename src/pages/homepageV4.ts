@@ -55,7 +55,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             </div>
             <div class="hero-right">
               <p class="hero-subtitle">
-                A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal customers say "it's unbelievable."</em>
+                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal customers say 'it's unbelievable.'"</em>
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -532,12 +532,12 @@ function getHomepageStyles(): string {
     .headline-line:nth-child(6) { animation-delay: 0.75s; }
 
     .headline-muted {
-      color: #8B7082;
+      color: #F5EEF0;
       font-variant: small-caps;
     }
 
     .headline-coral {
-      color: #E8735A;
+      color: #E85A4F;
       font-style: italic;
       font-variant: normal;
     }
@@ -564,7 +564,7 @@ function getHomepageStyles(): string {
       font-family: 'Cormorant Garamond', 'Georgia', serif;
       font-size: 1.2rem;
       line-height: 1.8;
-      color: #F5F0F5;
+      color: #F8F4F8;
       margin: 0 0 24px;
       font-weight: 400;
       font-style: italic;
