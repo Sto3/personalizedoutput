@@ -451,7 +451,7 @@ function getHomepageStyles(): string {
     .hero {
       display: flex;
       align-items: center;
-      padding: 100px 24px 60px 24px;
+      padding: 100px 24px 50px 24px;
       min-height: auto;
       position: relative;
       background: #0a0a0f;
@@ -641,62 +641,24 @@ function getHomepageStyles(): string {
       margin-bottom: 12px;
     }
 
-    /* Swiper Container */
+    /* Swiper Container - SIMPLIFIED (Swiper handles transforms) */
     .products-swiper {
       width: 100%;
-      padding: 30px 0 50px;
+      padding: 20px 0 40px;
       overflow: visible;
     }
 
-    .products-swiper .swiper-wrapper {
-      align-items: center;
-      perspective: 1200px;
-      transform-style: preserve-3d;
-    }
-
     .products-swiper .swiper-slide {
-      width: 360px;
-      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      transform-style: preserve-3d;
+      width: 280px;
+      transition: transform 0.4s ease, opacity 0.4s ease;
     }
 
-    /* Swiper Navigation */
-    .swiper-nav-container {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 24px;
-      margin-top: 20px;
-    }
-
-    .swiper-btn {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.3s ease;
-    }
-
-    .swiper-btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-      transform: scale(1.1);
-    }
-
-    .swiper-btn:disabled {
-      opacity: 0.3;
-      cursor: not-allowed;
-      transform: none;
-    }
-
+    /* Pagination */
     .swiper-pagination-custom {
       display: flex;
+      justify-content: center;
       gap: 8px;
+      margin-top: 20px;
     }
 
     .swiper-pagination-custom .swiper-pagination-bullet {
@@ -714,125 +676,29 @@ function getHomepageStyles(): string {
       border-radius: 5px;
     }
 
+    /* Card styling only - NO transforms here (Swiper handles them) */
     .scroll-product-card {
-      flex-shrink: 0;
-      width: 280px;
-      text-decoration: none;
       display: block;
-      scroll-snap-align: center;
-      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
-      transform-style: preserve-3d;
-      /* Default state: cards appear smaller/faded - far positions */
-      transform: scale(0.5) rotateY(60deg) translateZ(-50px);
-      opacity: 0.25;
-      filter: blur(2px);
-    }
-
-    /* Active/center card - flat, largest, brightest, popped forward */
-    .scroll-product-card.active {
-      transform: scale(1) rotateY(0deg) translateZ(50px);
-      opacity: 1;
-      filter: blur(0);
-      z-index: 10;
-    }
-
-    /* Position 1 LEFT - ~50° angle toward center, close to center card */
-    .scroll-product-card.pos-left-1 {
-      transform: scale(0.88) rotateY(50deg) translateZ(-20px);
-      opacity: 0.85;
-      filter: blur(0);
-      z-index: 8;
-    }
-
-    /* Position 1 RIGHT - ~50° angle toward center, close to center card */
-    .scroll-product-card.pos-right-1 {
-      transform: scale(0.88) rotateY(-50deg) translateZ(-20px);
-      opacity: 0.85;
-      filter: blur(0);
-      z-index: 8;
-    }
-
-    /* Position 2 LEFT - ~55° angle, smaller, more faded */
-    .scroll-product-card.pos-left-2 {
-      transform: scale(0.72) rotateY(55deg) translateZ(-35px);
-      opacity: 0.55;
-      filter: blur(0.5px);
-      z-index: 5;
-    }
-
-    /* Position 2 RIGHT - ~55° angle, smaller, more faded */
-    .scroll-product-card.pos-right-2 {
-      transform: scale(0.72) rotateY(-55deg) translateZ(-35px);
-      opacity: 0.55;
-      filter: blur(0.5px);
-      z-index: 5;
-    }
-
-    /* Position 3+ LEFT - ~60° angle toward center (max rotation) */
-    .scroll-product-card.pos-left-3 {
-      transform: scale(0.55) rotateY(60deg) translateZ(-50px);
-      opacity: 0.35;
-      filter: blur(1px);
-      z-index: 2;
-    }
-
-    /* Position 3+ RIGHT - ~60° angle toward center (max rotation) */
-    .scroll-product-card.pos-right-3 {
-      transform: scale(0.55) rotateY(-60deg) translateZ(-50px);
-      opacity: 0.35;
-      filter: blur(1px);
-      z-index: 2;
-    }
-
-    /* Legacy classes for compatibility */
-    .scroll-product-card.adjacent-left {
-      transform: scale(0.88) rotateY(50deg) translateZ(-20px);
-      opacity: 0.85;
-      filter: blur(0);
-      z-index: 8;
-    }
-    .scroll-product-card.adjacent-right {
-      transform: scale(0.88) rotateY(-50deg) translateZ(-20px);
-      opacity: 0.85;
-      filter: blur(0);
-      z-index: 8;
-    }
-    .scroll-product-card.far-left,
-    .scroll-product-card.far-right,
-    .scroll-product-card.far {
-      transform: scale(0.55) rotateY(60deg) translateZ(-50px);
-      opacity: 0.35;
-      filter: blur(1px);
-      z-index: 2;
+      text-decoration: none;
+      width: 100%;
     }
 
     .scroll-card-inner {
-      background: #0a0a0f;
-      border: 1px solid rgba(124, 58, 237, 0.3);
+      background: #080810;
+      border: 1px solid rgba(124, 58, 237, 0.25);
       border-radius: 20px;
       padding: 24px 20px;
-      height: 320px;
-      position: relative;
-      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      height: 340px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
-                  0 0 30px rgba(124, 58, 237, 0.15);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
+      transition: all 0.3s ease;
     }
 
-    .scroll-product-card.active .scroll-card-inner {
-      box-shadow: 0 35px 100px rgba(0, 0, 0, 0.5),
-                  0 0 60px rgba(124, 58, 237, 0.25),
-                  0 0 0 2px var(--purple);
-      border-color: var(--purple);
-    }
-
-    .scroll-product-card:hover .scroll-card-inner {
-      transform: translateY(-12px);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45),
-                  0 0 50px rgba(124, 58, 237, 0.2),
-                  0 0 0 2px var(--purple);
-      border-color: var(--purple);
+    .scroll-card-inner:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+      border-color: rgba(124, 58, 237, 0.5);
     }
 
     .scroll-card-badge {
@@ -940,55 +806,12 @@ function getHomepageStyles(): string {
     }
 
     @media (max-width: 768px) {
-      .scroll-product-card {
-        width: 280px;
-        /* Simpler 3D effects on mobile */
-        transform: scale(0.75) rotateY(60deg);
-        opacity: 0.4;
-        filter: blur(2px);
-      }
-      .scroll-product-card.active {
-        transform: scale(1) rotateY(0deg);
-        opacity: 1;
-        filter: none;
-      }
-      .scroll-product-card.pos-left-1,
-      .scroll-product-card.adjacent-left {
-        transform: scale(0.85) rotateY(35deg);
-        opacity: 0.75;
-        filter: blur(0);
-      }
-      .scroll-product-card.pos-right-1,
-      .scroll-product-card.adjacent-right {
-        transform: scale(0.85) rotateY(-35deg);
-        opacity: 0.75;
-        filter: blur(0);
-      }
-      .scroll-product-card.pos-left-2,
-      .scroll-product-card.pos-right-2 {
-        transform: scale(0.7) rotateY(60deg);
-        opacity: 0.4;
-        filter: blur(1px);
-      }
-      .scroll-product-card.pos-left-3,
-      .scroll-product-card.pos-right-3,
-      .scroll-product-card.far-left,
-      .scroll-product-card.far-right,
-      .scroll-product-card.far {
-        transform: scale(0.55) rotateY(90deg);
-        opacity: 0.2;
-        filter: blur(2px);
-      }
       .scroll-card-inner {
         height: 300px;
-        padding: 24px 20px;
+        padding: 20px 16px;
       }
-      .products-scroll {
-        padding: 0 calc(50vw - 140px);
-        gap: 16px;
-      }
-      .products-scroll-container {
-        padding: 20px 0 40px;
+      .products-swiper .swiper-slide {
+        width: 240px;
       }
     }
 
@@ -1383,8 +1206,7 @@ function getHomepageStyles(): string {
 
 function getHomepageScripts(): string {
   return `
-    // Swiper.js Carousel with 3D Effects
-    // Cards rotate toward center for triangle/vanishing point effect
+    // Swiper.js Carousel - SIMPLIFIED (Swiper handles ALL transforms)
     function initProductsSwiper() {
       if (typeof Swiper === 'undefined') {
         console.warn('Swiper not loaded');
@@ -1395,106 +1217,38 @@ function getHomepageScripts(): string {
       if (!swiperEl) return;
 
       const swiper = new Swiper('.products-swiper', {
-        // Native coverflow effect - creates the 3D angled card effect
         effect: 'coverflow',
+        grabCursor: true,
+        centeredSlides: true,
+        slidesPerView: 'auto',
+
         coverflowEffect: {
-          rotate: 45,           // Creates the angle - cards rotate toward center
-          stretch: 0,           // Neutral stretch
-          depth: 200,           // 3D depth effect
+          rotate: 50,
+          stretch: -30,
+          depth: 200,
           modifier: 1,
-          slideShadows: false,  // No shadows on slides
+          slideShadows: false,
         },
 
-        // Slide settings
-        slidesPerView: 3,
-        centeredSlides: true,
-        spaceBetween: -50,  // NEGATIVE for overlapping cards
-        grabCursor: true,
-
-        // Speed and smoothness
-        speed: 600,
-
-        // Loop for infinite scroll
+        speed: 500,
         loop: false,
 
-        // Mousewheel navigation (wheel-only, no buttons)
         mousewheel: {
           forceToAxis: true,
-          sensitivity: 1,
-          releaseOnEdges: false,
+          sensitivity: 0.8,
         },
 
-        // Touch/swipe support
-        touchEventsTarget: 'container',
-
-        // Responsive breakpoints - keep slidesPerView consistent for coverflow
-        breakpoints: {
-          320: { slidesPerView: 1.4 },
-          480: { slidesPerView: 1.8 },
-          768: { slidesPerView: 3 },
-          1024: { slidesPerView: 4 },
-          1400: { slidesPerView: 5 }
-        },
-
-        // Pagination (dots only - no navigation buttons)
         pagination: {
           el: '.swiper-pagination-custom',
           clickable: true,
-          dynamicBullets: true,
         },
 
-        // Navigate to clicked card
-        on: {
-          click: function(swiper, e) {
-            const clickedSlide = e.target.closest('.swiper-slide');
-            if (clickedSlide) {
-              const clickedIndex = swiper.slides.indexOf(clickedSlide);
-              if (clickedIndex !== swiper.activeIndex) {
-                swiper.slideTo(clickedIndex);
-              }
-            }
-          }
-        }
+        breakpoints: {
+          320: { slidesPerView: 1.5 },
+          640: { slidesPerView: 2.5 },
+          1024: { slidesPerView: 3.5 },
+        },
       });
-
-      // 3D coverflow effect - cards rotate 50°+ per position TOWARD center
-      // LEFT cards rotate CLOCKWISE (+rotateY), RIGHT cards rotate COUNTER-CLOCKWISE (-rotateY)
-      function update3DEffect(swiper) {
-        const slides = swiper.slides;
-        const activeIndex = swiper.activeIndex;
-
-        slides.forEach((slide, index) => {
-          const card = slide.querySelector('.scroll-product-card');
-          if (!card) return;
-
-          const diff = index - activeIndex;
-          const absDiff = Math.abs(diff);
-
-          // Remove all position classes
-          card.classList.remove(
-            'active',
-            'pos-left-1', 'pos-right-1',
-            'pos-left-2', 'pos-right-2',
-            'pos-left-3', 'pos-right-3',
-            'adjacent-left', 'adjacent-right',
-            'far-left', 'far-right'
-          );
-
-          if (absDiff === 0) {
-            // Center card - no rotation
-            card.classList.add('active');
-          } else if (absDiff === 1) {
-            // Position 1: 45° rotation toward center
-            card.classList.add(diff < 0 ? 'pos-left-1' : 'pos-right-1');
-          } else if (absDiff === 2) {
-            // Position 2: 90° rotation toward center
-            card.classList.add(diff < 0 ? 'pos-left-2' : 'pos-right-2');
-          } else {
-            // Position 3+: 135° rotation toward center
-            card.classList.add(diff < 0 ? 'pos-left-3' : 'pos-right-3');
-          }
-        });
-      }
     }
 
     // Initialize Swiper
