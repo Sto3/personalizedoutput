@@ -451,8 +451,8 @@ function getHomepageStyles(): string {
     .hero {
       display: flex;
       align-items: center;
-      padding: 100px 24px 50px 24px;
-      min-height: auto;
+      padding: 140px 24px 30px 24px;
+      min-height: auto !important;
       position: relative;
       background: #0a0a0f;
       overflow: hidden;
@@ -549,11 +549,11 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Lora', serif !important;
-      font-style: italic !important;
+      font-family: 'Sacramento', cursive !important;
+      font-style: normal !important;
       font-weight: 400;
-      font-size: 1.15rem;
-      line-height: 1.8;
+      font-size: 1.6rem;
+      line-height: 1.9;
       color: #F8F4F8;
       margin: 0 0 24px;
     }
@@ -624,7 +624,7 @@ function getHomepageStyles(): string {
        PURPLE background per Round 6
        ================================================ */
     .products-showcase {
-      padding: 30px 0 60px;
+      padding: 15px 0 60px;
       background: var(--purple);
       overflow: hidden;
       position: relative;
@@ -638,7 +638,7 @@ function getHomepageStyles(): string {
       text-transform: uppercase;
       letter-spacing: 0.35em;
       color: #E85A4F;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
     }
 
     /* Swiper Container - SIMPLIFIED (Swiper handles transforms) */
@@ -649,7 +649,7 @@ function getHomepageStyles(): string {
     }
 
     .products-swiper .swiper-slide {
-      width: 280px;
+      width: 300px;
       transition: transform 0.4s ease, opacity 0.4s ease;
     }
 
@@ -688,7 +688,7 @@ function getHomepageStyles(): string {
       border: 1px solid rgba(124, 58, 237, 0.25);
       border-radius: 20px;
       padding: 24px 20px;
-      height: 340px;
+      height: 320px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
@@ -1223,11 +1223,11 @@ function getHomepageScripts(): string {
         slidesPerView: 'auto',
 
         coverflowEffect: {
-          rotate: 50,
-          stretch: -30,
-          depth: 200,
-          modifier: 1,
-          slideShadows: false,
+          rotate: 55,
+          stretch: -20,
+          depth: 250,
+          modifier: 1.2,
+          slideShadows: true,
         },
 
         speed: 500,
