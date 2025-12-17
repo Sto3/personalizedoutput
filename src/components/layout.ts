@@ -397,7 +397,7 @@ function getProductIcon(productId: string): string {
 
 export function getNavigationStyles(): string {
   return `
-    /* Navigation - Transparent header (blends with hero gradient) */
+    /* Navigation - Purple header (matches page purple) */
     .nav {
       position: fixed;
       top: 0;
@@ -405,7 +405,7 @@ export function getNavigationStyles(): string {
       right: 0;
       z-index: 1000;
       padding: 16px 24px;
-      background: transparent;
+      background: #7C3AED;
       backdrop-filter: none;
       -webkit-backdrop-filter: none;
       border-bottom: none;
@@ -413,10 +413,10 @@ export function getNavigationStyles(): string {
     }
     .nav.scrolled {
       padding: 12px 24px;
-      background: rgba(10, 10, 15, 0.95);
+      background: #7C3AED;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      border-bottom: 1px solid rgba(255,255,255,0.2);
     }
     .nav-inner {
       max-width: var(--container-max);
