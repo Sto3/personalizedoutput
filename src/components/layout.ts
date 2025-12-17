@@ -434,7 +434,7 @@ export function getNavigationStyles(): string {
       align-items: center;
     }
     .nav-link {
-      color: rgba(255, 255, 255, 0.75);
+      color: #A78BFA;
       text-decoration: none;
       font-size: 0.9rem;
       font-weight: 500;
@@ -451,10 +451,10 @@ export function getNavigationStyles(): string {
       left: 0;
       width: 0;
       height: 2px;
-      background: var(--gradient-primary);
+      background: linear-gradient(135deg, #7C3AED, #A78BFA);
       transition: width var(--transition-normal);
     }
-    .nav-link:hover, .nav-link.active { color: var(--text-on-dark); }
+    .nav-link:hover, .nav-link.active { color: #C4B5FD; }
     .nav-link:hover::after, .nav-link.active::after { width: 100%; }
 
     .nav-link-dropdown svg {
