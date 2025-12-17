@@ -715,108 +715,108 @@ function getHomepageStyles(): string {
 
     .scroll-product-card {
       flex-shrink: 0;
-      width: 360px;
+      width: 280px;
       text-decoration: none;
       display: block;
       scroll-snap-align: center;
-      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       transform-style: preserve-3d;
-      /* Default state: cards appear smaller/faded */
-      transform: scale(0.55) rotateY(135deg) translateZ(-300px);
-      opacity: 0.15;
-      filter: blur(4px);
+      /* Default state: cards appear smaller/faded - far positions */
+      transform: scale(0.5) rotateY(60deg) translateZ(-50px);
+      opacity: 0.25;
+      filter: blur(2px);
     }
 
-    /* Active/center card - no rotation, full scale, pop forward */
+    /* Active/center card - flat, largest, brightest, popped forward */
     .scroll-product-card.active {
-      transform: scale(1) rotateY(0deg) translateZ(80px);
+      transform: scale(1) rotateY(0deg) translateZ(50px);
       opacity: 1;
       filter: blur(0);
       z-index: 10;
     }
 
-    /* Position 1 LEFT - rotates 50° CLOCKWISE (positive rotateY) toward center */
+    /* Position 1 LEFT - ~50° angle toward center, close to center card */
     .scroll-product-card.pos-left-1 {
-      transform: scale(0.85) rotateY(50deg) translateZ(-80px) translateX(40px);
-      opacity: 0.8;
+      transform: scale(0.88) rotateY(50deg) translateZ(-20px);
+      opacity: 0.85;
       filter: blur(0);
       z-index: 8;
     }
 
-    /* Position 1 RIGHT - rotates 50° COUNTER-CLOCKWISE (negative rotateY) toward center */
+    /* Position 1 RIGHT - ~50° angle toward center, close to center card */
     .scroll-product-card.pos-right-1 {
-      transform: scale(0.85) rotateY(-50deg) translateZ(-80px) translateX(-40px);
-      opacity: 0.8;
+      transform: scale(0.88) rotateY(-50deg) translateZ(-20px);
+      opacity: 0.85;
       filter: blur(0);
       z-index: 8;
     }
 
-    /* Position 2 LEFT - rotates 55° CLOCKWISE toward center */
+    /* Position 2 LEFT - ~55° angle, smaller, more faded */
     .scroll-product-card.pos-left-2 {
-      transform: scale(0.68) rotateY(55deg) translateZ(-160px) translateX(60px);
-      opacity: 0.5;
-      filter: blur(1px);
+      transform: scale(0.72) rotateY(55deg) translateZ(-35px);
+      opacity: 0.55;
+      filter: blur(0.5px);
       z-index: 5;
     }
 
-    /* Position 2 RIGHT - rotates 55° COUNTER-CLOCKWISE toward center */
+    /* Position 2 RIGHT - ~55° angle, smaller, more faded */
     .scroll-product-card.pos-right-2 {
-      transform: scale(0.68) rotateY(-55deg) translateZ(-160px) translateX(-60px);
-      opacity: 0.5;
-      filter: blur(1px);
+      transform: scale(0.72) rotateY(-55deg) translateZ(-35px);
+      opacity: 0.55;
+      filter: blur(0.5px);
       z-index: 5;
     }
 
-    /* Position 3+ LEFT - rotates 65° CLOCKWISE toward center (max rotation) */
+    /* Position 3+ LEFT - ~60° angle toward center (max rotation) */
     .scroll-product-card.pos-left-3 {
-      transform: scale(0.5) rotateY(65deg) translateZ(-240px) translateX(80px);
-      opacity: 0.2;
-      filter: blur(2px);
+      transform: scale(0.55) rotateY(60deg) translateZ(-50px);
+      opacity: 0.35;
+      filter: blur(1px);
       z-index: 2;
     }
 
-    /* Position 3+ RIGHT - rotates 65° COUNTER-CLOCKWISE toward center (max rotation) */
+    /* Position 3+ RIGHT - ~60° angle toward center (max rotation) */
     .scroll-product-card.pos-right-3 {
-      transform: scale(0.5) rotateY(-65deg) translateZ(-240px) translateX(-80px);
-      opacity: 0.2;
-      filter: blur(2px);
+      transform: scale(0.55) rotateY(-60deg) translateZ(-50px);
+      opacity: 0.35;
+      filter: blur(1px);
       z-index: 2;
     }
 
-    /* Legacy classes for compatibility - updated to 50° baseRotation */
+    /* Legacy classes for compatibility */
     .scroll-product-card.adjacent-left {
-      transform: scale(0.85) rotateY(50deg) translateZ(-80px) translateX(40px);
-      opacity: 0.8;
+      transform: scale(0.88) rotateY(50deg) translateZ(-20px);
+      opacity: 0.85;
       filter: blur(0);
       z-index: 8;
     }
     .scroll-product-card.adjacent-right {
-      transform: scale(0.85) rotateY(-50deg) translateZ(-80px) translateX(-40px);
-      opacity: 0.8;
+      transform: scale(0.88) rotateY(-50deg) translateZ(-20px);
+      opacity: 0.85;
       filter: blur(0);
       z-index: 8;
     }
     .scroll-product-card.far-left,
     .scroll-product-card.far-right,
     .scroll-product-card.far {
-      transform: scale(0.5) rotateY(65deg) translateZ(-240px);
-      opacity: 0.2;
-      filter: blur(2px);
+      transform: scale(0.55) rotateY(60deg) translateZ(-50px);
+      opacity: 0.35;
+      filter: blur(1px);
       z-index: 2;
     }
 
     .scroll-card-inner {
       background: #0a0a0f;
       border: 1px solid rgba(124, 58, 237, 0.3);
-      border-radius: 28px;
-      padding: 32px 28px;
-      height: 340px;
+      border-radius: 20px;
+      padding: 24px 20px;
+      height: 320px;
       position: relative;
-      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
-                  0 0 40px rgba(124, 58, 237, 0.1);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
+                  0 0 30px rgba(124, 58, 237, 0.15);
     }
 
     .scroll-product-card.active .scroll-card-inner {
@@ -863,28 +863,33 @@ function getHomepageStyles(): string {
     }
 
     .scroll-card-icon {
-      font-size: 5rem;
-      margin: 40px 0 24px;
+      font-size: 3.5rem;
+      margin: 30px 0 16px;
       text-align: center;
       filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
     }
 
     .scroll-card-title {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.6rem;
+      font-size: 1.25rem;
       font-weight: 500;
       color: white;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
       text-align: center;
+      line-height: 1.3;
     }
 
     .scroll-card-desc {
-      font-size: 0.95rem;
-      color: rgba(255, 255, 255, 0.7);
-      line-height: 1.7;
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.65);
+      line-height: 1.5;
       text-align: center;
       flex-grow: 1;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
     .scroll-card-footer {
@@ -1411,13 +1416,13 @@ function getHomepageScripts(): string {
         // Touch/swipe support
         touchEventsTarget: 'container',
 
-        // Responsive breakpoints
+        // Responsive breakpoints - TIGHT spacing for overlapping card effect
         breakpoints: {
-          320: { slidesPerView: 1.2, spaceBetween: 16 },
-          480: { slidesPerView: 1.5, spaceBetween: 16 },
-          768: { slidesPerView: 2.5, spaceBetween: 16 },
-          1024: { slidesPerView: 3, spaceBetween: 12 },
-          1400: { slidesPerView: 4, spaceBetween: 12 }
+          320: { slidesPerView: 1.4, spaceBetween: -20 },
+          480: { slidesPerView: 1.8, spaceBetween: -30 },
+          768: { slidesPerView: 3, spaceBetween: -40 },
+          1024: { slidesPerView: 4, spaceBetween: -50 },
+          1400: { slidesPerView: 5, spaceBetween: -60 }
         },
 
         // Pagination (dots only - no navigation buttons)
