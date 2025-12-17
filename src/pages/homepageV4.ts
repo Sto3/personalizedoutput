@@ -549,11 +549,11 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Great Vibes', cursive !important;
-      font-style: normal !important;
+      font-family: 'Playfair Display', serif !important;
+      font-style: italic !important;
       font-weight: 400;
-      font-size: 1.5rem;
-      line-height: 1.6;
+      font-size: 1.2rem;
+      line-height: 1.8;
       color: #F8F4F8;
       margin: 0 0 24px;
     }
@@ -564,8 +564,8 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle em {
-      font-family: 'Great Vibes', cursive !important;
-      font-style: normal !important;
+      font-family: 'Playfair Display', serif !important;
+      font-style: italic !important;
       font-size: 1em;
       color: var(--coral-light);
     }
@@ -1395,17 +1395,27 @@ function getHomepageScripts(): string {
       if (!swiperEl) return;
 
       const swiper = new Swiper('.products-swiper', {
+        // Native coverflow effect - creates the 3D angled card effect
+        effect: 'coverflow',
+        coverflowEffect: {
+          rotate: 55,           // Creates the angle - cards rotate toward center
+          stretch: -20,         // Negative = cards closer together
+          depth: 250,           // 3D depth effect
+          modifier: 1,
+          slideShadows: false,  // No shadows on slides
+        },
+
         // Slide settings
         slidesPerView: 'auto',
         centeredSlides: true,
-        spaceBetween: -40,  // NEGATIVE for overlapping cards
+        spaceBetween: -60,  // NEGATIVE for overlapping cards
         grabCursor: true,
 
         // Speed and smoothness
         speed: 600,
 
         // Loop for infinite scroll
-        loop: true,
+        loop: false,
 
         // Mousewheel navigation (wheel-only, no buttons)
         mousewheel: {
@@ -1417,13 +1427,13 @@ function getHomepageScripts(): string {
         // Touch/swipe support
         touchEventsTarget: 'container',
 
-        // Responsive breakpoints - TIGHT spacing for overlapping card effect
+        // Responsive breakpoints - keep slidesPerView consistent for coverflow
         breakpoints: {
-          320: { slidesPerView: 1.4, spaceBetween: -20 },
-          480: { slidesPerView: 1.8, spaceBetween: -30 },
-          768: { slidesPerView: 3, spaceBetween: -40 },
-          1024: { slidesPerView: 4, spaceBetween: -50 },
-          1400: { slidesPerView: 5, spaceBetween: -60 }
+          320: { slidesPerView: 1.4 },
+          480: { slidesPerView: 1.8 },
+          768: { slidesPerView: 3 },
+          1024: { slidesPerView: 4 },
+          1400: { slidesPerView: 5 }
         },
 
         // Pagination (dots only - no navigation buttons)
@@ -1433,15 +1443,8 @@ function getHomepageScripts(): string {
           dynamicBullets: true,
         },
 
-        // Custom 3D Effect on slide change
+        // Navigate to clicked card
         on: {
-          slideChange: function() {
-            update3DEffect(this);
-          },
-          init: function() {
-            update3DEffect(this);
-          },
-          // Navigate to clicked card
           click: function(swiper, e) {
             const clickedSlide = e.target.closest('.swiper-slide');
             if (clickedSlide) {
