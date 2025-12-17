@@ -42,7 +42,16 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         <div class="hero-inner container">
           <div class="hero-split">
             <div class="hero-left">
-              <h1>PERSONALIZED EXPERIENCES <span class="highlight">POWERFUL ENOUGH</span> TO HEAL, INSPIRE, AND MAKE YOU <span class="highlight">SMILE</span></h1>
+              <div class="hero-headline">
+                <h1>
+                  <span class="headline-line headline-muted">PERSONALIZED</span>
+                  <span class="headline-line headline-muted">EXPERIENCES</span>
+                  <span class="headline-line headline-coral">POWERFUL ENOUGH</span>
+                  <span class="headline-line headline-muted">TO HEAL, INSPIRE,</span>
+                  <span class="headline-line headline-muted">AND MAKE YOU</span>
+                  <span class="headline-line headline-coral">SMILE</span>
+                </h1>
+              </div>
             </div>
             <div class="hero-right">
               <p class="hero-subtitle">
@@ -501,13 +510,64 @@ function getHomepageStyles(): string {
       font-variant: normal;
     }
 
+    /* Staggered Headline Animation */
+    .hero-headline h1 {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .headline-line {
+      display: block;
+      opacity: 0;
+      transform: translateY(25px);
+      animation: fadeUpIn 0.7s ease forwards;
+    }
+
+    .headline-line:nth-child(1) { animation-delay: 0s; }
+    .headline-line:nth-child(2) { animation-delay: 0.15s; }
+    .headline-line:nth-child(3) { animation-delay: 0.3s; }
+    .headline-line:nth-child(4) { animation-delay: 0.45s; }
+    .headline-line:nth-child(5) { animation-delay: 0.6s; }
+    .headline-line:nth-child(6) { animation-delay: 0.75s; }
+
+    .headline-muted {
+      color: #8B7082;
+      font-variant: small-caps;
+    }
+
+    .headline-coral {
+      color: #E8735A;
+      font-style: italic;
+      font-variant: normal;
+    }
+
+    @keyframes fadeUpIn {
+      from {
+        opacity: 0;
+        transform: translateY(25px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Animation reset state */
+    .headline-line.animate-reset {
+      animation: none;
+      opacity: 0;
+      transform: translateY(25px);
+    }
+
     .hero-subtitle {
       font-family: 'Cormorant Garamond', 'Georgia', serif;
-      font-size: 1.15rem;
-      line-height: 1.7;
-      color: rgba(255, 255, 255, 0.8);
+      font-size: 1.2rem;
+      line-height: 1.8;
+      color: #F5F0F5;
       margin: 0 0 24px;
       font-weight: 400;
+      font-style: italic;
     }
 
     .hero-subtitle em {
@@ -1415,6 +1475,29 @@ function getHomepageScripts(): string {
         }
       });
     });
+
+    // 30-second headline animation loop reset
+    function resetHeadlineAnimation() {
+      const lines = document.querySelectorAll('.headline-line');
+      if (!lines.length) return;
+
+      // Add reset class to stop animation and reset position
+      lines.forEach(line => {
+        line.classList.add('animate-reset');
+      });
+
+      // Brief pause then re-trigger animation
+      setTimeout(() => {
+        lines.forEach(line => {
+          line.classList.remove('animate-reset');
+          // Force reflow to restart animation
+          void line.offsetWidth;
+        });
+      }, 100);
+    }
+
+    // Start the 30-second loop
+    setInterval(resetHeadlineAnimation, 30000);
   `;
 }
 
