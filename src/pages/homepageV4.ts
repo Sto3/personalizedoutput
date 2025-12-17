@@ -451,7 +451,7 @@ function getHomepageStyles(): string {
     .hero {
       display: flex;
       align-items: center;
-      padding: 140px 24px 30px 24px;
+      padding: 120px 24px 25px 24px;
       min-height: auto !important;
       position: relative;
       background: #0a0a0f;
@@ -549,11 +549,11 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Sacramento', cursive !important;
+      font-family: 'Dancing Script', cursive !important;
       font-style: normal !important;
       font-weight: 400;
-      font-size: 1.6rem;
-      line-height: 1.9;
+      font-size: 1.5rem;
+      line-height: 1.8;
       color: #F8F4F8;
       margin: 0 0 24px;
     }
@@ -624,7 +624,7 @@ function getHomepageStyles(): string {
        PURPLE background per Round 6
        ================================================ */
     .products-showcase {
-      padding: 15px 0 60px;
+      padding: 10px 0 60px;
       background: var(--purple);
       overflow: hidden;
       position: relative;
@@ -650,7 +650,7 @@ function getHomepageStyles(): string {
 
     .products-swiper .swiper-slide {
       width: 300px;
-      transition: transform 0.4s ease, opacity 0.4s ease;
+      /* No transition here - let Swiper's coverflow effect handle transforms */
     }
 
     /* Pagination */
