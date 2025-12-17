@@ -451,8 +451,8 @@ function getHomepageStyles(): string {
     .hero {
       display: flex;
       align-items: center;
-      padding: 80px 24px 30px;
-      min-height: unset;
+      padding: 100px 24px 60px 24px;
+      min-height: auto;
       position: relative;
       background: #0a0a0f;
       overflow: hidden;
@@ -549,10 +549,10 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Playfair Display', serif !important;
+      font-family: 'Lora', serif !important;
       font-style: italic !important;
       font-weight: 400;
-      font-size: 1.2rem;
+      font-size: 1.15rem;
       line-height: 1.8;
       color: #F8F4F8;
       margin: 0 0 24px;
@@ -564,7 +564,7 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle em {
-      font-family: 'Playfair Display', serif !important;
+      font-family: 'Lora', serif !important;
       font-style: italic !important;
       font-size: 1em;
       color: var(--coral-light);
@@ -1398,17 +1398,17 @@ function getHomepageScripts(): string {
         // Native coverflow effect - creates the 3D angled card effect
         effect: 'coverflow',
         coverflowEffect: {
-          rotate: 55,           // Creates the angle - cards rotate toward center
-          stretch: -20,         // Negative = cards closer together
-          depth: 250,           // 3D depth effect
+          rotate: 45,           // Creates the angle - cards rotate toward center
+          stretch: 0,           // Neutral stretch
+          depth: 200,           // 3D depth effect
           modifier: 1,
           slideShadows: false,  // No shadows on slides
         },
 
         // Slide settings
-        slidesPerView: 'auto',
+        slidesPerView: 3,
         centeredSlides: true,
-        spaceBetween: -60,  // NEGATIVE for overlapping cards
+        spaceBetween: -50,  // NEGATIVE for overlapping cards
         grabCursor: true,
 
         // Speed and smoothness
