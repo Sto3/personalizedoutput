@@ -549,11 +549,11 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Dancing Script', cursive !important;
-      font-style: normal !important;
+      font-family: 'Spectral', serif !important;
+      font-style: italic !important;
       font-weight: 400;
-      font-size: 1.5rem;
-      line-height: 1.8;
+      font-size: 1.15rem;
+      line-height: 1.75;
       color: #F8F4F8;
       margin: 0 0 24px;
     }
@@ -564,7 +564,7 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle em {
-      font-family: 'Lora', serif !important;
+      font-family: 'Spectral', serif !important;
       font-style: italic !important;
       font-size: 1em;
       color: var(--coral-light);
@@ -619,12 +619,12 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
-       PRODUCTS SHOWCASE - Swiper.js Carousel
-       Triangle/Perspective Layout - Cards rotate TOWARD center
+       PRODUCTS SHOWCASE - Swiper.js Coverflow Carousel
+       Clean implementation - let Swiper handle ALL transforms
        PURPLE background per Round 6
        ================================================ */
     .products-showcase {
-      padding: 10px 0 60px;
+      padding: 40px 0 60px;
       background: var(--purple);
       overflow: hidden;
       position: relative;
@@ -638,27 +638,27 @@ function getHomepageStyles(): string {
       text-transform: uppercase;
       letter-spacing: 0.35em;
       color: #E85A4F;
-      margin-bottom: 10px;
+      margin-bottom: 20px;
     }
 
-    /* Swiper Container - SIMPLIFIED (Swiper handles transforms) */
+    /* Swiper Container - Clean, no custom transforms */
     .products-swiper {
       width: 100%;
-      padding: 20px 0 40px;
+      padding: 40px 0;
       overflow: visible;
     }
 
     .products-swiper .swiper-slide {
-      width: 300px;
-      /* No transition here - let Swiper's coverflow effect handle transforms */
+      width: 280px;
+      /* CRITICAL: No transition, no transform - Swiper coverflow handles everything */
     }
 
     /* Pagination */
     .swiper-pagination-custom {
       display: flex;
       justify-content: center;
-      gap: 8px;
-      margin-top: 20px;
+      gap: 10px;
+      margin-top: 30px;
     }
 
     .swiper-pagination-custom .swiper-pagination-bullet {
@@ -676,11 +676,12 @@ function getHomepageStyles(): string {
       border-radius: 5px;
     }
 
-    /* Card styling only - NO transforms here (Swiper handles them) */
+    /* Card styling only - absolutely NO transforms here */
     .scroll-product-card {
       display: block;
       text-decoration: none;
       width: 100%;
+      height: 100%;
     }
 
     .scroll-card-inner {
@@ -688,16 +689,16 @@ function getHomepageStyles(): string {
       border: 1px solid rgba(124, 58, 237, 0.25);
       border-radius: 20px;
       padding: 24px 20px;
-      height: 320px;
+      height: 340px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-      transition: all 0.3s ease;
+      /* NO transition on transform - Swiper controls this */
     }
 
+    /* Subtle hover effect - only shadow, no transform */
     .scroll-card-inner:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
       border-color: rgba(124, 58, 237, 0.5);
     }
 
@@ -1206,7 +1207,8 @@ function getHomepageStyles(): string {
 
 function getHomepageScripts(): string {
   return `
-    // Swiper.js Carousel - SIMPLIFIED (Swiper handles ALL transforms)
+    // Swiper.js Coverflow Carousel - CLEAN IMPLEMENTATION
+    // Swiper handles ALL 3D transforms - no custom CSS transforms
     function initProductsSwiper() {
       if (typeof Swiper === 'undefined') {
         console.warn('Swiper not loaded');
@@ -1221,38 +1223,54 @@ function getHomepageScripts(): string {
         grabCursor: true,
         centeredSlides: true,
         slidesPerView: 'auto',
+        initialSlide: 2, // Start centered on middle card
 
         coverflowEffect: {
-          rotate: 55,
-          stretch: -20,
-          depth: 250,
-          modifier: 1.2,
-          slideShadows: true,
+          rotate: 50,        // Rotation angle (degrees)
+          stretch: 0,        // Stretch space between slides
+          depth: 200,        // Depth offset (px)
+          modifier: 1,       // Effect multiplier
+          slideShadows: true // Enable 3D shadows
         },
 
-        speed: 500,
+        speed: 400,
         loop: false,
 
+        // Mouse wheel scrolling
         mousewheel: {
           forceToAxis: true,
-          sensitivity: 0.8,
+          sensitivity: 1,
         },
 
+        // Pagination dots
         pagination: {
           el: '.swiper-pagination-custom',
           clickable: true,
         },
 
+        // Responsive breakpoints
         breakpoints: {
-          320: { slidesPerView: 1.5 },
-          640: { slidesPerView: 2.5 },
-          1024: { slidesPerView: 3.5 },
+          320: { slidesPerView: 1.2 },
+          480: { slidesPerView: 1.5 },
+          640: { slidesPerView: 2 },
+          900: { slidesPerView: 3 },
+          1200: { slidesPerView: 4 },
         },
+
+        on: {
+          init: function() {
+            console.log('Swiper coverflow initialized with', this.slides.length, 'slides');
+          }
+        }
       });
     }
 
-    // Initialize Swiper
-    initProductsSwiper();
+    // Initialize Swiper when DOM is ready
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initProductsSwiper);
+    } else {
+      initProductsSwiper();
+    }
 
     // Scroll reveal animations
     const revealElements = document.querySelectorAll('.step, .testimonial-card, .product-card, .feature-card');
