@@ -78,20 +78,8 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             ${orderedProducts.map((p, index) => renderScrollableProductCard(p, index)).join('')}
           </div>
         </div>
-        <!-- Swiper Navigation -->
-        <div class="swiper-nav-container">
-          <button class="swiper-btn swiper-btn-prev" aria-label="Previous product">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M15 18l-6-6 6-6"/>
-            </svg>
-          </button>
-          <div class="swiper-pagination-custom"></div>
-          <button class="swiper-btn swiper-btn-next" aria-label="Next product">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M9 18l6-6-6-6"/>
-            </svg>
-          </button>
-        </div>
+        <!-- Pagination dots only - no arrow buttons -->
+        <div class="swiper-pagination-custom"></div>
       </section>
 
       <!-- How It Works -->
@@ -461,10 +449,9 @@ function getHomepageStyles(): string {
        HERO SECTION - BLACK Background, Split Layout (Round 6)
        ================================================ */
     .hero {
-      min-height: auto;
       display: flex;
       align-items: center;
-      padding: 120px 24px 40px;
+      padding: 100px 24px 40px;
       position: relative;
       background: #0a0a0f;
       overflow: hidden;
@@ -561,8 +548,8 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Cormorant Garamond', Georgia, serif;
-      font-style: italic;
+      font-family: 'Cormorant Garamond', Georgia, serif !important;
+      font-style: italic !important;
       font-weight: 400;
       font-size: 1.25rem;
       line-height: 1.85;
@@ -570,10 +557,15 @@ function getHomepageStyles(): string {
       margin: 0 0 24px;
     }
 
+    .hero-subtitle * {
+      font-family: inherit !important;
+      font-style: inherit !important;
+    }
+
     .hero-subtitle em {
-      font-family: 'Great Vibes', cursive;
-      font-style: normal;
-      font-size: 1.2em;
+      font-family: 'Cormorant Garamond', Georgia, serif !important;
+      font-style: italic !important;
+      font-size: 1em;
       color: var(--coral-light);
     }
 
@@ -631,7 +623,7 @@ function getHomepageStyles(): string {
        PURPLE background per Round 6
        ================================================ */
     .products-showcase {
-      padding: 40px 0 60px;
+      padding: 30px 0 60px;
       background: var(--purple);
       overflow: hidden;
       position: relative;
@@ -743,72 +735,72 @@ function getHomepageStyles(): string {
       z-index: 10;
     }
 
-    /* Position 1 LEFT - rotates 45° RIGHT (positive rotateY) toward center */
+    /* Position 1 LEFT - rotates 50° CLOCKWISE (positive rotateY) toward center */
     .scroll-product-card.pos-left-1 {
-      transform: scale(0.88) rotateY(45deg) translateZ(-60px) translateX(30px);
-      opacity: 0.85;
+      transform: scale(0.85) rotateY(50deg) translateZ(-80px) translateX(40px);
+      opacity: 0.8;
       filter: blur(0);
       z-index: 8;
     }
 
-    /* Position 1 RIGHT - rotates 45° LEFT (negative rotateY) toward center */
+    /* Position 1 RIGHT - rotates 50° COUNTER-CLOCKWISE (negative rotateY) toward center */
     .scroll-product-card.pos-right-1 {
-      transform: scale(0.88) rotateY(-45deg) translateZ(-60px) translateX(-30px);
-      opacity: 0.85;
+      transform: scale(0.85) rotateY(-50deg) translateZ(-80px) translateX(-40px);
+      opacity: 0.8;
       filter: blur(0);
       z-index: 8;
     }
 
-    /* Position 2 LEFT - rotates 90° RIGHT toward center */
+    /* Position 2 LEFT - rotates 55° CLOCKWISE toward center */
     .scroll-product-card.pos-left-2 {
-      transform: scale(0.72) rotateY(90deg) translateZ(-140px) translateX(50px);
-      opacity: 0.55;
+      transform: scale(0.68) rotateY(55deg) translateZ(-160px) translateX(60px);
+      opacity: 0.5;
       filter: blur(1px);
       z-index: 5;
     }
 
-    /* Position 2 RIGHT - rotates 90° LEFT toward center */
+    /* Position 2 RIGHT - rotates 55° COUNTER-CLOCKWISE toward center */
     .scroll-product-card.pos-right-2 {
-      transform: scale(0.72) rotateY(-90deg) translateZ(-140px) translateX(-50px);
-      opacity: 0.55;
+      transform: scale(0.68) rotateY(-55deg) translateZ(-160px) translateX(-60px);
+      opacity: 0.5;
       filter: blur(1px);
       z-index: 5;
     }
 
-    /* Position 3+ LEFT - rotates 135° RIGHT toward center */
+    /* Position 3+ LEFT - rotates 65° CLOCKWISE toward center (max rotation) */
     .scroll-product-card.pos-left-3 {
-      transform: scale(0.55) rotateY(135deg) translateZ(-220px) translateX(60px);
-      opacity: 0.25;
+      transform: scale(0.5) rotateY(65deg) translateZ(-240px) translateX(80px);
+      opacity: 0.2;
       filter: blur(2px);
       z-index: 2;
     }
 
-    /* Position 3+ RIGHT - rotates 135° LEFT toward center */
+    /* Position 3+ RIGHT - rotates 65° COUNTER-CLOCKWISE toward center (max rotation) */
     .scroll-product-card.pos-right-3 {
-      transform: scale(0.55) rotateY(-135deg) translateZ(-220px) translateX(-60px);
-      opacity: 0.25;
+      transform: scale(0.5) rotateY(-65deg) translateZ(-240px) translateX(-80px);
+      opacity: 0.2;
       filter: blur(2px);
       z-index: 2;
     }
 
-    /* Legacy classes for compatibility */
+    /* Legacy classes for compatibility - updated to 50° baseRotation */
     .scroll-product-card.adjacent-left {
-      transform: scale(0.88) rotateY(45deg) translateZ(-60px) translateX(30px);
-      opacity: 0.85;
+      transform: scale(0.85) rotateY(50deg) translateZ(-80px) translateX(40px);
+      opacity: 0.8;
       filter: blur(0);
       z-index: 8;
     }
     .scroll-product-card.adjacent-right {
-      transform: scale(0.88) rotateY(-45deg) translateZ(-60px) translateX(-30px);
-      opacity: 0.85;
+      transform: scale(0.85) rotateY(-50deg) translateZ(-80px) translateX(-40px);
+      opacity: 0.8;
       filter: blur(0);
       z-index: 8;
     }
     .scroll-product-card.far-left,
     .scroll-product-card.far-right,
     .scroll-product-card.far {
-      transform: scale(0.55) rotateY(135deg) translateZ(-220px);
-      opacity: 0.25;
+      transform: scale(0.5) rotateY(65deg) translateZ(-240px);
+      opacity: 0.2;
       filter: blur(2px);
       z-index: 2;
     }
@@ -1409,8 +1401,15 @@ function getHomepageScripts(): string {
         // Loop for infinite scroll
         loop: true,
 
-        // Auto-play (optional - disabled for manual control)
-        // autoplay: { delay: 4000, disableOnInteraction: false },
+        // Mousewheel navigation (wheel-only, no buttons)
+        mousewheel: {
+          forceToAxis: true,
+          sensitivity: 1,
+          releaseOnEdges: false,
+        },
+
+        // Touch/swipe support
+        touchEventsTarget: 'container',
 
         // Responsive breakpoints
         breakpoints: {
@@ -1421,13 +1420,7 @@ function getHomepageScripts(): string {
           1400: { slidesPerView: 4, spaceBetween: 12 }
         },
 
-        // Navigation buttons
-        navigation: {
-          nextEl: '.swiper-btn-next',
-          prevEl: '.swiper-btn-prev',
-        },
-
-        // Pagination
+        // Pagination (dots only - no navigation buttons)
         pagination: {
           el: '.swiper-pagination-custom',
           clickable: true,
@@ -1441,11 +1434,22 @@ function getHomepageScripts(): string {
           },
           init: function() {
             update3DEffect(this);
+          },
+          // Navigate to clicked card
+          click: function(swiper, e) {
+            const clickedSlide = e.target.closest('.swiper-slide');
+            if (clickedSlide) {
+              const clickedIndex = swiper.slides.indexOf(clickedSlide);
+              if (clickedIndex !== swiper.activeIndex) {
+                swiper.slideTo(clickedIndex);
+              }
+            }
           }
         }
       });
 
-      // 3D coverflow effect - cards rotate 45° per position TOWARD center
+      // 3D coverflow effect - cards rotate 50°+ per position TOWARD center
+      // LEFT cards rotate CLOCKWISE (+rotateY), RIGHT cards rotate COUNTER-CLOCKWISE (-rotateY)
       function update3DEffect(swiper) {
         const slides = swiper.slides;
         const activeIndex = swiper.activeIndex;
