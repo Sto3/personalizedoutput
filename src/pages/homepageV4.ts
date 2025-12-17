@@ -42,11 +42,11 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         <div class="hero-inner container">
           <div class="hero-split">
             <div class="hero-left">
-              <h1>PERSONALIZED PRODUCTS <span class="highlight">POWERFUL ENOUGH</span> TO HEAL, INSPIRE, AND MAKE YOU <span class="highlight">SMILE</span></h1>
+              <h1>PERSONALIZED EXPERIENCES <span class="highlight">POWERFUL ENOUGH</span> TO HEAL, INSPIRE, AND MAKE YOU <span class="highlight">SMILE</span></h1>
             </div>
             <div class="hero-right">
               <p class="hero-subtitle">
-                A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products that give customers exactly what they want and need.</em>
+                A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal customers say "it's unbelievable."</em>
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -190,7 +190,7 @@ function renderScrollableProductCard(product: ProductWithScore, index: number): 
 
   return `
     <div class="swiper-slide">
-    <a href="/product/${product.slug}" class="scroll-product-card" style="--card-delay: ${index * 0.1}s">
+    <a href="/${product.slug}" class="scroll-product-card" style="--card-delay: ${index * 0.1}s">
       <div class="scroll-card-inner">
         <div class="scroll-card-badge">${categoryLabels[product.category]}</div>
         ${product.salesScore > 0 ? '<div class="scroll-card-popular">Popular</div>' : ''}
@@ -457,7 +457,7 @@ function getHomepageStyles(): string {
       align-items: center;
       padding: 120px 24px 60px;
       position: relative;
-      background: #e8e8ec;
+      background: #0a0a0f;
       overflow: hidden;
     }
 
@@ -490,7 +490,7 @@ function getHomepageStyles(): string {
       font-weight: 700;
       line-height: 1.15;
       margin-bottom: 0;
-      color: var(--navy);
+      color: white;
       font-variant: small-caps;
       letter-spacing: 0.05em;
     }
@@ -502,20 +502,19 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Playfair Display', 'Bodoni Moda', 'Georgia', serif;
-      font-size: 1.35rem;
+      font-family: 'Cormorant Garamond', 'Georgia', serif;
+      font-size: 1.15rem;
       line-height: 1.7;
-      color: var(--navy-light);
+      color: rgba(255, 255, 255, 0.8);
       margin: 0 0 24px;
       font-weight: 400;
-      letter-spacing: 0.01em;
     }
 
     .hero-subtitle em {
       font-family: 'Great Vibes', cursive;
       font-style: normal;
       font-size: 1.2em;
-      color: var(--coral);
+      color: var(--coral-light);
     }
 
     .hero-buttons {
@@ -544,15 +543,15 @@ function getHomepageStyles(): string {
 
     .btn-hero-outline {
       background: transparent;
-      border: 2px solid var(--navy);
-      color: var(--navy);
+      border: 2px solid rgba(255, 255, 255, 0.4);
+      color: white;
       box-shadow: none;
     }
 
     .btn-hero-outline:hover {
-      background: rgba(26, 26, 46, 0.1);
-      border-color: var(--navy);
-      box-shadow: 0 8px 30px rgba(26, 26, 46, 0.15);
+      background: rgba(255, 255, 255, 0.1);
+      border-color: white;
+      box-shadow: 0 8px 30px rgba(255, 255, 255, 0.1);
     }
 
     @media (max-width: 900px) {
@@ -573,7 +572,7 @@ function getHomepageStyles(): string {
        ================================================ */
     .products-showcase {
       padding: 40px 0 60px;
-      background: #ffffff;
+      background: var(--purple);
       overflow: hidden;
       position: relative;
     }
@@ -581,13 +580,12 @@ function getHomepageStyles(): string {
     .products-label {
       display: block;
       text-align: center;
-      font-size: 1rem;
-      font-weight: 700;
+      font-size: 0.75rem;
+      font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 4px;
-      color: var(--purple);
-      margin-bottom: 16px;
-      padding: 10px 24px;
+      letter-spacing: 3px;
+      color: var(--coral);
+      margin-bottom: 12px;
     }
 
     /* Swiper Container */
@@ -622,21 +620,19 @@ function getHomepageStyles(): string {
       width: 48px;
       height: 48px;
       border-radius: 50%;
-      background: var(--purple);
-      border: 1px solid var(--purple);
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: white;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(124, 58, 237, 0.3);
     }
 
     .swiper-btn:hover {
-      background: var(--purple-light);
+      background: rgba(255, 255, 255, 0.25);
       transform: scale(1.1);
-      box-shadow: 0 6px 20px rgba(124, 58, 237, 0.4);
     }
 
     .swiper-btn:disabled {
@@ -653,7 +649,7 @@ function getHomepageStyles(): string {
     .swiper-pagination-custom .swiper-pagination-bullet {
       width: 10px;
       height: 10px;
-      background: rgba(124, 58, 237, 0.3);
+      background: rgba(255, 255, 255, 0.3);
       border-radius: 50%;
       transition: all 0.3s ease;
       cursor: pointer;
@@ -728,8 +724,8 @@ function getHomepageStyles(): string {
     }
 
     .scroll-card-inner {
-      background: linear-gradient(145deg, var(--purple) 0%, #5b2cb8 100%);
-      border: 1px solid rgba(167, 139, 250, 0.3);
+      background: linear-gradient(145deg, var(--navy) 0%, #0f0f1a 100%);
+      border: 1px solid rgba(124, 58, 237, 0.3);
       border-radius: 28px;
       padding: 36px 32px;
       height: 100%;
@@ -738,23 +734,23 @@ function getHomepageStyles(): string {
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 60px rgba(124, 58, 237, 0.25),
-                  0 0 40px rgba(124, 58, 237, 0.15);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
+                  0 0 40px rgba(124, 58, 237, 0.1);
     }
 
     .scroll-product-card.active .scroll-card-inner {
-      box-shadow: 0 35px 100px rgba(124, 58, 237, 0.4),
-                  0 0 60px rgba(124, 58, 237, 0.3),
-                  0 0 0 3px var(--coral);
-      border-color: var(--coral);
+      box-shadow: 0 35px 100px rgba(0, 0, 0, 0.5),
+                  0 0 60px rgba(124, 58, 237, 0.25),
+                  0 0 0 2px var(--purple);
+      border-color: var(--purple);
     }
 
     .scroll-product-card:hover .scroll-card-inner {
       transform: translateY(-12px);
-      box-shadow: 0 30px 80px rgba(124, 58, 237, 0.35),
-                  0 0 50px rgba(124, 58, 237, 0.25),
-                  0 0 0 2px var(--coral);
-      border-color: var(--coral);
+      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45),
+                  0 0 50px rgba(124, 58, 237, 0.2),
+                  0 0 0 2px var(--purple);
+      border-color: var(--purple);
     }
 
     .scroll-card-badge {
@@ -1301,34 +1297,25 @@ function getHomepageScripts(): string {
         // Slide settings
         slidesPerView: 'auto',
         centeredSlides: true,
-        spaceBetween: 20,
+        spaceBetween: 12,
         grabCursor: true,
 
-        // Enable free mode for smooth scrolling without snap
-        freeMode: {
-          enabled: true,
-          momentum: true,
-          momentumRatio: 0.5,
-          minimumVelocity: 0.02,
-          sticky: false,
-        },
-
         // Speed and smoothness
-        speed: 400,
+        speed: 600,
 
         // Loop for infinite scroll
         loop: true,
 
-        // Start at middle slide
-        initialSlide: Math.floor(document.querySelectorAll('.swiper-slide').length / 2),
+        // Auto-play (optional - disabled for manual control)
+        // autoplay: { delay: 4000, disableOnInteraction: false },
 
         // Responsive breakpoints
         breakpoints: {
-          320: { slidesPerView: 1.3, spaceBetween: 16 },
-          480: { slidesPerView: 1.6, spaceBetween: 16 },
-          768: { slidesPerView: 2.5, spaceBetween: 20 },
-          1024: { slidesPerView: 3, spaceBetween: 20 },
-          1400: { slidesPerView: 3.5, spaceBetween: 24 }
+          320: { slidesPerView: 1.2, spaceBetween: 16 },
+          480: { slidesPerView: 1.5, spaceBetween: 16 },
+          768: { slidesPerView: 2.5, spaceBetween: 16 },
+          1024: { slidesPerView: 3, spaceBetween: 12 },
+          1400: { slidesPerView: 4, spaceBetween: 12 }
         },
 
         // Navigation buttons
@@ -1344,16 +1331,12 @@ function getHomepageScripts(): string {
           dynamicBullets: true,
         },
 
-        // Custom 3D Effect on slide change and scroll
+        // Custom 3D Effect on slide change
         on: {
           slideChange: function() {
             update3DEffect(this);
           },
           init: function() {
-            update3DEffect(this);
-          },
-          setTranslate: function() {
-            // Update 3D effect during scroll for smooth animation
             update3DEffect(this);
           }
         }
