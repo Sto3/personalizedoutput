@@ -11,6 +11,7 @@
 
 import { renderPageStart, renderPageEnd } from '../components/layout';
 import { PRODUCTS, ProductType, ProductInfo, getProductsOrderedBySales, ProductWithScore } from '../lib/supabase/orderService';
+import { renderProductCarousel, getCarouselStyles, getCarouselScript } from '../components/ProductCarousel';
 
 // ============================================================
 // HOMEPAGE CONTENT
@@ -34,7 +35,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
   // Reviews section removed until we have real customer reviews
 
-  const pageStyles = getHomepageStyles();
+  const pageStyles = getHomepageStyles() + getCarouselStyles();
   const pageContent = `
     <main>
       <!-- Hero Section - BLACK background, Split Layout (Round 6) -->
@@ -55,7 +56,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             </div>
             <div class="hero-right">
               <p class="hero-subtitle">
-                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products so personal customers say 'it's unbelievable.'"</em>
+                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">products so personal customers say 'it's unbelievable.'</span>"
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -70,17 +71,8 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         </div>
       </section>
 
-      <!-- Product Showcase - Swiper.js Carousel -->
-      <section class="products-showcase" id="products">
-        <span class="section-eyebrow products-label">Our Products</span>
-        <div class="swiper products-swiper" id="productsSwiper">
-          <div class="swiper-wrapper">
-            ${orderedProducts.map((p, index) => renderScrollableProductCard(p, index)).join('')}
-          </div>
-        </div>
-        <!-- Pagination dots only - no arrow buttons -->
-        <div class="swiper-pagination-custom"></div>
-      </section>
+      <!-- Product Showcase - Clean Swiper.js Coverflow Carousel -->
+      ${renderProductCarousel(orderedProducts)}
 
       <!-- How It Works -->
       <section class="how-it-works section" id="how-it-works">
@@ -153,6 +145,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
   const pageScripts = `
     <script>
+      ${getCarouselScript()}
       ${getHomepageScripts()}
     </script>
   `;
@@ -567,6 +560,14 @@ function getHomepageStyles(): string {
       font-family: 'Spectral', serif !important;
       font-style: italic !important;
       font-size: 1em;
+    }
+
+    .cursive-highlight {
+      font-family: 'Dancing Script', cursive !important;
+      font-style: normal !important;
+      font-size: 1.15em;
+      font-weight: 600;
+      color: #E85A4F;
       color: var(--coral-light);
     }
 
@@ -1207,71 +1208,6 @@ function getHomepageStyles(): string {
 
 function getHomepageScripts(): string {
   return `
-    // Swiper.js Coverflow Carousel - CLEAN IMPLEMENTATION
-    // Swiper handles ALL 3D transforms - no custom CSS transforms
-    function initProductsSwiper() {
-      if (typeof Swiper === 'undefined') {
-        console.warn('Swiper not loaded');
-        return;
-      }
-
-      const swiperEl = document.querySelector('.products-swiper');
-      if (!swiperEl) return;
-
-      const swiper = new Swiper('.products-swiper', {
-        effect: 'coverflow',
-        grabCursor: true,
-        centeredSlides: true,
-        slidesPerView: 'auto',
-        initialSlide: 2, // Start centered on middle card
-
-        coverflowEffect: {
-          rotate: 50,        // Rotation angle (degrees)
-          stretch: 0,        // Stretch space between slides
-          depth: 200,        // Depth offset (px)
-          modifier: 1,       // Effect multiplier
-          slideShadows: true // Enable 3D shadows
-        },
-
-        speed: 400,
-        loop: false,
-
-        // Mouse wheel scrolling
-        mousewheel: {
-          forceToAxis: true,
-          sensitivity: 1,
-        },
-
-        // Pagination dots
-        pagination: {
-          el: '.swiper-pagination-custom',
-          clickable: true,
-        },
-
-        // Responsive breakpoints
-        breakpoints: {
-          320: { slidesPerView: 1.2 },
-          480: { slidesPerView: 1.5 },
-          640: { slidesPerView: 2 },
-          900: { slidesPerView: 3 },
-          1200: { slidesPerView: 4 },
-        },
-
-        on: {
-          init: function() {
-            console.log('Swiper coverflow initialized with', this.slides.length, 'slides');
-          }
-        }
-      });
-    }
-
-    // Initialize Swiper when DOM is ready
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initProductsSwiper);
-    } else {
-      initProductsSwiper();
-    }
-
     // Scroll reveal animations
     const revealElements = document.querySelectorAll('.step, .testimonial-card, .product-card, .feature-card');
     const revealObserver = new IntersectionObserver((entries) => {
