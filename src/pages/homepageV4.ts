@@ -464,7 +464,7 @@ function getHomepageStyles(): string {
       min-height: auto;
       display: flex;
       align-items: center;
-      padding: 120px 24px 60px;
+      padding: 120px 24px 40px;
       position: relative;
       background: #0a0a0f;
       overflow: hidden;
@@ -561,13 +561,13 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Cormorant Garamond', 'Georgia', serif;
-      font-size: 1.2rem;
-      line-height: 1.8;
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-style: italic;
+      font-weight: 400;
+      font-size: 1.25rem;
+      line-height: 1.85;
       color: #F8F4F8;
       margin: 0 0 24px;
-      font-weight: 400;
-      font-style: italic;
     }
 
     .hero-subtitle em {
@@ -640,11 +640,11 @@ function getHomepageStyles(): string {
     .products-label {
       display: block;
       text-align: center;
-      font-size: 0.75rem;
+      font-size: 1rem;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 3px;
-      color: var(--coral);
+      letter-spacing: 0.35em;
+      color: #E85A4F;
       margin-bottom: 12px;
     }
 
@@ -727,71 +727,100 @@ function getHomepageStyles(): string {
       text-decoration: none;
       display: block;
       scroll-snap-align: center;
-      transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       transform-style: preserve-3d;
-      /* Default state: cards appear smaller/faded - positioned on left by default */
-      transform: scale(0.72) rotateY(30deg) translateZ(-120px);
-      opacity: 0.4;
-      filter: blur(2px);
+      /* Default state: cards appear smaller/faded */
+      transform: scale(0.55) rotateY(135deg) translateZ(-300px);
+      opacity: 0.15;
+      filter: blur(4px);
     }
 
     /* Active/center card - no rotation, full scale, pop forward */
     .scroll-product-card.active {
-      transform: scale(1) rotateY(0deg) translateZ(60px);
+      transform: scale(1) rotateY(0deg) translateZ(80px);
       opacity: 1;
       filter: blur(0);
       z-index: 10;
     }
 
-    /* LEFT adjacent card - rotates RIGHT (positive rotateY) toward center */
+    /* Position 1 LEFT - rotates 45° RIGHT (positive rotateY) toward center */
+    .scroll-product-card.pos-left-1 {
+      transform: scale(0.88) rotateY(45deg) translateZ(-60px) translateX(30px);
+      opacity: 0.85;
+      filter: blur(0);
+      z-index: 8;
+    }
+
+    /* Position 1 RIGHT - rotates 45° LEFT (negative rotateY) toward center */
+    .scroll-product-card.pos-right-1 {
+      transform: scale(0.88) rotateY(-45deg) translateZ(-60px) translateX(-30px);
+      opacity: 0.85;
+      filter: blur(0);
+      z-index: 8;
+    }
+
+    /* Position 2 LEFT - rotates 90° RIGHT toward center */
+    .scroll-product-card.pos-left-2 {
+      transform: scale(0.72) rotateY(90deg) translateZ(-140px) translateX(50px);
+      opacity: 0.55;
+      filter: blur(1px);
+      z-index: 5;
+    }
+
+    /* Position 2 RIGHT - rotates 90° LEFT toward center */
+    .scroll-product-card.pos-right-2 {
+      transform: scale(0.72) rotateY(-90deg) translateZ(-140px) translateX(-50px);
+      opacity: 0.55;
+      filter: blur(1px);
+      z-index: 5;
+    }
+
+    /* Position 3+ LEFT - rotates 135° RIGHT toward center */
+    .scroll-product-card.pos-left-3 {
+      transform: scale(0.55) rotateY(135deg) translateZ(-220px) translateX(60px);
+      opacity: 0.25;
+      filter: blur(2px);
+      z-index: 2;
+    }
+
+    /* Position 3+ RIGHT - rotates 135° LEFT toward center */
+    .scroll-product-card.pos-right-3 {
+      transform: scale(0.55) rotateY(-135deg) translateZ(-220px) translateX(-60px);
+      opacity: 0.25;
+      filter: blur(2px);
+      z-index: 2;
+    }
+
+    /* Legacy classes for compatibility */
     .scroll-product-card.adjacent-left {
-      transform: scale(0.85) rotateY(28deg) translateZ(-40px) translateX(15px);
-      opacity: 0.9;
+      transform: scale(0.88) rotateY(45deg) translateZ(-60px) translateX(30px);
+      opacity: 0.85;
       filter: blur(0);
-      z-index: 5;
+      z-index: 8;
     }
-
-    /* RIGHT adjacent card - rotates LEFT (negative rotateY) toward center */
     .scroll-product-card.adjacent-right {
-      transform: scale(0.85) rotateY(-28deg) translateZ(-40px) translateX(-15px);
-      opacity: 0.9;
+      transform: scale(0.88) rotateY(-45deg) translateZ(-60px) translateX(-30px);
+      opacity: 0.85;
       filter: blur(0);
-      z-index: 5;
+      z-index: 8;
     }
-
-    /* Far LEFT cards - more dramatic rotation RIGHT toward center */
-    .scroll-product-card.far-left {
-      transform: scale(0.65) rotateY(40deg) translateZ(-180px) translateX(30px);
-      opacity: 0.3;
-      filter: blur(3px);
-      z-index: 1;
-    }
-
-    /* Far RIGHT cards - more dramatic rotation LEFT toward center */
-    .scroll-product-card.far-right {
-      transform: scale(0.65) rotateY(-40deg) translateZ(-180px) translateX(-30px);
-      opacity: 0.3;
-      filter: blur(3px);
-      z-index: 1;
-    }
-
-    /* Legacy far class for compatibility */
+    .scroll-product-card.far-left,
+    .scroll-product-card.far-right,
     .scroll-product-card.far {
-      transform: scale(0.65) rotateY(40deg) translateZ(-180px);
-      opacity: 0.3;
-      filter: blur(3px);
-      z-index: 1;
+      transform: scale(0.55) rotateY(135deg) translateZ(-220px);
+      opacity: 0.25;
+      filter: blur(2px);
+      z-index: 2;
     }
 
     .scroll-card-inner {
-      background: linear-gradient(145deg, var(--navy) 0%, #0f0f1a 100%);
+      background: #0a0a0f;
       border: 1px solid rgba(124, 58, 237, 0.3);
       border-radius: 28px;
-      padding: 36px 32px;
-      height: 100%;
-      min-height: 400px;
+      padding: 32px 28px;
+      height: 340px;
       position: relative;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4),
@@ -916,31 +945,45 @@ function getHomepageStyles(): string {
       .scroll-product-card {
         width: 280px;
         /* Simpler 3D effects on mobile */
-        transform: scale(0.9) rotateY(20deg);
-        opacity: 0.7;
-        filter: blur(1px);
+        transform: scale(0.75) rotateY(60deg);
+        opacity: 0.4;
+        filter: blur(2px);
       }
       .scroll-product-card.active {
         transform: scale(1) rotateY(0deg);
         opacity: 1;
         filter: none;
       }
+      .scroll-product-card.pos-left-1,
       .scroll-product-card.adjacent-left {
-        transform: scale(0.92) rotateY(15deg);
-        opacity: 0.85;
-        filter: none;
+        transform: scale(0.85) rotateY(35deg);
+        opacity: 0.75;
+        filter: blur(0);
       }
+      .scroll-product-card.pos-right-1,
       .scroll-product-card.adjacent-right {
-        transform: scale(0.92) rotateY(-15deg);
-        opacity: 0.85;
-        filter: none;
+        transform: scale(0.85) rotateY(-35deg);
+        opacity: 0.75;
+        filter: blur(0);
       }
+      .scroll-product-card.pos-left-2,
+      .scroll-product-card.pos-right-2 {
+        transform: scale(0.7) rotateY(60deg);
+        opacity: 0.4;
+        filter: blur(1px);
+      }
+      .scroll-product-card.pos-left-3,
+      .scroll-product-card.pos-right-3,
       .scroll-product-card.far-left,
       .scroll-product-card.far-right,
       .scroll-product-card.far {
-        transform: scale(0.8) rotateY(25deg);
-        opacity: 0.4;
+        transform: scale(0.55) rotateY(90deg);
+        opacity: 0.2;
         filter: blur(2px);
+      }
+      .scroll-card-inner {
+        height: 300px;
+        padding: 24px 20px;
       }
       .products-scroll {
         padding: 0 calc(50vw - 140px);
@@ -1402,7 +1445,7 @@ function getHomepageScripts(): string {
         }
       });
 
-      // 3D rotation effect - cards rotate TOWARD center
+      // 3D coverflow effect - cards rotate 45° per position TOWARD center
       function update3DEffect(swiper) {
         const slides = swiper.slides;
         const activeIndex = swiper.activeIndex;
@@ -1411,27 +1454,31 @@ function getHomepageScripts(): string {
           const card = slide.querySelector('.scroll-product-card');
           if (!card) return;
 
-          // Calculate real index accounting for loop
-          let realIndex = index;
-          if (swiper.params.loop) {
-            realIndex = parseInt(slide.getAttribute('data-swiper-slide-index') || index);
-          }
-
           const diff = index - activeIndex;
           const absDiff = Math.abs(diff);
 
-          // Remove previous classes
-          card.classList.remove('active', 'adjacent-left', 'adjacent-right', 'far-left', 'far-right');
+          // Remove all position classes
+          card.classList.remove(
+            'active',
+            'pos-left-1', 'pos-right-1',
+            'pos-left-2', 'pos-right-2',
+            'pos-left-3', 'pos-right-3',
+            'adjacent-left', 'adjacent-right',
+            'far-left', 'far-right'
+          );
 
           if (absDiff === 0) {
-            // Center card
+            // Center card - no rotation
             card.classList.add('active');
           } else if (absDiff === 1) {
-            // Adjacent cards
-            card.classList.add(diff < 0 ? 'adjacent-left' : 'adjacent-right');
+            // Position 1: 45° rotation toward center
+            card.classList.add(diff < 0 ? 'pos-left-1' : 'pos-right-1');
+          } else if (absDiff === 2) {
+            // Position 2: 90° rotation toward center
+            card.classList.add(diff < 0 ? 'pos-left-2' : 'pos-right-2');
           } else {
-            // Far cards
-            card.classList.add(diff < 0 ? 'far-left' : 'far-right');
+            // Position 3+: 135° rotation toward center
+            card.classList.add(diff < 0 ? 'pos-left-3' : 'pos-right-3');
           }
         });
       }

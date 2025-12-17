@@ -447,7 +447,7 @@ export function getNavigationStyles(): string {
       align-items: center;
     }
     .nav-link {
-      color: #FFFFFF;
+      color: rgba(255, 255, 255, 0.75);
       text-decoration: none;
       font-size: 0.9rem;
       font-weight: 500;
@@ -456,7 +456,6 @@ export function getNavigationStyles(): string {
       display: flex;
       align-items: center;
       gap: 4px;
-      opacity: 1;
     }
     .nav-link::after {
       content: '';
