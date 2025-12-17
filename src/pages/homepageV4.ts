@@ -37,22 +37,16 @@ export async function renderPremiumHomepageV4(): Promise<string> {
   const pageStyles = getHomepageStyles();
   const pageContent = `
     <main>
-      <!-- Hero Section - Dark Gradient Background (Version 1 Dark Theme) -->
+      <!-- Hero Section - BLACK background, Split Layout (Round 6) -->
       <section class="hero">
         <div class="hero-inner container">
           <div class="hero-split">
             <div class="hero-left">
-              <h1>
-                <span class="headline-line">PERSONALIZED</span>
-                <span class="headline-line">EXPERIENCES</span>
-                <span class="headline-highlight">POWERFUL ENOUGH</span>
-                <span class="headline-line">TO HEAL, INSPIRE,</span>
-                <span class="headline-line">AND MAKE YOU <span class="headline-highlight">SMILE</span></span>
-              </h1>
+              <h1>PERSONALIZED PRODUCTS <span class="highlight">POWERFUL ENOUGH</span> TO HEAL, INSPIRE, AND MAKE YOU <span class="highlight">SMILE</span></h1>
             </div>
             <div class="hero-right">
               <p class="hero-subtitle">
-                A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em class="tagline-highlight">products so personal customers say "it's unbelievable."</em>
+                A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <em>products that give customers exactly what they want and need.</em>
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -176,13 +170,12 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
 function renderScrollableProductCard(product: ProductWithScore, index: number): string {
   // Unique icons - distinctive for each product
-  // Learning sessions have brain + smaller secondary icon
   const icons: Record<string, string> = {
     santa_message: '🎁',
     vision_board: '🎯',
     flash_cards: '📚',
-    learning_session: '🧠<span style="font-size:0.6em;vertical-align:super;">🎧</span>',
-    video_learning_session: '🧠<span style="font-size:0.6em;vertical-align:super;">🎬</span>',
+    learning_session: '🎧',
+    video_learning_session: '🎬',
     holiday_reset: '🎄',
     new_year_reset: '🌟',
     clarity_planner: '💡',
@@ -456,15 +449,15 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
-       HERO SECTION - Version 1 Dark Theme
+       HERO SECTION - BLACK Background, Split Layout (Round 6)
        ================================================ */
     .hero {
       min-height: auto;
       display: flex;
       align-items: center;
-      padding: 100px 24px 50px;
+      padding: 120px 24px 60px;
       position: relative;
-      background: linear-gradient(135deg, #1a0a1a 0%, #2d1b2d 50%, #1a0a1a 100%);
+      background: #e8e8ec;
       overflow: hidden;
     }
 
@@ -492,43 +485,37 @@ function getHomepageStyles(): string {
     }
 
     .hero h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+      font-family: 'Bodoni Moda', serif;
+      font-size: clamp(2rem, 4vw, 3.2rem);
       font-weight: 700;
-      line-height: 1.2;
+      line-height: 1.15;
       margin-bottom: 0;
-    }
-
-    /* Base headline lines - muted mauve */
-    .hero h1 .headline-line {
-      display: block;
-      color: #8B7082;
+      color: var(--navy);
       font-variant: small-caps;
       letter-spacing: 0.05em;
     }
 
-    /* Highlighted text - coral/salmon italic */
-    .hero h1 .headline-highlight {
-      color: #E8735A;
+    .hero h1 .highlight {
+      color: var(--coral);
       font-style: italic;
       font-variant: normal;
     }
 
     .hero-subtitle {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 1.25rem;
-      line-height: 1.8;
-      color: #C9C0C5;
-      margin: 0 0 28px;
+      font-family: 'Playfair Display', 'Bodoni Moda', 'Georgia', serif;
+      font-size: 1.35rem;
+      line-height: 1.7;
+      color: var(--navy-light);
+      margin: 0 0 24px;
       font-weight: 400;
       letter-spacing: 0.01em;
     }
 
-    .hero-subtitle .tagline-highlight {
-      font-family: 'Cormorant Garamond', serif;
-      font-style: italic;
-      font-size: 1.1em;
-      color: #E8735A;
+    .hero-subtitle em {
+      font-family: 'Great Vibes', cursive;
+      font-style: normal;
+      font-size: 1.2em;
+      color: var(--coral);
     }
 
     .hero-buttons {
@@ -541,32 +528,31 @@ function getHomepageStyles(): string {
       padding: 14px 28px;
       font-size: 0.95rem;
       border-radius: 100px;
-      background: #D4625A;
+      background: var(--coral);
       color: white;
       text-decoration: none;
       font-weight: 600;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 20px rgba(212, 98, 90, 0.4);
+      box-shadow: 0 4px 20px rgba(232, 90, 107, 0.4);
     }
 
     .btn-hero:hover {
-      background: #E8735A;
+      background: var(--coral-light);
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(212, 98, 90, 0.5);
+      box-shadow: 0 8px 30px rgba(232, 90, 107, 0.5);
     }
 
     .btn-hero-outline {
       background: transparent;
-      border: 2px solid #2d1b2d;
-      color: #C9C0C5;
+      border: 2px solid var(--navy);
+      color: var(--navy);
       box-shadow: none;
     }
 
     .btn-hero-outline:hover {
-      background: rgba(45, 27, 45, 0.3);
-      border-color: #C9C0C5;
-      color: white;
-      box-shadow: 0 8px 30px rgba(45, 27, 45, 0.3);
+      background: rgba(26, 26, 46, 0.1);
+      border-color: var(--navy);
+      box-shadow: 0 8px 30px rgba(26, 26, 46, 0.15);
     }
 
     @media (max-width: 900px) {
@@ -581,12 +567,13 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
-       PRODUCTS SHOWCASE - Version 1 Dark Theme
-       Dark gradient background
+       PRODUCTS SHOWCASE - Swiper.js Carousel
+       Triangle/Perspective Layout - Cards rotate TOWARD center
+       PURPLE background per Round 6
        ================================================ */
     .products-showcase {
-      padding: 30px 0 50px;
-      background: linear-gradient(180deg, #1a0a1a 0%, #251525 100%);
+      padding: 40px 0 60px;
+      background: #ffffff;
       overflow: hidden;
       position: relative;
     }
@@ -594,15 +581,13 @@ function getHomepageStyles(): string {
     .products-label {
       display: block;
       text-align: center;
-      font-family: 'Playfair Display', serif;
-      font-size: 1.1rem;
+      font-size: 1rem;
       font-weight: 700;
       text-transform: uppercase;
-      font-variant: small-caps;
-      letter-spacing: 6px;
-      color: #8B7082;
-      margin-bottom: 8px;
-      padding: 0 24px;
+      letter-spacing: 4px;
+      color: var(--purple);
+      margin-bottom: 16px;
+      padding: 10px 24px;
     }
 
     /* Swiper Container */
@@ -743,31 +728,31 @@ function getHomepageStyles(): string {
     }
 
     .scroll-card-inner {
-      background: #1E1E2E;
-      border: 1px solid rgba(139, 112, 130, 0.25);
-      border-radius: 24px;
-      padding: 28px 24px;
+      background: linear-gradient(145deg, var(--purple) 0%, #5b2cb8 100%);
+      border: 1px solid rgba(167, 139, 250, 0.3);
+      border-radius: 28px;
+      padding: 36px 32px;
       height: 100%;
-      min-height: 320px;
+      min-height: 400px;
       position: relative;
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5),
-                  0 0 40px rgba(26, 10, 26, 0.3);
+      box-shadow: 0 20px 60px rgba(124, 58, 237, 0.25),
+                  0 0 40px rgba(124, 58, 237, 0.15);
     }
 
     .scroll-product-card.active .scroll-card-inner {
-      box-shadow: 0 35px 100px rgba(0, 0, 0, 0.5),
-                  0 0 60px rgba(0, 0, 0, 0.3),
+      box-shadow: 0 35px 100px rgba(124, 58, 237, 0.4),
+                  0 0 60px rgba(124, 58, 237, 0.3),
                   0 0 0 3px var(--coral);
       border-color: var(--coral);
     }
 
     .scroll-product-card:hover .scroll-card-inner {
       transform: translateY(-12px);
-      box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45),
-                  0 0 50px rgba(0, 0, 0, 0.3),
+      box-shadow: 0 30px 80px rgba(124, 58, 237, 0.35),
+                  0 0 50px rgba(124, 58, 237, 0.25),
                   0 0 0 2px var(--coral);
       border-color: var(--coral);
     }
@@ -808,14 +793,12 @@ function getHomepageStyles(): string {
     }
 
     .scroll-card-title {
-      font-family: 'Bodoni Moda', 'Bodoni 72', serif;
-      font-size: 1.4rem;
-      font-weight: 600;
-      color: #000;
-      margin-bottom: 10px;
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.6rem;
+      font-weight: 500;
+      color: white;
+      margin-bottom: 12px;
       text-align: center;
-      font-variant: small-caps;
-      letter-spacing: 0.03em;
     }
 
     .scroll-card-desc {
@@ -1315,24 +1298,23 @@ function getHomepageScripts(): string {
       if (!swiperEl) return;
 
       const swiper = new Swiper('.products-swiper', {
-        // Coverflow effect for Planquanta-style 3D carousel
-        effect: 'coverflow',
-        coverflowEffect: {
-          rotate: 35,
-          stretch: 0,
-          depth: 200,
-          modifier: 1,
-          slideShadows: false,
-        },
-
         // Slide settings
         slidesPerView: 'auto',
         centeredSlides: true,
-        spaceBetween: 15,
+        spaceBetween: 20,
         grabCursor: true,
 
+        // Enable free mode for smooth scrolling without snap
+        freeMode: {
+          enabled: true,
+          momentum: true,
+          momentumRatio: 0.5,
+          minimumVelocity: 0.02,
+          sticky: false,
+        },
+
         // Speed and smoothness
-        speed: 500,
+        speed: 400,
 
         // Loop for infinite scroll
         loop: true,
@@ -1342,11 +1324,11 @@ function getHomepageScripts(): string {
 
         // Responsive breakpoints
         breakpoints: {
-          320: { slidesPerView: 1.5, spaceBetween: 10 },
-          480: { slidesPerView: 2, spaceBetween: 12 },
-          768: { slidesPerView: 2.5, spaceBetween: 15 },
-          1024: { slidesPerView: 3, spaceBetween: 15 },
-          1400: { slidesPerView: 4, spaceBetween: 18 }
+          320: { slidesPerView: 1.3, spaceBetween: 16 },
+          480: { slidesPerView: 1.6, spaceBetween: 16 },
+          768: { slidesPerView: 2.5, spaceBetween: 20 },
+          1024: { slidesPerView: 3, spaceBetween: 20 },
+          1400: { slidesPerView: 3.5, spaceBetween: 24 }
         },
 
         // Navigation buttons
