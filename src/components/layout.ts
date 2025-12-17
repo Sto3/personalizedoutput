@@ -199,6 +199,18 @@ export function getSharedStyles(): string {
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
     }
+    /* Nav button - white border on transparent/dark background */
+    .nav .btn-secondary {
+      background: transparent;
+      color: #ffffff;
+      border: 2px solid #ffffff;
+      box-shadow: none;
+    }
+    .nav .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      transform: translateY(-2px);
+      box-shadow: none;
+    }
 
     /* Section Styling */
     .section {
@@ -385,7 +397,7 @@ function getProductIcon(productId: string): string {
 
 export function getNavigationStyles(): string {
   return `
-    /* Navigation - BLACK header */
+    /* Navigation - Transparent header (blends with hero gradient) */
     .nav {
       position: fixed;
       top: 0;
@@ -393,15 +405,18 @@ export function getNavigationStyles(): string {
       right: 0;
       z-index: 1000;
       padding: 16px 24px;
-      background: rgba(10, 10, 15, 0.95);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border-bottom: 1px solid rgba(255,255,255,0.1);
+      background: transparent;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      border-bottom: none;
       transition: all var(--transition-normal);
     }
     .nav.scrolled {
       padding: 12px 24px;
-      background: rgba(10, 10, 15, 0.98);
+      background: rgba(10, 10, 15, 0.95);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
     }
     .nav-inner {
       max-width: var(--container-max);
