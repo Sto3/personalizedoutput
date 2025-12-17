@@ -451,7 +451,8 @@ function getHomepageStyles(): string {
     .hero {
       display: flex;
       align-items: center;
-      padding: 100px 24px 40px;
+      padding: 80px 24px 30px;
+      min-height: unset;
       position: relative;
       background: #0a0a0f;
       overflow: hidden;
@@ -548,11 +549,11 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle {
-      font-family: 'Cormorant Garamond', Georgia, serif !important;
-      font-style: italic !important;
+      font-family: 'Great Vibes', cursive !important;
+      font-style: normal !important;
       font-weight: 400;
-      font-size: 1.25rem;
-      line-height: 1.85;
+      font-size: 1.5rem;
+      line-height: 1.6;
       color: #F8F4F8;
       margin: 0 0 24px;
     }
@@ -563,8 +564,8 @@ function getHomepageStyles(): string {
     }
 
     .hero-subtitle em {
-      font-family: 'Cormorant Garamond', Georgia, serif !important;
-      font-style: italic !important;
+      font-family: 'Great Vibes', cursive !important;
+      font-style: normal !important;
       font-size: 1em;
       color: var(--coral-light);
     }
@@ -1397,7 +1398,7 @@ function getHomepageScripts(): string {
         // Slide settings
         slidesPerView: 'auto',
         centeredSlides: true,
-        spaceBetween: 12,
+        spaceBetween: -40,  // NEGATIVE for overlapping cards
         grabCursor: true,
 
         // Speed and smoothness
