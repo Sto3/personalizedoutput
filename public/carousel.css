@@ -6,11 +6,11 @@
 
 /* Container section */
 .products-showcase {
-  padding: 15px 20px 40px !important;
+  padding: 10px 20px 40px !important;
   background: var(--purple, #7C3AED) !important;
   overflow: visible !important;
   position: relative !important;
-  margin-top: -20px !important;
+  margin-top: -35px !important;
 }
 
 .products-label {
