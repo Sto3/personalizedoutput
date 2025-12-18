@@ -141,14 +141,29 @@
       dots.push(dot);
     });
 
-    // Mouse wheel navigation
+    // Mouse wheel navigation - with debouncing to prevent glitchy behavior
+    let wheelTimeout = null;
+    let isWheeling = false;
     wrapper.parentElement.addEventListener('wheel', function(e) {
-      e.preventDefault();
-      if (e.deltaY > 0) {
+      // Only prevent default for horizontal-ish scrolls or when focused on carousel
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || isWheeling) {
+        e.preventDefault();
+      }
+
+      // Debounce to prevent rapid firing
+      if (wheelTimeout) return;
+
+      isWheeling = true;
+      if (e.deltaY > 0 || e.deltaX > 0) {
         goToSlide(current + 1);
       } else {
         goToSlide(current - 1);
       }
+
+      wheelTimeout = setTimeout(function() {
+        wheelTimeout = null;
+        isWheeling = false;
+      }, 300); // 300ms debounce
     }, { passive: false });
 
     // Keyboard navigation
