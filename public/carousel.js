@@ -11,7 +11,8 @@
   // Product data
   const products = [
     { id: 'santa_message', name: 'Personalized Santa Message', desc: 'A magical, personalized audio message from Santa Claus', price: 20, icon: '🎁', category: 'For Kids' },
-    { id: 'learning_session', name: 'Personalized Lesson', desc: 'Learn anything through what you love', price: 23, icon: '🧠', category: 'Learning' },
+    { id: 'learning_session', name: 'Audio Lesson', desc: 'Learn anything through personalized audio', price: 23, icon: '🧠🎧', category: 'Learning' },
+    { id: 'video_learning_session', name: 'Video Lesson', desc: 'Learn anything through personalized video', price: 33, icon: '🧠🎬', category: 'Learning' },
     { id: 'vision_board', name: 'Vision Board', desc: 'Personalized goals visualization', price: 15, icon: '🎯', category: 'For Adults' },
     { id: 'flash_cards', name: 'Flash Cards', desc: 'Personalized learning cards', price: 12, icon: '📚', category: 'Education' },
     { id: 'thought_organizer', name: 'Thought Organizer', desc: 'Transform ideas into actionable insights', price: 20, icon: '✨', category: 'Life Planning' },
