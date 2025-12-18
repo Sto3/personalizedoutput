@@ -191,6 +191,9 @@ app.use('/demos', express.static(path.join(process.cwd(), 'public', 'demos')));
 app.use('/santa-demos', express.static(path.join(process.cwd(), 'public', 'santa-demos')));
 app.use('/social-videos', express.static(path.join(process.cwd(), 'public', 'social-videos')));
 
+// Serve CSS and JS files from public folder root (carousel.css, carousel.js, etc.)
+app.use(express.static(path.join(process.cwd(), 'public')));
+
 // PWA files - serve manifest.json and sw.js from public folder
 app.get('/manifest.json', (req, res) => {
   res.setHeader('Content-Type', 'application/manifest+json');
