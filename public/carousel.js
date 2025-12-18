@@ -141,14 +141,16 @@
       dots.push(dot);
     });
 
-    // Mouse wheel navigation - strict single-card navigation
+    // Mouse wheel navigation - ONLY on the cards themselves (not the surrounding purple area)
     let wheelLocked = false;
     let accumulatedDelta = 0;
     const DELTA_THRESHOLD = 50; // Minimum scroll amount to trigger
     const LOCK_DURATION = 600;  // Lock navigation for 600ms after each move
 
-    wrapper.parentElement.addEventListener('wheel', function(e) {
-      e.preventDefault(); // Always prevent default to control scrolling
+    // Listen on the wrapper (cards area) ONLY, not the entire stage
+    wrapper.addEventListener('wheel', function(e) {
+      e.preventDefault(); // Prevent default only when directly over cards
+      e.stopPropagation(); // Stop event from bubbling
 
       // If locked, ignore all wheel events
       if (wheelLocked) return;
