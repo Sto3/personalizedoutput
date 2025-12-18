@@ -15,10 +15,10 @@ export function renderHowItWorksPage(): string {
       <section class="hiw-hero">
         <div class="container">
           <span class="eyebrow">How It Works</span>
-          <h1>Simple Process, <span class="highlight">Extraordinary Results</span></h1>
+          <h1>The <span class="highlight">Personalization Experience</span></h1>
           <p class="hero-desc">
-            Creating something deeply personal takes just a few minutes.
-            Here's how the magic happens.
+            Every creation is built from scratch around what makes your recipient unique.
+            Here's how we transform your insights into something extraordinary.
           </p>
         </div>
       </section>
@@ -157,23 +157,11 @@ export function renderHowItWorksPage(): string {
         </div>
       </section>
 
-      <!-- Testimonial -->
-      <section class="testimonial-section">
-        <div class="container">
-          <blockquote>
-            "I've never seen a gift that made my daughter cry happy tears.
-            The Santa message knew things about her that even I forgot I mentioned.
-            This is beyond anything I expected."
-          </blockquote>
-          <cite>— Sarah K., Mom of 7-year-old Emma</cite>
-        </div>
-      </section>
-
       <!-- CTA Section -->
       <section class="cta-section">
         <div class="container">
           <h2>Ready to Create Something Special?</h2>
-          <p>Browse our products and start the process. It only takes a few minutes.</p>
+          <p>Browse our products and begin your personalization journey.</p>
           <a href="/products" class="btn btn-primary">View All Products</a>
         </div>
       </section>
@@ -469,29 +457,6 @@ function getHowItWorksStyles(): string {
 
     .comparison-card li:last-child {
       border-bottom: none;
-    }
-
-    /* Testimonial Section */
-    .testimonial-section {
-      padding: 100px 24px;
-      background: white;
-      text-align: center;
-    }
-
-    .testimonial-section blockquote {
-      font-family: 'Bodoni Moda', serif;
-      font-size: 1.5rem;
-      font-style: italic;
-      color: var(--navy);
-      max-width: 700px;
-      margin: 0 auto 24px;
-      line-height: 1.6;
-    }
-
-    .testimonial-section cite {
-      color: #64748b;
-      font-size: 1rem;
-      font-style: normal;
     }
 
     /* CTA Section */
