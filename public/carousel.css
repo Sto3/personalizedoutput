@@ -1,0 +1,204 @@
+/* ==============================================
+   ISOLATED CAROUSEL CSS - v1.0
+   This file is COMPLETELY ISOLATED from all other styles
+   All rules use !important to prevent conflicts
+   ============================================== */
+
+/* Container section */
+.products-showcase {
+  padding: 60px 20px !important;
+  background: var(--purple, #7C3AED) !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+.products-label {
+  display: block !important;
+  text-align: center !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.35em !important;
+  color: #E85A4F !important;
+  margin-bottom: 40px !important;
+}
+
+/* 3D Stage - The magic happens here */
+.carousel-stage {
+  position: relative !important;
+  width: 100% !important;
+  height: 380px !important;
+  perspective: 1200px !important;
+  perspective-origin: 50% 50% !important;
+}
+
+/* Wrapper holds all cards */
+.carousel-wrapper {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  transform-style: preserve-3d !important;
+  width: 280px !important;
+  height: 340px !important;
+}
+
+/* Individual card styling */
+.carousel-card {
+  position: absolute !important;
+  width: 280px !important;
+  height: 340px !important;
+  background: #0a0a10 !important;
+  border-radius: 20px !important;
+  border: 1px solid rgba(124, 58, 237, 0.3) !important;
+  padding: 24px !important;
+  text-decoration: none !important;
+  color: white !important;
+  display: flex !important;
+  flex-direction: column !important;
+  cursor: pointer !important;
+  backface-visibility: hidden !important;
+  transform-style: preserve-3d !important;
+
+  /* Animation for smooth transitions */
+  transition:
+    transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    opacity 0.5s ease,
+    z-index 0s !important;
+
+  /* CSS custom properties for 3D positioning */
+  --tx: 0px;
+  --tz: 0px;
+  --ry: 0deg;
+  --scale: 1;
+  transform: translateX(var(--tx)) translateZ(var(--tz)) rotateY(var(--ry)) scale(var(--scale)) !important;
+}
+
+/* Card internal elements */
+.carousel-card .card-badge {
+  background: rgba(255, 255, 255, 0.1) !important;
+  padding: 6px 14px !important;
+  border-radius: 20px !important;
+  font-size: 0.75rem !important;
+  width: fit-content !important;
+  margin-bottom: 16px !important;
+}
+
+.carousel-card .card-icon {
+  font-size: 2.5rem !important;
+  margin-bottom: 14px !important;
+  animation: premiumFloat 3s ease-in-out infinite !important;
+}
+
+.carousel-card .card-title {
+  font-size: 1.15rem !important;
+  font-weight: 600 !important;
+  margin-bottom: 8px !important;
+  color: white !important;
+}
+
+.carousel-card .card-desc {
+  color: rgba(255, 255, 255, 0.65) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.5 !important;
+  flex-grow: 1 !important;
+}
+
+.carousel-card .card-footer {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  padding-top: 14px !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+  margin-top: auto !important;
+}
+
+.carousel-card .card-price {
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  color: white !important;
+}
+
+.carousel-card .card-cta {
+  color: #E85A4F !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+}
+
+/* Pagination dots */
+.carousel-dots {
+  display: flex !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  margin-top: 30px !important;
+}
+
+.carousel-dots .dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.3) !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  border: none !important;
+  padding: 0 !important;
+}
+
+.carousel-dots .dot.active {
+  background: #E85A4F !important;
+  transform: scale(1.2) !important;
+}
+
+.carousel-dots .dot:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Premium floating animation for icons */
+@keyframes premiumFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
+
+/* Active glow effect behind center card */
+.active-glow {
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 320px !important;
+  height: 380px !important;
+  background: radial-gradient(ellipse, rgba(232, 90, 79, 0.15) 0%, transparent 70%) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* Floor reflection */
+.floor-reflection {
+  position: absolute !important;
+  bottom: -40px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  width: 400px !important;
+  height: 60px !important;
+  background: linear-gradient(to bottom, rgba(124, 58, 237, 0.1), transparent) !important;
+  pointer-events: none !important;
+  z-index: 0 !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  .carousel-stage {
+    height: 360px !important;
+  }
+
+  .carousel-wrapper {
+    width: 260px !important;
+    height: 320px !important;
+  }
+
+  .carousel-card {
+    width: 260px !important;
+    height: 320px !important;
+    padding: 20px !important;
+  }
+}
