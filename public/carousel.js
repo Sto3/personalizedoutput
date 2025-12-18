@@ -141,29 +141,42 @@
       dots.push(dot);
     });
 
-    // Mouse wheel navigation - with debouncing to prevent glitchy behavior
-    let wheelTimeout = null;
-    let isWheeling = false;
+    // Mouse wheel navigation - strict single-card navigation
+    let wheelLocked = false;
+    let accumulatedDelta = 0;
+    const DELTA_THRESHOLD = 50; // Minimum scroll amount to trigger
+    const LOCK_DURATION = 600;  // Lock navigation for 600ms after each move
+
     wrapper.parentElement.addEventListener('wheel', function(e) {
-      // Only prevent default for horizontal-ish scrolls or when focused on carousel
-      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || isWheeling) {
-        e.preventDefault();
+      e.preventDefault(); // Always prevent default to control scrolling
+
+      // If locked, ignore all wheel events
+      if (wheelLocked) return;
+
+      // Accumulate delta (use whichever axis has more movement)
+      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      accumulatedDelta += delta;
+
+      // Only trigger when threshold is reached
+      if (Math.abs(accumulatedDelta) >= DELTA_THRESHOLD) {
+        // Lock immediately to prevent multiple triggers
+        wheelLocked = true;
+
+        // Navigate based on accumulated direction
+        if (accumulatedDelta > 0) {
+          goToSlide(current + 1);
+        } else {
+          goToSlide(current - 1);
+        }
+
+        // Reset accumulated delta
+        accumulatedDelta = 0;
+
+        // Unlock after duration (allows next single navigation)
+        setTimeout(function() {
+          wheelLocked = false;
+        }, LOCK_DURATION);
       }
-
-      // Debounce to prevent rapid firing
-      if (wheelTimeout) return;
-
-      isWheeling = true;
-      if (e.deltaY > 0 || e.deltaX > 0) {
-        goToSlide(current + 1);
-      } else {
-        goToSlide(current - 1);
-      }
-
-      wheelTimeout = setTimeout(function() {
-        wheelTimeout = null;
-        isWheeling = false;
-      }, 300); // 300ms debounce
     }, { passive: false });
 
     // Keyboard navigation
