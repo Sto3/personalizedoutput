@@ -286,7 +286,6 @@ export function renderNavigation(options: NavOptions = {}): string {
           </div>
 
           <a href="/pricing" class="nav-link ${currentPage === 'pricing' ? 'active' : ''}">Pricing</a>
-          <a href="/social" class="nav-link ${currentPage === 'social' ? 'active' : ''}">Videos</a>
           <a href="/blog" class="nav-link ${currentPage === 'blog' ? 'active' : ''}">Blog</a>
           <a href="/login" class="nav-link ${currentPage === 'login' ? 'active' : ''}">Login</a>
           <a href="/demo-lessons" class="nav-cta">Listen to Demos</a>
@@ -316,7 +315,6 @@ export function renderNavigation(options: NavOptions = {}): string {
           `).join('')}
         </div>
         <a href="/pricing" class="mobile-link">Pricing</a>
-        <a href="/social" class="mobile-link">Videos</a>
         <a href="/blog" class="mobile-link">Blog</a>
         <a href="/login" class="mobile-link">Login</a>
         <a href="/demo-lessons" class="mobile-cta">Listen to Demos</a>

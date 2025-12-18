@@ -56,7 +56,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             </div>
             <div class="hero-right">
               <p class="hero-subtitle">
-                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally understands mortgages through their bakery. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">products so personal customers say 'it's unbelievable.'</span>"
+                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally grasps complex concepts through what they're passionate about. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">experiences so personal they meet you where you are.</span>"
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -86,8 +86,8 @@ export async function renderPremiumHomepageV4(): Promise<string> {
       <section class="how-it-works section" id="how-it-works">
         <div class="section-header">
           <span class="section-eyebrow">How It Works</span>
-          <h2>Simple Process, <span class="script-accent">Magical</span> Results</h2>
-          <p>Creating something deeply personal takes just a few minutes.</p>
+          <h2>A Thoughtful Process, <span class="script-accent">Meaningful</span> Results</h2>
+          <p>Whether for yourself or as a gift, every experience is crafted with care.</p>
         </div>
         <div class="steps container">
           <div class="step">
@@ -133,10 +133,10 @@ export async function renderPremiumHomepageV4(): Promise<string> {
       <!-- Final CTA -->
       <section class="final-cta section">
         <div class="cta-card container-narrow">
-          <h2>Ready to Learn <span class="script-accent">Your</span> Way?</h2>
+          <h2>Ready to Create Something <span class="script-accent">Meaningful</span>?</h2>
           <p>
-            Watch real demo lessons and see how our Thought Organizer™ connects
-            what you love to what you need to learn. For kids AND adults.
+            Explore our demos and see how our Personalization Experience™ creates
+            products tailored to you or someone you care about. For personal growth AND thoughtful gifts.
           </p>
           <div class="cta-buttons">
             <a href="/demo-lessons" class="btn btn-primary btn-large">
