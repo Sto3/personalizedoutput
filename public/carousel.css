@@ -21,7 +21,12 @@
   text-transform: uppercase !important;
   letter-spacing: 0.35em !important;
   color: #E85A4F !important;
-  margin-bottom: 8px !important;
+  margin-bottom: 0 !important;
+}
+
+/* Reduce space above the 3D stage */
+.carousel-stage {
+  margin-top: -10px !important;
 }
 
 /* 3D Stage - The magic happens here */
