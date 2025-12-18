@@ -11,7 +11,7 @@
 
 import { renderPageStart, renderPageEnd } from '../components/layout';
 import { PRODUCTS, ProductType, ProductInfo, getProductsOrderedBySales, ProductWithScore } from '../lib/supabase/orderService';
-import { renderProductCarousel, getCarouselStyles, getCarouselScript } from '../components/ProductCarousel';
+// Custom 3D carousel - no external libraries needed
 
 // ============================================================
 // HOMEPAGE CONTENT
@@ -35,7 +35,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
   // Reviews section removed until we have real customer reviews
 
-  const pageStyles = getHomepageStyles() + getCarouselStyles();
+  const pageStyles = getHomepageStyles();
   const pageContent = `
     <main>
       <!-- Hero Section - BLACK background, Split Layout (Round 6) -->
@@ -71,8 +71,8 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         </div>
       </section>
 
-      <!-- Product Showcase - Clean Swiper.js Coverflow Carousel -->
-      ${renderProductCarousel(orderedProducts)}
+      <!-- Product Showcase - Custom 3D Coverflow Carousel -->
+      ${renderCustomCarousel(orderedProducts)}
 
       <!-- How It Works -->
       <section class="how-it-works section" id="how-it-works">
@@ -145,7 +145,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
   const pageScripts = `
     <script>
-      ${getCarouselScript()}
+      ${getCustomCarouselScript()}
       ${getHomepageScripts()}
     </script>
   `;
@@ -194,6 +194,179 @@ function renderScrollableProductCard(product: ProductWithScore, index: number): 
       </div>
     </a>
     </div>
+  `;
+}
+
+// ============================================================
+// CUSTOM 3D CAROUSEL - Pure CSS + Vanilla JS (no Swiper)
+// ============================================================
+
+function renderCustomCarousel(products: ProductWithScore[]): string {
+  const icons: Record<string, string> = {
+    santa_message: '🎁',
+    vision_board: '🎯',
+    flash_cards: '📚',
+    learning_session: '🧠',
+    video_learning_session: '🎬',
+    holiday_reset: '🎄',
+    new_year_reset: '🌟',
+    clarity_planner: '💡',
+    thought_organizer: '✨',
+  };
+
+  const categoryLabels: Record<string, string> = {
+    kids: 'For Kids',
+    adults: 'For Adults',
+    life_planning: 'Life Planning',
+  };
+
+  const cards = products.map((p, i) => `
+    <a href="/${p.slug}" class="carousel-card" data-index="${i}">
+      <span class="card-badge">${categoryLabels[p.category] || 'Product'}</span>
+      <div class="card-icon-wrapper">
+        <span class="card-icon">${icons[p.id] || '📦'}</span>
+      </div>
+      <h3 class="card-title">${p.name}</h3>
+      <p class="card-desc">${p.description}</p>
+      <div class="card-footer">
+        <span class="card-price">$${(p.price / 100).toFixed(0)}</span>
+        <span class="card-cta">Learn More →</span>
+      </div>
+    </a>
+  `).join('');
+
+  const dots = products.map((_, i) => `<span class="carousel-dot" data-index="${i}"></span>`).join('');
+
+  return `
+    <section class="carousel-section" id="products">
+      <span class="carousel-eyebrow">Our Products</span>
+      <div class="carousel-stage">
+        <div class="carousel-wrapper">
+          ${cards}
+        </div>
+      </div>
+      <div class="carousel-dots">
+        ${dots}
+      </div>
+    </section>
+  `;
+}
+
+function getCustomCarouselScript(): string {
+  return `
+    // Custom 3D Carousel - Pure CSS transforms + Vanilla JS
+    (function() {
+      const wrapper = document.querySelector('.carousel-wrapper');
+      const cards = document.querySelectorAll('.carousel-card');
+      const dots = document.querySelectorAll('.carousel-dot');
+      if (!wrapper || cards.length === 0) return;
+
+      let currentIndex = 0;
+      const totalCards = cards.length;
+
+      // Position classes for 3D coverflow effect
+      const positions = {
+        'center': { transform: 'translateX(0) translateZ(0) rotateY(0deg) scale(1)', opacity: 1, zIndex: 10 },
+        'left-1': { transform: 'translateX(-200px) translateZ(-120px) rotateY(25deg) scale(0.85)', opacity: 0.7, zIndex: 5 },
+        'left-2': { transform: 'translateX(-350px) translateZ(-220px) rotateY(35deg) scale(0.7)', opacity: 0.4, zIndex: 3 },
+        'left-3': { transform: 'translateX(-450px) translateZ(-300px) rotateY(40deg) scale(0.55)', opacity: 0.2, zIndex: 1 },
+        'right-1': { transform: 'translateX(200px) translateZ(-120px) rotateY(-25deg) scale(0.85)', opacity: 0.7, zIndex: 5 },
+        'right-2': { transform: 'translateX(350px) translateZ(-220px) rotateY(-35deg) scale(0.7)', opacity: 0.4, zIndex: 3 },
+        'right-3': { transform: 'translateX(450px) translateZ(-300px) rotateY(-40deg) scale(0.55)', opacity: 0.2, zIndex: 1 },
+        'hidden': { transform: 'translateX(0) translateZ(-400px) scale(0.3)', opacity: 0, zIndex: 0 }
+      };
+
+      function updateCarousel(index) {
+        currentIndex = index;
+
+        cards.forEach((card, i) => {
+          const offset = i - currentIndex;
+          let pos;
+
+          if (offset === 0) pos = positions['center'];
+          else if (offset === -1) pos = positions['left-1'];
+          else if (offset === -2) pos = positions['left-2'];
+          else if (offset <= -3) pos = positions['left-3'];
+          else if (offset === 1) pos = positions['right-1'];
+          else if (offset === 2) pos = positions['right-2'];
+          else if (offset >= 3) pos = positions['right-3'];
+          else pos = positions['hidden'];
+
+          card.style.transform = pos.transform;
+          card.style.opacity = pos.opacity;
+          card.style.zIndex = pos.zIndex;
+          card.classList.toggle('active', offset === 0);
+        });
+
+        // Update dots
+        dots.forEach((dot, i) => {
+          dot.classList.toggle('active', i === currentIndex);
+        });
+      }
+
+      // Click handlers for cards
+      cards.forEach((card, i) => {
+        card.addEventListener('click', (e) => {
+          if (i !== currentIndex) {
+            e.preventDefault();
+            updateCarousel(i);
+          }
+        });
+      });
+
+      // Dot click handlers
+      dots.forEach((dot, i) => {
+        dot.addEventListener('click', () => updateCarousel(i));
+      });
+
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft' && currentIndex > 0) {
+          updateCarousel(currentIndex - 1);
+        } else if (e.key === 'ArrowRight' && currentIndex < totalCards - 1) {
+          updateCarousel(currentIndex + 1);
+        }
+      });
+
+      // Touch/swipe support
+      let touchStartX = 0;
+      let touchEndX = 0;
+      const stage = document.querySelector('.carousel-stage');
+
+      stage.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+      }, { passive: true });
+
+      stage.addEventListener('touchend', (e) => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 50) {
+          if (diff > 0 && currentIndex < totalCards - 1) {
+            updateCarousel(currentIndex + 1);
+          } else if (diff < 0 && currentIndex > 0) {
+            updateCarousel(currentIndex - 1);
+          }
+        }
+      }, { passive: true });
+
+      // Mouse wheel/scroll support
+      let scrollTimeout;
+      stage.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        clearTimeout(scrollTimeout);
+        scrollTimeout = setTimeout(() => {
+          if (e.deltaY > 0 && currentIndex < totalCards - 1) {
+            updateCarousel(currentIndex + 1);
+          } else if (e.deltaY < 0 && currentIndex > 0) {
+            updateCarousel(currentIndex - 1);
+          }
+        }, 50);
+      }, { passive: false });
+
+      // Initialize
+      updateCarousel(0);
+      console.log('Custom 3D Carousel initialized!');
+    })();
   `;
 }
 
@@ -620,18 +793,18 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
-       PRODUCTS SHOWCASE - Swiper.js Coverflow Carousel
-       Clean implementation - let Swiper handle ALL transforms
+       CUSTOM 3D CAROUSEL - Pure CSS + Vanilla JS
+       No Swiper.js - Complete control over 3D transforms
        PURPLE background per Round 6
        ================================================ */
-    .products-showcase {
+    .carousel-section {
       padding: 40px 0 60px;
       background: var(--purple);
       overflow: hidden;
       position: relative;
     }
 
-    .products-label {
+    .carousel-eyebrow {
       display: block;
       text-align: center;
       font-size: 1rem;
@@ -639,74 +812,61 @@ function getHomepageStyles(): string {
       text-transform: uppercase;
       letter-spacing: 0.35em;
       color: #E85A4F;
-      margin-bottom: 20px;
+      margin-bottom: 30px;
     }
 
-    /* Swiper Container - Clean, no custom transforms */
-    .products-swiper {
+    /* 3D Stage - Creates the perspective for coverflow effect */
+    .carousel-stage {
+      perspective: 1200px;
+      perspective-origin: 50% 50%;
       width: 100%;
-      padding: 40px 0;
+      padding: 20px 0 40px;
       overflow: visible;
     }
 
-    .products-swiper .swiper-slide {
-      width: 280px;
-      /* CRITICAL: No transition, no transform - Swiper coverflow handles everything */
-    }
-
-    /* Pagination */
-    .swiper-pagination-custom {
+    .carousel-wrapper {
       display: flex;
       justify-content: center;
-      gap: 10px;
-      margin-top: 30px;
+      align-items: center;
+      position: relative;
+      height: 380px;
+      transform-style: preserve-3d;
     }
 
-    .swiper-pagination-custom .swiper-pagination-bullet {
-      width: 10px;
-      height: 10px;
-      background: rgba(255, 255, 255, 0.3);
-      border-radius: 50%;
-      transition: all 0.3s ease;
-      cursor: pointer;
-    }
-
-    .swiper-pagination-custom .swiper-pagination-bullet-active {
-      background: var(--coral);
-      width: 28px;
-      border-radius: 5px;
-    }
-
-    /* Card styling only - absolutely NO transforms here */
-    .scroll-product-card {
-      display: block;
-      text-decoration: none;
-      width: 100%;
-      height: 100%;
-    }
-
-    .scroll-card-inner {
-      background: #080810;
-      border: 1px solid rgba(124, 58, 237, 0.25);
-      border-radius: 20px;
-      padding: 24px 20px;
+    /* Individual card - all 3D transforms applied via JS */
+    .carousel-card {
+      position: absolute;
+      width: 280px;
       height: 340px;
+      background: #0a0a10;
+      border-radius: 20px;
+      border: 1px solid rgba(124, 58, 237, 0.25);
+      padding: 24px;
+      text-decoration: none;
+      color: white;
       display: flex;
       flex-direction: column;
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4);
-      /* NO transition on transform - Swiper controls this */
+      transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+                  opacity 0.4s ease,
+                  box-shadow 0.3s ease;
+      cursor: pointer;
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
     }
 
-    /* Subtle hover effect - only shadow, no transform */
-    .scroll-card-inner:hover {
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+    /* Active card gets elevated styling */
+    .carousel-card.active {
+      box-shadow: 0 30px 70px rgba(0, 0, 0, 0.5),
+                  0 0 40px rgba(124, 58, 237, 0.2);
       border-color: rgba(124, 58, 237, 0.5);
     }
 
-    .scroll-card-badge {
-      position: absolute;
-      top: 24px;
-      left: 24px;
+    .carousel-card:hover {
+      box-shadow: 0 35px 80px rgba(0, 0, 0, 0.6);
+    }
+
+    .card-badge {
       background: rgba(255, 255, 255, 0.1);
       color: rgba(255, 255, 255, 0.85);
       padding: 8px 14px;
@@ -715,105 +875,110 @@ function getHomepageStyles(): string {
       font-weight: 600;
       letter-spacing: 0.02em;
       border: 1px solid rgba(255, 255, 255, 0.1);
+      width: fit-content;
+      margin-bottom: 16px;
     }
 
-    .scroll-card-popular {
-      position: absolute;
-      top: 24px;
-      right: 24px;
-      background: linear-gradient(135deg, var(--coral), var(--purple));
-      color: white;
-      padding: 8px 14px;
-      border-radius: 100px;
-      font-size: 0.65rem;
-      font-weight: 700;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-
-    .scroll-card-icon {
-      font-size: 3.5rem;
-      margin: 30px 0 16px;
+    .card-icon-wrapper {
       text-align: center;
+      margin-bottom: 14px;
+    }
+
+    .card-icon {
+      font-size: 3rem;
       filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
     }
 
-    .scroll-card-title {
+    .card-title {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.25rem;
-      font-weight: 500;
+      font-size: 1.2rem;
+      font-weight: 600;
       color: white;
       margin-bottom: 8px;
       text-align: center;
       line-height: 1.3;
     }
 
-    .scroll-card-desc {
-      font-size: 0.8rem;
-      color: rgba(255, 255, 255, 0.65);
+    .card-desc {
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
       line-height: 1.5;
       text-align: center;
       flex-grow: 1;
-      margin-bottom: 16px;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;
       overflow: hidden;
     }
 
-    .scroll-card-footer {
+    .card-footer {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-top: 20px;
+      padding-top: 14px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
+      margin-top: auto;
     }
 
-    .scroll-card-price {
-      font-family: 'Inter', sans-serif;
-      font-size: 1.75rem;
+    .card-price {
+      font-size: 1.3rem;
       font-weight: 700;
       color: white;
     }
 
-    .scroll-card-cta {
-      font-size: 0.95rem;
+    .card-cta {
+      color: #E85A4F;
+      font-size: 0.85rem;
       font-weight: 600;
-      color: var(--coral);
-      transition: all 0.3s ease;
+      transition: transform 0.3s ease;
     }
 
-    .scroll-product-card:hover .scroll-card-cta {
-      color: var(--purple-light);
+    .carousel-card.active:hover .card-cta {
       transform: translateX(4px);
     }
 
-    .scroll-indicator {
+    /* Pagination dots */
+    .carousel-dots {
       display: flex;
       justify-content: center;
-      align-items: center;
-      gap: 8px;
-      margin-top: 24px;
-      color: #888;
-      font-size: 0.85rem;
+      gap: 10px;
+      margin-top: 10px;
     }
 
-    .scroll-indicator svg {
-      animation: arrowBounce 1.5s ease-in-out infinite;
+    .carousel-dot {
+      width: 10px;
+      height: 10px;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.3s ease;
     }
 
-    @keyframes arrowBounce {
-      0%, 100% { transform: translateX(0); }
-      50% { transform: translateX(5px); }
+    .carousel-dot:hover {
+      background: rgba(255, 255, 255, 0.5);
     }
 
+    .carousel-dot.active {
+      background: var(--coral);
+      width: 28px;
+      border-radius: 5px;
+    }
+
+    /* Responsive adjustments */
     @media (max-width: 768px) {
-      .scroll-card-inner {
-        height: 300px;
-        padding: 20px 16px;
-      }
-      .products-swiper .swiper-slide {
+      .carousel-card {
         width: 240px;
+        height: 300px;
+        padding: 20px;
+      }
+      .carousel-wrapper {
+        height: 340px;
+      }
+      .card-icon {
+        font-size: 2.5rem;
+      }
+      .card-title {
+        font-size: 1.1rem;
       }
     }
 
