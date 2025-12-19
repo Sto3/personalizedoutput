@@ -33,12 +33,12 @@ export function renderDemoLessonsPage(): string {
 
           <div class="demo-grid vision-grid">
             <div class="demo-card vision-card">
-              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-male.png', 'Built Different')">
-                <img src="/demos/sample-vision-board-male.png" alt="Built Different - Personalized Vision Board" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-male.png', 'James: Built Different')">
+                <img src="/demos/sample-vision-board-male.png" alt="James: Built Different - Personalized Vision Board" loading="lazy">
                 <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>Built Different</h3>
+                <h3>James: Built Different</h3>
                 <p>A bold vision board focused on discipline, execution, and achieving greatness</p>
                 <div class="demo-tags">
                   <span class="tag vision">Fully Custom</span>
@@ -63,12 +63,12 @@ export function renderDemoLessonsPage(): string {
             </div>
 
             <div class="demo-card vision-card">
-              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-relationship.png', 'Our 3-Month Reset')">
-                <img src="/demos/sample-vision-board-relationship.png" alt="Our 3-Month Reset - Personalized Vision Board" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-relationship.png', 'Jane & Jon\\'s 3-Month Reset')">
+                <img src="/demos/sample-vision-board-relationship.png" alt="Jane & Jon's 3-Month Reset - Personalized Vision Board" loading="lazy">
                 <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>Our 3-Month Reset</h3>
+                <h3>Jane & Jon's 3-Month Reset</h3>
                 <p>A couples' vision board for reconnecting and realigning your shared goals</p>
                 <div class="demo-tags">
                   <span class="tag vision">Fully Custom</span>
@@ -162,16 +162,16 @@ export function renderDemoLessonsPage(): string {
             <div class="demo-card santa-card">
               <div class="video-container portrait">
                 <video controls preload="metadata">
-                  <source src="/demos/santa-emma-preview.mp4" type="video/mp4">
+                  <source src="/santa-demos/emma_invisible.mp4" type="video/mp4">
                   Your browser does not support video.
                 </video>
               </div>
               <div class="demo-info">
-                <h3>Emma's Santa Message</h3>
-                <p>Age 7 • References her love of ballet and her pet hamster</p>
+                <h3>Emma: Feeling Invisible</h3>
+                <p>Santa sees her kind heart and tells her she matters</p>
                 <div class="demo-tags">
-                  <span class="tag santa">Personal Details</span>
-                  <span class="tag">Christmas Magic</span>
+                  <span class="tag santa">Emotional</span>
+                  <span class="tag">Validation</span>
                 </div>
               </div>
             </div>
@@ -179,16 +179,16 @@ export function renderDemoLessonsPage(): string {
             <div class="demo-card santa-card">
               <div class="video-container portrait">
                 <video controls preload="metadata">
-                  <source src="/demos/santa-jake-preview.mp4" type="video/mp4">
+                  <source src="/santa-demos/james_protecting.mp4" type="video/mp4">
                   Your browser does not support video.
                 </video>
               </div>
               <div class="demo-info">
-                <h3>Jake's Santa Message</h3>
-                <p>Age 5 • Knows about his dinosaur collection and best friend</p>
+                <h3>James: Protecting His Sister</h3>
+                <p>Santa celebrates his courage and bravery</p>
                 <div class="demo-tags">
-                  <span class="tag santa">Specific Names</span>
-                  <span class="tag">Emotional</span>
+                  <span class="tag santa">Courage</span>
+                  <span class="tag">Sibling</span>
                 </div>
               </div>
             </div>
@@ -196,16 +196,50 @@ export function renderDemoLessonsPage(): string {
             <div class="demo-card santa-card">
               <div class="video-container portrait">
                 <video controls preload="metadata">
-                  <source src="/demos/santa-lily-preview.mp4" type="video/mp4">
+                  <source src="/santa-demos/sofia_smart.mp4" type="video/mp4">
                   Your browser does not support video.
                 </video>
               </div>
               <div class="demo-info">
-                <h3>Lily's Santa Message</h3>
-                <p>Age 9 • Mentions her soccer team and upcoming recital</p>
+                <h3>Sofia: Not Smart Enough</h3>
+                <p>Santa reminds her that effort matters more than being perfect</p>
                 <div class="demo-tags">
-                  <span class="tag santa">Upcoming Events</span>
-                  <span class="tag">Encouraging</span>
+                  <span class="tag santa">Encouragement</span>
+                  <span class="tag">Growth</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card santa-card">
+              <div class="video-container portrait">
+                <video controls preload="metadata">
+                  <source src="/santa-demos/elijah_kindness.mp4" type="video/mp4">
+                  Your browser does not support video.
+                </video>
+              </div>
+              <div class="demo-info">
+                <h3>Elijah: Unnoticed Kindness</h3>
+                <p>Santa tells him the kindest hearts do good when no one's watching</p>
+                <div class="demo-tags">
+                  <span class="tag santa">Kindness</span>
+                  <span class="tag">Validation</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card santa-card">
+              <div class="video-container portrait">
+                <video controls preload="metadata">
+                  <source src="/santa-demos/lily_moved.mp4" type="video/mp4">
+                  Your browser does not support video.
+                </video>
+              </div>
+              <div class="demo-info">
+                <h3>Lily: Just Moved</h3>
+                <p>Santa encourages her that new friendships are coming</p>
+                <div class="demo-tags">
+                  <span class="tag santa">New Start</span>
+                  <span class="tag">Hope</span>
                 </div>
               </div>
             </div>

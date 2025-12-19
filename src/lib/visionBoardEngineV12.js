@@ -35,6 +35,19 @@ const FONTS = {
 function selectFonts(style) {
   const mood = (style?.mood || '').toLowerCase();
   const isMasculine = mood.includes('masculine') || mood.includes('dark') || mood.includes('discipline');
+  // Detect relationship/couples boards - use NEUTRAL font (not masculine smallcaps, not feminine script)
+  const isRelationship = mood.includes('couple') || mood.includes('relationship') || mood.includes('together') || mood.includes('partner');
+
+  // For relationship boards: use elegant serif (Cormorant Garamond) - neither masculine nor feminine
+  if (isRelationship) {
+    return {
+      title: "Cormorant Garamond",  // Elegant, gender-neutral serif
+      titleTransform: 'none',
+      titleLetterSpacing: '0.05em',
+      quote: FONTS.serifQuote,
+      text: FONTS.serifCaps
+    };
+  }
 
   return {
     title: isMasculine ? FONTS.serifCaps : FONTS.script,

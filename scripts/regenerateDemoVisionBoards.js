@@ -16,7 +16,7 @@ const { generateVisionBoard } = require('../src/lib/visionBoardEngineV12');
 const DEMO_BOARDS = [
   {
     id: 'male',
-    title: "BUILT DIFFERENT",
+    title: "JAMES: BUILT DIFFERENT",
     subtitle: "FOCUS • DISCIPLINE • EXECUTE",
     outputFile: 'sample-vision-board-male.png',
     colors: {
@@ -84,7 +84,7 @@ const DEMO_BOARDS = [
       bannerSubtext: 'rgba(255,255,255,0.8)',
       accents: ['#D4A574', '#B8956E', '#E8D4C4', '#C9A962']
     },
-    style: { mood: 'warm romantic cozy intimate' },
+    style: { mood: 'warm romantic cozy intimate couple relationship' },
     photos: [
       // Relationship-focused imagery WITHOUT humans/body parts:
       "two coffee cups on wooden table, morning together, cozy aesthetic",
