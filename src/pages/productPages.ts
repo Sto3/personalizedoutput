@@ -115,7 +115,7 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
       { icon: '🔄', title: 'Multiple Formats', description: 'Poster, desktop wallpaper, phone wallpaper - see your vision everywhere.' },
     ],
     processSteps: [
-      { step: 1, title: 'Deep Discovery', description: 'Answer our thoughtful questionnaire about your goals, dreams, and visual style.' },
+      { step: 1, title: 'Deep Discovery', description: 'Complete the Personalization Experience — share your goals, dreams, and visual style.' },
       { step: 2, title: 'Curated Creation', description: 'We select and arrange imagery that represents YOUR specific vision.' },
       { step: 3, title: 'Design Review', description: 'Preview your board and request any changes.' },
       { step: 4, title: 'High-Res Delivery', description: 'Receive print-ready files in multiple sizes and formats.' },
@@ -222,7 +222,7 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
       { icon: '🔄', title: 'Review System', description: 'Built-in checkpoints to stay on track and adjust course.' },
     ],
     processSteps: [
-      { step: 1, title: 'Deep Intake', description: 'Complete our comprehensive questionnaire about your goals and life.' },
+      { step: 1, title: 'Deep Intake', description: 'Complete the Personalization Experience — share your goals and what matters most in your life.' },
       { step: 2, title: 'Strategic Design', description: 'We architect a planning system specific to your needs.' },
       { step: 3, title: 'Custom Production', description: 'Your planner is created with your goals embedded throughout.' },
       { step: 4, title: 'Multi-Format Delivery', description: 'Receive printable PDF, digital version, and quick-reference cards.' },
@@ -523,8 +523,8 @@ export function renderSuccessPage(): string {
           <div class="next-steps">
             <h2>What Happens Next</h2>
             <ol>
-              <li>Check your email for a confirmation and the personalization questionnaire</li>
-              <li>Fill out the questionnaire to tell us about your preferences</li>
+              <li>Check your email for a confirmation and the Personalization Experience link</li>
+              <li>Complete the Personalization Experience to tell us what makes you unique</li>
               <li>We'll create your personalized product within 24-48 hours</li>
               <li>You'll receive an email with your download link</li>
             </ol>

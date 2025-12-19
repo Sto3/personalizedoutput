@@ -55,19 +55,19 @@ export function renderHowItWorksPage(): string {
               <div class="step-line"></div>
             </div>
             <div class="step-content">
-              <h2>Tell Us About Them</h2>
+              <h2>Complete the Personalization Experience</h2>
               <p>
-                Answer a short questionnaire about the person you're creating
-                this for. The more details you share, the more personal the
-                result. We'll ask about their interests, goals, challenges,
-                and what makes them unique.
+                Share what makes the person truly unique through our thoughtful
+                Personalization Experience. The more you share about their interests,
+                goals, challenges, and personality, the more deeply personal the
+                result becomes — this is where the magic happens.
               </p>
               <div class="example-box">
-                <span class="example-label">Example Questions:</span>
+                <span class="example-label">We'll explore things like:</span>
                 <ul>
-                  <li>What are their favorite hobbies or interests?</li>
-                  <li>What's a challenge they're facing?</li>
-                  <li>What would make them smile?</li>
+                  <li>What are their passions and interests?</li>
+                  <li>What challenges are they navigating?</li>
+                  <li>What would truly resonate with them?</li>
                 </ul>
               </div>
             </div>
@@ -170,7 +170,7 @@ export function renderHowItWorksPage(): string {
 
   return renderPageStart({
     title: 'How It Works',
-    description: 'Learn how our personalized products are created in just 4 simple steps. From questionnaire to delivery, see how we create deeply personal experiences.',
+    description: 'Learn how our personalized products are created in just 4 simple steps. From the Personalization Experience to delivery, see how we create deeply personal experiences.',
     currentPage: 'how-it-works',
     additionalStyles: pageStyles
   }) + pageContent + renderPageEnd();

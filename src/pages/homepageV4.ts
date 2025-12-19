@@ -48,9 +48,10 @@ export async function renderPremiumHomepageV4(): Promise<string> {
                   <span class="headline-line headline-muted">PERSONALIZED</span>
                   <span class="headline-line headline-muted">EXPERIENCES</span>
                   <span class="headline-line headline-coral">POWERFUL ENOUGH</span>
-                  <span class="headline-line headline-muted">TO HEAL, INSPIRE,</span>
-                  <span class="headline-line headline-muted">AND MAKE YOU</span>
-                  <span class="headline-line headline-coral">SMILE</span>
+                  <span class="headline-line headline-muted">TO HELP YOU</span>
+                  <span class="headline-line headline-muted">HEAL AND LEARN,</span>
+                  <span class="headline-line headline-muted">INSPIRE, AND</span>
+                  <span class="headline-line headline-coral">MAKE YOU SMILE</span>
                 </h1>
               </div>
             </div>
@@ -71,7 +72,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
               </div>
 
               <p class="hero-subtitle">
-                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally grasps complex concepts through what they're passionate about. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">products so personal customers say 'it's unbelievable.'</span>"
+                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally grasps complex concepts through what they're passionate about. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">experiences so personal that they meet you where you are.</span>"
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -703,11 +704,12 @@ function getHomepageStyles(): string {
     }
 
     .headline-line:nth-child(1) { animation-delay: 0s; }
-    .headline-line:nth-child(2) { animation-delay: 0.15s; }
-    .headline-line:nth-child(3) { animation-delay: 0.3s; }
-    .headline-line:nth-child(4) { animation-delay: 0.45s; }
-    .headline-line:nth-child(5) { animation-delay: 0.6s; }
-    .headline-line:nth-child(6) { animation-delay: 0.75s; }
+    .headline-line:nth-child(2) { animation-delay: 0.12s; }
+    .headline-line:nth-child(3) { animation-delay: 0.24s; }
+    .headline-line:nth-child(4) { animation-delay: 0.36s; }
+    .headline-line:nth-child(5) { animation-delay: 0.48s; }
+    .headline-line:nth-child(6) { animation-delay: 0.6s; }
+    .headline-line:nth-child(7) { animation-delay: 0.72s; }
 
     .headline-muted {
       color: #F5EEF0;

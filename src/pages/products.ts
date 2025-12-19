@@ -94,7 +94,7 @@ export async function renderProductsPage(): Promise<string> {
       <section class="cta-section">
         <div class="container">
           <h2>Not Sure Which Product Is Right?</h2>
-          <p>Every product starts with a simple questionnaire. We'll guide you through it.</p>
+          <p>Every product starts with the Personalization Experience. We'll guide you through it.</p>
           <a href="/how-it-works" class="btn btn-primary">See How It Works</a>
         </div>
       </section>

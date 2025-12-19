@@ -38,7 +38,7 @@ const DEMO_BOARDS = [
       "modern city skyline at dusk, architectural photography",
       "chess pieces on board, dramatic lighting, strategy concept",
       "stock market charts on multiple screens, green numbers",
-      "passport with airplane tickets on wooden desk, travel concept",
+      "vintage world map with compass and airplane model on wooden desk, travel concept",
       "fireworks display over city skyline at night"
     ]
   },

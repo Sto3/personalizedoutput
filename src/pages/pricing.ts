@@ -142,8 +142,8 @@ export function renderPricingPageNew(): string {
             </div>
             <div class="approach-card">
               <div class="approach-icon">🎁</div>
-              <h3>Perfect for Gifts</h3>
-              <p>Create something special for birthdays, holidays, or just because. Each creation is uniquely personal.</p>
+              <h3>Made for Personal Benefit or as Gifts</h3>
+              <p>Create something meaningful for yourself or for others you care about. Each creation is uniquely personal whether for your own growth or as a thoughtful gift.</p>
             </div>
             <div class="approach-card">
               <div class="approach-icon">⚡</div>
@@ -344,7 +344,7 @@ export function renderPricingPageNew(): string {
             <!-- Product FAQs -->
             <div class="faq-item">
               <h3>How personalized are these products?</h3>
-              <p>Deeply personal. We don't add names to templates. You complete a thoughtful questionnaire, and we create something unique from your answers — built entirely around the person you describe.</p>
+              <p>Deeply personal. We don't add names to templates. You complete our Personalization Experience, and we create something unique from your answers — built entirely around the person you describe.</p>
             </div>
             <div class="faq-item">
               <h3>How long does delivery take?</h3>
@@ -366,7 +366,7 @@ export function renderPricingPageNew(): string {
       <section class="cta-section">
         <div class="container">
           <h2>Ready to Create Something Personal?</h2>
-          <p>Browse our products and start with a thoughtful questionnaire. We handle the rest.</p>
+          <p>Browse our products and complete the Personalization Experience. We handle the rest.</p>
           <a href="/products" class="btn btn-primary">View All Products</a>
         </div>
       </section>
