@@ -149,6 +149,60 @@ export function renderDemoLessonsPage(): string {
         </div>
       </section>
 
+      <!-- Vision Board Samples Section -->
+      <section class="demos-section">
+        <div class="container">
+          <div class="section-header">
+            <h2><span class="icon">🎯</span> Vision Board Samples</h2>
+            <p>Beautiful, personalized vision boards that help you visualize your goals</p>
+          </div>
+
+          <div class="demo-grid vision-grid">
+            <div class="demo-card vision-card">
+              <div class="image-container">
+                <img src="/demos/sample-vision-board-career.png" alt="Career Focus Vision Board" loading="lazy">
+              </div>
+              <div class="demo-info">
+                <h3>Career Focus</h3>
+                <p>Professional ambitions, workspace goals, and success visualization</p>
+                <div class="demo-tags">
+                  <span class="tag vision">Professional</span>
+                  <span class="tag">Goals</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card vision-card">
+              <div class="image-container">
+                <img src="/demos/sample-vision-board-creative.png" alt="Creative Spirit Vision Board" loading="lazy">
+              </div>
+              <div class="demo-info">
+                <h3>Creative Spirit</h3>
+                <p>Artistic expression, cozy spaces, and nurturing creativity</p>
+                <div class="demo-tags">
+                  <span class="tag vision">Artistic</span>
+                  <span class="tag">Lifestyle</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card vision-card">
+              <div class="image-container">
+                <img src="/demos/sample-vision-board-wellness.png" alt="Wellness Journey Vision Board" loading="lazy">
+              </div>
+              <div class="demo-info">
+                <h3>Wellness Journey</h3>
+                <p>Health, fitness, and balanced lifestyle aspirations</p>
+                <div class="demo-tags">
+                  <span class="tag vision">Wellness</span>
+                  <span class="tag">Balance</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- What Makes It Special -->
       <section class="features-section">
         <div class="container">
@@ -362,6 +416,35 @@ function getDemoLessonsStyles(): string {
     .tag.santa {
       background: rgba(232, 90, 107, 0.1);
       color: var(--coral);
+    }
+
+    .tag.vision {
+      background: rgba(124, 58, 237, 0.1);
+      color: var(--purple);
+    }
+
+    /* Vision Board Cards */
+    .vision-grid {
+      max-width: 1200px;
+    }
+
+    .image-container {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 3/4;
+      background: var(--navy);
+      overflow: hidden;
+    }
+
+    .image-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .vision-card:hover .image-container img {
+      transform: scale(1.05);
     }
 
     /* Features Section */
