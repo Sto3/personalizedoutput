@@ -57,17 +57,17 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             <div class="hero-right">
               <!-- Popular Now Section - Seasonal Featured Products -->
               <div class="popular-now-section">
-                <span class="popular-now-label">Popular Now</span>
                 <div class="popular-now-cards">
                   <a href="/santa" class="popular-card">
                     <span class="popular-icon">🎅</span>
                     <span class="popular-title">Santa Messages</span>
                     <span class="popular-tag">Holiday Magic</span>
                   </a>
+                  <span class="popular-now-label">Popular Now</span>
                   <a href="/vision-board" class="popular-card">
                     <span class="popular-icon">🎯</span>
                     <span class="popular-title">Vision Boards</span>
-                    <span class="popular-tag">New Year 2025</span>
+                    <span class="popular-tag">New Year 2026</span>
                   </a>
                 </div>
               </div>
@@ -815,20 +815,37 @@ function getHomepageStyles(): string {
     }
 
     .popular-now-label {
-      display: inline-block;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       font-family: 'Bodoni Moda', serif;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 500;
       text-transform: uppercase;
-      letter-spacing: 0.15em;
-      color: rgba(255, 255, 255, 0.5);
-      margin-bottom: 12px;
+      letter-spacing: 0.12em;
+      color: var(--coral);
+      padding: 6px 12px;
+      background: rgba(232, 90, 107, 0.15);
+      border: 1px solid rgba(232, 90, 107, 0.3);
+      border-radius: 20px;
+      animation: popularPulse 2s ease-in-out infinite;
+    }
+
+    @keyframes popularPulse {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(232, 90, 107, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 12px 4px rgba(232, 90, 107, 0.2);
+      }
     }
 
     .popular-now-cards {
       display: flex;
+      align-items: center;
       gap: 12px;
       flex-wrap: wrap;
+      justify-content: center;
     }
 
     .popular-card {
@@ -841,6 +858,26 @@ function getHomepageStyles(): string {
       padding: 10px 14px;
       text-decoration: none;
       transition: all 0.3s ease;
+      animation: cardSlideIn 0.6s ease-out backwards;
+    }
+
+    .popular-card:first-child {
+      animation-delay: 0.1s;
+    }
+
+    .popular-card:last-child {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes cardSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(15px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
     .popular-card:hover {
