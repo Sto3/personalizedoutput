@@ -23,8 +23,62 @@ export function renderDemoLessonsPage(): string {
         </div>
       </section>
 
-      <!-- Lesson Demos Section -->
+      <!-- Vision Board Samples Section (FIRST - visual impact) -->
       <section class="demos-section">
+        <div class="container">
+          <div class="section-header">
+            <h2><span class="icon">🎯</span> Vision Board Samples</h2>
+            <p>Beautiful, personalized vision boards for every goal and personality</p>
+          </div>
+
+          <div class="demo-grid vision-grid">
+            <div class="demo-card vision-card">
+              <div class="image-container">
+                <img src="/demos/sample-vision-board-male.png" alt="His Vision Board - Career Goals" loading="lazy">
+              </div>
+              <div class="demo-info">
+                <h3>Career Goals</h3>
+                <p>Professional ambitions, workspace goals, and success visualization for him</p>
+                <div class="demo-tags">
+                  <span class="tag vision">For Him</span>
+                  <span class="tag">Professional</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card vision-card">
+              <div class="image-container">
+                <img src="/demos/sample-vision-board-female.png" alt="Her Vision Board - Self Love" loading="lazy">
+              </div>
+              <div class="demo-info">
+                <h3>Self Love</h3>
+                <p>Wellness, beauty, and self-care aspirations designed for her</p>
+                <div class="demo-tags">
+                  <span class="tag vision">For Her</span>
+                  <span class="tag">Wellness</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card vision-card">
+              <div class="image-container">
+                <img src="/demos/sample-vision-board-relationship.png" alt="Couple's Vision Board - 2025 Together" loading="lazy">
+              </div>
+              <div class="demo-info">
+                <h3>2025 Vision</h3>
+                <p>Shared dreams, creative spaces, and cozy moments for couples</p>
+                <div class="demo-tags">
+                  <span class="tag vision">Relationship</span>
+                  <span class="tag">Lifestyle</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lesson Demos Section -->
+      <section class="demos-section alt">
         <div class="container">
           <div class="section-header">
             <h2><span class="icon">📚</span> Personalized Lessons</h2>
@@ -142,60 +196,6 @@ export function renderDemoLessonsPage(): string {
                 <div class="demo-tags">
                   <span class="tag santa">Upcoming Events</span>
                   <span class="tag">Encouraging</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Vision Board Samples Section -->
-      <section class="demos-section">
-        <div class="container">
-          <div class="section-header">
-            <h2><span class="icon">🎯</span> Vision Board Samples</h2>
-            <p>Beautiful, personalized vision boards that help you visualize your goals</p>
-          </div>
-
-          <div class="demo-grid vision-grid">
-            <div class="demo-card vision-card">
-              <div class="image-container">
-                <img src="/demos/sample-vision-board-career.png" alt="Career Focus Vision Board" loading="lazy">
-              </div>
-              <div class="demo-info">
-                <h3>Career Focus</h3>
-                <p>Professional ambitions, workspace goals, and success visualization</p>
-                <div class="demo-tags">
-                  <span class="tag vision">Professional</span>
-                  <span class="tag">Goals</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="demo-card vision-card">
-              <div class="image-container">
-                <img src="/demos/sample-vision-board-creative.png" alt="Creative Spirit Vision Board" loading="lazy">
-              </div>
-              <div class="demo-info">
-                <h3>Creative Spirit</h3>
-                <p>Artistic expression, cozy spaces, and nurturing creativity</p>
-                <div class="demo-tags">
-                  <span class="tag vision">Artistic</span>
-                  <span class="tag">Lifestyle</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="demo-card vision-card">
-              <div class="image-container">
-                <img src="/demos/sample-vision-board-wellness.png" alt="Wellness Journey Vision Board" loading="lazy">
-              </div>
-              <div class="demo-info">
-                <h3>Wellness Journey</h3>
-                <p>Health, fitness, and balanced lifestyle aspirations</p>
-                <div class="demo-tags">
-                  <span class="tag vision">Wellness</span>
-                  <span class="tag">Balance</span>
                 </div>
               </div>
             </div>
