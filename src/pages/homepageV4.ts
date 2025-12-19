@@ -59,13 +59,11 @@ export async function renderPremiumHomepageV4(): Promise<string> {
               <div class="popular-now-section">
                 <div class="popular-now-cards">
                   <a href="/santa" class="popular-card">
-                    <span class="popular-icon">🎅</span>
                     <span class="popular-title">Santa Messages</span>
                     <span class="popular-tag">Holiday Magic</span>
                   </a>
                   <span class="popular-now-label">Popular Now</span>
                   <a href="/vision-board" class="popular-card">
-                    <span class="popular-icon">🎯</span>
                     <span class="popular-title">Vision Boards</span>
                     <span class="popular-tag">New Year 2026</span>
                   </a>
@@ -73,7 +71,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
               </div>
 
               <p class="hero-subtitle">
-                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally grasps complex concepts through what they're passionate about. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">experiences so personal they meet you where you are.</span>"
+                "A child pays attention when their favorite dinosaur teaches fractions. An adult finally grasps complex concepts through what they're passionate about. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">products so personal customers say 'it's unbelievable.'</span>"
               </p>
               <div class="hero-buttons">
                 <a href="#products" class="btn btn-primary btn-hero">
@@ -762,10 +760,10 @@ function getHomepageStyles(): string {
     }
 
     .cursive-highlight {
-      font-family: 'Dancing Script', cursive !important;
-      font-style: normal !important;
-      font-size: 1.15em;
-      font-weight: 600;
+      font-family: 'Playfair Display', serif !important;
+      font-style: italic !important;
+      font-size: 1.05em;
+      font-weight: 500;
       color: #E85A4F;
       color: var(--coral-light);
     }
