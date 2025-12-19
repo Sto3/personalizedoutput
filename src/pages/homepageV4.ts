@@ -55,6 +55,23 @@ export async function renderPremiumHomepageV4(): Promise<string> {
               </div>
             </div>
             <div class="hero-right">
+              <!-- Popular Now Section - Seasonal Featured Products -->
+              <div class="popular-now-section">
+                <span class="popular-now-label">Popular Now</span>
+                <div class="popular-now-cards">
+                  <a href="/santa" class="popular-card">
+                    <span class="popular-icon">🎅</span>
+                    <span class="popular-title">Santa Messages</span>
+                    <span class="popular-tag">Holiday Magic</span>
+                  </a>
+                  <a href="/vision-board" class="popular-card">
+                    <span class="popular-icon">🎯</span>
+                    <span class="popular-title">Vision Boards</span>
+                    <span class="popular-tag">New Year 2025</span>
+                  </a>
+                </div>
+              </div>
+
               <p class="hero-subtitle">
                 "A child pays attention when their favorite dinosaur teaches fractions. An adult finally grasps complex concepts through what they're passionate about. A vision board captures exactly who you are. We exist to create these moments — <span class="cursive-highlight">experiences so personal they meet you where you are.</span>"
               </p>
@@ -790,6 +807,70 @@ function getHomepageStyles(): string {
       box-shadow: 0 8px 30px rgba(255, 255, 255, 0.1);
     }
 
+    /* ================================================
+       POPULAR NOW SECTION - Seasonal Featured Products
+       ================================================ */
+    .popular-now-section {
+      margin-bottom: 24px;
+    }
+
+    .popular-now-label {
+      display: inline-block;
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 12px;
+    }
+
+    .popular-now-cards {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .popular-card {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 12px;
+      padding: 10px 14px;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .popular-card:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 255, 255, 0.25);
+      transform: translateY(-2px);
+    }
+
+    .popular-icon {
+      font-size: 1.5rem;
+    }
+
+    .popular-title {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: white;
+    }
+
+    .popular-tag {
+      font-size: 0.65rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--coral-light);
+      background: rgba(232, 90, 107, 0.15);
+      padding: 3px 8px;
+      border-radius: 100px;
+    }
+
     @media (max-width: 900px) {
       .hero-split {
         grid-template-columns: 1fr;
@@ -798,6 +879,12 @@ function getHomepageStyles(): string {
       }
       .hero-buttons {
         justify-content: center;
+      }
+      .popular-now-cards {
+        justify-content: center;
+      }
+      .popular-card {
+        padding: 8px 12px;
       }
     }
 
