@@ -17,8 +17,8 @@ export function renderDemoLessonsPage(): string {
           <span class="eyebrow">Demo Videos</span>
           <h1>See the Magic <span class="highlight">In Action</span></h1>
           <p class="hero-desc">
-            Watch real examples of personalized lessons and Santa messages.
-            Every creation is built uniquely for that person.
+            Watch real examples of our personalized creations.
+            Every product is built uniquely for that person.
           </p>
         </div>
       </section>
@@ -63,16 +63,16 @@ export function renderDemoLessonsPage(): string {
             </div>
 
             <div class="demo-card vision-card">
-              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-newyear.png', 'Alex\\'s 2025 Vision')">
-                <img src="/demos/sample-vision-board-newyear.png" alt="Alex's 2025 Vision - Personalized Vision Board" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-relationship.png', 'Our 3-Month Reset')">
+                <img src="/demos/sample-vision-board-relationship.png" alt="Our 3-Month Reset - Personalized Vision Board" loading="lazy">
                 <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>Alex's 2025 Vision</h3>
-                <p>A personalized board capturing their unique goals for the new year</p>
+                <h3>Our 3-Month Reset</h3>
+                <p>A couples' vision board for reconnecting and realigning your shared goals</p>
                 <div class="demo-tags">
                   <span class="tag vision">Fully Custom</span>
-                  <span class="tag">Your Goals</span>
+                  <span class="tag">Couples</span>
                 </div>
               </div>
             </div>
