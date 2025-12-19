@@ -49,6 +49,7 @@ The Thought Organizer is NOT just a form. It's an immersive ~20 minute experienc
 3. **Never make religious references** - Christmas meaning differs by family
 4. **Never be generic** - If output could apply to anyone, it's wrong
 5. **Never accept shallow input** - Push for specifics, details, stories
+6. **Never use "lucky"** - Use "fortunate" instead (more thoughtful tone)
 
 ---
 

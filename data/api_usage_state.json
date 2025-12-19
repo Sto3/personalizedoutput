@@ -1,14 +1,14 @@
 {
-  "lastCheck": "2025-12-19T02:58:58.819Z",
+  "lastCheck": "2025-12-19T03:39:35.813Z",
   "services": {
     "ElevenLabs": {
       "service": "ElevenLabs",
-      "used": 102030,
+      "used": 103420,
       "limit": 169068,
-      "percentUsed": 60,
+      "percentUsed": 61,
       "unit": "characters",
       "status": "ok",
-      "message": "102,030 / 169,068 chars (60%)",
+      "message": "103,420 / 169,068 chars (61%)",
       "resetDate": "2026-01-05T11:00:30.000Z"
     },
     "Anthropic Claude": {

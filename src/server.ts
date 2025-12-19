@@ -909,21 +909,21 @@ const OLD_DEMO_LESSONS_HTML_ARCHIVED = `<!DOCTYPE html>
 
     <!-- SANTA DEMOS -->
     <h2 class="section-title santa">🎅 Santa Message Demos</h2>
-    <p style="color: rgba(255,255,255,0.7); margin-bottom: 1.5rem;">30-40 second emotional peak clips - each showing different personalization types</p>
+    <p style="color: rgba(255,255,255,0.7); margin-bottom: 1.5rem;">Full personalized Santa messages - deeply personal, ready before Christmas</p>
 
     <div class="video-grid">
       <div class="video-card">
         <div class="video-wrapper">
           <video controls preload="metadata">
-            <source src="/santa-demos/emma_grandmother.mp4" type="video/mp4">
+            <source src="/santa-demos/emma_invisible.mp4" type="video/mp4">
           </video>
         </div>
         <div class="video-info">
-          <h3 class="video-title">Emma: Grandmother in Heaven</h3>
-          <p class="video-subtitle">Santa mentions her grandmother watching over</p>
+          <h3 class="video-title">Emma: Feeling Invisible at School</h3>
+          <p class="video-subtitle">Santa sees her kind heart and tells her she matters</p>
           <div class="demo-tags">
             <span class="tag santa">Emotional</span>
-            <span class="tag santa">Memorial</span>
+            <span class="tag santa">Validation</span>
           </div>
         </div>
       </div>
@@ -931,111 +931,15 @@ const OLD_DEMO_LESSONS_HTML_ARCHIVED = `<!DOCTYPE html>
       <div class="video-card">
         <div class="video-wrapper">
           <video controls preload="metadata">
-            <source src="/santa-demos/liam_pet.mp4" type="video/mp4">
+            <source src="/santa-demos/james_protecting.mp4" type="video/mp4">
           </video>
         </div>
         <div class="video-info">
-          <h3 class="video-title">Liam: Pet by Name</h3>
-          <p class="video-subtitle">Santa knows about his dog Biscuit</p>
+          <h3 class="video-title">James: Protecting His Little Sister</h3>
+          <p class="video-subtitle">Santa celebrates his courage and bravery</p>
           <div class="demo-tags">
-            <span class="tag santa">Personal</span>
-            <span class="tag santa">Pets</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/santa-demos/sophia_achievement.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <h3 class="video-title">Sophia: Learning to Read</h3>
-          <p class="video-subtitle">Santa celebrates her reading achievement</p>
-          <div class="demo-tags">
-            <span class="tag santa">Achievement</span>
-            <span class="tag santa">Proud</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/santa-demos/noah_sibling.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <h3 class="video-title">Noah: Being a Big Brother</h3>
-          <p class="video-subtitle">Santa recognizes his care for baby Lucas</p>
-          <div class="demo-tags">
+            <span class="tag santa">Courage</span>
             <span class="tag santa">Sibling</span>
-            <span class="tag santa">Kind</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/santa-demos/olivia_hardship.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <h3 class="video-title">Olivia: New School Courage</h3>
-          <p class="video-subtitle">Santa acknowledges her bravery starting fresh</p>
-          <div class="demo-tags">
-            <span class="tag santa">Hardship</span>
-            <span class="tag santa">Brave</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/santa-demos/jackson_wish.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <h3 class="video-title">Jackson: Secret Telescope Wish</h3>
-          <p class="video-subtitle">Santa heard his whispered wish</p>
-          <div class="demo-tags">
-            <span class="tag santa">Secret Wish</span>
-            <span class="tag santa">Magic</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/santa-demos/ava_hobby.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <h3 class="video-title">Ava: Painting Sunsets</h3>
-          <p class="video-subtitle">Santa sees her art talent</p>
-          <div class="demo-tags">
-            <span class="tag santa">Hobby</span>
-            <span class="tag santa">Artist</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="video-card">
-        <div class="video-wrapper">
-          <video controls preload="metadata">
-            <source src="/santa-demos/lucas_kindness.mp4" type="video/mp4">
-          </video>
-        </div>
-        <div class="video-info">
-          <h3 class="video-title">Lucas: Helping Grandma</h3>
-          <p class="video-subtitle">Santa saw him carry her groceries</p>
-          <div class="demo-tags">
-            <span class="tag santa">Kindness</span>
-            <span class="tag santa">Grandma</span>
           </div>
         </div>
       </div>

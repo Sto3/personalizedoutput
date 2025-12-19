@@ -2,9 +2,9 @@
  * Regenerate Demo Vision Boards with Personalized Titles
  *
  * Creates 3 sample boards for the demo-lessons page:
- * 1. James's Best Year Yet (male-focused, navy/gold theme)
+ * 1. James's Best Year Yet (male-focused, BLACK background, gold accents)
  * 2. Sarah's Dream Year (female-focused, pink theme)
- * 3. Alex's 2025 Vision (neutral New Year theme)
+ * 3. Jon & Jane's 3-Month Reset (relationship board, couple-focused)
  */
 
 require('dotenv').config();
@@ -16,17 +16,17 @@ const { generateVisionBoard } = require('../src/lib/visionBoardEngineV12');
 const DEMO_BOARDS = [
   {
     id: 'male',
-    title: "JAMES' BEST YEAR YET",
-    subtitle: "GOALS • GROWTH • GREATNESS",
+    title: "BUILT DIFFERENT",
+    subtitle: "FOCUS • DISCIPLINE • EXECUTE",
     outputFile: 'sample-vision-board-male.png',
     colors: {
-      background: '#1a1a3a',  // Dark navy
-      banner: '#c9a962',       // Gold
-      bannerText: '#ffffff',
-      bannerSubtext: 'rgba(255,255,255,0.7)',
+      background: '#0a0a0f',   // FULLY BLACK background (engine will force this for masculine mood anyway)
+      banner: '#000000',       // BLACK banner background
+      bannerText: '#c9a962',   // Gold text
+      bannerSubtext: 'rgba(201,169,98,0.7)',
       accents: ['#c9a962', '#3a5a8a', '#2a4a7a', '#4a6a9a']
     },
-    style: { mood: 'masculine dark discipline' },
+    style: { mood: 'masculine dark discipline executive' },
     photos: [
       "rows of dumbbells in gym, dramatic lighting, fitness equipment",
       "luxury watch in wooden box on dark silk fabric",
@@ -34,7 +34,7 @@ const DEMO_BOARDS = [
       "mountain peak at golden hour, epic landscape photography",
       "leather executive chair in home office, masculine decor",
       "golf clubs on pristine green course at sunset",
-      "whiskey being poured into crystal glass, amber liquid, dramatic lighting",
+      "espresso machine brewing coffee, morning routine, dramatic lighting",  // Replaced whiskey
       "modern city skyline at dusk, architectural photography",
       "chess pieces on board, dramatic lighting, strategy concept",
       "stock market charts on multiple screens, green numbers",
@@ -61,7 +61,7 @@ const DEMO_BOARDS = [
       "designer handbag on marble surface, luxury fashion",
       "cozy pink blanket with tea cup, hygge aesthetic",
       "delicate lace fabric texture, soft feminine aesthetic",
-      "champagne and macarons, celebration concept",
+      "macarons and sparkling water on marble table, celebration concept",  // Replaced champagne
       "ocean sunset with pink and purple sky",
       "vintage passport on world map, travel planning",
       "fresh flowers in vase by window, home decor",
@@ -71,31 +71,34 @@ const DEMO_BOARDS = [
     ]
   },
   {
-    id: 'newyear',
-    title: "ALEX'S 2025 VISION",
-    subtitle: "MY YEAR • MY GOALS • MY LIFE",
-    outputFile: 'sample-vision-board-newyear.png',
+    // RELATIONSHIP BOARD - Uses couple names format
+    // Imagery focuses on relationship themes WITHOUT any humans or body parts
+    id: 'relationship',
+    title: "JANE & JON'S 3-MONTH RESET",
+    subtitle: "GROW • CONNECT • THRIVE",
+    outputFile: 'sample-vision-board-relationship.png',
     colors: {
-      background: '#f5f0e8',  // Warm cream
-      banner: '#b8956e',       // Warm gold
-      bannerText: '#4a4a4a',
-      bannerSubtext: 'rgba(74,74,74,0.7)',
-      accents: ['#FFE4B5', '#B4E4FF', '#E8D4F0', '#98D8C8']
+      background: '#f8f5f0',  // Warm cream/neutral
+      banner: '#8B7355',       // Warm brown
+      bannerText: '#FFFFFF',
+      bannerSubtext: 'rgba(255,255,255,0.8)',
+      accents: ['#D4A574', '#B8956E', '#E8D4C4', '#C9A962']
     },
-    style: { mood: 'warm inspiring hopeful' },
+    style: { mood: 'warm romantic cozy intimate' },
     photos: [
-      "champagne glasses clinking with confetti, New Year celebration",
-      "open planner notebook with goals written, fresh start",
-      "fresh fruit smoothie bowl, healthy lifestyle",
-      "vintage suitcase with globe, adventure travel concept",
-      "yoga mat and water bottle, fitness wellness",
-      "family dinner table set beautifully, togetherness",
-      "graduation cap and diploma, achievement success",
-      "cozy living room with fireplace, home comfort",
-      "garden with blooming flowers, growth abundance",
-      "gratitude journal with pen, mindfulness",
-      "sunrise through window, new beginnings",
-      "sparklers celebration at night, joy happiness"
+      // Relationship-focused imagery WITHOUT humans/body parts:
+      "two coffee cups on wooden table, morning together, cozy aesthetic",
+      "two bicycles parked by lakeside at sunset, adventure together",
+      "picnic blanket with basket and flowers in park, romantic date",
+      "two wine glasses clinking over dinner table, elegant setting",
+      "matching pair of hiking boots on mountain trail, adventure",
+      "cozy living room with two armchairs by fireplace, home together",
+      "two plane tickets and passports on map, travel goals",
+      "romantic dinner table set for two with candles, date night",
+      "two books and tea cups on rainy window ledge, cozy reading",
+      "beach blanket with two pairs of sunglasses, vacation vibes",
+      "garden path with bench for two, peaceful retreat",
+      "starry night sky over cozy cabin, romantic getaway"
     ]
   }
 ];

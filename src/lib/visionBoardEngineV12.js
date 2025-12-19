@@ -382,8 +382,8 @@ async function generatePhoto(symbol, style, index) {
   const mood = style?.mood || "aesthetic dreamy warm";
   const prompt = `Beautiful photograph of ${symbol}. ${mood}, professional photography, no text, no logos, no watermarks.`;
 
-  // Strong negative prompt to prevent people/body parts
-  const negativePrompt = "people, person, human, man, woman, child, baby, face, faces, portrait, hands, fingers, arms, legs, feet, body, figure, silhouette, crowd, group";
+  // Strong negative prompt to prevent people/body parts AND alcohol/liquor
+  const negativePrompt = "people, person, human, man, woman, child, baby, face, faces, portrait, hands, fingers, arms, legs, feet, body, figure, silhouette, crowd, group, alcohol, liquor, whiskey, beer, wine, cocktail, drinking, bar, drunk, bottle of alcohol";
 
   console.log(`  [${index + 1}] "${symbol.substring(0, 38)}..."`);
   try {
@@ -410,19 +410,27 @@ async function generateVisionBoard(input, options = {}) {
 
   const title = input.title || 'My Vision';
   const subtitle = input.subtitle || '';
+
+  // Detect if this is a masculine/male board based on mood
+  const inputMood = (input.style?.mood || '').toLowerCase();
+  const isMasculineBoard = inputMood.includes('masculine') || inputMood.includes('dark') || inputMood.includes('discipline');
+
+  // For masculine boards, FORCE fully BLACK background regardless of input colors
+  // This creates the dark, moody aesthetic that works best for male-focused boards
   const colors = {
-    background: input.colors?.background || '#F5E8ED',
+    background: isMasculineBoard ? '#0a0a0f' : (input.colors?.background || '#F5E8ED'),
     accents: input.colors?.accents || ['#FFB6C1', '#B4E4FF', '#E8D4F0', '#FFEAA7'],
     banner: input.colors?.banner || '#4A3F45',
     bannerText: input.colors?.bannerText || '#FFFFFF',
     bannerSubtext: input.colors?.bannerSubtext || 'rgba(255,255,255,0.7)'
   };
+
   const photos = input.photos || [];
   const quotes = input.quotes || [];
   const textBlocks = input.textBlocks || [];
   const style = {
     decorations: false,  // DISABLED - no hearts, stars, flowers per user request
-    bokeh: input.style?.bokeh !== false,
+    bokeh: isMasculineBoard ? false : (input.style?.bokeh !== false),  // No bokeh on masculine boards
     mood: input.style?.mood || 'dreamy warm aesthetic'
   };
 
