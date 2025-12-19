@@ -63,7 +63,7 @@ const DEMO_BOARDS = [
       "delicate lace fabric texture, soft feminine aesthetic",
       "macarons and sparkling water on marble table, celebration concept",  // Replaced champagne
       "ocean sunset with pink and purple sky",
-      "vintage passport on world map, travel planning",
+      "suitcase with travel stickers on world map, travel planning",
       "fresh flowers in vase by window, home decor",
       "candles lit for meditation, peaceful spa setting",
       "cozy reading nook with books and blankets",

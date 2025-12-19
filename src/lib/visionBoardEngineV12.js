@@ -38,12 +38,12 @@ function selectFonts(style) {
   // Detect relationship/couples boards - use NEUTRAL font (not masculine smallcaps, not feminine script)
   const isRelationship = mood.includes('couple') || mood.includes('relationship') || mood.includes('together') || mood.includes('partner');
 
-  // For relationship boards: use elegant serif (Cormorant Garamond) - neither masculine nor feminine
+  // For relationship boards: use elegant Snell Roundhand script - romantic and warm
   if (isRelationship) {
     return {
-      title: "Cormorant Garamond",  // Elegant, gender-neutral serif
+      title: FONTS.script,  // Snell Roundhand - elegant script font for romantic boards
       titleTransform: 'none',
-      titleLetterSpacing: '0.05em',
+      titleLetterSpacing: '0.02em',
       quote: FONTS.serifQuote,
       text: FONTS.serifCaps
     };
