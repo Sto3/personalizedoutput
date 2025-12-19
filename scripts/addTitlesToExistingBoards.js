@@ -24,12 +24,12 @@ const BOARDS = [
     id: 'male',
     inputFile: 'sample-vision-board-male.png',
     outputFile: 'sample-vision-board-male.png',
-    title: "JAMES' BEST YEAR YET",
-    subtitle: "GOALS • GROWTH • GREATNESS",
+    title: "BUILT DIFFERENT",
+    subtitle: "FOCUS • DISCIPLINE • EXECUTE",
     colors: {
-      banner: '#c9a962',       // Gold
-      bannerText: '#ffffff',
-      bannerSubtext: 'rgba(255,255,255,0.7)'
+      banner: '#1a1a2e',       // Dark navy
+      bannerText: '#c9a962',   // Gold text
+      bannerSubtext: 'rgba(201,169,98,0.7)'
     },
     style: 'masculine'
   },
@@ -37,7 +37,7 @@ const BOARDS = [
     id: 'female',
     inputFile: 'sample-vision-board-female.png',
     outputFile: 'sample-vision-board-female.png',
-    title: "SARAH'S DREAM YEAR",
+    title: "SARAH'S 2026 VISION",
     subtitle: "LOVE • DREAM • SHINE",
     colors: {
       banner: '#d4a5a5',       // Dusty rose
@@ -47,11 +47,11 @@ const BOARDS = [
     style: 'feminine'
   },
   {
-    id: 'newyear',
-    inputFile: 'sample-vision-board-newyear.png',
-    outputFile: 'sample-vision-board-newyear.png',
-    title: "ALEX'S 2025 VISION",
-    subtitle: "MY YEAR • MY GOALS • MY LIFE",
+    id: 'relationship',
+    inputFile: 'sample-vision-board-relationship.png',
+    outputFile: 'sample-vision-board-relationship.png',
+    title: "OUR 3-MONTH RESET",
+    subtitle: "RECONNECT • REALIGN • RENEW",
     colors: {
       banner: '#b8956e',       // Warm gold
       bannerText: '#4a4a4a',
