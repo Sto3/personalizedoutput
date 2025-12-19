@@ -1063,7 +1063,7 @@ export function renderBlogPostPage(post: BlogPost): string {
         <section class="cta-section">
           <div class="cta-card">
             <h3>Ready to Create Something Personal?</h3>
-            <p>Explore our personalized products and create meaningful gifts for the people you love.</p>
+            <p>Explore our personalized products — for yourself or as meaningful gifts for the people you love.</p>
             <a href="/" class="cta-btn">Explore Products</a>
           </div>
         </section>

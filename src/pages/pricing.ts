@@ -148,7 +148,7 @@ export function renderPricingPageNew(): string {
             <div class="approach-card">
               <div class="approach-icon">⚡</div>
               <h3>Instant Delivery</h3>
-              <p>Complete your order and receive your personalized creation within minutes. No waiting.</p>
+              <p>Complete your Personalization Experience and receive your unique creation within minutes. No waiting after you're done.</p>
             </div>
           </div>
         </div>
@@ -344,11 +344,11 @@ export function renderPricingPageNew(): string {
             <!-- Product FAQs -->
             <div class="faq-item">
               <h3>How personalized are these products?</h3>
-              <p>Deeply personal. We don't add names to templates. You complete our Personalization Experience, and we create something unique from your answers — built entirely around the person you describe.</p>
+              <p>Deeply personal. We don't add names to templates. During our Personalization Experience, you share what makes you (or your recipient) unique — and we create something entirely built around that.</p>
             </div>
             <div class="faq-item">
               <h3>How long does delivery take?</h3>
-              <p>Most products are ready within 10-30 minutes. You'll receive an email notification when your creation is complete, with a link to download immediately.</p>
+              <p>Delivery is instant after you complete the Personalization Experience. The experience itself takes 5-15 minutes, and your creation is ready immediately when you finish.</p>
             </div>
             <div class="faq-item">
               <h3>What if the result doesn't feel right?</h3>

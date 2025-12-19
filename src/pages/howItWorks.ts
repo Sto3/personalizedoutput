@@ -57,17 +57,17 @@ export function renderHowItWorksPage(): string {
             <div class="step-content">
               <h2>Complete the Personalization Experience</h2>
               <p>
-                Share what makes the person truly unique through our thoughtful
-                Personalization Experience. The more you share about their interests,
+                Share what makes you (or your recipient) truly unique through our thoughtful
+                Personalization Experience. The more you share about interests,
                 goals, challenges, and personality, the more deeply personal the
                 result becomes — this is where the magic happens.
               </p>
               <div class="example-box">
                 <span class="example-label">We'll explore things like:</span>
                 <ul>
-                  <li>What are their passions and interests?</li>
-                  <li>What challenges are they navigating?</li>
-                  <li>What would truly resonate with them?</li>
+                  <li>What passions and interests drive you?</li>
+                  <li>What challenges are you navigating?</li>
+                  <li>What would truly resonate with you?</li>
                 </ul>
               </div>
             </div>
@@ -82,7 +82,7 @@ export function renderHowItWorksPage(): string {
             <div class="step-content">
               <h2>We Create Something Unique</h2>
               <p>
-                Our Thought Organizer™ technology weaves your specific details
+                Our Personalization Experience technology weaves your specific details
                 into a one-of-a-kind creation. This isn't a template with your
                 name dropped in — it's built from scratch around exactly what
                 you told us.
@@ -90,7 +90,7 @@ export function renderHowItWorksPage(): string {
               <div class="tech-highlight">
                 <span class="tech-icon">✨</span>
                 <span class="tech-text">
-                  <strong>Thought Organizer™</strong><br>
+                  <strong>Personalization Experience</strong><br>
                   Our proprietary system that transforms your inputs into
                   deeply personal experiences.
                 </span>
@@ -104,12 +104,12 @@ export function renderHowItWorksPage(): string {
               <div class="step-number">4</div>
             </div>
             <div class="step-content">
-              <h2>Download & Share</h2>
+              <h2>Download & Enjoy</h2>
               <p>
-                Receive your digital file instantly. Share it with your loved
-                one and watch their face light up when they realize how personal
-                it is. Many customers tell us it's the most meaningful gift
-                they've ever given.
+                Receive your digital file instantly after completing the Personalization Experience.
+                Whether it's for yourself or as a meaningful gift for someone special,
+                you'll have something truly personal that you can use immediately
+                or share with loved ones.
               </p>
               <div class="outcome-cards">
                 <div class="outcome-card">

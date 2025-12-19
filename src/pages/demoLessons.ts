@@ -87,26 +87,56 @@ export function renderDemoLessonsPage(): string {
         </div>
       </section>
 
-      <!-- Lesson Demos Section -->
+      <!-- Flash Cards Section -->
       <section class="demos-section alt">
         <div class="container">
           <div class="section-header">
-            <h2><span class="icon">📚</span> Personalized Lessons</h2>
+            <h2><span class="icon">📚</span> Flash Card Samples</h2>
+            <p>Custom educational flash cards designed around what your child loves</p>
+          </div>
+
+          <div class="demo-grid flash-grid">
+            <div class="demo-card flash-card">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-flashcards-dinosaurs.png', 'Dino Math Cards')">
+                <img src="/demos/sample-flashcards-dinosaurs.png" alt="Dinosaur Math Flash Cards - Addition, Subtraction, Counting" loading="lazy">
+                <div class="image-overlay"><span>Click to view full screen</span></div>
+              </div>
+              <div class="demo-info">
+                <h3>Dino Math Cards</h3>
+                <p>Math concepts taught through friendly dinosaurs - addition, subtraction, counting, multiplication, and word problems</p>
+                <div class="demo-tags">
+                  <span class="tag flash">Fully Custom</span>
+                  <span class="tag">Ages 4-8</span>
+                  <span class="tag">Math</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Lesson Demos Section -->
+      <section class="demos-section">
+        <div class="container">
+          <div class="section-header">
+            <h2><span class="icon">🎧</span> Personalized Lessons</h2>
             <p>See how we transform interests into engaging learning experiences</p>
           </div>
 
           <div class="demo-grid">
-            <div class="demo-card">
+            <div class="demo-card featured-lesson">
+              <div class="featured-badge">Full 3-Minute Demo</div>
               <div class="video-container">
                 <video controls preload="metadata">
-                  <source src="/demos/joe-dinosaurs-fractions.mp4" type="video/mp4">
+                  <source src="/demos/demo-lesson-joe-3min.mp4" type="video/mp4">
                   Your browser does not support video.
                 </video>
               </div>
               <div class="demo-info">
                 <h3>Joe: Dinosaurs → Fractions</h3>
-                <p>6 years old • Learning fractions through T-Rex adventures</p>
+                <p>6 years old • Watch how Joe's love of dinosaurs becomes a complete math lesson about fractions, delivered through the adventures of T-Rex and friends</p>
                 <div class="demo-tags">
+                  <span class="tag featured">Voice Narrated</span>
                   <span class="tag">Kid-Friendly</span>
                   <span class="tag">Math</span>
                 </div>
@@ -116,14 +146,15 @@ export function renderDemoLessonsPage(): string {
             <div class="demo-card">
               <div class="video-container">
                 <video controls preload="metadata">
-                  <source src="/demos/maya-art-solar-system.mp4" type="video/mp4">
+                  <source src="/demos/demo-lesson-maya-3min.mp4" type="video/mp4">
                   Your browser does not support video.
                 </video>
               </div>
               <div class="demo-info">
                 <h3>Maya: Art → Solar System</h3>
-                <p>10 years old • Astronomy through creative expression</p>
+                <p>10 years old • See how Maya's artistic passion transforms into an engaging astronomy lesson exploring the planets</p>
                 <div class="demo-tags">
+                  <span class="tag featured">Voice Narrated</span>
                   <span class="tag">Creative</span>
                   <span class="tag">Science</span>
                 </div>
@@ -133,14 +164,15 @@ export function renderDemoLessonsPage(): string {
             <div class="demo-card">
               <div class="video-container">
                 <video controls preload="metadata">
-                  <source src="/demos/sarah-bakery-mortgage.mp4" type="video/mp4">
+                  <source src="/demos/demo-lesson-sarah-3min.mp4" type="video/mp4">
                   Your browser does not support video.
                 </video>
               </div>
               <div class="demo-info">
                 <h3>Sarah: Bakery → Mortgage</h3>
-                <p>Adult • Understanding mortgages through her baking passion</p>
+                <p>Adult • Experience how Sarah's dream of opening a bakery becomes the perfect framework for understanding mortgages and home financing</p>
                 <div class="demo-tags">
+                  <span class="tag featured">Voice Narrated</span>
                   <span class="tag">Adult</span>
                   <span class="tag">Finance</span>
                 </div>
@@ -264,8 +296,8 @@ export function renderDemoLessonsPage(): string {
             </div>
             <div class="feature-card">
               <div class="feature-icon">💝</div>
-              <h3>Memorable Moments</h3>
-              <p>Creates experiences that kids (and adults) remember for years.</p>
+              <h3>Lasting Impact</h3>
+              <p>Creates experiences that you will remember for years.</p>
             </div>
           </div>
         </div>
@@ -433,6 +465,34 @@ function getDemoLessonsStyles(): string {
       box-shadow: 0 20px 40px rgba(124, 58, 237, 0.12);
     }
 
+    /* Featured Lesson Card */
+    .demo-card.featured-lesson {
+      position: relative;
+      border: 2px solid var(--purple);
+      box-shadow: 0 8px 32px rgba(124, 58, 237, 0.15);
+    }
+
+    .featured-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    .tag.featured {
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white;
+    }
+
     .video-container {
       position: relative;
       width: 100%;
@@ -493,6 +553,21 @@ function getDemoLessonsStyles(): string {
     .tag.vision {
       background: rgba(124, 58, 237, 0.1);
       color: var(--purple);
+    }
+
+    .tag.flash {
+      background: rgba(93, 171, 139, 0.1);
+      color: #5DAB8B;
+    }
+
+    /* Flash Cards Grid */
+    .flash-grid {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .flash-card .image-container {
+      aspect-ratio: 1/1;
     }
 
     /* Vision Board Cards */

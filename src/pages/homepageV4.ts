@@ -49,8 +49,8 @@ export async function renderPremiumHomepageV4(): Promise<string> {
                   <span class="headline-line headline-muted">EXPERIENCES</span>
                   <span class="headline-line headline-coral">POWERFUL ENOUGH</span>
                   <span class="headline-line headline-muted">TO HELP YOU</span>
-                  <span class="headline-line headline-muted">HEAL AND LEARN,</span>
-                  <span class="headline-line headline-muted">INSPIRE, AND</span>
+                  <span class="headline-line headline-muted">HEAL, INSPIRE,</span>
+                  <span class="headline-line headline-muted">AND</span>
                   <span class="headline-line headline-coral">MAKE YOU SMILE</span>
                 </h1>
               </div>
@@ -177,7 +177,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
   return renderPageStart({
     title: 'Learn Anything Through What You Love',
-    description: 'Personalized learning that uses YOUR interests to teach what you need. Kids learn fractions through dinosaurs. Adults master mortgages through their business.',
+    description: 'Personalized experiences that meet you where you are. Kids learn fractions through dinosaurs. Adults find clarity through their actual priorities. Vision boards built around your real goals.',
     currentPage: 'home',
     additionalStyles: pageStyles,
   }) + pageContent + pageScripts + renderPageEnd({ includeFooter: true }).replace('</body>', '');

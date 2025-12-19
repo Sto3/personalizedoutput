@@ -150,6 +150,41 @@ export function renderLoginPage(error?: string, returnUrl?: string): string {
           transition: color 0.2s;
         }
         .back-link:hover { color: #fff; }
+        .benefits-box {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 12px;
+          padding: 16px 20px;
+          margin-bottom: 24px;
+        }
+        .benefits-label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 600;
+          text-transform: uppercase;
+          letter-spacing: 1px;
+          color: var(--purple-light);
+          margin-bottom: 12px;
+        }
+        .benefits-list {
+          list-style: none;
+          margin: 0;
+          padding: 0;
+        }
+        .benefits-list li {
+          padding: 6px 0;
+          font-size: 0.85rem;
+          color: rgba(255,255,255,0.8);
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .benefits-list li::before {
+          content: '✓';
+          color: var(--coral);
+          font-weight: bold;
+          font-size: 0.75rem;
+        }
       </style>
     </head>
     <body>
@@ -161,6 +196,17 @@ export function renderLoginPage(error?: string, returnUrl?: string): string {
           <h1>Welcome Back</h1>
 
           ${error ? `<div class="error">${error}</div>` : ''}
+
+          <!-- Benefits Section -->
+          <div class="benefits-box">
+            <span class="benefits-label">Your Account Includes</span>
+            <ul class="benefits-list">
+              <li>Track your creations & download history</li>
+              <li>Earn free months with our referral program</li>
+              <li>Manage your subscription anytime</li>
+              <li>Quick access to all products</li>
+            </ul>
+          </div>
 
           <form action="/api/auth/login" method="POST">
             ${returnUrl ? `<input type="hidden" name="returnUrl" value="${returnUrl}">` : ''}
