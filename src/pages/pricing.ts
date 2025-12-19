@@ -14,23 +14,131 @@ export function renderPricingPageNew(): string {
       <!-- Hero Section -->
       <section class="pricing-hero">
         <div class="container">
-          <span class="eyebrow">Simple Pricing</span>
-          <h1>Pay Per Product, <span class="highlight">No Subscriptions</span></h1>
+          <span class="eyebrow">Flexible Pricing</span>
+          <h1>Choose What Works <span class="highlight">For You</span></h1>
           <p class="hero-desc">
-            Each product is a one-time purchase. Create something magical
-            without commitment or recurring fees.
+            Buy individual products, or subscribe for regular creations at a discount.
+            Plus, refer friends and earn free months.
           </p>
         </div>
       </section>
 
-      <!-- Pricing Approach -->
+      <!-- Subscription Tiers -->
+      <section class="subscription-section">
+        <div class="container">
+          <div class="section-header">
+            <span class="eyebrow-small">Save With a Subscription</span>
+            <h2>Monthly Plans</h2>
+            <p>For families and power users who want regular personalized content</p>
+          </div>
+
+          <div class="subscription-grid">
+            <!-- Starter Tier -->
+            <div class="sub-card">
+              <div class="sub-tier">Starter</div>
+              <div class="sub-price">
+                <span class="amount">$25</span>
+                <span class="period">/month</span>
+              </div>
+              <div class="sub-outputs">2 personalized outputs/month</div>
+              <ul class="sub-features">
+                <li>Any product type</li>
+                <li>Priority processing</li>
+                <li>Rollover unused credits</li>
+                <li>Email support</li>
+              </ul>
+              <a href="/signup?plan=starter" class="btn btn-secondary">Get Started</a>
+              <p class="sub-savings">Save 17% vs individual</p>
+            </div>
+
+            <!-- Regular Tier - Most Popular -->
+            <div class="sub-card featured">
+              <div class="popular-badge">Most Popular</div>
+              <div class="sub-tier">Regular</div>
+              <div class="sub-price">
+                <span class="amount">$39</span>
+                <span class="period">/month</span>
+              </div>
+              <div class="sub-outputs">4 personalized outputs/month</div>
+              <ul class="sub-features">
+                <li>Any product type</li>
+                <li>Priority processing</li>
+                <li>Rollover unused credits</li>
+                <li>Priority support</li>
+                <li>Early access to new products</li>
+              </ul>
+              <a href="/signup?plan=regular" class="btn btn-primary">Get Started</a>
+              <p class="sub-savings">Save 35% vs individual</p>
+            </div>
+
+            <!-- Power Tier -->
+            <div class="sub-card">
+              <div class="sub-tier">Power User</div>
+              <div class="sub-price">
+                <span class="amount">$59</span>
+                <span class="period">/month</span>
+              </div>
+              <div class="sub-outputs">8 personalized outputs/month</div>
+              <ul class="sub-features">
+                <li>Any product type</li>
+                <li>Fastest processing</li>
+                <li>Rollover unused credits</li>
+                <li>Priority support</li>
+                <li>Early access to new products</li>
+                <li>Bulk generation tools</li>
+              </ul>
+              <a href="/signup?plan=power" class="btn btn-secondary">Get Started</a>
+              <p class="sub-savings">Save 51% vs individual</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Referral Program -->
+      <section class="referral-section">
+        <div class="container">
+          <div class="referral-card">
+            <div class="referral-content">
+              <div class="referral-icon">🎁</div>
+              <h2>Refer Friends, Get Free Months</h2>
+              <p>Share your unique referral code. When 3 friends subscribe, you get a free month!</p>
+              <div class="referral-how">
+                <div class="referral-step">
+                  <div class="step-num">1</div>
+                  <span>Share your code</span>
+                </div>
+                <div class="referral-step">
+                  <div class="step-num">2</div>
+                  <span>Friends subscribe</span>
+                </div>
+                <div class="referral-step">
+                  <div class="step-num">3</div>
+                  <span>You get free month</span>
+                </div>
+              </div>
+              <a href="/dashboard#referrals" class="btn btn-outline">View My Referrals</a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- OR Divider -->
+      <section class="or-divider">
+        <div class="container">
+          <div class="divider-line">
+            <span>or buy individual products</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- One-Time Purchase Approach -->
       <section class="approach-section">
         <div class="container">
           <div class="approach-grid">
             <div class="approach-card">
               <div class="approach-icon">💰</div>
               <h3>One-Time Purchases</h3>
-              <p>Pay only for what you need. Each product is priced individually with no hidden fees or subscriptions.</p>
+              <p>Pay only for what you need. Each product is priced individually with no commitment.</p>
             </div>
             <div class="approach-card">
               <div class="approach-icon">🎁</div>
@@ -214,23 +322,41 @@ export function renderPricingPageNew(): string {
       <!-- FAQ Section -->
       <section class="faq-section">
         <div class="container">
-          <h2>Common Questions</h2>
+          <h2>Frequently Asked Questions</h2>
           <div class="faq-grid">
+            <!-- Subscription FAQs -->
+            <div class="faq-item">
+              <h3>How do subscription credits work?</h3>
+              <p>Each month, you receive a set number of credits (2, 4, or 8 depending on your plan). Use them on any product in our catalog. Unused credits roll over to the next month, so nothing goes to waste.</p>
+            </div>
+            <div class="faq-item">
+              <h3>Can I cancel my subscription anytime?</h3>
+              <p>Yes. There are no long-term contracts. You can cancel at any time from your account dashboard. You'll keep access until the end of your billing period, and any unused credits remain available.</p>
+            </div>
+            <div class="faq-item">
+              <h3>What's the difference between subscription and one-time purchase?</h3>
+              <p>Subscriptions offer significant savings (up to 51% off) for regular users. One-time purchases are perfect for occasional gifts or trying products without commitment. Both deliver the same quality experience.</p>
+            </div>
+            <div class="faq-item">
+              <h3>How does the referral program work?</h3>
+              <p>Share your unique referral link with friends. When 3 friends subscribe to any paid plan, you receive a free month of your current subscription. There's no limit to how many free months you can earn.</p>
+            </div>
+            <!-- Product FAQs -->
             <div class="faq-item">
               <h3>How personalized are these products?</h3>
-              <p>Extremely. We don't just add your name to a template. Each creation is built from scratch based on the specific details you provide about the person.</p>
+              <p>Deeply personal. We don't add names to templates. You complete a thoughtful questionnaire, and we create something unique from your answers — built entirely around the person you describe.</p>
             </div>
             <div class="faq-item">
               <h3>How long does delivery take?</h3>
-              <p>Most products are delivered within minutes of purchase. Complex creations like learning sessions may take up to 30 minutes.</p>
+              <p>Most products are ready within 10-30 minutes. You'll receive an email notification when your creation is complete, with a link to download immediately.</p>
             </div>
             <div class="faq-item">
-              <h3>What if I'm not satisfied?</h3>
-              <p>We offer a 100% satisfaction guarantee. If you're not happy with your personalized creation, we'll give you a full refund — no questions asked.</p>
+              <h3>What if the result doesn't feel right?</h3>
+              <p>We stand behind our work with a 100% satisfaction guarantee. If your personalized creation doesn't meet expectations, we'll either revise it or give you a full refund.</p>
             </div>
             <div class="faq-item">
-              <h3>What formats do I receive?</h3>
-              <p>It depends on the product. You'll typically receive high-res PDFs, downloadable audio files, and/or video files you can keep forever.</p>
+              <h3>What file formats do I receive?</h3>
+              <p>Depends on the product: videos in MP4, audio in MP3, documents in PDF. All files are yours to keep forever — download, share, print, or watch as many times as you like.</p>
             </div>
           </div>
         </div>
@@ -240,7 +366,7 @@ export function renderPricingPageNew(): string {
       <section class="cta-section">
         <div class="container">
           <h2>Ready to Create Something Personal?</h2>
-          <p>Browse our products and start the process. It only takes a few minutes.</p>
+          <p>Browse our products and start with a thoughtful questionnaire. We handle the rest.</p>
           <a href="/products" class="btn btn-primary">View All Products</a>
         </div>
       </section>
@@ -272,7 +398,7 @@ function getPricingPageStyles(): string {
 
     /* Hero Section */
     .pricing-hero {
-      padding: 120px 24px 80px;
+      padding: 120px 24px 60px;
       background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 50%, #fafafa 100%);
       text-align: center;
     }
@@ -303,9 +429,300 @@ function getPricingPageStyles(): string {
     .pricing-hero .hero-desc {
       font-size: 1.1rem;
       color: #64748b;
-      max-width: 550px;
+      max-width: 600px;
       margin: 0 auto;
       line-height: 1.7;
+    }
+
+    /* Subscription Section */
+    .subscription-section {
+      padding: 80px 24px;
+      background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    }
+
+    .subscription-section .section-header {
+      text-align: center;
+      margin-bottom: 48px;
+    }
+
+    .subscription-section .section-header .eyebrow-small {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--coral);
+      margin-bottom: 12px;
+    }
+
+    .subscription-section .section-header h2 {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 2.5rem;
+      font-weight: 500;
+      color: white;
+      margin-bottom: 12px;
+    }
+
+    .subscription-section .section-header p {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 1rem;
+    }
+
+    .subscription-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      margin: 0 auto;
+    }
+
+    .sub-card {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 32px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .sub-card:hover {
+      transform: translateY(-4px);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .sub-card.featured {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: var(--coral);
+      transform: scale(1.02);
+    }
+
+    .sub-card.featured:hover {
+      transform: scale(1.02) translateY(-4px);
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, var(--coral), var(--purple));
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 16px;
+      border-radius: 20px;
+    }
+
+    .sub-tier {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.25rem;
+      font-weight: 500;
+      color: white;
+      margin-bottom: 16px;
+    }
+
+    .sub-price {
+      margin-bottom: 8px;
+    }
+
+    .sub-price .amount {
+      font-size: 3rem;
+      font-weight: 700;
+      color: white;
+    }
+
+    .sub-price .period {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .sub-outputs {
+      color: var(--coral-light);
+      font-size: 0.9rem;
+      font-weight: 500;
+      margin-bottom: 24px;
+    }
+
+    .sub-features {
+      list-style: none;
+      margin-bottom: 24px;
+    }
+
+    .sub-features li {
+      padding: 8px 0;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sub-features li::before {
+      content: '✓';
+      color: var(--coral);
+      font-weight: bold;
+    }
+
+    .sub-card .btn {
+      display: block;
+      width: 100%;
+      padding: 14px 24px;
+      border-radius: 12px;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .sub-card .btn-primary {
+      background: linear-gradient(135deg, var(--coral), var(--purple));
+      color: white;
+      box-shadow: 0 4px 16px rgba(232, 90, 107, 0.3);
+    }
+
+    .sub-card .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(232, 90, 107, 0.4);
+    }
+
+    .sub-card .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .sub-card .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .sub-savings {
+      text-align: center;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 0.8rem;
+      margin-top: 12px;
+    }
+
+    /* Referral Section */
+    .referral-section {
+      padding: 60px 24px;
+      background: white;
+    }
+
+    .referral-card {
+      max-width: 800px;
+      margin: 0 auto;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(232, 90, 107, 0.05));
+      border: 1px solid rgba(124, 58, 237, 0.1);
+      border-radius: 24px;
+      padding: 48px;
+    }
+
+    .referral-content {
+      text-align: center;
+    }
+
+    .referral-icon {
+      font-size: 3rem;
+      margin-bottom: 16px;
+    }
+
+    .referral-content h2 {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 2rem;
+      font-weight: 500;
+      color: var(--navy);
+      margin-bottom: 12px;
+    }
+
+    .referral-content > p {
+      color: #64748b;
+      font-size: 1rem;
+      margin-bottom: 32px;
+    }
+
+    .referral-how {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      margin-bottom: 32px;
+      flex-wrap: wrap;
+    }
+
+    .referral-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-num {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--coral), var(--purple));
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .referral-step span {
+      color: var(--navy);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .btn-outline {
+      display: inline-block;
+      padding: 12px 32px;
+      border: 2px solid var(--purple);
+      color: var(--purple);
+      border-radius: 50px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.3s ease;
+    }
+
+    .btn-outline:hover {
+      background: var(--purple);
+      color: white;
+    }
+
+    /* OR Divider */
+    .or-divider {
+      padding: 40px 24px;
+      background: #fafafa;
+    }
+
+    .divider-line {
+      position: relative;
+      text-align: center;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .divider-line::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    .divider-line span {
+      position: relative;
+      background: #fafafa;
+      padding: 0 24px;
+      color: #94a3b8;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     /* Approach Section */

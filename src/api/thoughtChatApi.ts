@@ -80,6 +80,7 @@ interface GenerateRequest {
   forceGenerate?: boolean;
   token?: string; // Access token for santa_message product
   orderId?: string; // Order ID (can be passed here or will use session's orderId)
+  firstName?: string; // First name for personalized vision boards
 }
 
 // ============================================================
@@ -263,7 +264,7 @@ router.post('/continue', async (req: Request, res: Response) => {
 
 router.post('/generate', async (req: Request, res: Response) => {
   const startTime = Date.now();
-  const { sessionId, forceGenerate = false, token, orderId: bodyOrderId } = req.body as GenerateRequest;
+  const { sessionId, forceGenerate = false, token, orderId: bodyOrderId, firstName } = req.body as GenerateRequest;
 
   try {
     // Validate input
@@ -317,7 +318,7 @@ router.post('/generate', async (req: Request, res: Response) => {
         result = await generateNewYearResetFromSession(session, orderId);
         break;
       case 'vision_board':
-        result = await generateVisionBoardFromSession(session, orderId);
+        result = await generateVisionBoardFromSession(session, orderId, firstName);
         break;
       case 'clarity_planner':
         result = await generateClarityPlannerFromSession(session, orderId);
@@ -787,7 +788,7 @@ Return as JSON: { "sections": [{ "id": "section_id", "title": "Section Title", "
   };
 }
 
-async function generateVisionBoardFromSession(session: any, orderId?: string): Promise<{
+async function generateVisionBoardFromSession(session: any, orderId?: string, firstName?: string): Promise<{
   imageUrl: string;
   jobId?: string;
 }> {
@@ -842,6 +843,15 @@ Return a JSON object with:
 
   const visionParams = JSON.parse(jsonMatch[0]);
 
+  // Add personalized title using firstName
+  const personalizedTitle = firstName
+    ? `${firstName}'s 2025 Vision`
+    : visionParams.theme
+      ? `My ${visionParams.theme.charAt(0).toUpperCase() + visionParams.theme.slice(1)} Vision`
+      : 'My 2025 Vision';
+
+  visionParams.title = personalizedTitle;
+
   // Generate vision board using existing engine (placeholder for now - uses visionBoardEngineV12)
   const outputDir = path.join(process.cwd(), 'outputs', 'visionboards');
   if (!fs.existsSync(outputDir)) {
@@ -855,6 +865,7 @@ Return a JSON object with:
   // For now, return placeholder - the actual vision board engine is already built
   // This would call the visionBoardEngineV12 with the extracted parameters
   console.log(`[ThoughtChat API] Vision board parameters extracted:`, visionParams);
+  console.log(`[ThoughtChat API] Personalized title: ${personalizedTitle}`);
   console.log(`[ThoughtChat API] Would generate vision board to: ${filepath}`);
 
   // Mark order as used

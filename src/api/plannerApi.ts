@@ -70,7 +70,7 @@ router.post('/holiday-reset', async (req: Request, res: Response) => {
     if (!orderId) {
       return res.status(400).json({
         success: false,
-        error: 'Etsy Order ID is required. Please enter your order ID to continue.'
+        error: 'Order ID is required. Please complete your purchase to continue.'
       });
     }
 
@@ -155,7 +155,7 @@ router.post('/new-year-reset', async (req: Request, res: Response) => {
     if (!orderId) {
       return res.status(400).json({
         success: false,
-        error: 'Etsy Order ID is required. Please enter your order ID to continue.'
+        error: 'Order ID is required. Please complete your purchase to continue.'
       });
     }
 

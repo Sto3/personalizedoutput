@@ -537,13 +537,22 @@
         <p>This guided reflection helps you clarify what you truly want to manifest, what feeling you're seeking, and what aesthetic speaks to the person you're becoming.</p>
       </div>
 
+      <!-- First Name Section -->
+      <div class="order-section" id="nameSection">
+        <label for="firstNameInput">Your First Name</label>
+        <input type="text" id="firstNameInput" class="order-input"
+               placeholder="Enter your first name"
+               maxlength="50" required>
+        <p class="order-hint">Your vision board will be personalized with your name</p>
+      </div>
+
       <!-- Order ID Section -->
       <div class="order-section" id="orderSection">
-        <label for="orderIdInput">Etsy Order ID</label>
+        <label for="orderIdInput">Order ID</label>
         <input type="text" id="orderIdInput" class="order-input"
-               placeholder="Enter your Etsy Order ID (e.g., 1234567890)"
+               placeholder="Enter your Order ID"
                maxlength="20" minlength="4" required>
-        <p class="order-hint">You can find this in your Etsy purchase confirmation email</p>
+        <p class="order-hint">You can find this in your purchase confirmation email</p>
       </div>
 
       <button class="btn-start" onclick="startSession()">Begin Creating Your Vision</button>
@@ -611,6 +620,7 @@
 
     let sessionId = null;
     let orderId = null;
+    let firstName = null;
     let currentQuestion = '';
     let answers = [];
     let questionCount = 0;
@@ -623,11 +633,18 @@
     };
 
     async function startSession() {
+      const nameInput = document.getElementById('firstNameInput');
       const orderInput = document.getElementById('orderIdInput');
+      firstName = nameInput.value.trim();
       orderId = orderInput.value.trim();
 
+      if (!firstName || firstName.length < 1) {
+        showError('Please enter your first name');
+        return;
+      }
+
       if (!orderId || orderId.length < 4) {
-        showError('Please enter a valid Etsy Order ID (at least 4 characters)');
+        showError('Please enter a valid Order ID (at least 4 characters)');
         return;
       }
 
@@ -770,7 +787,7 @@
         const response = await fetch(`${API_BASE}/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, orderId })
+          body: JSON.stringify({ sessionId, orderId, firstName })
         });
 
         if (!response.ok) throw new Error('Failed to generate vision board');

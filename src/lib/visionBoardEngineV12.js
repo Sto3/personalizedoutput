@@ -244,7 +244,8 @@ function calculateDenseLayout(photoCount, canvasW, canvasH, bannerH) {
   const rows = 4;
 
   const colWidth = canvasW / (cols + 0.3);
-  const rowHeight = contentH / (rows + 0.2);
+  // Reduced overlap: changed from (rows + 0.2) to (rows + 0.5) for more spacing between rows
+  const rowHeight = contentH / (rows + 0.5);
 
   // Fixed rotations matching reference images (in degrees)
   // Row 1: +5, -6, +4

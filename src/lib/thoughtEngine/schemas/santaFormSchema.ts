@@ -20,25 +20,6 @@ export function getSantaFormSchema(): FormSchema {
     intro: "Create a deeply personalized voice message from Santa that will make your child feel truly special. The more details you share, the more magical the message will be.",
 
     sections: [
-      // Section 0: Order Verification (REQUIRED)
-      {
-        id: 'order_verification',
-        title: "Verify Your Purchase",
-        description: "Before we begin, please enter your Etsy Order ID so we can securely attach your personalized message to your purchase.",
-        questions: [
-          {
-            id: 'orderId',
-            type: 'text',
-            label: "Etsy Order ID",
-            placeholder: "Enter your Etsy Order ID (e.g., 1234567890)",
-            required: true,
-            minLength: 4,
-            maxLength: 20,
-            helpText: "You can find this in your Etsy purchase confirmation email or order history"
-          }
-        ]
-      },
-
       // Section 1: Basic Info
       {
         id: 'basics',

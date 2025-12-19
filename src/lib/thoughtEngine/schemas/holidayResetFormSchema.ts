@@ -20,25 +20,6 @@ export function getHolidayResetFormSchema(): FormSchema {
     intro: "This is a space to organize your thoughts about navigating relationships during the holidays. There are no right answers - only your truth. The more honest you are, the more helpful your personalized plan will be.",
 
     sections: [
-      // Section 0: Order Verification (REQUIRED)
-      {
-        id: 'order_verification',
-        title: "Verify Your Purchase",
-        description: "Before we begin, please enter your Etsy Order ID so we can securely attach your personalized planner to your purchase.",
-        questions: [
-          {
-            id: 'orderId',
-            type: 'text',
-            label: "Etsy Order ID",
-            placeholder: "Enter your Etsy Order ID (e.g., 1234567890)",
-            required: true,
-            minLength: 4,
-            maxLength: 20,
-            helpText: "You can find this in your Etsy purchase confirmation email or order history"
-          }
-        ]
-      },
-
       // Section 1: The Landscape
       {
         id: 'landscape',

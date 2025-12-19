@@ -22,6 +22,7 @@ export async function renderProductsPage(): Promise<string> {
 
   // Group products by category
   const kidsProducts = orderedProducts.filter(p => p.category === 'kids');
+  const learningProducts = orderedProducts.filter(p => p.category === 'learning');
   const adultsProducts = orderedProducts.filter(p => p.category === 'adults');
   const planningProducts = orderedProducts.filter(p => p.category === 'life_planning');
 
@@ -44,8 +45,8 @@ export async function renderProductsPage(): Promise<string> {
       <section class="products-section">
         <div class="container">
           <div class="section-header">
-            <h2><span class="icon">🎓</span> For Kids & Learning</h2>
-            <p>Educational experiences that use what they love to teach what they need</p>
+            <h2><span class="icon">🎅</span> For Kids</h2>
+            <p>Magical experiences designed to delight and inspire children</p>
           </div>
           <div class="products-grid">
             ${kidsProducts.map(p => renderProductCard(p)).join('')}
@@ -54,6 +55,18 @@ export async function renderProductsPage(): Promise<string> {
       </section>
 
       <section class="products-section alt">
+        <div class="container">
+          <div class="section-header">
+            <h2><span class="icon">🧠</span> Learning</h2>
+            <p>Educational experiences that use what you love to teach what you need</p>
+          </div>
+          <div class="products-grid">
+            ${learningProducts.map(p => renderProductCard(p)).join('')}
+          </div>
+        </div>
+      </section>
+
+      <section class="products-section">
         <div class="container">
           <div class="section-header">
             <h2><span class="icon">✨</span> For Adults</h2>

@@ -124,13 +124,17 @@ const SYMBOLS = {
 
   watch: (color = '#333') => `
     <svg viewBox="0 0 100 100">
-      <rect x="40" y="10" width="20" height="20" rx="2" fill="${color}"/>
-      <rect x="40" y="70" width="20" height="20" rx="2" fill="${color}"/>
-      <circle cx="50" cy="50" r="28" fill="${color}"/>
-      <circle cx="50" cy="50" r="24" fill="#F5F5F5"/>
-      <line x1="50" y1="50" x2="50" y2="32" stroke="${color}" stroke-width="2"/>
-      <line x1="50" y1="50" x2="62" y2="50" stroke="${color}" stroke-width="1.5"/>
-      <circle cx="50" cy="50" r="2" fill="${color}"/>
+      <!-- Watch bands - positioned to not overlap with watch face -->
+      <rect x="42" y="5" width="16" height="18" rx="3" fill="${color}"/>
+      <rect x="42" y="77" width="16" height="18" rx="3" fill="${color}"/>
+      <!-- Watch case and face - properly centered -->
+      <circle cx="50" cy="50" r="26" fill="${color}"/>
+      <circle cx="50" cy="50" r="22" fill="#F5F5F5"/>
+      <!-- Watch hands -->
+      <line x1="50" y1="50" x2="50" y2="34" stroke="${color}" stroke-width="2" stroke-linecap="round"/>
+      <line x1="50" y1="50" x2="60" y2="50" stroke="${color}" stroke-width="1.5" stroke-linecap="round"/>
+      <!-- Center dot -->
+      <circle cx="50" cy="50" r="2.5" fill="${color}"/>
     </svg>
   `,
 

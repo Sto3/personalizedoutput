@@ -858,15 +858,41 @@ function getHomepageStyles(): string {
       padding: 10px 14px;
       text-decoration: none;
       transition: all 0.3s ease;
-      animation: cardSlideIn 0.6s ease-out backwards;
+      animation: cardSlideIn 0.6s ease-out backwards, cardGlow 3s ease-in-out infinite;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .popular-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.1),
+        transparent
+      );
+      animation: cardShimmer 3s ease-in-out infinite;
     }
 
     .popular-card:first-child {
-      animation-delay: 0.1s;
+      animation-delay: 0.1s, 0s;
+    }
+
+    .popular-card:first-child::before {
+      animation-delay: 0s;
     }
 
     .popular-card:last-child {
-      animation-delay: 0.3s;
+      animation-delay: 0.3s, 1.5s;
+    }
+
+    .popular-card:last-child::before {
+      animation-delay: 1.5s;
     }
 
     @keyframes cardSlideIn {
@@ -880,14 +906,52 @@ function getHomepageStyles(): string {
       }
     }
 
+    @keyframes cardGlow {
+      0%, 100% {
+        box-shadow: 0 0 0 0 rgba(232, 90, 107, 0);
+      }
+      50% {
+        box-shadow: 0 0 15px 2px rgba(232, 90, 107, 0.15);
+      }
+    }
+
+    @keyframes cardShimmer {
+      0% {
+        left: -100%;
+      }
+      50%, 100% {
+        left: 100%;
+      }
+    }
+
     .popular-card:hover {
       background: rgba(255, 255, 255, 0.12);
       border-color: rgba(255, 255, 255, 0.25);
-      transform: translateY(-2px);
+      transform: translateY(-4px) scale(1.02);
+      box-shadow: 0 8px 25px rgba(232, 90, 107, 0.25);
     }
 
     .popular-icon {
       font-size: 1.5rem;
+      animation: iconBounce 2s ease-in-out infinite;
+      display: inline-block;
+    }
+
+    .popular-card:first-child .popular-icon {
+      animation-delay: 0s;
+    }
+
+    .popular-card:last-child .popular-icon {
+      animation-delay: 1s;
+    }
+
+    @keyframes iconBounce {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+      }
+      50% {
+        transform: translateY(-3px) scale(1.1);
+      }
     }
 
     .popular-title {

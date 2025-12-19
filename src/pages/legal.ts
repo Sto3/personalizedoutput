@@ -111,8 +111,8 @@ export function renderTermsPage(): string {
         </ul>
         <p>Unused outputs do not roll over to the next billing period. Subscriptions auto-renew unless cancelled.</p>
 
-        <h2>4. Etsy Orders</h2>
-        <p>Products purchased through our Etsy store are subject to both these Terms and Etsy's policies. Each Etsy purchase entitles you to one personalized output as specified in the listing.</p>
+        <h2>4. One-Time Purchases</h2>
+        <p>Individual products purchased through our website are subject to these Terms. Each purchase entitles you to one personalized output as specified in the product listing.</p>
 
         <h2>5. Intellectual Property</h2>
         <p><strong>Our IP:</strong> The Personalized Output name, logo, website design, and generation technology are our intellectual property. Our AI prompts, question flows, and generation systems are trade secrets.</p>

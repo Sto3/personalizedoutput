@@ -34,7 +34,7 @@ export interface ProductInfo {
   name: string;
   description: string;
   price: number; // in cents
-  category: 'kids' | 'adults' | 'life_planning';
+  category: 'kids' | 'learning' | 'adults' | 'life_planning';
   slug: string;
   stripePriceId?: string;
   isActive: boolean;
@@ -108,7 +108,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     name: '30-Minute Audio Lesson',
     description: 'Personalized audio lesson that uses what you love to teach what you need',
     price: 2299, // $22.99
-    category: 'kids', // Also available for adults
+    category: 'learning',
     slug: 'learning-session',
     isActive: true,
     createdAt: new Date('2024-12-01'),
@@ -118,7 +118,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     name: '30-Minute Video Lesson',
     description: 'Personalized video lesson with visuals that brings learning to life',
     price: 3299, // $32.99
-    category: 'kids', // Also available for adults
+    category: 'learning',
     slug: 'video-lesson',
     isActive: true,
     createdAt: new Date('2024-12-15'),
@@ -128,7 +128,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     name: 'Custom Flash Cards',
     description: 'Personalized flashcards based on your interests and learning goals',
     price: 1499, // $14.99
-    category: 'kids',
+    category: 'learning',
     slug: 'flash-cards',
     isActive: true,
     createdAt: new Date('2024-12-01'),
