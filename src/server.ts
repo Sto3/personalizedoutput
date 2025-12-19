@@ -943,6 +943,54 @@ const OLD_DEMO_LESSONS_HTML_ARCHIVED = `<!DOCTYPE html>
           </div>
         </div>
       </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/sofia_smart.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Sofia: Thinks She's Not Smart Enough</h3>
+          <p class="video-subtitle">Santa reminds her that effort matters more than being perfect</p>
+          <div class="demo-tags">
+            <span class="tag santa">Encouragement</span>
+            <span class="tag santa">Growth</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/elijah_kindness.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Elijah: Nobody Notices His Kindness</h3>
+          <p class="video-subtitle">Santa tells him the kindest hearts do good when no one's watching</p>
+          <div class="demo-tags">
+            <span class="tag santa">Kindness</span>
+            <span class="tag santa">Validation</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="video-card">
+        <div class="video-wrapper">
+          <video controls preload="metadata">
+            <source src="/santa-demos/lily_moved.mp4" type="video/mp4">
+          </video>
+        </div>
+        <div class="video-info">
+          <h3 class="video-title">Lily: Just Moved, No Friends Yet</h3>
+          <p class="video-subtitle">Santa encourages her that new friendships are coming</p>
+          <div class="demo-tags">
+            <span class="tag santa">New Start</span>
+            <span class="tag santa">Hope</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- CTA -->
