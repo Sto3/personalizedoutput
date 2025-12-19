@@ -62,14 +62,14 @@ export function renderDemoLessonsPage(): string {
 
             <div class="demo-card vision-card">
               <div class="image-container">
-                <img src="/demos/sample-vision-board-relationship.png" alt="Couple's Vision Board - 2025 Together" loading="lazy">
+                <img src="/demos/sample-vision-board-newyear.png" alt="New Year 2025 Vision Board" loading="lazy">
               </div>
               <div class="demo-info">
                 <h3>2025 Vision</h3>
-                <p>Shared dreams, creative spaces, and cozy moments for couples</p>
+                <p>New year goals, fresh starts, and dreams for the year ahead</p>
                 <div class="demo-tags">
-                  <span class="tag vision">Relationship</span>
-                  <span class="tag">Lifestyle</span>
+                  <span class="tag vision">New Year</span>
+                  <span class="tag">Goals</span>
                 </div>
               </div>
             </div>
@@ -266,7 +266,7 @@ function getDemoLessonsStyles(): string {
 
     /* Hero Section */
     .demo-hero {
-      padding: 120px 24px 80px;
+      padding: 90px 24px 40px;
       background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 50%, #fafafa 100%);
       text-align: center;
     }
@@ -304,7 +304,7 @@ function getDemoLessonsStyles(): string {
 
     /* Demos Section */
     .demos-section {
-      padding: 80px 24px;
+      padding: 50px 24px;
     }
 
     .demos-section.alt {
