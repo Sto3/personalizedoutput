@@ -47,11 +47,11 @@ const BOARDS = [
     style: 'feminine'
   },
   {
-    id: 'newyear',
-    inputFile: 'sample-vision-board-newyear.png',
-    outputFile: 'sample-vision-board-newyear.png',
-    title: "ALEX'S 2026 VISION",
-    subtitle: "DREAM • BUILD • ACHIEVE",
+    id: 'relationship',
+    inputFile: 'sample-vision-board-relationship.png',
+    outputFile: 'sample-vision-board-relationship.png',
+    title: "OUR 3-MONTH RESET",
+    subtitle: "RECONNECT • REALIGN • RENEW",
     colors: {
       banner: '#b8956e',       // Warm gold
       bannerText: '#4a4a4a',
