@@ -27,7 +27,7 @@ const BOARDS = [
     title: "BUILT DIFFERENT",
     subtitle: "FOCUS • DISCIPLINE • EXECUTE",
     colors: {
-      banner: '#1a1a2e',       // Dark navy
+      banner: '#000000',       // Pure black
       bannerText: '#c9a962',   // Gold text
       bannerSubtext: 'rgba(201,169,98,0.7)'
     },
@@ -47,11 +47,11 @@ const BOARDS = [
     style: 'feminine'
   },
   {
-    id: 'relationship',
-    inputFile: 'sample-vision-board-relationship.png',
-    outputFile: 'sample-vision-board-relationship.png',
-    title: "OUR 3-MONTH RESET",
-    subtitle: "RECONNECT • REALIGN • RENEW",
+    id: 'newyear',
+    inputFile: 'sample-vision-board-newyear.png',
+    outputFile: 'sample-vision-board-newyear.png',
+    title: "ALEX'S 2026 VISION",
+    subtitle: "DREAM • BUILD • ACHIEVE",
     colors: {
       banner: '#b8956e',       // Warm gold
       bannerText: '#4a4a4a',
