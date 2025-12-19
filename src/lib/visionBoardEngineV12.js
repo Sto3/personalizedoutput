@@ -393,10 +393,34 @@ function downloadImage(url) {
 
 async function generatePhoto(symbol, style, index) {
   const mood = style?.mood || "aesthetic dreamy warm";
-  const prompt = `Beautiful photograph of ${symbol}. ${mood}, professional photography, no text, no logos, no watermarks.`;
 
-  // Strong negative prompt to prevent people/body parts AND alcohol/liquor
-  const negativePrompt = "people, person, human, man, woman, child, baby, face, faces, portrait, hands, fingers, arms, legs, feet, body, figure, silhouette, crowd, group, alcohol, liquor, whiskey, beer, wine, cocktail, drinking, bar, drunk, bottle of alcohol";
+  // CRITICAL: Explicitly state NO PEOPLE in the prompt itself, not just negative prompt
+  // This is the most reliable way to prevent human figures from appearing
+  const prompt = `Beautiful photograph of ${symbol}. ${mood}, professional photography, OBJECTS ONLY, NO PEOPLE, NO HUMANS, no text, no logos, no watermarks. Focus on objects, scenery, and items - never include any human figures, faces, or body parts.`;
+
+  // COMPREHENSIVE negative prompt to absolutely prevent people/body parts AND alcohol/liquor
+  // This list is intentionally exhaustive to cover all possible ways the AI might interpret human presence
+  const negativePrompt = [
+    // People and humans - every possible variation
+    "people", "person", "human", "humans", "man", "woman", "men", "women",
+    "child", "children", "kid", "kids", "baby", "babies", "infant", "toddler",
+    "adult", "adults", "elderly", "senior", "teenager", "teen", "youth",
+    "couple", "couples", "family", "families", "crowd", "group", "gathering",
+    // Body parts - comprehensive list
+    "face", "faces", "head", "heads", "portrait", "portraits", "selfie",
+    "hand", "hands", "finger", "fingers", "arm", "arms", "leg", "legs",
+    "foot", "feet", "toe", "toes", "body", "bodies", "torso", "chest",
+    "back", "shoulder", "shoulders", "neck", "skin", "eye", "eyes",
+    "mouth", "lips", "nose", "ear", "ears", "hair", "beard", "mustache",
+    // Figures and silhouettes
+    "figure", "figures", "silhouette", "silhouettes", "shadow of person",
+    "human form", "human shape", "human figure", "human silhouette",
+    "model", "models", "pose", "posing", "posed",
+    // Alcohol and drinking
+    "alcohol", "liquor", "whiskey", "whisky", "beer", "wine", "cocktail",
+    "champagne", "vodka", "rum", "gin", "tequila", "bourbon", "scotch",
+    "drinking", "bar", "drunk", "bottle of alcohol", "alcoholic beverage"
+  ].join(", ");
 
   console.log(`  [${index + 1}] "${symbol.substring(0, 38)}..."`);
   try {
