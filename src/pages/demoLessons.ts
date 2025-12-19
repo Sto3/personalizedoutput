@@ -33,46 +33,56 @@ export function renderDemoLessonsPage(): string {
 
           <div class="demo-grid vision-grid">
             <div class="demo-card vision-card">
-              <div class="image-container">
-                <img src="/demos/sample-vision-board-male.png" alt="His Vision Board - Career Goals" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-male.png', 'James\\'s Best Year Yet')">
+                <img src="/demos/sample-vision-board-male.png" alt="James's Best Year Yet - Personalized Vision Board" loading="lazy">
+                <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>Career Goals</h3>
-                <p>Professional ambitions, workspace goals, and success visualization for him</p>
+                <h3>James's Best Year Yet</h3>
+                <p>A personalized vision board tailored to his unique goals and aspirations</p>
                 <div class="demo-tags">
-                  <span class="tag vision">For Him</span>
-                  <span class="tag">Professional</span>
+                  <span class="tag vision">Fully Custom</span>
+                  <span class="tag">Any Theme</span>
                 </div>
               </div>
             </div>
 
             <div class="demo-card vision-card">
-              <div class="image-container">
-                <img src="/demos/sample-vision-board-female.png" alt="Her Vision Board - Self Love" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-female.png', 'Sarah\\'s Dream Year')">
+                <img src="/demos/sample-vision-board-female.png" alt="Sarah's Dream Year - Personalized Vision Board" loading="lazy">
+                <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>Self Love</h3>
-                <p>Wellness, beauty, and self-care aspirations designed for her</p>
+                <h3>Sarah's Dream Year</h3>
+                <p>A beautiful vision board designed around her personal dreams and style</p>
                 <div class="demo-tags">
-                  <span class="tag vision">For Her</span>
-                  <span class="tag">Wellness</span>
+                  <span class="tag vision">Fully Custom</span>
+                  <span class="tag">Your Style</span>
                 </div>
               </div>
             </div>
 
             <div class="demo-card vision-card">
-              <div class="image-container">
-                <img src="/demos/sample-vision-board-newyear.png" alt="New Year 2025 Vision Board" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-newyear.png', 'Alex\\'s 2025 Vision')">
+                <img src="/demos/sample-vision-board-newyear.png" alt="Alex's 2025 Vision - Personalized Vision Board" loading="lazy">
+                <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>2025 Vision</h3>
-                <p>New year goals, fresh starts, and dreams for the year ahead</p>
+                <h3>Alex's 2025 Vision</h3>
+                <p>A personalized board capturing their unique goals for the new year</p>
                 <div class="demo-tags">
-                  <span class="tag vision">New Year</span>
-                  <span class="tag">Goals</span>
+                  <span class="tag vision">Fully Custom</span>
+                  <span class="tag">Your Goals</span>
                 </div>
               </div>
             </div>
+          </div>
+
+          <!-- Lightbox Modal for fullscreen viewing -->
+          <div id="lightbox" class="lightbox" onclick="closeLightbox()">
+            <span class="lightbox-close" onclick="closeLightbox()">&times;</span>
+            <img id="lightbox-img" src="" alt="">
+            <div id="lightbox-caption" class="lightbox-caption"></div>
           </div>
         </div>
       </section>
@@ -241,12 +251,40 @@ export function renderDemoLessonsPage(): string {
     </main>
   `;
 
+  const lightboxScript = `
+    <script>
+      function openLightbox(imageSrc, caption) {
+        const lightbox = document.getElementById('lightbox');
+        const lightboxImg = document.getElementById('lightbox-img');
+        const lightboxCaption = document.getElementById('lightbox-caption');
+
+        lightboxImg.src = imageSrc;
+        lightboxCaption.textContent = caption;
+        lightbox.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeLightbox() {
+        const lightbox = document.getElementById('lightbox');
+        lightbox.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+
+      // Close lightbox on Escape key
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          closeLightbox();
+        }
+      });
+    </script>
+  `;
+
   return renderPageStart({
     title: 'Demo Videos',
     description: 'Watch demo videos of personalized lessons and Santa messages. See how we transform interests into engaging, personal experiences.',
     currentPage: 'demos',
     additionalStyles: pageStyles
-  }) + pageContent + renderPageEnd();
+  }) + pageContent + lightboxScript + renderPageEnd();
 }
 
 function getDemoLessonsStyles(): string {
@@ -445,6 +483,103 @@ function getDemoLessonsStyles(): string {
 
     .vision-card:hover .image-container img {
       transform: scale(1.05);
+    }
+
+    /* Clickable image overlay */
+    .clickable-image {
+      cursor: pointer;
+      position: relative;
+    }
+
+    .image-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s ease;
+    }
+
+    .image-overlay span {
+      color: white;
+      font-size: 0.9rem;
+      font-weight: 500;
+      padding: 10px 20px;
+      background: rgba(0, 0, 0, 0.7);
+      border-radius: 25px;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+    }
+
+    .clickable-image:hover .image-overlay {
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .clickable-image:hover .image-overlay span {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Lightbox Modal Styles */
+    .lightbox {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      padding: 20px;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.95);
+      cursor: pointer;
+    }
+
+    .lightbox.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .lightbox-close {
+      position: absolute;
+      top: 20px;
+      right: 35px;
+      color: #f1f1f1;
+      font-size: 50px;
+      font-weight: 300;
+      transition: color 0.3s ease;
+      z-index: 10000;
+    }
+
+    .lightbox-close:hover {
+      color: var(--coral);
+    }
+
+    #lightbox-img {
+      max-width: 95%;
+      max-height: 85vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
+    }
+
+    .lightbox-caption {
+      color: white;
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.25rem;
+      text-align: center;
+      margin-top: 16px;
+      padding: 10px 20px;
     }
 
     /* Features Section */
