@@ -861,7 +861,7 @@ const OLD_DEMO_LESSONS_HTML_ARCHIVED = `<!DOCTYPE html>
       <div class="video-card">
         <div class="video-wrapper">
           <video controls preload="metadata" poster="">
-            <source src="/demos/joe-dinosaurs-fractions.mp4" type="video/mp4">
+            <source src="/demos/joe-dinosaurs-fractions-full.mp4" type="video/mp4">
           </video>
         </div>
         <div class="video-info">

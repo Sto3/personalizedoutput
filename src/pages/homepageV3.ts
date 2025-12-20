@@ -1880,7 +1880,7 @@ export function renderPremiumHomepageV3(): string {
           <div class="demo-video-card">
             <div class="demo-video-wrapper">
               <video preload="metadata" playsinline muted>
-                <source src="/demos/joe-dinosaurs-fractions.mp4" type="video/mp4">
+                <source src="/demos/joe-dinosaurs-fractions-full.mp4" type="video/mp4">
               </video>
               <div class="demo-play-overlay" onclick="playDemo(this)">
                 <div class="demo-play-btn"></div>
