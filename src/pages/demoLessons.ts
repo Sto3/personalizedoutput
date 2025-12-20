@@ -87,73 +87,6 @@ export function renderDemoLessonsPage(): string {
         </div>
       </section>
 
-      <!-- Lesson Demos Section -->
-      <section class="demos-section">
-        <div class="container">
-          <div class="section-header">
-            <h2><span class="icon">🎧</span> Personalized Lessons</h2>
-            <p>See how we transform interests into engaging learning experiences</p>
-          </div>
-
-          <div class="demo-grid">
-            <div class="demo-card featured-lesson">
-              <div class="featured-badge">Full 3-Minute Demo</div>
-              <div class="video-container">
-                <video controls preload="metadata">
-                  <source src="/demos/demo-lesson-joe-3min.mp4" type="video/mp4">
-                  Your browser does not support video.
-                </video>
-              </div>
-              <div class="demo-info">
-                <h3>Joe: Dinosaurs → Fractions</h3>
-                <p>6 years old • Watch how Joe's love of dinosaurs becomes a complete math lesson about fractions, delivered through the adventures of T-Rex and friends</p>
-                <div class="demo-tags">
-                  <span class="tag featured">Voice Narrated</span>
-                  <span class="tag">Kid-Friendly</span>
-                  <span class="tag">Math</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="demo-card">
-              <div class="video-container">
-                <video controls preload="metadata">
-                  <source src="/demos/demo-lesson-maya-3min.mp4" type="video/mp4">
-                  Your browser does not support video.
-                </video>
-              </div>
-              <div class="demo-info">
-                <h3>Maya: Art → Solar System</h3>
-                <p>10 years old • See how Maya's artistic passion transforms into an engaging astronomy lesson exploring the planets</p>
-                <div class="demo-tags">
-                  <span class="tag featured">Voice Narrated</span>
-                  <span class="tag">Creative</span>
-                  <span class="tag">Science</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="demo-card">
-              <div class="video-container">
-                <video controls preload="metadata">
-                  <source src="/demos/demo-lesson-sarah-3min.mp4" type="video/mp4">
-                  Your browser does not support video.
-                </video>
-              </div>
-              <div class="demo-info">
-                <h3>Sarah: Bakery → Mortgage</h3>
-                <p>Adult • Experience how Sarah's dream of opening a bakery becomes the perfect framework for understanding mortgages and home financing</p>
-                <div class="demo-tags">
-                  <span class="tag featured">Voice Narrated</span>
-                  <span class="tag">Adult</span>
-                  <span class="tag">Finance</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- Santa Demos Section -->
       <section class="demos-section alt">
         <div class="container">
@@ -284,19 +217,23 @@ export function renderDemoLessonsPage(): string {
             </div>
 
             <div class="demo-card full-lesson-card">
-              <div class="full-badge">Full Lesson - Video + Audio</div>
-              <div class="video-container">
-                <video controls preload="metadata">
-                  <source src="/demos/joe-dinosaurs-fractions-full.mp4" type="video/mp4">
-                  Your browser does not support video.
-                </video>
+              <div class="full-badge">Full Lesson - Audio Only</div>
+              <div class="audio-container">
+                <div class="audio-visual">
+                  <span class="audio-icon">🦕</span>
+                  <span class="audio-label">Listen to the Full Lesson</span>
+                </div>
+                <audio controls preload="metadata" style="width: 100%;">
+                  <source src="/demos/joe-dinosaurs-fractions-full.mp3" type="audio/mpeg">
+                  Your browser does not support audio.
+                </audio>
               </div>
               <div class="demo-info">
-                <h3>Joe: Dinosaurs → Fractions (Video + Audio)</h3>
-                <p>6 years old • Full video lesson combining friendly voice narration with colorful dinosaur visuals. Perfect for engaging young learners during focused learning time.</p>
+                <h3>Joe: Dinosaurs → Fractions (Audio)</h3>
+                <p>6 years old • Full voice-narrated lesson teaching fractions through dinosaur adventures. Perfect for car rides, bedtime learning, or focused listening time.</p>
                 <div class="demo-tags">
                   <span class="tag full">Full Length</span>
-                  <span class="tag featured">Video + Audio</span>
+                  <span class="tag featured">Audio Only</span>
                   <span class="tag">Kid-Friendly</span>
                 </div>
               </div>
