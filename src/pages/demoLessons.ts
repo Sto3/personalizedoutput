@@ -33,12 +33,12 @@ export function renderDemoLessonsPage(): string {
 
           <div class="demo-grid vision-grid">
             <div class="demo-card vision-card">
-              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-male.png', 'James: Built Different')">
-                <img src="/demos/sample-vision-board-male.png" alt="James: Built Different - Personalized Vision Board" loading="lazy">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-vision-board-male.png', 'Marcus: Built Different')">
+                <img src="/demos/sample-vision-board-male.png" alt="Marcus: Built Different - Personalized Vision Board" loading="lazy">
                 <div class="image-overlay"><span>Click to view full screen</span></div>
               </div>
               <div class="demo-info">
-                <h3>James: Built Different</h3>
+                <h3>Marcus: Built Different</h3>
                 <p>A bold vision board focused on discipline, execution, and achieving greatness</p>
                 <div class="demo-tags">
                   <span class="tag vision">Fully Custom</span>
