@@ -48,6 +48,9 @@ import {
   sanitizeOrderId
 } from '../lib/orders/orderValidation';
 
+// Import vision board engine V12
+const { generateVisionBoard: generateVisionBoardV12 } = require('../lib/visionBoardEngineV12');
+
 // ============================================================
 // TYPES
 // ============================================================
@@ -798,7 +801,8 @@ async function generateVisionBoardFromSession(session: any, orderId?: string, fi
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) throw new Error('ANTHROPIC_API_KEY not set');
 
-  const extractionPrompt = `Based on this conversation, extract the key parameters for generating a vision board:
+  // Enhanced extraction prompt that generates photo prompts for the V12 engine
+  const extractionPrompt = `Based on this conversation, extract parameters for generating a personalized vision board.
 
 <conversation_transcript>
 ${transcript}
@@ -807,13 +811,35 @@ ${transcript}
 Return a JSON object with:
 {
   "theme": "one word theme (e.g., 'abundance', 'clarity', 'growth')",
-  "goals": ["list of 3-5 specific goals"],
-  "aesthetic": "visual style preference (e.g., 'modern minimalist', 'warm earthy', 'bold vibrant')",
-  "colors": ["suggested color palette"],
-  "keywords": ["inspiring words/phrases to include"],
-  "seasonOfLife": "what season/phase they're in",
-  "coreDesire": "their deepest desire or intention"
-}`;
+  "goals": ["list of 3-5 specific goals mentioned"],
+  "aesthetic": "visual style (e.g., 'feminine dreamy soft', 'masculine dark discipline', 'warm romantic cozy')",
+  "isMasculine": true/false based on the person's preferences and goals,
+  "isRelationship": true/false if this is about couples/relationship goals,
+  "subtitle": "3 words separated by bullets like 'GROW • THRIVE • BLOOM'",
+  "photoPrompts": [
+    "12 specific photo descriptions that represent their goals - NO PEOPLE, only objects, scenes, and items. Examples:",
+    "luxury watch on marble desk, morning light",
+    "yoga mat with candles, peaceful meditation space",
+    "stack of books by window with coffee cup",
+    "hiking boots on mountain trail at sunrise",
+    "healthy meal prep containers, colorful vegetables",
+    "journal with gold pen on cozy blanket",
+    "running shoes by door with sunrise light",
+    "plane tickets and passport on world map",
+    "home office with plants, organized desk",
+    "fresh flowers in elegant vase, soft light",
+    "beach at sunset, peaceful ocean waves",
+    "cozy reading corner with fairy lights"
+  ],
+  "colors": {
+    "background": "hex color for background (light for feminine, dark for masculine)",
+    "banner": "hex color for title banner",
+    "bannerText": "hex color for banner text",
+    "accents": ["4 hex accent colors that match the mood"]
+  }
+}
+
+CRITICAL: photoPrompts must describe OBJECTS and SCENES only - never include people, faces, or body parts.`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -824,7 +850,7 @@ Return a JSON object with:
     },
     body: JSON.stringify({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
+      max_tokens: 2000,
       messages: [{ role: 'user', content: extractionPrompt }]
     })
   });
@@ -843,30 +869,72 @@ Return a JSON object with:
 
   const visionParams = JSON.parse(jsonMatch[0]);
 
-  // Add personalized title using firstName
+  // Build personalized title
   const personalizedTitle = firstName
-    ? `${firstName}'s 2025 Vision`
+    ? `${firstName.toUpperCase()}'S ${(visionParams.theme || '2025 VISION').toUpperCase()}`
     : visionParams.theme
-      ? `My ${visionParams.theme.charAt(0).toUpperCase() + visionParams.theme.slice(1)} Vision`
-      : 'My 2025 Vision';
+      ? `MY ${visionParams.theme.toUpperCase()} VISION`
+      : 'MY 2025 VISION';
 
-  visionParams.title = personalizedTitle;
-
-  // Generate vision board using existing engine (placeholder for now - uses visionBoardEngineV12)
-  const outputDir = path.join(process.cwd(), 'outputs', 'visionboards');
-  if (!fs.existsSync(outputDir)) {
-    fs.mkdirSync(outputDir, { recursive: true });
+  // Determine style mood based on extracted parameters
+  let styleMood = visionParams.aesthetic || 'dreamy warm aesthetic';
+  if (visionParams.isMasculine) {
+    styleMood = 'masculine dark discipline executive';
+  } else if (visionParams.isRelationship) {
+    styleMood = 'warm romantic cozy intimate couple relationship together partner';
   }
 
-  const filenameBase = orderId || 'chat';
-  const filename = `vision-board-${filenameBase}-${Date.now()}.png`;
-  const filepath = path.join(outputDir, filename);
+  // Build V12 engine input
+  const engineInput = {
+    title: personalizedTitle,
+    subtitle: visionParams.subtitle || 'DREAM • BELIEVE • ACHIEVE',
+    colors: {
+      background: visionParams.colors?.background || (visionParams.isMasculine ? '#000000' : '#fdf8f0'),
+      banner: visionParams.colors?.banner || (visionParams.isMasculine ? '#000000' : '#b8860b'),
+      bannerText: visionParams.colors?.bannerText || (visionParams.isMasculine ? '#c9a962' : '#FFFFFF'),
+      bannerSubtext: visionParams.isMasculine ? 'rgba(201,169,98,0.7)' : 'rgba(255,255,255,0.85)',
+      accents: visionParams.colors?.accents || ['#FFD700', '#DAA520', '#F5DEB3', '#FFFACD']
+    },
+    style: {
+      mood: styleMood,
+      bokeh: !visionParams.isMasculine
+    },
+    photos: visionParams.photoPrompts || [
+      "elegant planner on marble desk with gold accents",
+      "sunrise over mountains, new beginnings",
+      "cozy workspace with candles and plants",
+      "fresh flowers in gold vase, morning light",
+      "meditation cushion in peaceful room",
+      "hiking trail through beautiful forest",
+      "healthy breakfast spread, colorful fruits",
+      "stack of inspiring books by window",
+      "yoga mat with peaceful decor",
+      "world map with travel pins",
+      "journal and gold pen on soft blanket",
+      "ocean waves at golden hour"
+    ]
+  };
 
-  // For now, return placeholder - the actual vision board engine is already built
-  // This would call the visionBoardEngineV12 with the extracted parameters
-  console.log(`[ThoughtChat API] Vision board parameters extracted:`, visionParams);
-  console.log(`[ThoughtChat API] Personalized title: ${personalizedTitle}`);
-  console.log(`[ThoughtChat API] Would generate vision board to: ${filepath}`);
+  console.log(`[ThoughtChat API] Vision board parameters extracted:`, {
+    title: engineInput.title,
+    subtitle: engineInput.subtitle,
+    mood: styleMood,
+    photoCount: engineInput.photos.length
+  });
+
+  // Actually generate the vision board using V12 engine
+  console.log(`[ThoughtChat API] Calling Vision Board Engine V12...`);
+
+  const result = await generateVisionBoardV12(engineInput);
+
+  if (!result || !result.filepath) {
+    throw new Error('Vision board generation failed - no output file');
+  }
+
+  console.log(`[ThoughtChat API] Vision board generated: ${result.filepath}`);
+
+  // Get just the filename from the full path
+  const filename = path.basename(result.filepath);
 
   // Mark order as used
   let jobId: string | undefined;
@@ -876,8 +944,9 @@ Return a JSON object with:
     console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
   }
 
+  // Return the URL path to the generated image
   return {
-    imageUrl: `/outputs/visionboards/${filename}`,
+    imageUrl: `/outputs/${filename}`,
     jobId
   };
 }
