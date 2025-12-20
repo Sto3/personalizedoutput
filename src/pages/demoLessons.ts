@@ -87,34 +87,6 @@ export function renderDemoLessonsPage(): string {
         </div>
       </section>
 
-      <!-- Flash Cards Section -->
-      <section class="demos-section alt">
-        <div class="container">
-          <div class="section-header">
-            <h2><span class="icon">📚</span> Flash Card Samples</h2>
-            <p>Custom educational flash cards designed around what your child loves</p>
-          </div>
-
-          <div class="demo-grid flash-grid">
-            <div class="demo-card flash-card">
-              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-flashcards-dinosaurs.png', 'Dino Math Cards')">
-                <img src="/demos/sample-flashcards-dinosaurs.png" alt="Dinosaur Math Flash Cards - Addition, Subtraction, Counting" loading="lazy">
-                <div class="image-overlay"><span>Click to view full screen</span></div>
-              </div>
-              <div class="demo-info">
-                <h3>Dino Math Cards</h3>
-                <p>Math concepts taught through friendly dinosaurs - addition, subtraction, counting, multiplication, and word problems</p>
-                <div class="demo-tags">
-                  <span class="tag flash">Fully Custom</span>
-                  <span class="tag">Ages 4-8</span>
-                  <span class="tag">Math</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- Lesson Demos Section -->
       <section class="demos-section">
         <div class="container">
@@ -272,6 +244,88 @@ export function renderDemoLessonsPage(): string {
                 <div class="demo-tags">
                   <span class="tag santa">New Start</span>
                   <span class="tag">Hope</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Full-Length Lesson Demos Section -->
+      <section class="demos-section">
+        <div class="container">
+          <div class="section-header">
+            <h2><span class="icon">🎬</span> Full-Length Personalized Lessons</h2>
+            <p>Experience the complete voice-narrated learning experience (2+ minutes)</p>
+          </div>
+
+          <div class="demo-grid full-lesson-grid">
+            <div class="demo-card full-lesson-card">
+              <div class="full-badge">Full Lesson - Audio Only</div>
+              <div class="audio-container">
+                <div class="audio-visual">
+                  <span class="audio-icon">🎧</span>
+                  <span class="audio-label">Listen to the Full Lesson</span>
+                </div>
+                <audio controls preload="metadata" style="width: 100%;">
+                  <source src="/demos/joe-dinosaurs-fractions-full.mp3" type="audio/mpeg">
+                  Your browser does not support audio.
+                </audio>
+              </div>
+              <div class="demo-info">
+                <h3>Joe: Dinosaurs → Fractions (Audio)</h3>
+                <p>6 years old • Full 2+ minute voice-narrated lesson teaching fractions through dinosaur adventures. Perfect for listening during car rides or quiet time.</p>
+                <div class="demo-tags">
+                  <span class="tag full">2+ Minutes</span>
+                  <span class="tag featured">Voice Narrated</span>
+                  <span class="tag">Kid-Friendly</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="demo-card full-lesson-card">
+              <div class="full-badge">Full Lesson - Video</div>
+              <div class="video-container">
+                <video controls preload="metadata">
+                  <source src="/demos/joe-dinosaurs-fractions-full.mp4" type="video/mp4">
+                  Your browser does not support video.
+                </video>
+              </div>
+              <div class="demo-info">
+                <h3>Joe: Dinosaurs → Fractions (Video)</h3>
+                <p>6 years old • Full 2+ minute video lesson with voice narration and visual presentation. Perfect for focused learning sessions.</p>
+                <div class="demo-tags">
+                  <span class="tag full">2+ Minutes</span>
+                  <span class="tag featured">Voice + Video</span>
+                  <span class="tag">Math</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Flash Cards Section -->
+      <section class="demos-section alt">
+        <div class="container">
+          <div class="section-header">
+            <h2><span class="icon">📚</span> Flash Card Samples</h2>
+            <p>Custom educational flash cards designed around what your child loves</p>
+          </div>
+
+          <div class="demo-grid flash-grid">
+            <div class="demo-card flash-card">
+              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-flashcards-dinosaurs.png', 'Dino Math Cards')">
+                <img src="/demos/sample-flashcards-dinosaurs.png" alt="Dinosaur Math Flash Cards - Addition, Subtraction, Counting" loading="lazy">
+                <div class="image-overlay"><span>Click to view full screen</span></div>
+              </div>
+              <div class="demo-info">
+                <h3>Dino Math Cards</h3>
+                <p>Math concepts taught through friendly dinosaurs - addition, subtraction, counting, multiplication, and word problems</p>
+                <div class="demo-tags">
+                  <span class="tag flash">Fully Custom</span>
+                  <span class="tag">Ages 4-8</span>
+                  <span class="tag">Math</span>
                 </div>
               </div>
             </div>
@@ -558,6 +612,66 @@ function getDemoLessonsStyles(): string {
     .tag.flash {
       background: rgba(93, 171, 139, 0.1);
       color: #5DAB8B;
+    }
+
+    .tag.full {
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white;
+    }
+
+    /* Full-Length Lesson Cards */
+    .full-lesson-grid {
+      max-width: 900px;
+    }
+
+    .full-lesson-card {
+      position: relative;
+      border: 2px solid var(--purple);
+      box-shadow: 0 8px 32px rgba(124, 58, 237, 0.15);
+    }
+
+    .full-badge {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: linear-gradient(135deg, var(--purple), var(--coral));
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 16px;
+      border-radius: 20px;
+      z-index: 10;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+
+    .audio-container {
+      padding: 32px;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.05), rgba(232, 90, 107, 0.05));
+    }
+
+    .audio-visual {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .audio-icon {
+      font-size: 64px;
+      display: block;
+      margin-bottom: 12px;
+    }
+
+    .audio-label {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.1rem;
+      color: var(--purple);
+      font-weight: 500;
+    }
+
+    .audio-container audio {
+      width: 100%;
+      border-radius: 8px;
     }
 
     /* Flash Cards Grid */
