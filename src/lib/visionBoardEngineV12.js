@@ -291,8 +291,8 @@ function calculateDenseLayout(photoCount, canvasW, canvasH, bannerH) {
   // Fixed Y offsets for organic positioning
   const fixedOffY = [
     5, -8, 10,     // Row 1
-    -5, 35, -3,    // Row 2 - Middle photo (index 4) moved DOWN from 12 to 35 to prevent overlap
-    8, -10, 5,     // Row 3
+    -5, 35, -3,    // Row 2 - Middle photo (index 4) at 35 (original)
+    8, 10, 5,      // Row 3 - Middle photo (index 7) at 10 (was -10, moved down 2 levels)
     -8, 5, -5      // Row 4
   ];
 

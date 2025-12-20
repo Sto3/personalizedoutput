@@ -45,12 +45,9 @@ export async function renderPremiumHomepageV4(): Promise<string> {
             <div class="hero-left">
               <div class="hero-headline">
                 <h1>
-                  <span class="headline-line headline-muted">PERSONALIZED</span>
-                  <span class="headline-line headline-muted">EXPERIENCES</span>
+                  <span class="headline-line headline-muted">PERSONALIZED EXPERIENCES</span>
                   <span class="headline-line headline-coral">POWERFUL ENOUGH</span>
-                  <span class="headline-line headline-muted">TO HELP YOU</span>
-                  <span class="headline-line headline-muted">HEAL, INSPIRE,</span>
-                  <span class="headline-line headline-muted">AND</span>
+                  <span class="headline-line headline-muted">TO HELP YOU HEAL, INSPIRE, AND</span>
                   <span class="headline-line headline-coral">MAKE YOU SMILE</span>
                 </h1>
               </div>
@@ -704,12 +701,9 @@ function getHomepageStyles(): string {
     }
 
     .headline-line:nth-child(1) { animation-delay: 0s; }
-    .headline-line:nth-child(2) { animation-delay: 0.12s; }
-    .headline-line:nth-child(3) { animation-delay: 0.24s; }
-    .headline-line:nth-child(4) { animation-delay: 0.36s; }
-    .headline-line:nth-child(5) { animation-delay: 0.48s; }
-    .headline-line:nth-child(6) { animation-delay: 0.6s; }
-    .headline-line:nth-child(7) { animation-delay: 0.72s; }
+    .headline-line:nth-child(2) { animation-delay: 0.15s; }
+    .headline-line:nth-child(3) { animation-delay: 0.3s; }
+    .headline-line:nth-child(4) { animation-delay: 0.45s; }
 
     .headline-muted {
       color: #F5EEF0;

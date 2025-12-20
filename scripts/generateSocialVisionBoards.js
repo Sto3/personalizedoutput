@@ -117,18 +117,18 @@ const SOCIAL_BOARDS = [
     },
     style: { mood: 'feminine elegant celebration new year fresh' },
     photos: [
-      "elegant 2026 calendar on desk with gold accents",
-      "fireworks over city skyline, new year celebration",
-      "gold confetti and sparklers, festive celebration",
-      "leather planner with goal pages, fresh start",
-      "sunrise over mountains, new beginnings",
-      "crystal champagne flutes empty on gold tray, elegant",
-      "vision board supplies, scissors, magazines, inspiration",
-      "cozy goal-setting workspace with candles",
-      "world map with gold pins, travel goals",
-      "fresh white flowers in gold vase, new start",
-      "meditation cushion in peaceful room, mindfulness",
-      "running shoes by door with sunrise light"
+      "elegant calendar showing year 2026 on desk with gold accents, new year 2026",
+      "fireworks over city skyline at midnight, new year 2026 celebration",
+      "gold confetti and sparklers with 2026 balloons, festive new year celebration",
+      "leather planner with 2026 goal pages, fresh start new year",
+      "sunrise over mountains, new beginnings 2026",
+      "crystal champagne flutes empty on gold tray, elegant celebration",
+      "vision board supplies, scissors, magazines, inspiration for 2026",
+      "cozy goal-setting workspace with candles and 2026 planner",
+      "world map with gold pins, travel goals for 2026",
+      "fresh white flowers in gold vase, new start 2026",
+      "meditation cushion in peaceful room, mindfulness new year",
+      "running shoes by door with sunrise light, fitness goals 2026"
     ]
   },
   {
