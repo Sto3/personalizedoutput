@@ -17,7 +17,7 @@ async function generateImage(prompt, options = {}) {
   const {
     model = 'V_2',  // Ideogram 2.0
     aspectRatio = 'ASPECT_9_16',  // Portrait for vision boards (closest to 1024x1792)
-    magicPromptOption = 'OFF',  // DISABLED - we control the prompt exactly to enforce constraints
+    magicPromptOption = 'AUTO',  // Let Ideogram enhance the prompt - this was working before!
     negativePrompt = null  // Optional negative prompt
   } = options;
 

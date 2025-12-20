@@ -22,7 +22,7 @@ const SOCIAL_BOARDS = [
   {
     id: 'built_different',
     title: "MARCUS: BUILT DIFFERENT",
-    subtitle: "FOCUS • DISCIPLINE • EXECUTE",
+    subtitle: "FOCUS • DISCIPLINE • COMMITMENT",
     outputFile: 'marcus_built_different.png',
     colors: {
       background: '#000000',     // BLACK background

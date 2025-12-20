@@ -1,14 +1,14 @@
 {
-  "lastCheck": "2025-12-20T01:33:29.621Z",
+  "lastCheck": "2025-12-20T05:19:13.905Z",
   "services": {
     "ElevenLabs": {
       "service": "ElevenLabs",
-      "used": 129263,
+      "used": 147183,
       "limit": 169068,
-      "percentUsed": 76,
+      "percentUsed": 87,
       "unit": "characters",
-      "status": "ok",
-      "message": "129,263 / 169,068 chars (76%)",
+      "status": "warning",
+      "message": "147,183 / 169,068 chars (87%)",
       "resetDate": "2026-01-05T11:00:30.000Z"
     },
     "Anthropic Claude": {
@@ -48,5 +48,13 @@
       "message": "Free tier - 750 hrs/month, auto-sleep after 15 min"
     }
   },
-  "alerts": []
+  "alerts": [
+    {
+      "timestamp": "2025-12-20T04:58:42.364Z",
+      "service": "ElevenLabs",
+      "level": "warning",
+      "message": "147,183 / 169,068 chars (87%)"
+    }
+  ],
+  "lastAlertSent": "2025-12-20T04:58:42.364Z"
 }

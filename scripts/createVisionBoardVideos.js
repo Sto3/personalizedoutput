@@ -45,7 +45,7 @@ const VIDEOS = [
     pronoun: 'him',
     hookText: "Marcus was losing focus",
     buildText: "He told us his vision",
-    mantraWords: ["FOCUS", "DISCIPLINE", "EXECUTE"],
+    mantraWords: ["FOCUS", "DISCIPLINE", "COMMITMENT"],
     revealText: "We built this vision board for him",
     colors: {
       background: [25, 45, 75],  // Motivating deep blue
@@ -134,10 +134,12 @@ const TIMELINE = {
   hookEnd: 4,
   buildEnd: 8,
   mantraEnd: 11,
-  suspenseEnd: 14,   // 3 seconds showing "We built this vision board for him" alone
-  revealEnd: 21,     // 7 seconds on board after suspense
-  bridgeEnd: 25,
-  ctaEnd: 32
+  pauseAfterMantraEnd: 12.5,  // 1.5 second pause after mantra
+  suspenseEnd: 16,            // 3.5 seconds for animated "We built this vision board for him"
+  pauseBeforeBoardEnd: 17.5,  // 1.5 second pause before board
+  revealEnd: 26,              // 8.5 seconds on board - FULL PAGE, no text
+  bridgeEnd: 29,
+  ctaEnd: 35
 };
 
 class Particle {
@@ -251,6 +253,72 @@ function drawMantra(ctx, words, progress, accentColor) {
   ctx.restore();
 }
 
+function drawAnimatedRevealText(ctx, text, progress, accentColor, baseColor) {
+  // TWO-LINE LAYOUT to prevent text cutoff
+  // Line 1: "We built this"
+  // Line 2: "VISION BOARD" (animated, glowing)
+  // Line 3: "for him/her/them"
+
+  const line1 = "We built this";
+  const highlight = "VISION BOARD";
+  const parts = text.split('vision board');
+  const line3 = (parts[1] || ' for him').trim();  // "for him"
+
+  const baseFontSize = 75;
+  const highlightFontSize = 110;
+  const lineSpacing = 100;
+  const centerY = HEIGHT * 0.4;
+
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  const phase1End = 0.25;  // "We built this" fades in
+  const phase2End = 0.65;  // "VISION BOARD" animates in
+  // phase3: "for him" fades in
+
+  // Line 1: "We built this"
+  const alpha1 = Math.min(1, progress / phase1End);
+  ctx.globalAlpha = alpha1;
+  ctx.font = `${baseFontSize}px "Bodoni 72 Smallcaps", Georgia, serif`;
+  ctx.fillStyle = baseColor;
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+  ctx.shadowBlur = 15;
+  ctx.fillText(line1, WIDTH / 2, centerY - lineSpacing);
+
+  // Line 2: "VISION BOARD" with animation and glow
+  if (progress > phase1End) {
+    const highlightProgress = Math.min(1, (progress - phase1End) / (phase2End - phase1End));
+    const scale = 0.8 + highlightProgress * 0.2;
+
+    ctx.save();
+    ctx.translate(WIDTH / 2, centerY);
+    ctx.scale(scale, scale);
+    ctx.globalAlpha = highlightProgress;
+
+    // Glow effect
+    ctx.shadowColor = `rgba(${accentColor[0]}, ${accentColor[1]}, ${accentColor[2]}, ${highlightProgress * 0.9})`;
+    ctx.shadowBlur = 40 + highlightProgress * 20;
+    ctx.font = `${highlightFontSize}px "Bodoni 72 Smallcaps", Georgia, serif`;
+    ctx.fillStyle = `rgb(${accentColor[0]}, ${accentColor[1]}, ${accentColor[2]})`;
+    ctx.fillText(highlight, 0, 0);
+    ctx.restore();
+  }
+
+  // Line 3: "for him/her/them"
+  if (progress > phase2End) {
+    const alpha3 = Math.min(1, (progress - phase2End) / (1 - phase2End));
+    ctx.globalAlpha = alpha3;
+    ctx.font = `${baseFontSize}px "Bodoni 72 Smallcaps", Georgia, serif`;
+    ctx.fillStyle = baseColor;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 15;
+    ctx.fillText(line3, WIDTH / 2, centerY + lineSpacing);
+  }
+
+  ctx.restore();
+}
+
 function drawBackground(ctx, colors, style, isCTA = false) {
   const gradient = ctx.createLinearGradient(0, 0, 0, HEIGHT);
 
@@ -312,7 +380,9 @@ async function createVideo(config) {
     if (time < TIMELINE.hookEnd) phase = 'hook';
     else if (time < TIMELINE.buildEnd) phase = 'build';
     else if (time < TIMELINE.mantraEnd) phase = 'mantra';
+    else if (time < TIMELINE.pauseAfterMantraEnd) phase = 'pauseAfterMantra';
     else if (time < TIMELINE.suspenseEnd) phase = 'suspense';
+    else if (time < TIMELINE.pauseBeforeBoardEnd) phase = 'pauseBeforeBoard';
     else if (time < TIMELINE.revealEnd) phase = 'reveal';
     else if (time < TIMELINE.bridgeEnd) phase = 'bridge';
     else phase = 'cta';
@@ -346,20 +416,29 @@ async function createVideo(config) {
         drawMantra(ctx, config.mantraWords, mantraProgress, config.sparkleColor);
         break;
 
+      case 'pauseAfterMantra':
+        // Brief pause - just background with particles
+        break;
+
       case 'suspense':
-        // Show the reveal text alone to build suspense
-        drawText(ctx, config.revealText, 100, HEIGHT * 0.4, { color: textColor });
+        // Animated "We built this vision board for him" with "vision board" emphasized
+        const suspenseProgress = (time - TIMELINE.pauseAfterMantraEnd) / (TIMELINE.suspenseEnd - TIMELINE.pauseAfterMantraEnd);
+        drawAnimatedRevealText(ctx, config.revealText, suspenseProgress, config.sparkleColor, textColor);
+        break;
+
+      case 'pauseBeforeBoard':
+        // Brief pause before the big reveal - builds anticipation
         break;
 
       case 'reveal':
-        // Draw the vision board with subtle zoom
-        const revealProgress = (time - TIMELINE.suspenseEnd) / (TIMELINE.revealEnd - TIMELINE.suspenseEnd);
-        const scale = 1 + revealProgress * 0.05;  // Subtle zoom from 1.0 to 1.05
+        // FULL PAGE vision board - no text, just the board as large as possible
+        const revealProgress = (time - TIMELINE.pauseBeforeBoardEnd) / (TIMELINE.revealEnd - TIMELINE.pauseBeforeBoardEnd);
+        const scale = 1 + revealProgress * 0.03;  // Very subtle zoom
 
-        // Calculate dimensions to fit board in frame with padding
-        const padding = 80;
+        // FULL PAGE - minimal padding, no room for text
+        const padding = 30;
         const maxWidth = WIDTH - padding * 2;
-        const maxHeight = HEIGHT - padding * 2 - 200;  // Leave room for text
+        const maxHeight = HEIGHT - padding * 2;
 
         const boardAspect = boardImage.width / boardImage.height;
         let drawWidth, drawHeight;
@@ -376,7 +455,7 @@ async function createVideo(config) {
         drawHeight *= scale;
 
         const drawX = (WIDTH - drawWidth) / 2;
-        const drawY = (HEIGHT - drawHeight) / 2 + 50;
+        const drawY = (HEIGHT - drawHeight) / 2;
 
         // Draw shadow
         ctx.save();
@@ -385,9 +464,7 @@ async function createVideo(config) {
         ctx.shadowOffsetY = 10;
         ctx.drawImage(boardImage, drawX, drawY, drawWidth, drawHeight);
         ctx.restore();
-
-        // Draw label at top
-        drawText(ctx, config.revealText, 56, 100, { color: textColor });
+        // NO TEXT - just the board
         break;
 
       case 'bridge':

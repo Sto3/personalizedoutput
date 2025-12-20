@@ -197,7 +197,10 @@ export function renderDemoLessonsPage(): string {
               <div class="full-badge">Full Lesson - Audio Only</div>
               <div class="audio-container">
                 <div class="audio-visual">
-                  <span class="audio-icon">🎧</span>
+                  <div class="audio-icons-row">
+                    <span class="audio-icon-large">🧠</span>
+                    <span class="audio-icon">🎧</span>
+                  </div>
                   <span class="audio-label">Listen to the Full Lesson</span>
                 </div>
                 <audio controls preload="metadata" style="width: 100%;">
@@ -591,12 +594,31 @@ function getDemoLessonsStyles(): string {
     .audio-visual {
       text-align: center;
       margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .audio-icons-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .audio-icon-large {
+      font-size: 96px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 8px;
     }
 
     .audio-icon {
       font-size: 64px;
-      display: block;
-      margin-bottom: 12px;
+      display: inline-block;
+      vertical-align: middle;
+      margin-bottom: 0;
     }
 
     .audio-label {
