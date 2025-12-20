@@ -292,7 +292,7 @@ function calculateDenseLayout(photoCount, canvasW, canvasH, bannerH) {
   const fixedOffY = [
     5, -8, 10,     // Row 1
     -5, 35, -3,    // Row 2 - Middle photo (index 4) at 35 (original)
-    8, 25, 5,      // Row 3 - Middle photo (index 7) at 25 (moved down further to not cover chair)
+    8, 40, 5,      // Row 3 - Middle photo (index 7) at 40 (moved down even more)
     -8, 5, -5      // Row 4
   ];
 

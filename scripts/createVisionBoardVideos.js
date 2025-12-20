@@ -43,12 +43,12 @@ const VIDEOS = [
     boardFile: 'marcus_built_different.png',
     name: 'Marcus',
     pronoun: 'him',
-    hookText: "Marcus was tired of being average",
+    hookText: "Marcus was losing focus",
     buildText: "He told us his vision",
     mantraWords: ["FOCUS", "DISCIPLINE", "EXECUTE"],
-    revealText: "We built this for him",
+    revealText: "We built this vision board for him",
     colors: {
-      background: [10, 10, 15],
+      background: [25, 45, 75],  // Motivating deep blue
       accent: [201, 169, 98],  // Gold
       text: '#FFFFFF'
     },
@@ -64,7 +64,7 @@ const VIDEOS = [
     hookText: "Sofia decided 2026 is her year",
     buildText: "She told us her vision",
     mantraWords: ["SHINE", "GROW", "BLOOM"],
-    revealText: "We built this for her",
+    revealText: "We built this vision board for her",
     colors: {
       background: [255, 245, 247],
       accent: [232, 180, 184],  // Rose
@@ -82,7 +82,7 @@ const VIDEOS = [
     hookText: "They'd lost their spark",
     buildText: "They told us their vision",
     mantraWords: ["GROW", "CONNECT", "THRIVE"],
-    revealText: "We built this for them",
+    revealText: "We built this vision board for them",
     colors: {
       background: [250, 246, 241],
       accent: [156, 124, 92],  // Warm brown
@@ -100,7 +100,7 @@ const VIDEOS = [
     hookText: "New year. Same excuses? Not for Sarah.",
     buildText: "She told us her 2026 vision",
     mantraWords: ["DREAM", "BELIEVE", "ACHIEVE"],
-    revealText: "We built this for her",
+    revealText: "We built this vision board for her",
     colors: {
       background: [253, 248, 240],
       accent: [184, 134, 11],  // Gold
@@ -118,7 +118,7 @@ const VIDEOS = [
     hookText: "Maya was done starting over",
     buildText: "She told us her vision",
     mantraWords: ["STRONG", "CONSISTENT", "UNSTOPPABLE"],
-    revealText: "We built this for her",
+    revealText: "We built this vision board for her",
     colors: {
       background: [240, 245, 245],
       accent: [45, 140, 140],  // Teal
@@ -134,10 +134,10 @@ const TIMELINE = {
   hookEnd: 4,
   buildEnd: 8,
   mantraEnd: 11,
-  revealStart: 11,
-  revealEnd: 18,  // 7 seconds on board
-  bridgeEnd: 22,
-  ctaEnd: 30
+  suspenseEnd: 14,   // 3 seconds showing "We built this vision board for him" alone
+  revealEnd: 21,     // 7 seconds on board after suspense
+  bridgeEnd: 25,
+  ctaEnd: 32
 };
 
 class Particle {
@@ -218,9 +218,9 @@ function drawText(ctx, text, fontSize, y, options = {}) {
 }
 
 function drawMantra(ctx, words, progress, accentColor) {
-  const fontSize = 72;
-  const spacing = 100;
-  const startY = HEIGHT * 0.35;
+  const fontSize = 95;
+  const spacing = 130;
+  const startY = HEIGHT * 0.30;
 
   ctx.save();
   ctx.font = `${fontSize}px "Bodoni 72 Smallcaps", Georgia, serif`;
@@ -259,17 +259,13 @@ function drawBackground(ctx, colors, style, isCTA = false) {
     gradient.addColorStop(0, 'rgb(120, 30, 50)');
     gradient.addColorStop(0.5, 'rgb(140, 40, 60)');
     gradient.addColorStop(1, 'rgb(80, 20, 35)');
-  } else if (style === 'masculine') {
-    // Dark/black for men's boards
-    gradient.addColorStop(0, `rgb(${colors.background[0]}, ${colors.background[1]}, ${colors.background[2]})`);
-    gradient.addColorStop(1, 'rgb(5, 5, 8)');
   } else {
-    // Soft gradient for women's/romantic boards
+    // All styles use motivating gradients (not dark/black)
     const r = colors.background[0];
     const g = colors.background[1];
     const b = colors.background[2];
     gradient.addColorStop(0, `rgb(${r}, ${g}, ${b})`);
-    gradient.addColorStop(1, `rgb(${Math.max(0, r - 20)}, ${Math.max(0, g - 20)}, ${Math.max(0, b - 20)})`);
+    gradient.addColorStop(1, `rgb(${Math.max(0, r - 15)}, ${Math.max(0, g - 15)}, ${Math.max(0, b - 15)})`);
   }
 
   ctx.fillStyle = gradient;
@@ -316,6 +312,7 @@ async function createVideo(config) {
     if (time < TIMELINE.hookEnd) phase = 'hook';
     else if (time < TIMELINE.buildEnd) phase = 'build';
     else if (time < TIMELINE.mantraEnd) phase = 'mantra';
+    else if (time < TIMELINE.suspenseEnd) phase = 'suspense';
     else if (time < TIMELINE.revealEnd) phase = 'reveal';
     else if (time < TIMELINE.bridgeEnd) phase = 'bridge';
     else phase = 'cta';
@@ -337,11 +334,11 @@ async function createVideo(config) {
 
     switch (phase) {
       case 'hook':
-        drawText(ctx, config.hookText, 90, HEIGHT * 0.4, { color: textColor });
+        drawText(ctx, config.hookText, 130, HEIGHT * 0.4, { color: textColor });
         break;
 
       case 'build':
-        drawText(ctx, config.buildText, 85, HEIGHT * 0.4, { color: textColor });
+        drawText(ctx, config.buildText, 120, HEIGHT * 0.4, { color: textColor });
         break;
 
       case 'mantra':
@@ -349,9 +346,14 @@ async function createVideo(config) {
         drawMantra(ctx, config.mantraWords, mantraProgress, config.sparkleColor);
         break;
 
+      case 'suspense':
+        // Show the reveal text alone to build suspense
+        drawText(ctx, config.revealText, 100, HEIGHT * 0.4, { color: textColor });
+        break;
+
       case 'reveal':
         // Draw the vision board with subtle zoom
-        const revealProgress = (time - TIMELINE.mantraEnd) / (TIMELINE.revealEnd - TIMELINE.mantraEnd);
+        const revealProgress = (time - TIMELINE.suspenseEnd) / (TIMELINE.revealEnd - TIMELINE.suspenseEnd);
         const scale = 1 + revealProgress * 0.05;  // Subtle zoom from 1.0 to 1.05
 
         // Calculate dimensions to fit board in frame with padding
@@ -385,20 +387,20 @@ async function createVideo(config) {
         ctx.restore();
 
         // Draw label at top
-        drawText(ctx, config.revealText, 48, 100, { color: textColor });
+        drawText(ctx, config.revealText, 56, 100, { color: textColor });
         break;
 
       case 'bridge':
-        drawText(ctx, "Your vision. Your board. ✨", 80, HEIGHT * 0.4, { color: textColor });
+        drawText(ctx, "Your vision. Your board. ✨", 110, HEIGHT * 0.4, { color: textColor });
         break;
 
       case 'cta':
         // Bright CTA screen with glow
-        drawText(ctx, "We'll create yours today", 78, HEIGHT * 0.18, { color: ctaTextColor, glow: true });
-        drawText(ctx, "Start 2026 with clarity 🎯", 68, HEIGHT * 0.32, { color: '#FFD700' });
-        drawText(ctx, 'personalizedoutput.com', 92, HEIGHT * 0.48, { color: ctaTextColor });
-        drawText(ctx, 'Deeply personalized. Instant delivery.', 54, HEIGHT * 0.62, { color: '#FFE4B5' });
-        drawText(ctx, '@PersonalizedOutput', 48, HEIGHT * 0.76, { color: 'rgba(255,255,255,0.9)' });
+        drawText(ctx, "We'll create yours today", 100, HEIGHT * 0.18, { color: ctaTextColor, glow: true });
+        drawText(ctx, "Start 2026 with clarity 🎯", 85, HEIGHT * 0.32, { color: '#FFD700' });
+        drawText(ctx, 'personalizedoutput.com', 115, HEIGHT * 0.48, { color: ctaTextColor });
+        drawText(ctx, 'Deeply personalized. Instant delivery.', 65, HEIGHT * 0.62, { color: '#FFE4B5' });
+        drawText(ctx, '@PersonalizedOutput', 58, HEIGHT * 0.76, { color: 'rgba(255,255,255,0.9)' });
         break;
     }
 

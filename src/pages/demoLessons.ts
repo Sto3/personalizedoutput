@@ -256,7 +256,7 @@ export function renderDemoLessonsPage(): string {
         <div class="container">
           <div class="section-header">
             <h2><span class="icon">🎬</span> Full-Length Personalized Lessons</h2>
-            <p>Experience the complete voice-narrated learning experience (2+ minutes)</p>
+            <p>Experience complete personalized lessons - audio-only for adults, video+audio for kids</p>
           </div>
 
           <div class="demo-grid full-lesson-grid">
@@ -268,23 +268,23 @@ export function renderDemoLessonsPage(): string {
                   <span class="audio-label">Listen to the Full Lesson</span>
                 </div>
                 <audio controls preload="metadata" style="width: 100%;">
-                  <source src="/demos/joe-dinosaurs-fractions-full.mp3" type="audio/mpeg">
+                  <source src="/demos/sarah-bakery-mortgage-full.mp3" type="audio/mpeg">
                   Your browser does not support audio.
                 </audio>
               </div>
               <div class="demo-info">
-                <h3>Joe: Dinosaurs → Fractions (Audio)</h3>
-                <p>6 years old • Full 2+ minute voice-narrated lesson teaching fractions through dinosaur adventures. Perfect for listening during car rides or quiet time.</p>
+                <h3>Sarah: Bakery → Understanding Mortgages (Audio)</h3>
+                <p>Adult • Full voice-narrated lesson explaining mortgages through bakery business concepts. Perfect for commutes, walks, or focused listening.</p>
                 <div class="demo-tags">
-                  <span class="tag full">2+ Minutes</span>
-                  <span class="tag featured">Voice Narrated</span>
-                  <span class="tag">Kid-Friendly</span>
+                  <span class="tag full">Full Length</span>
+                  <span class="tag featured">Audio Only</span>
+                  <span class="tag">Adult Learning</span>
                 </div>
               </div>
             </div>
 
             <div class="demo-card full-lesson-card">
-              <div class="full-badge">Full Lesson - Video</div>
+              <div class="full-badge">Full Lesson - Video + Audio</div>
               <div class="video-container">
                 <video controls preload="metadata">
                   <source src="/demos/joe-dinosaurs-fractions-full.mp4" type="video/mp4">
@@ -292,12 +292,12 @@ export function renderDemoLessonsPage(): string {
                 </video>
               </div>
               <div class="demo-info">
-                <h3>Joe: Dinosaurs → Fractions (Video)</h3>
-                <p>6 years old • Full 2+ minute video lesson with voice narration and visual presentation. Perfect for focused learning sessions.</p>
+                <h3>Joe: Dinosaurs → Fractions (Video + Audio)</h3>
+                <p>6 years old • Full video lesson combining friendly voice narration with colorful dinosaur visuals. Perfect for engaging young learners during focused learning time.</p>
                 <div class="demo-tags">
-                  <span class="tag full">2+ Minutes</span>
-                  <span class="tag featured">Voice + Video</span>
-                  <span class="tag">Math</span>
+                  <span class="tag full">Full Length</span>
+                  <span class="tag featured">Video + Audio</span>
+                  <span class="tag">Kid-Friendly</span>
                 </div>
               </div>
             </div>
@@ -309,8 +309,8 @@ export function renderDemoLessonsPage(): string {
       <section class="demos-section alt">
         <div class="container">
           <div class="section-header">
-            <h2><span class="icon">📚</span> Flash Card Samples</h2>
-            <p>Custom educational flash cards designed around what your child loves</p>
+            <h2><span class="icon">📚</span> Custom Flash Cards</h2>
+            <p>Educational flash cards designed around what your child loves</p>
           </div>
 
           <div class="demo-grid flash-grid">
