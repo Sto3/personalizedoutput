@@ -59,7 +59,49 @@ function copyFile(src, dest) {
 
 console.log('[copy-assets] Copying static assets to dist/...');
 
-// 1. Copy prompt text files
+// 1. Copy JavaScript engine files (not compiled by TypeScript)
+const jsEngineFiles = [
+  'visionBoardEngineV12.js',
+  'svgVisionBoard.js'
+];
+
+const libSrc = path.join(projectRoot, 'src', 'lib');
+const libDest = path.join(projectRoot, 'dist', 'lib');
+
+console.log('[copy-assets] Copying JS engine files...');
+jsEngineFiles.forEach(file => {
+  const src = path.join(libSrc, file);
+  const dest = path.join(libDest, file);
+  if (fs.existsSync(src)) {
+    copyFile(src, dest);
+    console.log(`[copy-assets] Copied: ${file}`);
+  }
+});
+
+// 2. Copy API client files (JS)
+const apiSrc = path.join(projectRoot, 'src', 'api');
+const apiDest = path.join(projectRoot, 'dist', 'api');
+const jsApiFiles = ['ideogramClient.js', 'claudeClient.js'];
+
+console.log('[copy-assets] Copying JS API files...');
+jsApiFiles.forEach(file => {
+  const src = path.join(apiSrc, file);
+  const dest = path.join(apiDest, file);
+  if (fs.existsSync(src)) {
+    copyFile(src, dest);
+    console.log(`[copy-assets] Copied: ${file}`);
+  }
+});
+
+// 3. Copy config files (JS)
+const configSrc = path.join(projectRoot, 'src', 'config');
+const configDest = path.join(projectRoot, 'dist', 'config');
+if (fs.existsSync(configSrc)) {
+  console.log('[copy-assets] Copying config files...');
+  copyDir(configSrc, configDest);
+}
+
+// 4. Copy prompt text files
 const promptsSrc = path.join(projectRoot, 'src', 'lib', 'thoughtEngine', 'prompts');
 const promptsDest = path.join(projectRoot, 'dist', 'lib', 'thoughtEngine', 'prompts');
 console.log('[copy-assets] Copying prompts...');
