@@ -372,7 +372,7 @@ export function renderVisionBoardFormPage(): string {
       font-family: 'Bodoni Moda', serif;
       text-align: center;
       padding: 60px 40px;
-      color: var(--text-muted);
+      color: var(--text-light);
     }
     .spinner {
       width: 48px;
@@ -382,6 +382,25 @@ export function renderVisionBoardFormPage(): string {
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
+    }
+    .loading-message {
+      font-size: 1.1rem;
+      color: var(--text-light);
+      margin-top: 16px;
+      line-height: 1.6;
+    }
+    .loading-message strong {
+      display: block;
+      font-size: 1.25rem;
+      color: var(--coral);
+      margin-bottom: 8px;
+    }
+    .loading-message small {
+      display: block;
+      margin-top: 12px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      opacity: 0.8;
     }
     @keyframes spin {
       to { transform: rotate(360deg); }
@@ -499,6 +518,7 @@ export function renderVisionBoardFormPage(): string {
 
       <div id="loadingQuestion" class="loading hidden">
         <div class="spinner"></div>
+        <div id="loadingMessage" class="loading-message"></div>
       </div>
     </div>
 
@@ -737,7 +757,14 @@ export function renderVisionBoardFormPage(): string {
     async function generateMessage() {
       hideError();
       document.getElementById('formArea').classList.add('active');
-      showLoading(true);
+
+      const generatingMessage = \`
+        <strong>Creating Your Vision Board</strong>
+        We're generating 12 unique images just for you.<br>
+        This typically takes 2-3 minutes.
+        <small>Please don't refresh or close this page.</small>
+      \`;
+      showLoading(true, generatingMessage);
 
       try {
         const response = await fetch(\`\${API_BASE}/generate\`, {
@@ -746,7 +773,10 @@ export function renderVisionBoardFormPage(): string {
           body: JSON.stringify({ sessionId, firstName })
         });
 
-        if (!response.ok) throw new Error('Failed to generate vision board');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to generate vision board. Please try again.');
+        }
 
         const data = await response.json();
 
@@ -811,9 +841,10 @@ export function renderVisionBoardFormPage(): string {
       hideError();
     }
 
-    function showLoading(show) {
+    function showLoading(show, message = '') {
       document.getElementById('loadingQuestion').classList.toggle('hidden', !show);
       document.getElementById('nextBtn').disabled = show;
+      document.getElementById('loadingMessage').innerHTML = message;
     }
 
     function showError(message) {
