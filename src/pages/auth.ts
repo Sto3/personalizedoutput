@@ -403,6 +403,30 @@ export function renderSignupPage(error?: string, referralCode?: string): string 
           transition: color 0.2s;
         }
         .back-link:hover { color: #fff; }
+        .field-error {
+          color: #ff6b6b;
+          font-size: 0.8rem;
+          margin-top: 6px;
+          min-height: 18px;
+        }
+        .password-requirements {
+          margin-top: 8px;
+          font-size: 0.8rem;
+        }
+        .password-requirements .req {
+          color: rgba(255,255,255,0.5);
+          transition: color 0.2s;
+        }
+        .password-requirements .req.valid {
+          color: #4ade80;
+        }
+        .password-requirements .req.invalid {
+          color: #ff6b6b;
+        }
+        .btn:disabled {
+          opacity: 0.7;
+          cursor: not-allowed;
+        }
       </style>
     </head>
     <body>
@@ -421,25 +445,31 @@ export function renderSignupPage(error?: string, referralCode?: string): string 
 
           ${error ? `<div class="error">${error}</div>` : ''}
 
-          <form action="/api/auth/signup" method="POST">
+          <form action="/api/auth/signup" method="POST" id="signupForm">
             ${referralCode ? `<input type="hidden" name="referralCode" value="${referralCode}">` : ''}
 
             <div class="form-group">
               <label for="fullName">Full Name</label>
               <input type="text" id="fullName" name="fullName" placeholder="Jane Doe" required>
+              <div class="field-error" id="fullNameError"></div>
             </div>
 
             <div class="form-group">
               <label for="email">Email</label>
               <input type="email" id="email" name="email" placeholder="you@example.com" required>
+              <div class="field-error" id="emailError"></div>
             </div>
 
             <div class="form-group">
               <label for="password">Password</label>
-              <input type="password" id="password" name="password" placeholder="At least 8 characters" minlength="8" required>
+              <input type="password" id="password" name="password" placeholder="At least 8 characters" required>
+              <div class="password-requirements">
+                <span id="reqLength" class="req">At least 8 characters</span>
+              </div>
+              <div class="field-error" id="passwordError"></div>
             </div>
 
-            <button type="submit" class="btn btn-primary">Create Account</button>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Create Account</button>
 
             <p class="terms">
               By creating an account, you agree to our
@@ -447,6 +477,90 @@ export function renderSignupPage(error?: string, referralCode?: string): string 
               <a href="/privacy">Privacy Policy</a>.
             </p>
           </form>
+
+          <script>
+            (function() {
+              const form = document.getElementById('signupForm');
+              const fullName = document.getElementById('fullName');
+              const email = document.getElementById('email');
+              const password = document.getElementById('password');
+              const submitBtn = document.getElementById('submitBtn');
+              const reqLength = document.getElementById('reqLength');
+
+              // Real-time password validation
+              password.addEventListener('input', function() {
+                const val = this.value;
+                if (val.length >= 8) {
+                  reqLength.classList.add('valid');
+                  reqLength.classList.remove('invalid');
+                } else if (val.length > 0) {
+                  reqLength.classList.add('invalid');
+                  reqLength.classList.remove('valid');
+                } else {
+                  reqLength.classList.remove('valid', 'invalid');
+                }
+              });
+
+              // Email validation
+              email.addEventListener('blur', function() {
+                const emailError = document.getElementById('emailError');
+                const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+                if (this.value && !emailRegex.test(this.value)) {
+                  emailError.textContent = 'Please enter a valid email address';
+                } else {
+                  emailError.textContent = '';
+                }
+              });
+
+              // Form submission
+              form.addEventListener('submit', function(e) {
+                let hasError = false;
+
+                // Validate full name
+                const nameError = document.getElementById('fullNameError');
+                if (!fullName.value.trim()) {
+                  nameError.textContent = 'Please enter your name';
+                  hasError = true;
+                } else {
+                  nameError.textContent = '';
+                }
+
+                // Validate email
+                const emailError = document.getElementById('emailError');
+                const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+                if (!email.value.trim()) {
+                  emailError.textContent = 'Please enter your email address';
+                  hasError = true;
+                } else if (!emailRegex.test(email.value)) {
+                  emailError.textContent = 'Please enter a valid email address';
+                  hasError = true;
+                } else {
+                  emailError.textContent = '';
+                }
+
+                // Validate password
+                const passwordError = document.getElementById('passwordError');
+                if (!password.value) {
+                  passwordError.textContent = 'Please enter a password';
+                  hasError = true;
+                } else if (password.value.length < 8) {
+                  passwordError.textContent = 'Password must be at least 8 characters';
+                  hasError = true;
+                } else {
+                  passwordError.textContent = '';
+                }
+
+                if (hasError) {
+                  e.preventDefault();
+                  return false;
+                }
+
+                // Show loading state
+                submitBtn.textContent = 'Creating Account...';
+                submitBtn.disabled = true;
+              });
+            })();
+          </script>
 
           <div class="links">
             <a href="/login">Already have an account? Sign in</a>

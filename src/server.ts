@@ -1561,12 +1561,19 @@ app.post('/api/auth/signup', async (req, res) => {
 
   if (!email || !password) {
     console.log('[Auth] Signup failed: Missing email or password');
-    return res.redirect(`/auth/signup?error=${encodeURIComponent('Email and password are required')}`);
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('Please enter both email and password.')}`);
   }
 
   if (password.length < 8) {
     console.log('[Auth] Signup failed: Password too short');
-    return res.redirect(`/auth/signup?error=${encodeURIComponent('Password must be at least 8 characters')}`);
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('Password must be at least 8 characters long.')}`);
+  }
+
+  // Basic email validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    console.log('[Auth] Signup failed: Invalid email format');
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('Please enter a valid email address.')}`);
   }
 
   try {
@@ -1578,13 +1585,32 @@ app.post('/api/auth/signup', async (req, res) => {
       // Redirect to login with success message
       return res.redirect('/login?success=1');
     } else {
-      const errorMsg = result.error || 'Signup failed';
-      console.log('[Auth] Signup error details:', errorMsg);
-      return res.redirect(`/auth/signup?error=${encodeURIComponent(errorMsg)}`);
+      // Translate Supabase errors to user-friendly messages
+      let userFriendlyError = result.error || 'Unable to create account. Please try again.';
+
+      if (result.error) {
+        const errorLower = result.error.toLowerCase();
+
+        if (errorLower.includes('already registered') || errorLower.includes('already exists') || errorLower.includes('duplicate')) {
+          userFriendlyError = 'An account with this email already exists. Please sign in instead.';
+        } else if (errorLower.includes('invalid email')) {
+          userFriendlyError = 'Please enter a valid email address.';
+        } else if (errorLower.includes('password') && errorLower.includes('weak')) {
+          userFriendlyError = 'Please choose a stronger password (at least 8 characters).';
+        } else if (errorLower.includes('rate limit') || errorLower.includes('too many')) {
+          userFriendlyError = 'Too many signup attempts. Please wait a few minutes and try again.';
+        } else if (errorLower.includes('not configured') || errorLower.includes('supabase')) {
+          userFriendlyError = 'Account creation is temporarily unavailable. Please try again later.';
+          console.error('[Auth] Supabase configuration issue:', result.error);
+        }
+      }
+
+      console.log('[Auth] Signup error details:', result.error, '-> User message:', userFriendlyError);
+      return res.redirect(`/auth/signup?error=${encodeURIComponent(userFriendlyError)}`);
     }
   } catch (err: any) {
     console.error('[Auth] Signup exception:', err.message || err);
-    return res.redirect(`/auth/signup?error=${encodeURIComponent('An unexpected error occurred. Please try again.')}`);
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('Something went wrong. Please try again in a moment.')}`);
   }
 });
 
