@@ -113,9 +113,16 @@ router.post('/start', async (req: Request, res: Response) => {
 
     // Resolve orderId from multiple sources
     let resolvedOrderId: string | undefined;
+    let isAdminTest = false;
 
-    // Validate token for Santa messages (if provided)
-    if (productId === 'santa_message' && token) {
+    // Check for admin test mode (bypasses payment for testing)
+    if (token === 'ADMIN_TEST') {
+      console.log('[ThoughtChat API] Admin test mode - bypassing payment validation');
+      isAdminTest = true;
+      resolvedOrderId = 'ADMIN_TEST_' + Date.now();
+    }
+    // Validate token for Santa messages (if provided and not admin test)
+    else if (productId === 'santa_message' && token) {
       const tokenValidation = validateToken(token);
       if (!tokenValidation.valid) {
         const errorMessages: Record<string, string> = {
@@ -140,9 +147,9 @@ router.post('/start', async (req: Request, res: Response) => {
       resolvedOrderId = bodyOrderId;
     }
 
-    // Validate orderId if provided
+    // Validate orderId if provided (skip for admin test)
     let sanitizedOrderId: string | undefined;
-    if (resolvedOrderId) {
+    if (resolvedOrderId && !isAdminTest) {
       const orderValidation = validateOrderForGeneration(resolvedOrderId, productId);
       if (!orderValidation.valid) {
         return res.status(400).json({
@@ -151,6 +158,8 @@ router.post('/start', async (req: Request, res: Response) => {
         });
       }
       sanitizedOrderId = (orderValidation as { valid: true; sanitizedOrderId: string }).sanitizedOrderId;
+    } else if (isAdminTest) {
+      sanitizedOrderId = resolvedOrderId; // Use the ADMIN_TEST_xxx orderId as-is
     }
 
     console.log(`[ThoughtChat API] Starting session for ${productId}${sanitizedOrderId ? ` (order: ${sanitizedOrderId})` : ''}`);

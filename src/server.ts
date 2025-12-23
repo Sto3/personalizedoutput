@@ -271,6 +271,13 @@ app.get('/santa', (req, res) => {
   res.send(renderSantaFormPage());
 });
 
+// Admin test mode - bypasses payment for testing
+app.get('/santa/admin-test', (req, res) => {
+  // Pass admin_test flag to the form
+  trackEvent('page', 'santa-admin-test');
+  res.send(renderSantaFormPage('ADMIN_TEST'));
+});
+
 // Legacy token validation endpoint (for old Etsy orders)
 app.get('/santa-legacy', (req, res) => {
   const token = req.query.token as string | undefined;
