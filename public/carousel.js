@@ -208,15 +208,22 @@
       if (e.key === 'ArrowRight') goToSlide(current + 1);
     });
 
-    // Touch swipe support - works on all devices
-    var touchStartX = 0;
-    var touchStartY = 0;
+    // Touch/Mouse swipe support - works on all devices including laptop trackpads
+    var swipeStartX = 0;
+    var swipeStartY = 0;
     var isSwiping = false;
+    var isMouseDown = false;
     window._carouselDidSwipe = false; // Global flag to prevent click navigation
 
+    // Prevent any default drag behavior on the carousel
+    wrapper.parentElement.addEventListener('dragstart', function(e) {
+      e.preventDefault();
+    });
+
+    // TOUCH EVENTS
     wrapper.parentElement.addEventListener('touchstart', function(e) {
-      touchStartX = e.touches[0].clientX;
-      touchStartY = e.touches[0].clientY;
+      swipeStartX = e.touches[0].clientX;
+      swipeStartY = e.touches[0].clientY;
       isSwiping = true;
       window._carouselDidSwipe = false;
     }, { passive: true });
@@ -225,8 +232,8 @@
       if (!isSwiping) return;
 
       // Check if horizontal swipe (prevent vertical scroll interference)
-      var diffX = Math.abs(e.touches[0].clientX - touchStartX);
-      var diffY = Math.abs(e.touches[0].clientY - touchStartY);
+      var diffX = Math.abs(e.touches[0].clientX - swipeStartX);
+      var diffY = Math.abs(e.touches[0].clientY - swipeStartY);
 
       if (diffX > diffY && diffX > 10) {
         e.preventDefault(); // Prevent page scroll during horizontal swipe
@@ -239,7 +246,7 @@
       isSwiping = false;
 
       var touchEndX = e.changedTouches[0].clientX;
-      var diff = touchStartX - touchEndX;
+      var diff = swipeStartX - touchEndX;
 
       // Swipe threshold - 40px for responsive feel
       if (Math.abs(diff) > 40) {
@@ -256,6 +263,82 @@
         window._carouselDidSwipe = false;
       }, 300);
     }, { passive: true });
+
+    // MOUSE EVENTS - For laptop trackpad and mouse drag
+    wrapper.parentElement.addEventListener('mousedown', function(e) {
+      // Don't start drag if clicking on center card's interactive elements
+      if (e.target.closest('.carousel-card') && e.target.closest('.carousel-card').style.pointerEvents === 'auto') {
+        return;
+      }
+      swipeStartX = e.clientX;
+      swipeStartY = e.clientY;
+      isMouseDown = true;
+      window._carouselDidSwipe = false;
+    });
+
+    wrapper.parentElement.addEventListener('mousemove', function(e) {
+      if (!isMouseDown) return;
+
+      var diffX = Math.abs(e.clientX - swipeStartX);
+      var diffY = Math.abs(e.clientY - swipeStartY);
+
+      // If we've moved enough horizontally, mark as swiping
+      if (diffX > diffY && diffX > 15) {
+        window._carouselDidSwipe = true;
+        e.preventDefault();
+      }
+    });
+
+    wrapper.parentElement.addEventListener('mouseup', function(e) {
+      if (!isMouseDown) return;
+      isMouseDown = false;
+
+      var diff = swipeStartX - e.clientX;
+
+      // Swipe threshold - 50px for mouse
+      if (Math.abs(diff) > 50 && window._carouselDidSwipe) {
+        if (diff > 0) {
+          goToSlide(current + 1);
+        } else {
+          goToSlide(current - 1);
+        }
+      }
+
+      // Reset swipe flag after a short delay
+      setTimeout(function() {
+        window._carouselDidSwipe = false;
+      }, 300);
+    });
+
+    wrapper.parentElement.addEventListener('mouseleave', function() {
+      if (isMouseDown) {
+        isMouseDown = false;
+        setTimeout(function() {
+          window._carouselDidSwipe = false;
+        }, 100);
+      }
+    });
+
+    // Catch any clicks on the carousel area that might bubble up
+    wrapper.parentElement.addEventListener('click', function(e) {
+      // If we just swiped, prevent any navigation
+      if (window._carouselDidSwipe) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+
+      // If clicking on a card that isn't the center one, prevent navigation
+      var clickedCard = e.target.closest('.carousel-card');
+      if (clickedCard) {
+        var clickedIndex = parseInt(clickedCard.getAttribute('data-index'), 10);
+        if (clickedIndex !== current) {
+          e.preventDefault();
+          e.stopPropagation();
+          goToSlide(clickedIndex);
+        }
+      }
+    }, true); // Use capture phase to intercept early
 
     // Initial render
     render();

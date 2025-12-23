@@ -548,15 +548,7 @@ export function renderVisionBoardFormPage(): string {
         <p class="order-hint">Your vision board will be personalized with your name</p>
       </div>
 
-      <div class="order-section" id="orderSection">
-        <label for="orderIdInput">Order ID</label>
-        <input type="text" id="orderIdInput" class="order-input"
-               placeholder="Enter your Order ID"
-               maxlength="20" minlength="4" required>
-        <p class="order-hint">You can find this in your purchase confirmation email</p>
-      </div>
-
-      <button class="btn-start" onclick="startSession()">Begin Creating Your Vision</button>
+      <button class="btn-start" onclick="startSession()">Begin Personalization Experience</button>
     </div>
 
     <!-- Form Area -->
@@ -612,37 +604,18 @@ export function renderVisionBoardFormPage(): string {
   <script>
     const API_BASE = '/api/thought-chat';
 
-    // Get orderId from URL if present
-    const urlParams = new URLSearchParams(window.location.search);
-    const urlOrderId = urlParams.get('orderId');
-
     let sessionId = null;
-    let orderId = null;
     let firstName = null;
     let currentQuestion = '';
     let answers = [];
     let questionCount = 0;
 
-    // Pre-fill orderId if provided in URL
-    window.onload = function() {
-      if (urlOrderId) {
-        document.getElementById('orderIdInput').value = urlOrderId;
-      }
-    };
-
     async function startSession() {
       const nameInput = document.getElementById('firstNameInput');
-      const orderInput = document.getElementById('orderIdInput');
       firstName = nameInput.value.trim();
-      orderId = orderInput.value.trim();
 
       if (!firstName || firstName.length < 1) {
         showError('Please enter your first name');
-        return;
-      }
-
-      if (!orderId || orderId.length < 4) {
-        showError('Please enter a valid Order ID (at least 4 characters)');
         return;
       }
 
@@ -655,7 +628,7 @@ export function renderVisionBoardFormPage(): string {
         const response = await fetch(\`\${API_BASE}/start\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: 'vision_board', orderId: orderId })
+          body: JSON.stringify({ productId: 'vision_board' })
         });
 
         if (!response.ok) {
@@ -665,7 +638,6 @@ export function renderVisionBoardFormPage(): string {
 
         const data = await response.json();
         sessionId = data.sessionId;
-        orderId = data.orderId || orderId;
         currentQuestion = data.firstAssistantMessage || data.message || '';
         questionCount = 1;
 
@@ -785,7 +757,7 @@ export function renderVisionBoardFormPage(): string {
         const response = await fetch(\`\${API_BASE}/generate\`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, orderId, firstName })
+          body: JSON.stringify({ sessionId, firstName })
         });
 
         if (!response.ok) throw new Error('Failed to generate vision board');

@@ -518,7 +518,7 @@ export function renderSantaFormPage(token?: string): string {
         <p>In a few thoughtful questions, we'll help you remember the moments, details, and quiet acts of courage that you most want Santa to notice about your child.</p>
         <p>This isn't a quiz and it's not therapy. It's a focused space to organize your thoughts so the final Santa experience feels specific, honest, and deeply personal - without any pressure on you to "say it perfectly."</p>
       </div>
-      <button class="btn-start" onclick="startSession()">Begin the Questions</button>
+      <button class="btn-start" onclick="startSession()">Begin Personalization Experience</button>
     </div>
 
     <!-- Form Area -->
