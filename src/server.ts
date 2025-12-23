@@ -1557,21 +1557,34 @@ app.post('/api/auth/login', async (req, res) => {
 app.post('/api/auth/signup', async (req, res) => {
   const { email, password, fullName, referralCode } = req.body;
 
+  console.log('[Auth] Signup attempt for:', email);
+
   if (!email || !password) {
+    console.log('[Auth] Signup failed: Missing email or password');
     return res.redirect(`/auth/signup?error=${encodeURIComponent('Email and password are required')}`);
   }
 
   if (password.length < 8) {
+    console.log('[Auth] Signup failed: Password too short');
     return res.redirect(`/auth/signup?error=${encodeURIComponent('Password must be at least 8 characters')}`);
   }
 
-  const result = await signUp(email, password, fullName, referralCode);
+  try {
+    const result = await signUp(email, password, fullName, referralCode);
 
-  if (result.user) {
-    // Redirect to login with success message
-    return res.redirect('/login?success=1');
-  } else {
-    return res.redirect(`/auth/signup?error=${encodeURIComponent(result.error || 'Signup failed')}`);
+    console.log('[Auth] Signup result:', result.user ? 'Success' : `Failed: ${result.error}`);
+
+    if (result.user) {
+      // Redirect to login with success message
+      return res.redirect('/login?success=1');
+    } else {
+      const errorMsg = result.error || 'Signup failed';
+      console.log('[Auth] Signup error details:', errorMsg);
+      return res.redirect(`/auth/signup?error=${encodeURIComponent(errorMsg)}`);
+    }
+  } catch (err: any) {
+    console.error('[Auth] Signup exception:', err.message || err);
+    return res.redirect(`/auth/signup?error=${encodeURIComponent('An unexpected error occurred. Please try again.')}`);
   }
 });
 

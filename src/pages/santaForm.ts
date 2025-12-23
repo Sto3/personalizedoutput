@@ -23,33 +23,30 @@ export function renderSantaFormPage(token?: string): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-dark: #1a1a2e;
-      --bg-purple: #2d1b4e;
-      --bg-card: rgba(255,255,255,0.08);
-      --bg-card-hover: rgba(255,255,255,0.12);
-      --coral: #E85A6B;
+      --bg-black: #0a0a0f;
+      --bg-card: rgba(255,255,255,0.05);
+      --bg-card-hover: rgba(255,255,255,0.08);
+      --coral: #E85A4F;
       --coral-light: #F08B96;
-      --purple: #7C3AED;
-      --purple-light: #A78BFA;
-      --navy: #1a1a2e;
-      --text-primary: #ffffff;
-      --text-secondary: rgba(255,255,255,0.7);
-      --text-muted: rgba(255,255,255,0.5);
-      --border: rgba(255,255,255,0.15);
-      --border-focus: rgba(124, 58, 237, 0.7);
+      --text-primary: #F5EEF0;
+      --text-secondary: rgba(245,238,240,0.7);
+      --text-muted: rgba(245,238,240,0.5);
+      --border: rgba(255,255,255,0.12);
+      --border-focus: rgba(232, 90, 79, 0.6);
     }
 
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-purple) 50%, var(--bg-dark) 100%);
+      font-family: 'Bodoni Moda', Georgia, serif;
+      background: var(--bg-black);
       min-height: 100vh;
       color: var(--text-primary);
-      line-height: 1.6;
+      line-height: 1.7;
     }
 
     /* Header */
     .header {
-      background: var(--purple);
+      background: var(--bg-black);
+      border-bottom: 1px solid var(--border);
       padding: 16px 24px;
       position: sticky;
       top: 0;
@@ -66,12 +63,13 @@ export function renderSantaFormPage(token?: string): string {
       font-family: 'Bodoni Moda', serif;
       font-size: 1.25rem;
       font-weight: 700;
-      color: #fff;
+      color: var(--text-primary);
       text-decoration: none;
     }
     .logo span { color: var(--coral); }
     .back-link {
-      color: rgba(255,255,255,0.8);
+      font-family: 'Bodoni Moda', serif;
+      color: var(--text-secondary);
       text-decoration: none;
       font-size: 0.9rem;
       display: flex;
@@ -79,7 +77,7 @@ export function renderSantaFormPage(token?: string): string {
       gap: 6px;
       transition: color 0.2s;
     }
-    .back-link:hover { color: #fff; }
+    .back-link:hover { color: var(--coral); }
 
     /* Main container */
     .container {
@@ -95,44 +93,52 @@ export function renderSantaFormPage(token?: string): string {
     }
     .page-title .badge {
       display: inline-block;
-      background: linear-gradient(135deg, var(--coral), var(--purple));
-      color: #fff;
+      background: transparent;
+      border: 1px solid var(--coral);
+      color: var(--coral);
       padding: 6px 16px;
       border-radius: 20px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
+      font-family: 'Bodoni Moda', serif;
+      font-size: 0.8rem;
+      font-weight: 400;
       letter-spacing: 0.05em;
       margin-bottom: 16px;
     }
     .page-title h1 {
       font-family: 'Bodoni Moda', serif;
       font-size: clamp(1.75rem, 5vw, 2.5rem);
-      font-weight: 700;
+      font-weight: 400;
       margin-bottom: 12px;
-      line-height: 1.2;
+      line-height: 1.3;
+      color: var(--text-primary);
+    }
+    .page-title h1 em {
+      font-style: italic;
+      color: var(--coral);
     }
     .page-title p {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-secondary);
       font-size: 1.1rem;
+      font-weight: 400;
     }
 
     /* Card styling */
     .card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 16px;
       padding: 40px;
       margin-bottom: 24px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-      backdrop-filter: blur(10px);
     }
 
     /* Start screen */
     .start-screen .intro-text {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-secondary);
       margin-bottom: 32px;
-      line-height: 1.8;
+      line-height: 1.9;
+      font-size: 1.05rem;
     }
     .start-screen .intro-text p {
       margin-bottom: 16px;
@@ -143,21 +149,21 @@ export function renderSantaFormPage(token?: string): string {
 
     .btn-start {
       width: 100%;
-      background: linear-gradient(135deg, var(--coral), var(--coral-light));
+      background: var(--coral);
       color: #fff;
       border: none;
       padding: 18px 36px;
       font-size: 1.1rem;
-      font-weight: 600;
-      font-family: inherit;
-      border-radius: 12px;
+      font-weight: 400;
+      font-family: 'Bodoni Moda', serif;
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
-      box-shadow: 0 4px 20px rgba(232, 90, 79, 0.3);
+      letter-spacing: 0.02em;
     }
     .btn-start:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(232, 90, 79, 0.4);
+      background: var(--coral-light);
+      transform: translateY(-1px);
     }
 
     /* Form area */
@@ -173,125 +179,132 @@ export function renderSantaFormPage(token?: string): string {
       margin-bottom: 24px;
     }
     .previous-answers h3 {
-      color: var(--purple-light);
-      font-family: 'Cormorant SC', serif;
+      color: var(--coral);
+      font-family: 'Bodoni Moda', serif;
       font-size: 1rem;
-      font-weight: 600;
-      margin-bottom: 8px;
+      font-weight: 400;
+      font-style: italic;
+      margin-bottom: 12px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
     .previous-answers h3::before {
       content: '';
-      width: 4px;
-      height: 20px;
-      background: var(--purple);
-      border-radius: 2px;
+      width: 3px;
+      height: 18px;
+      background: var(--coral);
+      border-radius: 1px;
     }
     .helper-text {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-muted);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       margin-bottom: 16px;
       font-style: italic;
     }
     .no-answers {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-muted);
       font-style: italic;
       padding: 16px;
-      background: rgba(255,255,255,0.03);
-      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 8px;
     }
     .answer-pair {
-      background: rgba(255,255,255,0.03);
-      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
       border: 1px solid var(--border);
     }
     .answer-pair .question {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-muted);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       margin-bottom: 8px;
     }
     .answer-pair .answer {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-primary);
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
 
     /* Current question */
     .current-question {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
+      border-radius: 12px;
+      padding: 28px;
     }
     .current-question-header {
-      color: var(--purple-light);
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
+      font-family: 'Bodoni Moda', serif;
+      color: var(--coral);
+      font-size: 0.85rem;
+      font-weight: 400;
+      letter-spacing: 0.08em;
       margin-bottom: 8px;
     }
     .current-question-hint {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-muted);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       margin-bottom: 16px;
       font-style: italic;
     }
     .question-label {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.25rem;
-      font-weight: 500;
+      font-size: 1.3rem;
+      font-weight: 400;
       color: var(--text-primary);
       margin-bottom: 20px;
-      line-height: 1.4;
+      line-height: 1.5;
     }
     .answer-input {
       width: 100%;
-      background: rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
       border: 1px solid var(--border);
-      border-radius: 12px;
+      border-radius: 8px;
       padding: 16px;
       color: var(--text-primary);
-      font-family: inherit;
+      font-family: 'Bodoni Moda', serif;
       font-size: 1rem;
       min-height: 120px;
       resize: vertical;
-      transition: border-color 0.2s, box-shadow 0.2s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      transition: border-color 0.2s, background-color 0.2s;
+      line-height: 1.7;
     }
     .answer-input:focus {
       outline: none;
-      border-color: var(--purple);
-      background: rgba(255,255,255,0.12);
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
+      border-color: var(--coral);
+      background: rgba(255,255,255,0.06);
     }
     .answer-input::placeholder {
       color: var(--text-muted);
+      font-style: italic;
     }
 
     .btn-next {
       width: 100%;
-      background: var(--purple);
+      background: var(--coral);
       color: #fff;
       border: none;
       padding: 16px 32px;
       font-size: 1rem;
-      font-weight: 600;
-      font-family: inherit;
-      border-radius: 10px;
+      font-weight: 400;
+      font-family: 'Bodoni Moda', serif;
+      border-radius: 8px;
       cursor: pointer;
       margin-top: 16px;
       transition: all 0.2s;
+      letter-spacing: 0.02em;
     }
     .btn-next:hover:not(:disabled) {
-      background: var(--purple-light);
+      background: var(--coral-light);
       transform: translateY(-1px);
     }
     .btn-next:disabled {
-      opacity: 0.5;
+      opacity: 0.4;
       cursor: not-allowed;
     }
 
@@ -305,14 +318,17 @@ export function renderSantaFormPage(token?: string): string {
     .summary-screen h2 {
       font-family: 'Bodoni Moda', serif;
       font-size: 1.5rem;
+      font-weight: 400;
       text-align: center;
       margin-bottom: 16px;
+      color: var(--text-primary);
     }
     .body-text {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-secondary);
       text-align: center;
       margin-bottom: 12px;
-      line-height: 1.7;
+      line-height: 1.8;
     }
     .summary-content {
       margin: 32px 0;
@@ -320,38 +336,40 @@ export function renderSantaFormPage(token?: string): string {
       overflow-y: auto;
     }
     .summary-item {
-      background: rgba(255,255,255,0.03);
-      border-radius: 12px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
       border: 1px solid var(--border);
     }
     .summary-item .q {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-muted);
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       margin-bottom: 8px;
     }
     .summary-item .a {
+      font-family: 'Bodoni Moda', serif;
       color: var(--text-primary);
-      font-size: 0.95rem;
+      font-size: 1rem;
     }
     .btn-generate {
       width: 100%;
-      background: linear-gradient(135deg, var(--coral), var(--coral-light));
+      background: var(--coral);
       color: #fff;
       border: none;
       padding: 18px 36px;
       font-size: 1.1rem;
-      font-weight: 600;
-      font-family: inherit;
-      border-radius: 12px;
+      font-weight: 400;
+      font-family: 'Bodoni Moda', serif;
+      border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
-      box-shadow: 0 4px 20px rgba(232, 90, 79, 0.3);
+      letter-spacing: 0.02em;
     }
     .btn-generate:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(232, 90, 79, 0.4);
+      background: var(--coral-light);
+      transform: translateY(-1px);
     }
 
     /* Result screen */
@@ -364,33 +382,37 @@ export function renderSantaFormPage(token?: string): string {
     .result-screen h2 {
       font-family: 'Bodoni Moda', serif;
       font-size: 1.5rem;
+      font-weight: 400;
       text-align: center;
       margin-bottom: 24px;
       color: var(--coral);
     }
     .result-content {
-      background: rgba(255,255,255,0.05);
-      border-radius: 16px;
+      font-family: 'Bodoni Moda', serif;
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
       padding: 24px;
       white-space: pre-wrap;
-      line-height: 1.8;
+      line-height: 1.9;
       font-size: 1.05rem;
       color: var(--text-secondary);
       margin-bottom: 24px;
       border: 1px solid var(--border);
     }
     .audio-player {
-      background: rgba(124, 58, 237, 0.1);
-      border-radius: 16px;
+      background: rgba(232, 90, 79, 0.08);
+      border-radius: 12px;
       padding: 24px;
       margin-bottom: 24px;
       text-align: center;
-      border: 1px solid rgba(124, 58, 237, 0.3);
+      border: 1px solid rgba(232, 90, 79, 0.2);
     }
     .audio-player h4 {
-      color: var(--purple-light);
+      font-family: 'Bodoni Moda', serif;
+      color: var(--coral);
       margin-bottom: 16px;
       font-size: 1rem;
+      font-weight: 400;
     }
     .audio-player audio {
       width: 100%;
