@@ -334,12 +334,9 @@
       swipeStartTime = Date.now();
       isTouchActive = true;
       hasMoved = false;
-      window._carouselInteracting = true;
+      // DON'T set _carouselInteracting here - only set it if user actually swipes
       window._carouselDidSwipe = false;
-
-      // Prevent browser back gesture by capturing touch early
-      // Note: This needs passive: false to work
-    }, { passive: false, capture: true });
+    }, { passive: true, capture: true });
 
     carouselContainer.addEventListener('touchmove', function(e) {
       if (!isTouchActive) return;
@@ -356,6 +353,7 @@
         e.stopPropagation();
         hasMoved = true;
         window._carouselDidSwipe = true;
+        window._carouselInteracting = true; // Only set when actually swiping
       }
     }, { passive: false, capture: true });
 
@@ -367,6 +365,13 @@
       var diff = swipeStartX - touchEndX;
       var swipeTime = Date.now() - swipeStartTime;
 
+      // If user didn't move (it's a tap), immediately allow clicks
+      if (!hasMoved) {
+        window._carouselInteracting = false;
+        window._carouselDidSwipe = false;
+        return; // Let the tap/click happen naturally
+      }
+
       // Only trigger swipe if threshold met and within time limit
       if (Math.abs(diff) > SWIPE_THRESHOLD && swipeTime < SWIPE_TIME_LIMIT && hasMoved) {
         if (diff > 0) {
@@ -376,7 +381,7 @@
         }
       }
 
-      // Keep swipe flag active longer to block accidental clicks
+      // Keep swipe flag active longer to block accidental clicks after swipe
       lockInteractions(500);
       setTimeout(function() {
         window._carouselInteracting = false;

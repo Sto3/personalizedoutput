@@ -334,7 +334,7 @@ export function renderNavigation(options: NavOptions = {}): string {
         <button class="mobile-close-btn" aria-label="Close menu">&times;</button>
       </div>
       <div class="mobile-menu-links">
-        <a href="/#products" class="mobile-link">Products</a>
+        <a href="/products" class="mobile-link">Products</a>
         <a href="/how-it-works" class="mobile-link">How It Works</a>
         <a href="/pricing" class="mobile-link">Pricing</a>
         <a href="/blog" class="mobile-link">Blog</a>
