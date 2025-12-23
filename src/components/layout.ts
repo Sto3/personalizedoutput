@@ -342,6 +342,17 @@ export function renderNavigation(options: NavOptions = {}): string {
         <a href="/pricing" class="mobile-link">Pricing</a>
         <a href="/blog" class="mobile-link">Blog</a>
         <a href="/login" class="mobile-link">Login</a>
+
+        <!-- Mobile Email Signup -->
+        <div class="mobile-signup-section">
+          <div class="mobile-signup-header">Stay in the Loop</div>
+          <p class="mobile-signup-text">Get early access & exclusive offers</p>
+          <form class="mobile-signup-form" id="mobile-signup-form">
+            <input type="email" name="email" placeholder="your@email.com" required class="mobile-signup-input" autocomplete="email">
+            <button type="submit" class="mobile-signup-btn">Join</button>
+          </form>
+        </div>
+
         <a href="/demo-lessons" class="mobile-cta">Listen to Demos</a>
       </div>
     </div>
@@ -898,6 +909,66 @@ export function getNavigationStyles(): string {
       text-align: center;
       transition: all var(--transition-normal);
     }
+
+    /* Mobile Email Signup Section */
+    .mobile-signup-section {
+      margin: 24px 0;
+      padding: 24px;
+      background: rgba(124, 58, 237, 0.08);
+      border-radius: 16px;
+      border: 1px solid rgba(124, 58, 237, 0.15);
+    }
+    .mobile-signup-header {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .mobile-signup-text {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .mobile-signup-form {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .mobile-signup-input {
+      padding: 16px;
+      border-radius: 12px;
+      border: 2px solid var(--border-light);
+      font-size: 1rem;
+      width: 100%;
+      background: white;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .mobile-signup-input:focus {
+      outline: none;
+      border-color: #7C3AED;
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+    }
+    .mobile-signup-btn {
+      padding: 16px 24px;
+      border-radius: 12px;
+      border: none;
+      background: linear-gradient(135deg, #E85A4F 0%, #E85A6B 100%);
+      color: white;
+      font-weight: 600;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      width: 100%;
+    }
+    .mobile-signup-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(232, 90, 107, 0.35);
+    }
+    .mobile-signup-btn:active {
+      transform: translateY(0);
+    }
+
     body.menu-open {
       overflow: hidden;
     }
@@ -1275,6 +1346,58 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
                   // Close dropdown after success
                   if (emailSignupDropdown) emailSignupDropdown.classList.remove('open');
                 }, 2500);
+              } else {
+                submitBtn.textContent = 'Try again';
+                submitBtn.style.background = '#ef4444';
+                setTimeout(() => {
+                  submitBtn.textContent = 'Join';
+                  submitBtn.style.background = '';
+                  submitBtn.disabled = false;
+                }, 3000);
+              }
+            } catch (error) {
+              submitBtn.textContent = 'Try again';
+              submitBtn.style.background = '#ef4444';
+              setTimeout(() => {
+                submitBtn.textContent = 'Join';
+                submitBtn.style.background = '';
+                submitBtn.disabled = false;
+              }, 3000);
+            }
+          });
+        }
+
+        // Mobile signup form handler
+        const mobileSignupForm = document.getElementById('mobile-signup-form');
+        if (mobileSignupForm) {
+          mobileSignupForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const emailInput = this.querySelector('.mobile-signup-input');
+            const submitBtn = this.querySelector('.mobile-signup-btn');
+            const email = emailInput.value.trim();
+
+            if (!email) return;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Joining...';
+
+            try {
+              const response = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+              });
+              const data = await response.json();
+
+              if (data.success) {
+                emailInput.value = '';
+                submitBtn.textContent = 'You\\'re in!';
+                submitBtn.style.background = '#22c55e';
+                setTimeout(() => {
+                  submitBtn.textContent = 'Join';
+                  submitBtn.style.background = '';
+                  submitBtn.disabled = false;
+                }, 3000);
               } else {
                 submitBtn.textContent = 'Try again';
                 submitBtn.style.background = '#ef4444';
