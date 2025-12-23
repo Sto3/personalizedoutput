@@ -471,8 +471,11 @@ export function getNavigationStyles(): string {
     .nav-link {
       color: rgba(255, 255, 255, 0.75);
       text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
+      font-family: 'Cormorant SC', serif;
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       transition: color var(--transition-fast);
       position: relative;
       display: flex;
@@ -506,8 +509,11 @@ export function getNavigationStyles(): string {
       color: white;
       border-radius: 100px;
       text-decoration: none;
+      font-family: 'Cormorant SC', serif;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       transition: all var(--transition-normal);
       box-shadow: 0 4px 15px rgba(232, 90, 107, 0.3);
     }
@@ -843,8 +849,11 @@ export function getNavigationStyles(): string {
     .mobile-link {
       color: rgba(255,255,255,0.8);
       text-decoration: none;
-      font-size: 1.1rem;
-      font-weight: 500;
+      font-family: 'Cormorant SC', serif;
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       padding: 14px 16px;
       border-radius: 12px;
       transition: all var(--transition-fast);
@@ -896,7 +905,11 @@ export function getNavigationStyles(): string {
       color: white;
       border-radius: 12px;
       text-decoration: none;
+      font-family: 'Cormorant SC', serif;
       font-weight: 600;
+      font-size: 1.1rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
       text-align: center;
       transition: all var(--transition-normal);
     }

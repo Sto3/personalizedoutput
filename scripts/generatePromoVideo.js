@@ -83,9 +83,26 @@ async function generateVideo(templateKey) {
   console.log(`Capturing ${TOTAL_FRAMES} frames...`);
   const startTime = Date.now();
 
+  // Pause all animations initially and set up time control
+  await page.evaluate(() => {
+    document.getAnimations().forEach(anim => {
+      anim.pause();
+    });
+  });
+
   for (let i = 0; i < TOTAL_FRAMES; i++) {
     const frameNumber = String(i).padStart(5, '0');
     const framePath = path.join(FRAMES_DIR, `frame_${frameNumber}.png`);
+
+    // Calculate the exact time in milliseconds for this frame
+    const frameTimeMs = (i / FPS) * 1000;
+
+    // Set all animations to this exact time
+    await page.evaluate((time) => {
+      document.getAnimations().forEach(anim => {
+        anim.currentTime = time;
+      });
+    }, frameTimeMs);
 
     await page.screenshot({
       path: framePath,
@@ -99,9 +116,6 @@ async function generateVideo(templateKey) {
       const second = i / FPS;
       console.log(`  ${progress}% (${second}s/${DURATION}s) - ${elapsed}s elapsed`);
     }
-
-    // Wait for animation to progress (simulate real-time playback)
-    await new Promise(r => setTimeout(r, 1000 / FPS));
   }
 
   const captureTime = ((Date.now() - startTime) / 1000).toFixed(1);
