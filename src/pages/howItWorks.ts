@@ -35,7 +35,7 @@ export function renderHowItWorksPage(): string {
             <div class="step-content">
               <h2>Choose Your Product</h2>
               <p>
-                Browse our collection of personalized experiences. From magical
+                Browse our collection of personalized experiences. From heartfelt
                 Santa messages for kids to vision boards for personal growth,
                 each product is designed to create something meaningful.
               </p>
@@ -60,7 +60,7 @@ export function renderHowItWorksPage(): string {
                 Share what makes you (or your recipient) truly unique through our thoughtful
                 Personalization Experience. The more you share about interests,
                 goals, challenges, and personality, the more deeply personal the
-                result becomes — this is where the magic happens.
+                result becomes — this is where something special happens.
               </p>
               <div class="example-box">
                 <span class="example-label">We'll explore things like:</span>

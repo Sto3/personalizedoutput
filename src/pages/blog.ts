@@ -25,7 +25,7 @@ export function renderBlogListPage(posts: BlogPost[]): string {
       <meta property="og:description" content="Expert tips on creating personalized gifts and meaningful connections.">
       <meta property="og:type" content="website">
       <meta property="og:url" content="https://personalizedoutput.com/blog">
-      <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Cormorant+SC:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 

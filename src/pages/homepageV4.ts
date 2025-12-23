@@ -58,7 +58,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
                 <div class="popular-now-cards">
                   <a href="/santa" class="popular-card">
                     <span class="popular-title">Personalized Santa</span>
-                    <span class="popular-tag">Holiday Magic</span>
+                    <span class="popular-tag">Holiday Favorite</span>
                   </a>
                   <span class="popular-now-label">Popular Now</span>
                   <a href="/vision-board" class="popular-card">
@@ -117,7 +117,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step-connector"></div>
           <div class="step">
             <div class="step-number">3</div>
-            <h3>We Create Magic</h3>
+            <h3>We Craft It</h3>
             <p>Our powerful and immersive Personalization Experience weaves your details into something uniquely personal.</p>
           </div>
           <div class="step-connector"></div>
@@ -429,7 +429,7 @@ function renderFeatureCards(products: ProductWithScore[]): string {
       description: 'Connect interests to learning seamlessly.'
     },
     santa_message: {
-      title: 'Personalized Magic',
+      title: 'Deeply Personal',
       visual: `
         <div class="card-illustration diagram-style">
           <div class="diagram-center">

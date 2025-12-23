@@ -15,7 +15,7 @@ export function renderDemoLessonsPage(): string {
       <section class="demo-hero">
         <div class="container">
           <span class="eyebrow">Demo Videos</span>
-          <h1>See the Magic <span class="highlight">In Action</span></h1>
+          <h1>See It <span class="highlight">In Action</span></h1>
           <p class="hero-desc">
             Watch real examples of our personalized creations.
             Every product is built uniquely for that person.
@@ -92,7 +92,7 @@ export function renderDemoLessonsPage(): string {
         <div class="container">
           <div class="section-header">
             <h2><span class="icon">🎅</span> Santa Message Demos</h2>
-            <p>Magical moments showing how personal each message can be</p>
+            <p>Heartfelt moments showing how personal each message can be</p>
           </div>
 
           <div class="demo-grid santa-grid">
@@ -301,7 +301,7 @@ export function renderDemoLessonsPage(): string {
       <section class="cta-section">
         <div class="container">
           <h2>Ready to Create Your Own?</h2>
-          <p>Choose a product and see the magic happen for someone you love.</p>
+          <p>Choose a product and create something special for someone you love.</p>
           <div class="cta-buttons">
             <a href="/santa" class="btn btn-primary santa-btn">Create Santa Message</a>
             <a href="/flash-cards" class="btn btn-secondary">Create Learning Session</a>

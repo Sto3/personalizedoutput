@@ -168,7 +168,7 @@ export function renderPricingPageNew(): string {
               <div class="price-badge">For Kids</div>
               <div class="price-icon">🎅</div>
               <h3>Santa Message</h3>
-              <p class="price-desc">Magical personalized video message from Santa</p>
+              <p class="price-desc">Personalized audio message from Santa</p>
               <div class="price-amount">$15</div>
               <ul class="price-features">
                 <li>Personalized HD video</li>

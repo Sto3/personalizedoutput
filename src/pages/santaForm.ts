@@ -15,7 +15,7 @@ export function renderSantaFormPage(token?: string): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Your Santa Message | Personalized Output</title>
-  <meta name="description" content="Create a magical, personalized audio message from Santa for your child.">
+  <meta name="description" content="Create a deeply personal audio experience from Santa for your child.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -507,9 +507,9 @@ export function renderSantaFormPage(token?: string): string {
 
   <div class="container">
     <div class="page-title">
-      <span class="badge">Christmas Magic</span>
+      <span class="badge">Holiday Favorite</span>
       <h1>Personalized Santa</h1>
-      <p>A magical audio experience crafted from your stories</p>
+      <p>A heartfelt audio experience crafted from your stories</p>
     </div>
 
     <!-- Start Screen -->

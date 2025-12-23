@@ -46,7 +46,7 @@ export async function renderProductsPage(): Promise<string> {
         <div class="container">
           <div class="section-header">
             <h2><span class="icon">🎅</span> For Kids</h2>
-            <p>Magical experiences designed to delight and inspire children</p>
+            <p>Special experiences designed to delight and inspire children</p>
           </div>
           <div class="products-grid">
             ${kidsProducts.map(p => renderProductCard(p)).join('')}
@@ -122,16 +122,28 @@ function renderProductCard(product: ProductWithScore): string {
     thought_organizer: '🧠',
   };
 
+  // Products that are currently launched
+  const launchedProducts = ['santa_message', 'vision_board'];
+  const isLaunched = launchedProducts.includes(product.id);
+  const href = isLaunched ? `/${product.slug}` : '/coming-soon';
+
+  let badgeHtml = '';
+  if (!isLaunched) {
+    badgeHtml = '<span class="coming-soon-badge">Coming Soon</span>';
+  } else if (product.salesScore > 0) {
+    badgeHtml = '<span class="popular-badge">Popular</span>';
+  }
+
   return `
-    <a href="/${product.slug}" class="product-card">
+    <a href="${href}" class="product-card${!isLaunched ? ' coming-soon' : ''}">
       <div class="card-content">
         <div class="card-icon">${icons[product.id] || '📦'}</div>
-        ${product.salesScore > 0 ? '<span class="popular-badge">Popular</span>' : ''}
+        ${badgeHtml}
         <h3>${product.name}</h3>
         <p>${product.description}</p>
         <div class="card-footer">
           <span class="price">$${(product.price / 100).toFixed(0)}</span>
-          <span class="cta">Learn More <span class="arrow">→</span></span>
+          <span class="cta">${isLaunched ? 'Learn More' : 'Notify Me'} <span class="arrow">→</span></span>
         </div>
       </div>
     </a>
@@ -286,6 +298,28 @@ function getProductsPageStyles(): string {
       letter-spacing: 0.5px;
       padding: 6px 12px;
       border-radius: 20px;
+    }
+
+    .coming-soon-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      background: #64748b;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+
+    .product-card.coming-soon {
+      opacity: 0.85;
+    }
+
+    .product-card.coming-soon:hover {
+      opacity: 1;
     }
 
     .product-card h3 {

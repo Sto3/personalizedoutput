@@ -96,7 +96,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
   santa_message: {
     id: 'santa_message',
     name: 'Personalized Santa',
-    description: 'A magical, personalized audio experience from Santa Claus',
+    description: 'A deeply personal audio experience from Santa Claus',
     price: 1999, // $19.99
     category: 'kids',
     slug: 'santa',

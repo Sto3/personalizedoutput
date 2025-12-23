@@ -129,12 +129,12 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
   },
 
   santa_message: {
-    heroSubtitle: 'Christmas Magic',
-    heroDescription: 'A personalized audio experience from Santa that knows their name, their interests, their accomplishments, and their wishes. Pure Christmas magic.',
+    heroSubtitle: 'Holiday Favorite',
+    heroDescription: 'A personalized audio experience from Santa that knows their name, their interests, their accomplishments, and their wishes. A truly special experience.',
     features: [
       { icon: '🎅', title: 'Deeply Personal', description: 'Santa knows their name, their pet, their achievements, their wishes - everything you share.' },
       { icon: '🎙️', title: 'Professional Voice', description: 'Warm, authentic Santa voice that sounds like the real deal.' },
-      { icon: '⏱️', title: '2-3 Minutes', description: 'The perfect length to capture attention without losing the magic.' },
+      { icon: '⏱️', title: '2-3 Minutes', description: 'The perfect length to capture attention and create lasting memories.' },
       { icon: '🎁', title: 'Special Mention', description: 'Santa can reference specific gifts, upcoming events, or special encouragements.' },
     ],
     processSteps: [
@@ -150,7 +150,7 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
     ],
     testimonials: [],
     deliverables: ['2-3 minute personalized audio', 'MP3 download', 'Transcript included', 'Christmas memory forever'],
-    guarantee: 'Not magical enough? Full refund - we\'re that confident',
+    guarantee: 'Not personal enough? Full refund - we\'re that confident',
   },
 
   holiday_reset: {
