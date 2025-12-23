@@ -192,13 +192,14 @@ export function renderVisionBoardFormPage(): string {
       color: #fff;
       border: none;
       padding: 18px 36px;
-      font-size: 1.1rem;
-      font-weight: 400;
+      font-size: 0.95rem;
+      font-weight: 500;
       font-family: 'Bodoni Moda', serif;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
       border-radius: 8px;
       cursor: pointer;
       transition: all 0.3s;
-      letter-spacing: 0.02em;
       margin-top: 8px;
     }
     .btn-start:hover {

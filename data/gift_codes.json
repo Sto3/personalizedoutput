@@ -7,6 +7,24 @@
       "recipientName": "Test Recipient",
       "used": false,
       "createdAt": "2024-12-23T00:00:00.000Z"
+    },
+    {
+      "code": "GIFT-8B2K-8ZW9",
+      "productId": "santa_message",
+      "purchaserEmail": "buyer@test.com",
+      "recipientName": "Little Timmy",
+      "used": true,
+      "createdAt": "2025-12-23T19:37:37.456Z",
+      "usedAt": "2025-12-23T19:37:37.458Z",
+      "usedByEmail": "recipient@test.com"
+    },
+    {
+      "code": "GIFT-6SRC-PLYC",
+      "productId": "santa_message",
+      "purchaserEmail": "test-buyer@example.com",
+      "recipientName": "Test Child",
+      "used": false,
+      "createdAt": "2025-12-23T19:37:44.916Z"
     }
   ]
 }
