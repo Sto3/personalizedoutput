@@ -13,7 +13,7 @@ export function renderVisionBoardFormPage(): string {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Create Your Vision Board | Personalized Output</title>
-  <meta name="description" content="Create a personalized vision board that reflects your authentic dreams and goals.">
+  <meta name="description" content="Create a personalized vision board - a visual representation of your goals and the life you're building.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=Cormorant+SC:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -569,8 +569,8 @@ export function renderVisionBoardFormPage(): string {
     <!-- Start Screen -->
     <div id="startScreen" class="card start-screen">
       <div class="intro-text">
-        <p>Your vision board should be more than pretty pictures - it should reflect YOUR authentic dreams, not what you think you "should" want.</p>
-        <p>This guided reflection helps you clarify what you truly want to manifest, what feeling you're seeking, and what aesthetic speaks to the person you're becoming.</p>
+        <p>A vision board is a powerful tool for clarity - a visual representation of the life you're creating and the person you're becoming.</p>
+        <p>This guided experience helps you envision your goals with specificity, identify the feelings you want to cultivate, and discover the aesthetic that resonates with your future self.</p>
       </div>
 
       <div class="order-section" id="nameSection">
