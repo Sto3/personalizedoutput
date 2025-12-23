@@ -292,70 +292,6 @@ export function renderVisionBoardFormPage(): string {
       cursor: not-allowed;
     }
 
-    /* Summary screen */
-    .summary-screen {
-      display: none;
-    }
-    .summary-screen.active {
-      display: block;
-    }
-    .summary-screen h2 {
-      font-family: 'Bodoni Moda', serif;
-      font-size: 1.5rem;
-      font-weight: 400;
-      text-align: center;
-      margin-bottom: 16px;
-      color: var(--text-primary);
-    }
-    .body-text {
-      font-family: 'Bodoni Moda', serif;
-      color: #333;
-      text-align: center;
-      margin-bottom: 12px;
-      line-height: 1.8;
-    }
-    .summary-content {
-      margin: 32px 0;
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .summary-item {
-      background: #f8f8f8;
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 12px;
-      border: 1px solid #e0e0e0;
-    }
-    .summary-item .q {
-      font-family: 'Bodoni Moda', serif;
-      color: #666;
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-    .summary-item .a {
-      font-family: 'Bodoni Moda', serif;
-      color: #1a1a1a;
-      font-size: 1rem;
-    }
-    .btn-generate {
-      width: 100%;
-      background: var(--coral);
-      color: #fff;
-      border: none;
-      padding: 18px 36px;
-      font-size: 1.1rem;
-      font-weight: 400;
-      font-family: 'Bodoni Moda', serif;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: all 0.3s;
-      letter-spacing: 0.02em;
-    }
-    .btn-generate:hover {
-      background: var(--coral-light);
-      transform: translateY(-1px);
-    }
-
     /* Result screen */
     .result-screen {
       display: none;
@@ -371,17 +307,37 @@ export function renderVisionBoardFormPage(): string {
       margin-bottom: 24px;
       color: var(--coral);
     }
-    .result-content {
-      font-family: 'Bodoni Moda', serif;
-      background: #f8f8f8;
+    .vision-board-image {
+      width: 100%;
       border-radius: 12px;
-      padding: 24px;
-      white-space: pre-wrap;
-      line-height: 1.9;
-      font-size: 1.05rem;
-      color: #1a1a1a;
       margin-bottom: 24px;
-      border: 1px solid #e0e0e0;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .result-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .btn-download {
+      width: 100%;
+      background: var(--coral);
+      color: #fff;
+      border: none;
+      padding: 16px 32px;
+      font-size: 1rem;
+      font-weight: 400;
+      font-family: 'Bodoni Moda', serif;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-decoration: none;
+      text-align: center;
+      display: block;
+    }
+    .btn-download:hover {
+      background: var(--coral-light);
+      transform: translateY(-1px);
     }
     .result-note {
       font-family: 'Bodoni Moda', serif;
@@ -545,19 +501,14 @@ export function renderVisionBoardFormPage(): string {
       </div>
     </div>
 
-    <!-- Summary Screen -->
-    <div id="summaryScreen" class="card summary-screen">
-      <h2>Ready to Create</h2>
-      <p class="body-text">Review your answers below, then click Create to generate your vision board.</p>
-      <div id="summaryContent" class="summary-content"></div>
-      <button class="btn-generate" onclick="generateMessage()">Create My Vision Board</button>
-    </div>
-
     <!-- Result Screen -->
     <div id="resultScreen" class="card result-screen">
       <h2>Your Vision Board is Ready</h2>
-      <div id="resultContent" class="result-content"></div>
-      <p class="result-note">Your personalized vision board has been generated. Download it, print it, and display it where you'll see it daily.</p>
+      <img id="visionBoardImage" class="vision-board-image" alt="Your Personalized Vision Board" />
+      <div class="result-actions">
+        <a id="downloadBtn" class="btn-download" download>Download Your Vision Board</a>
+      </div>
+      <p class="result-note">Print it, set it as your wallpaper, and display it where you'll see it daily.</p>
       <button class="btn-restart" onclick="restart()">Create Another Vision Board</button>
     </div>
 
@@ -764,9 +715,8 @@ export function renderVisionBoardFormPage(): string {
         const data = await response.json();
 
         if (data.status === 'ready_for_generation') {
-          showLoading(false);
-          document.getElementById('formArea').classList.remove('active');
-          showSummary();
+          // Skip summary, go straight to generation
+          generateMessage();
         } else {
           currentQuestion = data.assistantMessage || data.message || '';
           questionCount++;
@@ -783,21 +733,8 @@ export function renderVisionBoardFormPage(): string {
       }
     }
 
-    function showSummary() {
-      const content = document.getElementById('summaryContent');
-      content.innerHTML = answers.map(item => \`
-        <div class="summary-item">
-          <div class="q">\${escapeHtml(item.question)}</div>
-          <div class="a">\${escapeHtml(item.answer)}</div>
-        </div>
-      \`).join('');
-
-      document.getElementById('summaryScreen').classList.add('active');
-    }
-
     async function generateMessage() {
       hideError();
-      document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.add('active');
       showLoading(true);
 
@@ -815,35 +752,30 @@ export function renderVisionBoardFormPage(): string {
         clearProgress(); // Clear progress after successful generation
         showLoading(false);
         document.getElementById('formArea').classList.remove('active');
-        showResult(data.output);
+        showResult(data);
 
       } catch (err) {
         showError(err.message);
         showLoading(false);
-        document.getElementById('summaryScreen').classList.add('active');
         document.getElementById('formArea').classList.remove('active');
       }
     }
 
-    function showResult(output) {
-      let content = '';
+    function showResult(data) {
+      const imageUrl = data.imageUrl;
 
-      if (typeof output === 'string') {
-        content = output;
-      } else if (typeof output === 'object') {
-        if (output.imagePath) {
-          content = \`Your personalized vision board has been created!\\n\\nImage: \${output.imagePath}\\n\\n\`;
-          if (output.oneWord) content += \`Theme: \${output.oneWord}\\n\`;
-          if (output.goals) content += \`Goals: \${output.goals.join(', ')}\\n\`;
-          if (output.aesthetic) content += \`Aesthetic: \${output.aesthetic}\`;
-        } else if (output.summary) {
-          content = output.summary;
-        } else {
-          content = JSON.stringify(output, null, 2);
-        }
+      if (imageUrl) {
+        // Display the vision board image
+        const img = document.getElementById('visionBoardImage');
+        img.src = imageUrl;
+        img.alt = firstName ? \`\${firstName}'s Vision Board\` : 'Your Vision Board';
+
+        // Set up download button
+        const downloadBtn = document.getElementById('downloadBtn');
+        downloadBtn.href = imageUrl;
+        downloadBtn.download = firstName ? \`\${firstName}_vision_board.png\` : 'vision_board.png';
       }
 
-      document.getElementById('resultContent').textContent = content;
       document.getElementById('resultScreen').classList.add('active');
     }
 
@@ -856,7 +788,6 @@ export function renderVisionBoardFormPage(): string {
       questionCount = 0;
 
       document.getElementById('resultScreen').classList.remove('active');
-      document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.remove('active');
       document.getElementById('startScreen').style.display = 'block';
       hideError();
