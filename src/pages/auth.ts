@@ -218,7 +218,11 @@ export function renderLoginPage(error?: string, returnUrl?: string, success?: bo
           ${success ? `
             <div class="success">
               <h3>Account Created!</h3>
-              <p>Please check your email to confirm your account, then sign in below.</p>
+              <p>We've sent a confirmation link to your email.</p>
+              <p style="margin-top: 10px; font-size: 0.8rem; color: rgba(255,255,255,0.7);">
+                <strong>Important:</strong> Check your spam/junk folder — the email comes from our authentication system and may be filtered.
+                To ensure you receive future emails, add the sender to your contacts or mark as "not spam".
+              </p>
             </div>
           ` : ''}
 
