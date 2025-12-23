@@ -1,26 +1,26 @@
 /**
- * ISOLATED CAROUSEL JAVASCRIPT - v1.0
+ * ISOLATED CAROUSEL JAVASCRIPT - v2.0
  * Wrapped in IIFE to prevent any conflicts with other code
  * Pure vanilla JS - no dependencies
+ * Now with mobile-first horizontal scroll and Coming Soon support
  */
 (function() {
   'use strict';
 
   console.log('[Carousel] Initializing isolated 3D carousel...');
 
-  // Product data
+  // Product data with launch status
   const products = [
-    { id: 'santa_message', name: 'Personalized Santa Message', desc: 'A magical, personalized audio message from Santa Claus', price: 20, icon: '🎁', category: 'For Kids' },
-    { id: 'learning_session', name: 'Audio Lesson', desc: 'Learn anything through personalized audio', price: 23, icon: '🧠🎧', category: 'Learning' },
-    { id: 'video_learning_session', name: 'Video Lesson', desc: 'Learn anything through personalized video', price: 33, icon: '🧠🎬', category: 'Learning' },
-    { id: 'vision_board', name: 'Vision Board', desc: 'Personalized goals visualization', price: 15, icon: '🎯', category: 'For Adults' },
-    { id: 'flash_cards', name: 'Flash Cards', desc: 'Personalized learning cards', price: 12, icon: '📚', category: 'Education' },
-    { id: 'thought_organizer', name: 'Thought Organizer', desc: 'Transform ideas into actionable insights', price: 20, icon: '✨', category: 'Life Planning' },
-    { id: 'clarity_planner', name: 'Clarity Planner', desc: 'Find clarity in life decisions', price: 15, icon: '💡', category: 'Planning' },
-    { id: 'holiday_reset', name: 'Holiday Reset', desc: 'Reflect and reset for the new year', price: 18, icon: '🎄', category: 'Seasonal' }
+    { badge: 'For Kids', icon: '🎁', title: 'Personalized Santa Message', desc: 'A magical audio message from Santa', price: '$20', slug: 'santa', launched: true },
+    { badge: 'Learning', icon: '🎧', title: '30-Minute Audio Lesson', desc: 'Learn through what you love', price: '$23', slug: 'learning-session', launched: false },
+    { badge: 'Learning', icon: '🎬', title: '30-Minute Video Lesson', desc: 'Video lesson with visuals', price: '$33', slug: 'video-learning-session', launched: false },
+    { badge: 'For Adults', icon: '🎯', title: 'Custom Vision Board', desc: 'Personalized vision board', price: '$15', slug: 'vision-board', launched: true },
+    { badge: 'Life Planning', icon: '✨', title: 'Thought Organizer™', desc: 'Ideas into insights', price: '$20', slug: 'thought-organizer', launched: false },
+    { badge: 'Education', icon: '📚', title: 'Custom Flash Cards', desc: 'Personalized learning cards', price: '$12', slug: 'flash-cards', launched: false },
+    { badge: 'Planning', icon: '💡', title: 'Clarity Planner', desc: 'Achieve your goals', price: '$25', slug: 'clarity-planner', launched: false }
   ];
 
-  // Position configurations for 3D coverflow effect
+  // Position configurations for 3D coverflow effect (desktop only)
   const positions = {
     'center':  { tx: 0,    tz: 0,    ry: 0,   scale: 1,    opacity: 1,   zIndex: 10 },
     'left-1':  { tx: -200, tz: -120, ry: 25,  scale: 0.85, opacity: 0.7, zIndex: 5 },
@@ -32,9 +32,11 @@
     'hidden':  { tx: 0,    tz: -400, ry: 0,   scale: 0.3,  opacity: 0,   zIndex: 0 }
   };
 
-  let current = Math.floor(products.length / 2); // Start centered
+  let current = Math.floor(products.length / 2);
   let cards = [];
   let dots = [];
+  let wrapper = null;
+  let dotsEl = null;
 
   // Get position name based on offset from center
   function getPosition(offset) {
@@ -48,14 +50,13 @@
     return 'hidden';
   }
 
-  // Render all cards in their positions
+  // Render all cards in their positions (desktop only)
   function render() {
-    cards.forEach((card, index) => {
-      const offset = index - current;
-      const posName = getPosition(offset);
-      const pos = positions[posName];
+    cards.forEach(function(card, index) {
+      var offset = index - current;
+      var posName = getPosition(offset);
+      var pos = positions[posName];
 
-      // Apply CSS custom properties
       card.style.setProperty('--tx', pos.tx + 'px');
       card.style.setProperty('--tz', pos.tz + 'px');
       card.style.setProperty('--ry', pos.ry + 'deg');
@@ -65,15 +66,12 @@
       card.style.pointerEvents = posName === 'center' ? 'auto' : 'none';
     });
 
-    // Update dots
-    dots.forEach((dot, index) => {
+    dots.forEach(function(dot, index) {
       dot.classList.toggle('active', index === current);
     });
-
-    console.log('[Carousel] Rendered at index:', current);
   }
 
-  // Navigate to a specific slide
+  // Navigate to a specific slide (desktop only)
   function goToSlide(index) {
     if (index < 0) index = products.length - 1;
     if (index >= products.length) index = 0;
@@ -81,101 +79,141 @@
     render();
   }
 
-  // Create card HTML
-  function createCard(product, index) {
-    const card = document.createElement('a');
-    card.className = 'carousel-card';
-    card.href = '/product/' + product.id;
-    card.innerHTML = `
-      <span class="card-badge">${product.category}</span>
-      <div class="card-icon">${product.icon}</div>
-      <h3 class="card-title">${product.name}</h3>
-      <p class="card-desc">${product.desc}</p>
-      <div class="card-footer">
-        <span class="card-price">$${product.price}</span>
-        <span class="card-cta">Get Started →</span>
-      </div>
-    `;
-
-    card.addEventListener('click', function(e) {
-      if (index !== current) {
-        e.preventDefault();
-        goToSlide(index);
-      }
-    });
-
-    return card;
-  }
-
   // Initialize the carousel
   function init() {
-    const wrapper = document.getElementById('carouselWrapper');
-    const dotsContainer = document.getElementById('carouselDots');
+    wrapper = document.getElementById('carouselWrapper');
+    dotsEl = document.getElementById('carouselDots');
 
-    if (!wrapper || !dotsContainer) {
-      console.warn('[Carousel] Container elements not found, retrying...');
-      setTimeout(init, 100);
+    if (!wrapper) {
+      console.error('[Carousel] #carouselWrapper not found');
       return;
     }
 
-    console.log('[Carousel] Found containers, building cards...');
+    // ========================================
+    // MOBILE MODE — Simple horizontal scroll
+    // ========================================
+    var isMobile = window.innerWidth <= 768;
 
-    // Clear existing content
+    if (isMobile) {
+      console.log('[Carousel] Mobile mode - horizontal scroll');
+
+      // Render all cards in a simple row
+      var html = '';
+      for (var i = 0; i < products.length; i++) {
+        var p = products[i];
+        var cardLink = p.launched ? '/' + p.slug : '/coming-soon';
+        var comingSoonBadge = p.launched ? '' : '<span class="coming-soon-badge">Coming Soon</span>';
+
+        html += '<a href="' + cardLink + '" class="carousel-card">' +
+          '<div class="carousel-card-content">' +
+            comingSoonBadge +
+            '<span class="card-badge">' + p.badge + '</span>' +
+            '<div class="card-icon">' + p.icon + '</div>' +
+            '<h3 class="card-title">' + p.title + '</h3>' +
+            '<p class="card-desc">' + p.desc + '</p>' +
+            '<div class="card-footer">' +
+              '<span class="card-price">' + p.price + '</span>' +
+              '<span class="card-cta">Get Started →</span>' +
+            '</div>' +
+          '</div>' +
+        '</a>';
+      }
+      wrapper.innerHTML = html;
+
+      // Hide dots on mobile
+      if (dotsEl) dotsEl.style.display = 'none';
+
+      // Scroll to center initially
+      setTimeout(function() {
+        var cardWidth = 280 + 16;
+        var centerScroll = (products.length / 2 - 1) * cardWidth;
+        wrapper.scrollLeft = centerScroll;
+      }, 100);
+
+      console.log('[Carousel] Mobile mode initialized');
+      return;
+    }
+
+    // ========================================
+    // DESKTOP MODE — Full 3D coverflow
+    // ========================================
+    console.log('[Carousel] Desktop mode - 3D coverflow');
+
     wrapper.innerHTML = '';
-    dotsContainer.innerHTML = '';
+    if (dotsEl) dotsEl.innerHTML = '';
     cards = [];
     dots = [];
 
-    // Create cards
-    products.forEach((product, index) => {
-      const card = createCard(product, index);
+    // Create cards for desktop
+    products.forEach(function(p, index) {
+      var cardLink = p.launched ? '/' + p.slug : '/coming-soon';
+      var comingSoonBadge = p.launched ? '' : '<span class="coming-soon-badge">Coming Soon</span>';
+
+      var card = document.createElement('a');
+      card.className = 'carousel-card';
+      card.href = cardLink;
+      card.setAttribute('data-index', index);
+      card.innerHTML =
+        '<div class="carousel-card-content">' +
+          comingSoonBadge +
+          '<span class="card-badge">' + p.badge + '</span>' +
+          '<div class="card-icon">' + p.icon + '</div>' +
+          '<h3 class="card-title">' + p.title + '</h3>' +
+          '<p class="card-desc">' + p.desc + '</p>' +
+          '<div class="card-footer">' +
+            '<span class="card-price">' + p.price + '</span>' +
+            '<span class="card-cta">Get Started →</span>' +
+          '</div>' +
+        '</div>';
+
+      card.addEventListener('click', function(e) {
+        if (index !== current) {
+          e.preventDefault();
+          goToSlide(index);
+        }
+      });
+
       wrapper.appendChild(card);
       cards.push(card);
     });
 
-    // Create dots
-    products.forEach((_, index) => {
-      const dot = document.createElement('button');
-      dot.className = 'dot';
-      dot.addEventListener('click', () => goToSlide(index));
-      dotsContainer.appendChild(dot);
-      dots.push(dot);
-    });
+    // Create dots for desktop
+    if (dotsEl) {
+      products.forEach(function(_, index) {
+        var dot = document.createElement('button');
+        dot.className = 'dot';
+        dot.addEventListener('click', function() { goToSlide(index); });
+        dotsEl.appendChild(dot);
+        dots.push(dot);
+      });
+    }
 
-    // Mouse wheel navigation - ONLY on the cards themselves (not the surrounding purple area)
-    let wheelLocked = false;
-    let accumulatedDelta = 0;
-    const DELTA_THRESHOLD = 50; // Minimum scroll amount to trigger
-    const LOCK_DURATION = 600;  // Lock navigation for 600ms after each move
+    // Mouse wheel navigation
+    var wheelLocked = false;
+    var accumulatedDelta = 0;
+    var DELTA_THRESHOLD = 50;
+    var LOCK_DURATION = 600;
 
-    // Listen on the wrapper (cards area) ONLY, not the entire stage
     wrapper.addEventListener('wheel', function(e) {
-      e.preventDefault(); // Prevent default only when directly over cards
-      e.stopPropagation(); // Stop event from bubbling
+      e.preventDefault();
+      e.stopPropagation();
 
-      // If locked, ignore all wheel events
       if (wheelLocked) return;
 
-      // Accumulate delta (use whichever axis has more movement)
-      const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
       accumulatedDelta += delta;
 
-      // Only trigger when threshold is reached
       if (Math.abs(accumulatedDelta) >= DELTA_THRESHOLD) {
-        // Lock immediately to prevent multiple triggers
         wheelLocked = true;
 
-        // Navigate based on accumulated direction
         if (accumulatedDelta > 0) {
           goToSlide(current + 1);
         } else {
           goToSlide(current - 1);
         }
 
-        // Reset accumulated delta
         accumulatedDelta = 0;
 
-        // Unlock after duration (allows next single navigation)
         setTimeout(function() {
           wheelLocked = false;
         }, LOCK_DURATION);
@@ -188,15 +226,15 @@
       if (e.key === 'ArrowRight') goToSlide(current + 1);
     });
 
-    // Touch swipe support
-    let touchStartX = 0;
+    // Touch swipe support for desktop (tablets)
+    var touchStartX = 0;
     wrapper.parentElement.addEventListener('touchstart', function(e) {
       touchStartX = e.touches[0].clientX;
     }, { passive: true });
 
     wrapper.parentElement.addEventListener('touchend', function(e) {
-      const touchEndX = e.changedTouches[0].clientX;
-      const diff = touchStartX - touchEndX;
+      var touchEndX = e.changedTouches[0].clientX;
+      var diff = touchStartX - touchEndX;
       if (Math.abs(diff) > 50) {
         if (diff > 0) {
           goToSlide(current + 1);
@@ -208,7 +246,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] Initialization complete!');
+    console.log('[Carousel] Desktop mode initialized');
   }
 
   // Start when DOM is ready

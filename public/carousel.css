@@ -191,20 +191,211 @@
   z-index: 0 !important;
 }
 
-/* Mobile responsive */
+/* Coming Soon Badge */
+.coming-soon-badge {
+  position: absolute !important;
+  top: 12px !important;
+  right: 12px !important;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+  color: white !important;
+  font-size: 0.6rem !important;
+  font-weight: 600 !important;
+  padding: 4px 10px !important;
+  border-radius: 6px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  z-index: 10 !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4) !important;
+}
+
+.carousel-card-content {
+  position: relative !important;
+}
+
+/* ========================================
+   MOBILE EXCELLENCE — Premium horizontal scroll
+   ======================================== */
 @media (max-width: 768px) {
+
+  /* Section spacing */
+  .products-showcase {
+    padding: 10px 0 40px 0 !important;
+  }
+
+  .products-label {
+    font-size: 0.75rem !important;
+    margin-bottom: 15px !important;
+  }
+
+  /* Hide desktop-only effects */
+  .active-glow,
+  .floor-reflection,
+  .carousel-dots,
+  .momentum-indicator {
+    display: none !important;
+  }
+
+  /* Carousel stage */
   .carousel-stage {
-    height: 360px !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    height: auto !important;
+    perspective: none !important;
+  }
+
+  /* Carousel wrapper — smooth horizontal scroll */
+  .carousel-wrapper {
+    position: relative !important;
+    left: auto !important;
+    top: auto !important;
+    transform: none !important;
+    perspective: none !important;
+    height: auto !important;
+    min-height: 340px !important;
+    width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+    gap: 16px !important;
+    padding: 20px 24px !important;
+
+    /* Smooth iOS scroll */
+    -webkit-overflow-scrolling: touch !important;
+    scroll-behavior: smooth !important;
+
+    /* Snap to cards */
+    scroll-snap-type: x mandatory !important;
+    scroll-padding: 24px !important;
+
+    /* Hide scrollbar but keep functionality */
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .carousel-wrapper::-webkit-scrollbar {
+    display: none !important;
+  }
+
+  /* Cards — clean mobile layout */
+  .carousel-card {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    width: 280px !important;
+    height: 320px !important;
+
+    /* Remove all 3D transforms */
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+
+    /* Snap behavior */
+    scroll-snap-align: center !important;
+
+    /* No animations */
+    animation: none !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+  }
+
+  /* Remove position-based classes */
+  .carousel-card.left-side,
+  .carousel-card.right-side,
+  .carousel-card.active,
+  .carousel-card.distant,
+  .carousel-card.moving {
+    transform: none !important;
+    opacity: 1 !important;
+    filter: none !important;
+  }
+
+  /* Card content */
+  .carousel-card-content {
+    height: 100% !important;
+    padding: 20px !important;
+    background: linear-gradient(165deg, rgba(20, 20, 30, 0.98) 0%, rgba(10, 10, 16, 1) 100%) !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(124, 58, 237, 0.25) !important;
+    box-shadow:
+      0 4px 15px rgba(0, 0, 0, 0.3),
+      0 10px 40px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Active press state */
+  .carousel-card:active .carousel-card-content {
+    transform: scale(0.98) !important;
+    box-shadow:
+      0 2px 10px rgba(0, 0, 0, 0.3),
+      0 5px 20px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  /* Card elements sizing */
+  .carousel-card-badge,
+  .carousel-card .card-badge {
+    font-size: 0.65rem !important;
+    padding: 5px 12px !important;
+    margin-bottom: 12px !important;
+  }
+
+  .carousel-card-icon,
+  .carousel-card .card-icon {
+    font-size: 2.2rem !important;
+    margin-bottom: 10px !important;
+  }
+
+  .carousel-card-title,
+  .carousel-card .card-title {
+    font-size: 1.1rem !important;
+    margin-bottom: 8px !important;
+    line-height: 1.25 !important;
+  }
+
+  .carousel-card-desc,
+  .carousel-card .card-desc {
+    font-size: 0.85rem !important;
+    line-height: 1.45 !important;
+    color: rgba(255, 255, 255, 0.6) !important;
+  }
+
+  .carousel-card-footer,
+  .carousel-card .card-footer {
+    padding-top: 12px !important;
+  }
+
+  .carousel-card-price,
+  .carousel-card .card-price {
+    font-size: 1.2rem !important;
+  }
+
+  .carousel-card-cta,
+  .carousel-card .card-cta {
+    font-size: 0.8rem !important;
+  }
+
+  /* Coming Soon badge mobile */
+  .coming-soon-badge {
+    font-size: 0.55rem !important;
+    padding: 3px 8px !important;
+    top: 10px !important;
+    right: 10px !important;
+  }
+
+  /* Scroll hint for mobile */
+  .carousel-wrapper::after {
+    content: '';
+    flex: 0 0 8px;
+  }
+}
+
+/* Small phones */
+@media (max-width: 380px) {
+  .carousel-card {
+    width: 260px !important;
+    height: 300px !important;
   }
 
   .carousel-wrapper {
-    width: 260px !important;
-    height: 320px !important;
-  }
-
-  .carousel-card {
-    width: 260px !important;
-    height: 320px !important;
-    padding: 20px !important;
+    gap: 12px !important;
+    padding: 15px 16px !important;
   }
 }

@@ -702,6 +702,118 @@ app.get('/purchase/success', (req, res) => {
   res.send(renderSuccessPage());
 });
 
+// Coming Soon page for unlaunched products
+app.get('/coming-soon', (req, res) => {
+  trackEvent('page', 'coming-soon');
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Coming Soon - Personalized Output</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(165deg, #1a0a1a 0%, #0f050f 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .container { max-width: 500px; }
+    .emoji { font-size: 4rem; margin-bottom: 1.5rem; }
+    h1 {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    p {
+      font-size: 1.2rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    .back-link {
+      display: inline-block;
+      background: rgba(255,255,255,0.1);
+      color: white;
+      text-decoration: none;
+      padding: 15px 30px;
+      border-radius: 30px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    .back-link:hover {
+      background: rgba(255,255,255,0.2);
+      transform: translateY(-2px);
+    }
+    .available {
+      margin-top: 3rem;
+      padding-top: 2rem;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .available h3 {
+      font-size: 1rem;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .product-links {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .product-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2) 0%, rgba(102, 126, 234, 0.2) 100%);
+      color: white;
+      text-decoration: none;
+      padding: 12px 20px;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      transition: all 0.3s ease;
+    }
+    .product-link:hover {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.4) 0%, rgba(102, 126, 234, 0.4) 100%);
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="emoji">🚀</div>
+    <h1>Coming Soon!</h1>
+    <p>This product is launching in early 2025. We're working hard to make it perfect for you!</p>
+    <a href="/" class="back-link">← Back to Home</a>
+
+    <div class="available">
+      <h3>Available Now</h3>
+      <div class="product-links">
+        <a href="/santa" class="product-link">🎁 Santa Message</a>
+        <a href="/vision-board" class="product-link">🎯 Vision Board</a>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+  `);
+});
+
 // Redirect /demos to /demo-lessons
 app.get('/demos', (req, res) => {
   res.redirect(301, '/demo-lessons');
