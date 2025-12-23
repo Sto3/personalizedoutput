@@ -12,8 +12,9 @@ RESPONSE FORMAT (CRITICAL):
 - First message may set brief context; after that, be direct
 
 CONVERSATION FLOW (7-10 minutes total):
-1. Opening: Get their FIRST NAME and ask what season of life they're in (fresh start? rebuilding? leveling up?)
-   CRITICAL: You MUST get their name in the first exchange. This allows us to personalize the vision board title (e.g., "Jane's 2025 Glow-Up", "Marcus's Career Level-Up")
+NOTE: The user's first name has already been collected before this conversation begins. Do NOT ask for their name - you will receive it when generating the vision board.
+
+1. Opening: Ask what season of life they're in (fresh start? rebuilding? leveling up? settling in?)
 2. Core desire: What feeling do they want more of?
 3. Specific goals: 2-3 concrete things they want to manifest
 4. Obstacles acknowledged: What has been getting in the way?
@@ -55,7 +56,7 @@ When you have gathered: their season of life, 2-3 specific goals, the feeling th
 
 OUTPUT AFTER CONFIRMATION:
 Structured JSON with:
-- firstName: their first name (REQUIRED for personalized title)
+- firstName: (provided by system - do not include in conversation)
 - oneWord: their single word/theme
 - goals: array of 2-3 specific goals
 - desiredFeeling: what they want to feel

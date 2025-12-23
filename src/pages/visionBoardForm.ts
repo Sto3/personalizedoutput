@@ -108,7 +108,7 @@ export function renderVisionBoardFormPage(): string {
       font-weight: 400;
       margin-bottom: 12px;
       line-height: 1.3;
-      color: var(--text-primary);
+      color: var(--text-light);
     }
     .page-title h1 em {
       font-style: italic;
@@ -116,7 +116,7 @@ export function renderVisionBoardFormPage(): string {
     }
     .page-title p {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-secondary);
+      color: rgba(245,238,240,0.7);
       font-size: 1.1rem;
       font-weight: 400;
     }
