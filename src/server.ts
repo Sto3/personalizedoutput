@@ -1744,6 +1744,115 @@ app.post('/admin/setup', async (req, res) => {
   res.redirect('/admin');
 });
 
+// Admin password reset page
+app.get('/admin/reset-password', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reset Password - Personalized Output</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+          font-family: 'Inter', sans-serif;
+          background: linear-gradient(135deg, #1a0a1a 0%, #2d1a2d 100%);
+          min-height: 100vh;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+        }
+        .container { width: 100%; max-width: 400px; padding: 20px; }
+        .card {
+          background: rgba(255,255,255,0.05);
+          border: 1px solid rgba(255,255,255,0.1);
+          border-radius: 16px;
+          padding: 40px;
+        }
+        h1 { font-size: 1.5rem; margin-bottom: 8px; text-align: center; }
+        .subtitle { color: rgba(255,255,255,0.6); font-size: 0.875rem; text-align: center; margin-bottom: 32px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 8px; color: rgba(255,255,255,0.8); }
+        input {
+          width: 100%; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.2);
+          border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; font-size: 1rem;
+        }
+        input:focus { outline: none; border-color: #7C3AED; }
+        .btn {
+          width: 100%; padding: 14px; border: none; border-radius: 8px;
+          font-size: 1rem; font-weight: 600; cursor: pointer; background: #7C3AED; color: #fff;
+        }
+        .btn:hover { background: #6D28D9; }
+        .btn:disabled { background: #555; cursor: not-allowed; }
+        .error { background: rgba(239,68,68,0.2); border: 1px solid #EF4444; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.875rem; text-align: center; }
+        .success { background: rgba(34,197,94,0.2); border: 1px solid #22C55E; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.875rem; text-align: center; }
+        .reset-badge { display: inline-block; background: rgba(124,58,237,0.2); color: #A78BFA; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-bottom: 24px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="card">
+          <div style="text-align: center;"><span class="reset-badge">PASSWORD RESET</span></div>
+          <h1>Set New Password</h1>
+          <p class="subtitle">Enter your new password below</p>
+          <div id="message"></div>
+          <form id="resetForm">
+            <div class="form-group">
+              <label for="password">New Password</label>
+              <input type="password" id="password" placeholder="At least 8 characters" minlength="8" required>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password</label>
+              <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
+            </div>
+            <button type="submit" class="btn" id="submitBtn">Update Password</button>
+          </form>
+        </div>
+      </div>
+      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+      <script>
+        const supabase = window.supabase.createClient(
+          'https://cndnigkuncvevtrqmtvp.supabase.co',
+          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZG5pZ2t1bmN2ZXZ0cnFtdHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NDI5NzUsImV4cCI6MjA4MTAxODk3NX0.Mll0ihe0cWQWYdWRd3RI-ywHFG1KoWUpo3anJiN6Lek'
+        );
+
+        const form = document.getElementById('resetForm');
+        const message = document.getElementById('message');
+        const submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const password = document.getElementById('password').value;
+          const confirmPassword = document.getElementById('confirmPassword').value;
+
+          if (password !== confirmPassword) {
+            message.innerHTML = '<div class="error">Passwords do not match</div>';
+            return;
+          }
+
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Updating...';
+
+          const { error } = await supabase.auth.updateUser({ password });
+
+          if (error) {
+            message.innerHTML = '<div class="error">' + error.message + '</div>';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update Password';
+          } else {
+            message.innerHTML = '<div class="success">Password updated! Redirecting to login...</div>';
+            setTimeout(() => window.location.href = '/admin/login', 2000);
+          }
+        });
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // Admin logout
 app.get('/admin/logout', (req, res) => {
   clearAdminSession(res);
