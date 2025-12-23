@@ -134,13 +134,13 @@ export async function startThoughtSession(
   const systemPrompt = loadSystemPrompt(config);
 
   // Generate opening message
-  const openingInstruction = `Generate your opening message to start the conversation. Remember to:
-- Warmly greet the user (you are speaking directly to a PARENT)
-- Briefly explain what you'll be doing together
-- Ask your first question (about THEIR child)
-Keep it concise and inviting.
+  const openingInstruction = `Generate a brief opening (2-3 sentences max). Structure:
+1. One sentence of warm context about what we're creating together
+2. Ask for their child's first name or nickname
 
-IMPORTANT: You are talking TO the parent ABOUT their child. Use "your child" or "your year together" (parent and child). Never say "their year together" - that's grammatically incorrect since you're addressing the parent directly.`;
+Example: "Let's create a personalized Santa message for your child. What's your child's first name or the nickname they go by?"
+
+Keep it short and direct. No filler.`;
 
   const openingMessage = await callClaudeAPI(
     [{ role: 'user', content: openingInstruction }],

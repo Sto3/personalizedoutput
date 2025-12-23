@@ -176,29 +176,29 @@ export function renderSantaFormPage(token?: string): string {
 
     /* Current question */
     .current-question {
-      background: var(--bg-card);
-      border: 1px solid var(--border);
+      background: #ffffff;
+      border: none;
       border-radius: 16px;
       padding: 32px;
     }
     .question-label {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 400;
-      color: var(--text-primary);
+      color: #1a1a1a;
       margin-bottom: 20px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
     .answer-input {
       width: 100%;
-      background: #ffffff;
-      border: 2px solid var(--border);
+      background: #f8f8f8;
+      border: 2px solid #e0e0e0;
       border-radius: 8px;
       padding: 16px;
       color: #1a1a1a;
       font-family: 'Bodoni Moda', serif;
       font-size: 1rem;
-      min-height: 120px;
+      min-height: 100px;
       resize: vertical;
       transition: border-color 0.2s;
       line-height: 1.7;
@@ -206,9 +206,10 @@ export function renderSantaFormPage(token?: string): string {
     .answer-input:focus {
       outline: none;
       border-color: var(--coral);
+      background: #ffffff;
     }
     .answer-input::placeholder {
-      color: #999;
+      color: #888;
       font-style: italic;
     }
 
@@ -502,7 +503,7 @@ export function renderSantaFormPage(token?: string): string {
         <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
         <p>Takes about 5 minutes.</p>
       </div>
-      <button class="btn-start" onclick="startSession()">Let's Begin</button>
+      <button class="btn-start" onclick="startSession()">Let's Begin Your Personalization Experience</button>
     </div>
 
     <!-- Form Area -->
