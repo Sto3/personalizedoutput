@@ -425,8 +425,8 @@ export function renderSignupPage(error?: string, referralCode?: string): string 
             ${referralCode ? `<input type="hidden" name="referralCode" value="${referralCode}">` : ''}
 
             <div class="form-group">
-              <label for="name">Full Name</label>
-              <input type="text" id="name" name="name" placeholder="Jane Doe" required>
+              <label for="fullName">Full Name</label>
+              <input type="text" id="fullName" name="fullName" placeholder="Jane Doe" required>
             </div>
 
             <div class="form-group">

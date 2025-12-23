@@ -23,23 +23,25 @@ export function renderSantaFormPage(token?: string): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-dark: #1a0a1a;
-      --bg-card: #0a0a10;
-      --bg-card-hover: #12121a;
-      --coral: #E85A4F;
+      --bg-light: #fafafa;
+      --bg-white: #ffffff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f5f5f5;
+      --coral: #E85A6B;
       --coral-light: #F08B96;
       --purple: #7C3AED;
       --purple-light: #A78BFA;
-      --text-primary: #ffffff;
-      --text-secondary: rgba(255,255,255,0.7);
-      --text-muted: rgba(255,255,255,0.5);
-      --border: rgba(255,255,255,0.1);
+      --navy: #1a1a2e;
+      --text-primary: #1a1a2e;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border: rgba(0,0,0,0.1);
       --border-focus: rgba(124, 58, 237, 0.5);
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-dark);
+      background: var(--bg-light);
       min-height: 100vh;
       color: var(--text-primary);
       line-height: 1.6;
@@ -122,6 +124,7 @@ export function renderSantaFormPage(token?: string): string {
       border-radius: 20px;
       padding: 40px;
       margin-bottom: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
     }
 
     /* Start screen */
@@ -169,7 +172,7 @@ export function renderSantaFormPage(token?: string): string {
       margin-bottom: 24px;
     }
     .previous-answers h3 {
-      color: var(--purple-light);
+      color: var(--purple);
       font-family: 'Bodoni Moda', serif;
       font-size: 1rem;
       font-weight: 600;
@@ -246,7 +249,7 @@ export function renderSantaFormPage(token?: string): string {
     }
     .answer-input {
       width: 100%;
-      background: rgba(255,255,255,0.05);
+      background: #fff;
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 16px;
@@ -255,12 +258,13 @@ export function renderSantaFormPage(token?: string): string {
       font-size: 1rem;
       min-height: 120px;
       resize: vertical;
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
     .answer-input:focus {
       outline: none;
-      border-color: var(--border-focus);
-      background: rgba(124, 58, 237, 0.05);
+      border-color: var(--purple);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
     }
     .answer-input::placeholder {
       color: var(--text-muted);
