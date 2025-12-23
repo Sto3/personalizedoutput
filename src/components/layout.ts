@@ -287,6 +287,27 @@ export function renderNavigation(options: NavOptions = {}): string {
 
           <a href="/pricing" class="nav-link ${currentPage === 'pricing' ? 'active' : ''}">Pricing</a>
           <a href="/blog" class="nav-link ${currentPage === 'blog' ? 'active' : ''}">Blog</a>
+
+          <!-- Newsletter Dropdown -->
+          <div class="nav-dropdown nav-newsletter-dropdown">
+            <button class="nav-link nav-link-dropdown">
+              Newsletter
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
+              </svg>
+            </button>
+            <div class="newsletter-dropdown">
+              <div class="newsletter-dropdown-content">
+                <h4>Get Early Access</h4>
+                <p>New products & exclusive offers</p>
+                <form class="nav-newsletter-form" id="nav-newsletter-form">
+                  <input type="email" name="email" placeholder="Email address" required class="nav-newsletter-input">
+                  <button type="submit" class="nav-newsletter-btn">Subscribe</button>
+                </form>
+              </div>
+            </div>
+          </div>
+
           <a href="/login" class="nav-link ${currentPage === 'login' ? 'active' : ''}">Login</a>
           <a href="/demo-lessons" class="nav-cta">Listen to Demos</a>
         </div>
@@ -310,9 +331,12 @@ export function renderNavigation(options: NavOptions = {}): string {
         <a href="/how-it-works" class="mobile-link">How It Works</a>
         <div class="mobile-submenu">
           <div class="mobile-submenu-header">Products</div>
-          ${Object.values(PRODUCTS).filter(p => p.isActive).map(p => `
-            <a href="/${p.slug}" class="mobile-submenu-link">${p.name}</a>
-          `).join('')}
+          ${Object.values(PRODUCTS).filter(p => p.isActive).map(p => {
+            const isLaunched = LAUNCHED_PRODUCTS.includes(p.id);
+            const link = isLaunched ? `/${p.slug}` : '/coming-soon';
+            const badge = isLaunched ? '' : ' <span class="mobile-soon">Soon</span>';
+            return `<a href="${link}" class="mobile-submenu-link">${p.name}${badge}</a>`;
+          }).join('')}
         </div>
         <a href="/pricing" class="mobile-link">Pricing</a>
         <a href="/blog" class="mobile-link">Blog</a>
@@ -323,50 +347,47 @@ export function renderNavigation(options: NavOptions = {}): string {
   `;
 }
 
+// Products that are launched and ready for purchase
+const LAUNCHED_PRODUCTS = ['santa_message', 'vision_board'];
+
+function isProductLaunched(productId: string): boolean {
+  return LAUNCHED_PRODUCTS.includes(productId);
+}
+
+function renderMegaMenuItem(p: ProductInfo): string {
+  const isLaunched = isProductLaunched(p.id);
+  const link = isLaunched ? `/${p.slug}` : '/coming-soon';
+  const comingSoonBadge = isLaunched ? '' : '<span class="mega-menu-soon">Coming Soon</span>';
+
+  return `
+    <a href="${link}" class="mega-menu-item ${!isLaunched ? 'coming-soon' : ''}">
+      <span class="mega-menu-icon">${getProductIcon(p.id)}</span>
+      <div>
+        <div class="mega-menu-name">${p.name}${p.id === 'thought_organizer' ? '<sup>™</sup>' : ''} ${comingSoonBadge}</div>
+        <div class="mega-menu-desc">${p.description.substring(0, 60)}...</div>
+        <div class="mega-menu-price">$${(p.price / 100).toFixed(0)}</div>
+      </div>
+    </a>
+  `;
+}
+
 function renderMegaMenu(productsByCategory: Record<string, ProductInfo[]>): string {
   return `
     <div class="mega-menu">
       <div class="mega-menu-inner">
         <div class="mega-menu-column">
           <h4 class="mega-menu-title">For Kids</h4>
-          ${productsByCategory.kids.map(p => `
-            <a href="/${p.slug}" class="mega-menu-item">
-              <span class="mega-menu-icon">${getProductIcon(p.id)}</span>
-              <div>
-                <div class="mega-menu-name">${p.name}</div>
-                <div class="mega-menu-desc">${p.description.substring(0, 60)}...</div>
-                <div class="mega-menu-price">$${(p.price / 100).toFixed(0)}</div>
-              </div>
-            </a>
-          `).join('')}
+          ${productsByCategory.kids.map(p => renderMegaMenuItem(p)).join('')}
         </div>
 
         <div class="mega-menu-column">
           <h4 class="mega-menu-title">For Adults</h4>
-          ${productsByCategory.adults.map(p => `
-            <a href="/${p.slug}" class="mega-menu-item">
-              <span class="mega-menu-icon">${getProductIcon(p.id)}</span>
-              <div>
-                <div class="mega-menu-name">${p.name}</div>
-                <div class="mega-menu-desc">${p.description.substring(0, 60)}...</div>
-                <div class="mega-menu-price">$${(p.price / 100).toFixed(0)}</div>
-              </div>
-            </a>
-          `).join('')}
+          ${productsByCategory.adults.map(p => renderMegaMenuItem(p)).join('')}
         </div>
 
         <div class="mega-menu-column">
           <h4 class="mega-menu-title">Life Planning</h4>
-          ${productsByCategory.life_planning.map(p => `
-            <a href="/${p.slug}" class="mega-menu-item">
-              <span class="mega-menu-icon">${getProductIcon(p.id)}</span>
-              <div>
-                <div class="mega-menu-name">${p.name}${p.id === 'thought_organizer' ? '<sup>™</sup>' : ''}</div>
-                <div class="mega-menu-desc">${p.description.substring(0, 60)}...</div>
-                <div class="mega-menu-price">$${(p.price / 100).toFixed(0)}</div>
-              </div>
-            </a>
-          `).join('')}
+          ${productsByCategory.life_planning.map(p => renderMegaMenuItem(p)).join('')}
         </div>
       </div>
       <div class="mega-menu-footer">
@@ -605,6 +626,102 @@ export function getNavigationStyles(): string {
     .mega-menu-view-all:hover .arrow {
       transform: translateX(4px);
     }
+
+    /* Coming Soon badge in mega menu */
+    .mega-menu-soon {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .mega-menu-item.coming-soon {
+      opacity: 0.85;
+    }
+    .mega-menu-item.coming-soon:hover {
+      opacity: 1;
+    }
+
+    /* Newsletter Dropdown in Header */
+    .nav-newsletter-dropdown button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .newsletter-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
+      background: var(--surface-white);
+      border-radius: 16px;
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-xl);
+      opacity: 0;
+      visibility: hidden;
+      transition: all var(--transition-normal);
+      min-width: 300px;
+      margin-top: 20px;
+      z-index: 1001;
+    }
+    .nav-newsletter-dropdown:hover .newsletter-dropdown {
+      opacity: 1;
+      visibility: visible;
+      transform: translateX(-50%) translateY(0);
+    }
+    .newsletter-dropdown-content {
+      padding: 24px;
+      text-align: center;
+    }
+    .newsletter-dropdown-content h4 {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.1rem;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .newsletter-dropdown-content p {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .nav-newsletter-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .nav-newsletter-input {
+      padding: 12px 14px;
+      border-radius: 8px;
+      border: 1px solid var(--border-light);
+      font-size: 0.9rem;
+      width: 100%;
+    }
+    .nav-newsletter-input:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .nav-newsletter-btn {
+      padding: 12px 20px;
+      border-radius: 8px;
+      border: none;
+      background: var(--gradient-primary);
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all var(--transition-normal);
+    }
+    .nav-newsletter-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 15px rgba(232, 90, 107, 0.3);
+    }
+
     .btn-small {
       padding: 10px 20px;
       font-size: 0.85rem;
@@ -736,6 +853,18 @@ export function getNavigationStyles(): string {
     .mobile-submenu-link:hover {
       color: white;
       background: rgba(255,255,255,0.05);
+    }
+    .mobile-soon {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 0.55rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      margin-left: 6px;
+      vertical-align: middle;
     }
     .mobile-cta {
       margin-top: 16px;
@@ -1049,6 +1178,58 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
         if ('serviceWorker' in navigator) {
           window.addEventListener('load', () => {
             navigator.serviceWorker.register('/sw.js').catch(() => {});
+          });
+        }
+
+        // Header Newsletter form
+        const navNewsletterForm = document.getElementById('nav-newsletter-form');
+        if (navNewsletterForm) {
+          navNewsletterForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const emailInput = this.querySelector('.nav-newsletter-input');
+            const submitBtn = this.querySelector('.nav-newsletter-btn');
+            const email = emailInput.value.trim();
+
+            if (!email) return;
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Subscribing...';
+
+            try {
+              const response = await fetch('/api/subscribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email })
+              });
+              const data = await response.json();
+
+              if (data.success) {
+                emailInput.value = '';
+                submitBtn.textContent = 'Subscribed!';
+                submitBtn.style.background = '#22c55e';
+                setTimeout(() => {
+                  submitBtn.textContent = 'Subscribe';
+                  submitBtn.style.background = '';
+                  submitBtn.disabled = false;
+                }, 3000);
+              } else {
+                submitBtn.textContent = 'Error';
+                submitBtn.style.background = '#ef4444';
+                setTimeout(() => {
+                  submitBtn.textContent = 'Subscribe';
+                  submitBtn.style.background = '';
+                  submitBtn.disabled = false;
+                }, 3000);
+              }
+            } catch (error) {
+              submitBtn.textContent = 'Error';
+              submitBtn.style.background = '#ef4444';
+              setTimeout(() => {
+                submitBtn.textContent = 'Subscribe';
+                submitBtn.style.background = '';
+                submitBtn.disabled = false;
+              }, 3000);
+            }
           });
         }
       </script>

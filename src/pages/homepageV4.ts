@@ -1901,21 +1901,20 @@ function getHomepageScripts(): string {
     // Start the 30-second loop
     setInterval(resetHeadlineAnimation, 30000);
 
-    // Newsletter form handler
-    const newsletterForm = document.getElementById('newsletter-form');
-    if (newsletterForm) {
-      newsletterForm.addEventListener('submit', async function(e) {
+    // Newsletter form handler - handles ALL newsletter forms on the page
+    function handleNewsletterSubmit(form) {
+      form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        const form = this;
-        const emailInput = form.querySelector('.newsletter-input');
-        const submitBtn = form.querySelector('.newsletter-btn');
+        const emailInput = form.querySelector('input[type="email"]');
+        const submitBtn = form.querySelector('button[type="submit"]');
         const email = emailInput.value.trim();
 
         if (!email) return;
 
         // Disable button
         submitBtn.disabled = true;
+        const originalText = submitBtn.textContent;
         submitBtn.textContent = 'Subscribing...';
 
         try {
@@ -1932,7 +1931,7 @@ function getHomepageScripts(): string {
             submitBtn.textContent = 'Subscribed!';
             submitBtn.style.background = '#22c55e';
             setTimeout(() => {
-              submitBtn.textContent = 'Subscribe';
+              submitBtn.textContent = originalText;
               submitBtn.style.background = '';
               submitBtn.disabled = false;
             }, 3000);
@@ -1940,7 +1939,7 @@ function getHomepageScripts(): string {
             submitBtn.textContent = data.error || 'Error';
             submitBtn.style.background = '#ef4444';
             setTimeout(() => {
-              submitBtn.textContent = 'Subscribe';
+              submitBtn.textContent = originalText;
               submitBtn.style.background = '';
               submitBtn.disabled = false;
             }, 3000);
@@ -1949,13 +1948,19 @@ function getHomepageScripts(): string {
           submitBtn.textContent = 'Error';
           submitBtn.style.background = '#ef4444';
           setTimeout(() => {
-            submitBtn.textContent = 'Subscribe';
+            submitBtn.textContent = originalText;
             submitBtn.style.background = '';
             submitBtn.disabled = false;
           }, 3000);
         }
       });
     }
+
+    // Attach to all newsletter forms
+    const heroForm = document.getElementById('hero-newsletter-form');
+    const footerForm = document.getElementById('newsletter-form');
+    if (heroForm) handleNewsletterSubmit(heroForm);
+    if (footerForm) handleNewsletterSubmit(footerForm);
   `;
 }
 
