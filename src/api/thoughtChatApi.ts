@@ -686,11 +686,10 @@ Based on this conversation, create Santa's voice message. The message should:
 6. Sound like a warm, real Santa - not generic or cheesy
 ${input.includeChristianMessage ? '7. Include appropriate Christian/faith-based language as the parent requested' : '7. Keep the message secular - no religious references'}
 
-IMPORTANT FOR OPENING:
-- Start with a warm, simple greeting: "Well hello there, ${input.childFirstName}... This is Santa."
-- Or: "Hello ${input.childFirstName}... It's Santa Claus here."
-- DO NOT use "Ho ho ho" - it sounds artificial when spoken by text-to-speech
-- The opening should sound warm and grandfatherly, like a kind old man speaking directly to the child
+IMPORTANT - EXACT OPENING (use this exactly):
+"Hi ${input.childFirstName}, this is Santa."
+
+Then continue with the rest of the message. Do NOT use "Ho ho ho" anywhere in the message.
 
 Use pronouns ${input.childGender === 'girl' ? 'she/her' : 'he/him'}.
 

@@ -111,10 +111,10 @@ ABSOLUTELY DO NOT:
 
 STRUCTURE (120-180 words, ~45-60 seconds):
 
-1. GREETING (15-20 words)
-   - Start with: "Well hello there, ${input.childFirstName}... This is Santa." or "Hello ${input.childFirstName}... It's Santa Claus here."
-   - DO NOT use "Ho ho ho" - it sounds artificial when spoken by text-to-speech
-   - The greeting should feel warm and grandfatherly, like a kind old man speaking directly to the child
+1. GREETING - USE THIS EXACT OPENING:
+   "Hi ${input.childFirstName}, this is Santa."
+   - Then continue naturally into the message
+   - DO NOT use "Ho ho ho" anywhere in the message
 
 2. RECOGNITION - THE HEART OF THE MESSAGE (80-100 words)
    - Reference SPECIFIC details from the proud moments
