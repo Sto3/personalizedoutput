@@ -515,7 +515,8 @@ export function renderSuccessPage(): string {
           </div>
 
           <div id="start-personalization" class="start-personalization">
-            <a href="#" id="personalization-link" class="btn btn-primary btn-large">Start Personalization Experience →</a>
+            <a href="/santa" id="personalization-link" class="btn btn-primary btn-large">Start Personalization Experience →</a>
+            <p class="personalization-note">Link will update based on your purchase</p>
           </div>
 
           <div class="tag-us-cta">
@@ -554,7 +555,11 @@ export function renderSuccessPage(): string {
         fetch('/api/checkout/session/' + sessionId)
           .then(res => res.json())
           .then(data => {
+            console.log('[Success] Session data:', data);
             const container = document.getElementById('order-details');
+            const personalizationLink = document.getElementById('personalization-link');
+            const personalizationNote = document.querySelector('.personalization-note');
+
             if (data.productName) {
               container.innerHTML = \`
                 <div class="order-info">
@@ -578,19 +583,27 @@ export function renderSuccessPage(): string {
               \`;
 
               // Set personalization link based on product
-              const personalizationLink = document.getElementById('personalization-link');
               if (personalizationLink && data.productId) {
-                const url = personalizationUrls[data.productId] || '/' + data.productSlug;
+                const url = personalizationUrls[data.productId] || '/' + (data.productSlug || 'santa');
                 personalizationLink.href = url;
+                console.log('[Success] Set personalization link to:', url);
+              }
+
+              // Hide the note once we have the real link
+              if (personalizationNote) {
+                personalizationNote.style.display = 'none';
               }
             } else {
-              container.innerHTML = '<p>Unable to load order details.</p>';
+              container.innerHTML = '<p>Unable to load order details. You can still start your personalization below.</p>';
             }
           })
           .catch(err => {
-            console.error(err);
-            document.getElementById('order-details').innerHTML = '<p>Unable to load order details.</p>';
+            console.error('[Success] Error:', err);
+            document.getElementById('order-details').innerHTML = '<p>Unable to load order details. You can still start your personalization below.</p>';
           });
+      } else {
+        // No session ID - hide order details
+        document.getElementById('order-details').innerHTML = '<p>Order details not available.</p>';
       }
     </script>
   `;
@@ -1286,6 +1299,13 @@ function getSuccessPageStyles(): string {
     .start-personalization .btn-large {
       padding: 20px 48px;
       font-size: 1.15rem;
+    }
+
+    .personalization-note {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-top: 12px;
+      font-style: italic;
     }
 
     .success-cta {
