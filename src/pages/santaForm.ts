@@ -1,8 +1,8 @@
 /**
- * Santa Message Form Page - Premium Dark Theme
+ * Santa Message Form Page - Clean Light Theme
  *
  * The personalization experience for Santa messages.
- * Features the dark premium theme matching the homepage.
+ * Features a clean white background with black text for readability.
  */
 
 export function renderSantaFormPage(token?: string): string {
@@ -23,21 +23,21 @@ export function renderSantaFormPage(token?: string): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-black: #0a0a0f;
-      --bg-card: rgba(255,255,255,0.05);
-      --bg-card-hover: rgba(255,255,255,0.08);
+      --bg-white: #ffffff;
+      --bg-light: #f8f9fa;
+      --bg-card: #ffffff;
       --coral: #E85A4F;
       --coral-light: #F08B96;
-      --text-primary: #F5EEF0;
-      --text-secondary: rgba(245,238,240,0.7);
-      --text-muted: rgba(245,238,240,0.5);
-      --border: rgba(255,255,255,0.12);
+      --text-primary: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --text-muted: #777777;
+      --border: #e0e0e0;
       --border-focus: rgba(232, 90, 79, 0.6);
     }
 
     body {
       font-family: 'Bodoni Moda', Georgia, serif;
-      background: var(--bg-black);
+      background: var(--bg-light);
       min-height: 100vh;
       color: var(--text-primary);
       line-height: 1.7;
@@ -45,7 +45,7 @@ export function renderSantaFormPage(token?: string): string {
 
     /* Header */
     .header {
-      background: var(--bg-black);
+      background: var(--bg-white);
       border-bottom: 1px solid var(--border);
       padding: 16px 24px;
       position: sticky;
@@ -130,12 +130,12 @@ export function renderSantaFormPage(token?: string): string {
       border-radius: 16px;
       padding: 40px;
       margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
 
-    /* Start screen - white card */
+    /* Start screen */
     .start-screen {
       background: #ffffff;
-      border: none;
     }
     .start-screen .intro-text {
       font-family: 'Bodoni Moda', serif;
@@ -439,15 +439,15 @@ export function renderSantaFormPage(token?: string): string {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.15);
+      background: #ddd;
       transition: all 0.3s;
     }
     .progress-dot.completed {
-      background: var(--purple);
+      background: var(--coral);
     }
     .progress-dot.current {
       background: var(--coral);
-      box-shadow: 0 0 12px rgba(232, 90, 79, 0.5);
+      box-shadow: 0 0 12px rgba(232, 90, 79, 0.4);
     }
 
     /* Error state */

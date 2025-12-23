@@ -1,8 +1,8 @@
 /**
- * Vision Board Form Page - Premium Dark Theme
+ * Vision Board Form Page - Clean Light Theme
  *
  * The personalization experience for vision boards.
- * Features the dark premium theme matching the homepage.
+ * Features a clean white background with black text for readability.
  */
 
 export function renderVisionBoardFormPage(): string {
@@ -21,21 +21,21 @@ export function renderVisionBoardFormPage(): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-black: #0a0a0f;
-      --bg-card: rgba(255,255,255,0.05);
-      --bg-card-hover: rgba(255,255,255,0.08);
+      --bg-white: #ffffff;
+      --bg-light: #f8f9fa;
+      --bg-card: #ffffff;
       --coral: #E85A4F;
       --coral-light: #F08B96;
-      --text-primary: #F5EEF0;
-      --text-secondary: rgba(245,238,240,0.7);
-      --text-muted: rgba(245,238,240,0.5);
-      --border: rgba(255,255,255,0.12);
+      --text-primary: #1a1a1a;
+      --text-secondary: #4a4a4a;
+      --text-muted: #777777;
+      --border: #e0e0e0;
       --border-focus: rgba(232, 90, 79, 0.6);
     }
 
     body {
       font-family: 'Bodoni Moda', Georgia, serif;
-      background: var(--bg-black);
+      background: var(--bg-light);
       min-height: 100vh;
       color: var(--text-primary);
       line-height: 1.7;
@@ -43,7 +43,7 @@ export function renderVisionBoardFormPage(): string {
 
     /* Header */
     .header {
-      background: var(--bg-black);
+      background: var(--bg-white);
       border-bottom: 1px solid var(--border);
       padding: 16px 24px;
       position: sticky;
@@ -128,6 +128,7 @@ export function renderVisionBoardFormPage(): string {
       border-radius: 16px;
       padding: 40px;
       margin-bottom: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
 
     /* Start screen */
@@ -160,7 +161,7 @@ export function renderVisionBoardFormPage(): string {
     }
     .order-input {
       width: 100%;
-      background: rgba(255,255,255,0.04);
+      background: var(--bg-light);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
@@ -172,7 +173,7 @@ export function renderVisionBoardFormPage(): string {
     .order-input:focus {
       outline: none;
       border-color: var(--coral);
-      background: rgba(255,255,255,0.06);
+      background: #ffffff;
     }
     .order-input::placeholder {
       color: var(--text-muted);
@@ -248,11 +249,11 @@ export function renderVisionBoardFormPage(): string {
       color: var(--text-muted);
       font-style: italic;
       padding: 16px;
-      background: rgba(255,255,255,0.02);
+      background: var(--bg-light);
       border-radius: 8px;
     }
     .answer-pair {
-      background: rgba(255,255,255,0.02);
+      background: var(--bg-light);
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
@@ -272,10 +273,11 @@ export function renderVisionBoardFormPage(): string {
 
     /* Current question */
     .current-question {
-      background: var(--bg-card);
+      background: var(--bg-white);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
     .current-question-header {
       font-family: 'Bodoni Moda', serif;
@@ -302,7 +304,7 @@ export function renderVisionBoardFormPage(): string {
     }
     .answer-input {
       width: 100%;
-      background: rgba(255,255,255,0.04);
+      background: var(--bg-light);
       border: 1px solid var(--border);
       border-radius: 8px;
       padding: 16px;
@@ -317,7 +319,7 @@ export function renderVisionBoardFormPage(): string {
     .answer-input:focus {
       outline: none;
       border-color: var(--coral);
-      background: rgba(255,255,255,0.06);
+      background: #ffffff;
     }
     .answer-input::placeholder {
       color: var(--text-muted);
@@ -376,7 +378,7 @@ export function renderVisionBoardFormPage(): string {
       overflow-y: auto;
     }
     .summary-item {
-      background: rgba(255,255,255,0.02);
+      background: var(--bg-light);
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
@@ -429,7 +431,7 @@ export function renderVisionBoardFormPage(): string {
     }
     .result-content {
       font-family: 'Bodoni Moda', serif;
-      background: rgba(255,255,255,0.03);
+      background: var(--bg-light);
       border-radius: 12px;
       padding: 24px;
       white-space: pre-wrap;
@@ -461,7 +463,7 @@ export function renderVisionBoardFormPage(): string {
       transition: all 0.2s;
     }
     .btn-restart:hover {
-      background: rgba(255,255,255,0.05);
+      background: var(--bg-light);
       color: var(--text-primary);
       border-color: var(--coral);
     }
@@ -476,8 +478,8 @@ export function renderVisionBoardFormPage(): string {
     .spinner {
       width: 48px;
       height: 48px;
-      border: 3px solid var(--border);
-      border-top-color: var(--purple);
+      border: 3px solid #e0e0e0;
+      border-top-color: var(--coral);
       border-radius: 50%;
       animation: spin 1s linear infinite;
       margin: 0 auto 20px;
@@ -497,15 +499,15 @@ export function renderVisionBoardFormPage(): string {
       width: 10px;
       height: 10px;
       border-radius: 50%;
-      background: rgba(255,255,255,0.15);
+      background: #ddd;
       transition: all 0.3s;
     }
     .progress-dot.completed {
-      background: var(--purple);
+      background: var(--coral);
     }
     .progress-dot.current {
       background: var(--coral);
-      box-shadow: 0 0 12px rgba(232, 90, 79, 0.5);
+      box-shadow: 0 0 12px rgba(232, 90, 79, 0.4);
     }
 
     /* Error state */
