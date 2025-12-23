@@ -174,83 +174,12 @@ export function renderSantaFormPage(token?: string): string {
       display: block;
     }
 
-    /* Previous answers */
-    .previous-answers {
-      margin-bottom: 24px;
-    }
-    .previous-answers h3 {
-      color: var(--coral);
-      font-family: 'Bodoni Moda', serif;
-      font-size: 1rem;
-      font-weight: 400;
-      font-style: italic;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .previous-answers h3::before {
-      content: '';
-      width: 3px;
-      height: 18px;
-      background: var(--coral);
-      border-radius: 1px;
-    }
-    .helper-text {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-bottom: 16px;
-      font-style: italic;
-    }
-    .no-answers {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-style: italic;
-      padding: 16px;
-      background: rgba(255,255,255,0.02);
-      border-radius: 8px;
-    }
-    .answer-pair {
-      background: rgba(255,255,255,0.02);
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 12px;
-      border: 1px solid var(--border);
-    }
-    .answer-pair .question {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-    .answer-pair .answer {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-primary);
-      font-size: 1rem;
-    }
-
     /* Current question */
     .current-question {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
-    }
-    .current-question-header {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--coral);
-      font-size: 0.85rem;
-      font-weight: 400;
-      letter-spacing: 0.08em;
-      margin-bottom: 8px;
-    }
-    .current-question-hint {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 16px;
-      font-style: italic;
+      border-radius: 16px;
+      padding: 32px;
     }
     .question-label {
       font-family: 'Bodoni Moda', serif;
@@ -571,25 +500,17 @@ export function renderSantaFormPage(token?: string): string {
     <!-- Start Screen -->
     <div id="startScreen" class="card start-screen">
       <div class="intro-text">
-        <p>In a few thoughtful questions, we'll help you remember the moments, details, and quiet acts of courage that you most want Santa to notice about your child.</p>
-        <p>This isn't a quiz and it's not therapy. It's a focused space to organize your thoughts so the final Santa experience feels specific, honest, and deeply personal - without any pressure on you to "say it perfectly."</p>
+        <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
+        <p>Takes about 5 minutes.</p>
       </div>
-      <button class="btn-start" onclick="startSession()">Begin Personalization Experience</button>
+      <button class="btn-start" onclick="startSession()">Let's Begin</button>
     </div>
 
     <!-- Form Area -->
     <div id="formArea" class="form-area">
       <div id="progress" class="progress"></div>
 
-      <div id="previousAnswers" class="previous-answers">
-        <h3>What You've Shared</h3>
-        <p class="helper-text">As you go, you'll see your earlier answers here. There are no "right" answers - we're just collecting the details that will help shape your child's message.</p>
-        <div id="answersList"></div>
-      </div>
-
       <div id="currentQuestion" class="current-question">
-        <div class="current-question-header">Current Question</div>
-        <div class="current-question-hint">Your next question may change slightly based on what you've already shared.</div>
         <div id="questionLabel" class="question-label"></div>
         <textarea
           id="answerInput"
@@ -597,22 +518,20 @@ export function renderSantaFormPage(token?: string): string {
           placeholder="Type your answer here..."
           onkeydown="handleKeyDown(event)"
         ></textarea>
-        <button id="nextBtn" class="btn-next" onclick="submitAnswer()">Next</button>
+        <button id="nextBtn" class="btn-next" onclick="submitAnswer()">Continue</button>
       </div>
 
       <div id="loadingQuestion" class="loading hidden">
         <div class="spinner"></div>
-        <p>Thinking...</p>
       </div>
     </div>
 
     <!-- Summary Screen -->
     <div id="summaryScreen" class="card summary-screen">
-      <h2>You've reached the end of the questions</h2>
-      <p class="body-text">You've just done the hardest and most important part: putting into words what this year has really been like for your child, and what you most want them to hear.</p>
-      <p class="body-text">When you click below, we'll use everything you've shared to create a personalized Santa experience that names their courage, kindness, and growth in a way that feels true to them.</p>
+      <h2>Ready to Create</h2>
+      <p class="body-text">Review your answers below, then click Create to generate your personalized Santa message.</p>
       <div id="summaryContent" class="summary-content"></div>
-      <button class="btn-generate" onclick="generateMessage()">Create Santa Experience</button>
+      <button class="btn-generate" onclick="generateMessage()">Create Santa Message</button>
     </div>
 
     <!-- Result Screen -->
@@ -693,23 +612,6 @@ export function renderSantaFormPage(token?: string): string {
       document.getElementById('answerInput').value = '';
       document.getElementById('answerInput').focus();
       document.getElementById('currentQuestion').classList.remove('hidden');
-      updateAnswersList();
-    }
-
-    function updateAnswersList() {
-      const list = document.getElementById('answersList');
-
-      if (answers.length === 0) {
-        list.innerHTML = '<p class="no-answers">Your previous answers will appear here.</p>';
-        return;
-      }
-
-      list.innerHTML = answers.map((item, i) => \`
-        <div class="answer-pair">
-          <div class="question">\${escapeHtml(item.question)}</div>
-          <div class="answer">\${escapeHtml(item.answer)}</div>
-        </div>
-      \`).join('');
     }
 
     function updateProgress() {
@@ -788,7 +690,6 @@ export function renderSantaFormPage(token?: string): string {
       document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.add('active');
       showLoading(true);
-      document.getElementById('previousAnswers').classList.add('hidden');
 
       try {
         const requestBody = { sessionId };
@@ -864,7 +765,6 @@ export function renderSantaFormPage(token?: string): string {
       document.getElementById('resultScreen').classList.remove('active');
       document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.remove('active');
-      document.getElementById('previousAnswers').classList.remove('hidden');
       document.getElementById('startScreen').style.display = 'block';
       document.getElementById('audioPlayer').classList.add('hidden');
       hideError();
