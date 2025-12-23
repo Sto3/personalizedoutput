@@ -10,7 +10,8 @@
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const SITE_URL = process.env.SITE_URL || 'https://personalizedoutput.com';
-const FROM_EMAIL = 'Personalized Output <hello@personalizedoutput.com>';
+// TODO: Change back to hello@personalizedoutput.com after domain verification in Resend
+const FROM_EMAIL = 'Personalized Output <onboarding@resend.dev>';
 
 // Brand colors
 const COLORS = {
