@@ -84,29 +84,6 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         </div>
       </section>
 
-      <!-- Email Signup - Prominent position near top -->
-      <section class="email-signup-hero">
-        <div class="email-signup-container container">
-          <div class="email-signup-content">
-            <span class="email-icon">✉️</span>
-            <div class="email-text">
-              <h4>Get Early Access & Exclusive Offers</h4>
-              <p>Be the first to know about new products and special discounts.</p>
-            </div>
-            <form class="email-signup-form" action="/api/subscribe" method="POST" id="hero-newsletter-form">
-              <input
-                type="email"
-                name="email"
-                placeholder="Enter your email"
-                required
-                class="email-signup-input"
-              >
-              <button type="submit" class="email-signup-btn">Subscribe</button>
-            </form>
-          </div>
-        </div>
-      </section>
-
       <!-- Product Showcase - Isolated 3D Carousel (external CSS/JS files) -->
       <section class="products-showcase" id="products">
         <span class="products-label">Our Products</span>
@@ -185,26 +162,6 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         </div>
       </section>
 
-      <!-- Newsletter Signup -->
-      <section class="newsletter-section">
-        <div class="newsletter-container container-narrow">
-          <div class="newsletter-content">
-            <h3>Stay in the Loop</h3>
-            <p>Get early access to new products, exclusive discounts, and personalization tips delivered to your inbox.</p>
-            <form class="newsletter-form" action="/api/subscribe" method="POST" id="newsletter-form">
-              <input
-                type="email"
-                name="email"
-                placeholder="Enter your email"
-                required
-                class="newsletter-input"
-              >
-              <button type="submit" class="newsletter-btn">Subscribe</button>
-            </form>
-            <p class="newsletter-privacy">We respect your inbox. Unsubscribe anytime.</p>
-          </div>
-        </div>
-      </section>
     </main>
   `;
 
@@ -1956,11 +1913,7 @@ function getHomepageScripts(): string {
       });
     }
 
-    // Attach to all newsletter forms
-    const heroForm = document.getElementById('hero-newsletter-form');
-    const footerForm = document.getElementById('newsletter-form');
-    if (heroForm) handleNewsletterSubmit(heroForm);
-    if (footerForm) handleNewsletterSubmit(footerForm);
+    // Newsletter forms are now handled in the header navigation (layout.ts)
   `;
 }
 

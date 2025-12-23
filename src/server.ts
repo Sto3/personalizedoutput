@@ -46,6 +46,8 @@ import { renderDemoLessonsPage } from './pages/demoLessons';
 import { renderBlogListPage, renderBlogPostPage } from './pages/blog';
 import { renderTermsPage, renderPrivacyPage, renderCopyrightPage } from './pages/legal';
 import { renderProductPage, renderSuccessPage } from './pages/productPages';
+import { renderSantaFormPage } from './pages/santaForm';
+import { renderVisionBoardFormPage } from './pages/visionBoardForm';
 
 // Import Supabase services
 import { isSupabaseConfigured, isSupabaseServiceConfigured } from './lib/supabase/client';
@@ -78,6 +80,16 @@ import {
 // Import Stor chat
 import storApi from './api/storApi';
 import { renderAdminChatPage } from './pages/adminChat';
+
+// Import viral readiness layer
+import {
+  pageRateLimiter,
+  apiRateLimiter,
+  generationRateLimiter,
+  trafficMonitorMiddleware,
+  getSystemHealth,
+  handleApiError
+} from './lib/viralReadiness';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -202,6 +214,30 @@ if (isProduction) {
   });
 }
 
+// ============================================================
+// VIRAL READINESS - Rate limiting and traffic monitoring
+// ============================================================
+
+// Traffic monitoring (for all requests)
+app.use(trafficMonitorMiddleware);
+
+// Rate limiting for pages (generous)
+app.use(pageRateLimiter);
+
+// Rate limiting for API routes (more restrictive)
+app.use('/api', apiRateLimiter);
+
+// Rate limiting for generation endpoints (most restrictive)
+app.use('/api/santa', generationRateLimiter);
+app.use('/api/thought-chat', generationRateLimiter);
+app.use('/api/planner', generationRateLimiter);
+
+// System health endpoint
+app.get('/api/health', (req, res) => {
+  const health = getSystemHealth();
+  res.json(health);
+});
+
 // Static file serving
 app.use('/outputs', express.static(path.join(process.cwd(), 'outputs')));
 app.use('/dev', express.static(path.join(process.cwd(), 'dev')));
@@ -238,9 +274,9 @@ app.get('/santa', (req, res) => {
     const validation = validateToken(token);
 
     if (validation.valid) {
-      // Valid token - show the Santa form
+      // Valid token - show the premium Santa form
       trackEvent('page', 'santa');
-      return res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-santa.html'));
+      return res.send(renderSantaFormPage(token));
     }
 
     // Invalid token - show appropriate error
@@ -370,7 +406,8 @@ app.get('/santa', (req, res) => {
     `);
   }
 
-  // No token - show the order ID capture form with premium styling
+  // No token - show the order ID capture form with premium dark styling
+  trackEvent('page', 'santa-claim');
   res.send(`
 <!DOCTYPE html>
 <html lang="en">
@@ -378,71 +415,94 @@ app.get('/santa', (req, res) => {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Start Your Santa Message | Personalized Output</title>
-  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     :root {
-      --coral: #E85A6B;
+      --bg-dark: #1a0a1a;
+      --bg-card: #0a0a10;
+      --coral: #E85A4F;
       --coral-light: #F08B96;
-      --navy: #1a1a2e;
-      --navy-light: #2d2d4a;
       --purple: #7C3AED;
       --purple-light: #A78BFA;
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255,255,255,0.7);
+      --text-muted: rgba(255,255,255,0.5);
+      --border: rgba(255,255,255,0.1);
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: 'Inter', -apple-system, sans-serif;
-      background: linear-gradient(135deg, #fafafa 0%, #f0f0f5 50%, #fafafa 100%);
+      background: var(--bg-dark);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      color: var(--text-primary);
+    }
+    .header {
+      background: var(--purple);
+      padding: 16px 24px;
+    }
+    .header-inner {
+      max-width: 600px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .logo {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      text-decoration: none;
+    }
+    .logo span { color: var(--coral); }
+    .back-link {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+    .back-link:hover { color: #fff; }
+    .main {
+      flex: 1;
+      display: flex;
       align-items: center;
       justify-content: center;
-      padding: 40px 20px;
-      color: var(--navy);
+      padding: 40px 24px;
     }
     .container {
       max-width: 480px;
       width: 100%;
       text-align: center;
     }
-    .back-link {
-      display: inline-block;
-      margin-bottom: 32px;
-      color: #64748b;
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
-    }
-    .back-link:hover { color: var(--coral); }
     .santa-icon {
       font-size: 5rem;
       margin-bottom: 24px;
-      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1));
+      filter: drop-shadow(0 4px 20px rgba(232, 90, 79, 0.3));
     }
     h1 {
-      font-family: 'Bodoni Moda', Georgia, serif;
+      font-family: 'Bodoni Moda', serif;
       font-size: 2.25rem;
-      font-weight: 500;
-      color: var(--navy);
+      font-weight: 700;
       margin-bottom: 16px;
       line-height: 1.2;
     }
     h1 .highlight {
       color: var(--coral);
-      font-style: italic;
     }
     .description {
       font-size: 1rem;
-      color: #64748b;
+      color: var(--text-secondary);
       margin-bottom: 32px;
       line-height: 1.7;
     }
     .form-card {
-      background: #fff;
+      background: var(--bg-card);
       padding: 40px;
       border-radius: 24px;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.06);
-      border: 1px solid rgba(0,0,0,0.04);
+      border: 1px solid var(--border);
       text-align: left;
     }
     .form-group {
@@ -452,7 +512,7 @@ app.get('/santa', (req, res) => {
       display: block;
       font-size: 0.85rem;
       font-weight: 600;
-      color: var(--navy);
+      color: var(--purple-light);
       margin-bottom: 8px;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -462,56 +522,54 @@ app.get('/santa', (req, res) => {
       padding: 16px 18px;
       font-size: 1rem;
       font-family: 'Inter', sans-serif;
-      border: 2px solid #e2e8f0;
+      border: 1px solid var(--border);
       border-radius: 12px;
       transition: all 0.2s;
-      background: #fafafa;
+      background: rgba(255,255,255,0.05);
+      color: var(--text-primary);
     }
     input:focus {
       outline: none;
       border-color: var(--purple);
-      background: #fff;
-      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1);
+      background: rgba(124, 58, 237, 0.05);
     }
     input::placeholder {
-      color: #94a3b8;
+      color: var(--text-muted);
     }
     button {
       width: 100%;
       padding: 18px;
-      background: var(--coral);
+      background: linear-gradient(135deg, var(--coral), var(--coral-light));
       color: #fff;
       border: none;
-      border-radius: 50px;
+      border-radius: 12px;
       font-size: 1.1rem;
       font-family: 'Inter', sans-serif;
       font-weight: 600;
       cursor: pointer;
       transition: all 0.3s;
-      box-shadow: 0 4px 20px rgba(232, 90, 107, 0.3);
+      box-shadow: 0 4px 20px rgba(232, 90, 79, 0.3);
     }
     button:hover {
-      background: var(--coral-light);
       transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(232, 90, 107, 0.4);
+      box-shadow: 0 8px 30px rgba(232, 90, 79, 0.4);
     }
     button:disabled {
-      background: #cbd5e1;
+      opacity: 0.5;
       transform: none;
-      box-shadow: none;
       cursor: not-allowed;
     }
     .help-text {
       margin-top: 24px;
       font-size: 0.85rem;
-      color: #94a3b8;
+      color: var(--text-muted);
       text-align: center;
       line-height: 1.6;
     }
     .error-message {
-      background: #fef2f2;
-      border: 1px solid #fecaca;
-      color: #dc2626;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #fca5a5;
       padding: 16px 18px;
       border-radius: 12px;
       margin-bottom: 24px;
@@ -525,56 +583,61 @@ app.get('/santa', (req, res) => {
       gap: 8px;
       margin-top: 24px;
       font-size: 0.8rem;
-      color: #64748b;
+      color: var(--text-muted);
     }
     .secure-badge svg {
       width: 16px;
       height: 16px;
     }
     @media (max-width: 600px) {
-      .container { padding: 0 16px; }
+      .main { padding: 24px 16px; }
       h1 { font-size: 1.75rem; }
-      .form-card { padding: 28px; }
+      .form-card { padding: 28px 20px; }
       .santa-icon { font-size: 4rem; }
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <a href="/" class="back-link">&larr; Back to home</a>
-    <div class="santa-icon">🎅</div>
-    <h1>Create Your <span class="highlight">Santa Message</span></h1>
-    <p class="description">Enter your order details below to begin creating a magical, personalized message from Santa.</p>
-
-    <div class="form-card">
-      <form id="claimForm" action="/api/santa/claim" method="POST">
-        <div id="errorMessage" class="error-message"></div>
-
-        <div class="form-group">
-          <label for="orderId">Order ID</label>
-          <input type="text" id="orderId" name="orderId" placeholder="Enter your order ID" required>
-        </div>
-
-        <div class="form-group">
-          <label for="email">Email Address</label>
-          <input type="email" id="email" name="email" placeholder="you@example.com" required>
-        </div>
-
-        <input type="hidden" name="productId" value="santa_message">
-
-        <button type="submit">Continue to Create Message</button>
-
-        <p class="help-text">You'll find your Order ID in your purchase confirmation email.</p>
-
-        <div class="secure-badge">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-          Secure • One-time use per purchase
-        </div>
-      </form>
+  <header class="header">
+    <div class="header-inner">
+      <a href="/" class="logo">personalized<span>output</span></a>
+      <a href="/" class="back-link">&larr; Back</a>
     </div>
-  </div>
+  </header>
+  <main class="main">
+    <div class="container">
+      <div class="santa-icon">🎅</div>
+      <h1>Create Your <span class="highlight">Santa Message</span></h1>
+      <p class="description">Enter your order details below to begin creating a magical, personalized message from Santa.</p>
+
+      <div class="form-card">
+        <form id="claimForm">
+          <div id="errorMessage" class="error-message"></div>
+
+          <div class="form-group">
+            <label for="orderId">Order ID</label>
+            <input type="text" id="orderId" name="orderId" placeholder="Enter your order ID" required>
+          </div>
+
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" placeholder="you@example.com" required>
+          </div>
+
+          <button type="submit">Continue to Create Message</button>
+
+          <p class="help-text">You'll find your Order ID in your purchase confirmation email.</p>
+
+          <div class="secure-badge">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            Secure • One-time use per purchase
+          </div>
+        </form>
+      </div>
+    </div>
+  </main>
 
   <script>
     const form = document.getElementById('claimForm');
@@ -587,11 +650,10 @@ app.get('/santa', (req, res) => {
       submitBtn.disabled = true;
       submitBtn.textContent = 'Verifying...';
 
-      const formData = new FormData(form);
       const data = {
-        orderId: formData.get('orderId'),
-        email: formData.get('email'),
-        productId: formData.get('productId')
+        orderId: document.getElementById('orderId').value,
+        email: document.getElementById('email').value,
+        productId: 'santa_message'
       };
 
       try {
@@ -641,10 +703,10 @@ app.get('/new-year-reset', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-newyear.html'));
 });
 
-// Vision Board form
+// Vision Board form - Premium dark theme
 app.get('/vision-board', (req, res) => {
   trackEvent('page', 'vision-board');
-  res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-visionboard.html'));
+  res.send(renderVisionBoardFormPage());
 });
 
 // Generic Clarity Planner form
@@ -819,7 +881,7 @@ app.get('/coming-soon', (req, res) => {
   <div class="container">
     <div class="emoji">🚀</div>
     <h1>Coming Soon!</h1>
-    <p>This product is launching in early 2025. We're working hard to make it perfect for you!</p>
+    <p>This product is launching in early 2026. We're working hard to make it perfect for you!</p>
     <a href="/" class="back-link">← Back to Home</a>
 
     <div class="available">
