@@ -1744,180 +1744,200 @@ app.post('/admin/setup', async (req, res) => {
   res.redirect('/admin');
 });
 
-// Admin password reset page
+// Admin password reset page - branded UI with server-side token handling
 app.get('/admin/reset-password', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html lang="en">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Reset Password - Personalized Output</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-      <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-          font-family: 'Inter', sans-serif;
-          background: linear-gradient(135deg, #1a0a1a 0%, #2d1a2d 100%);
-          min-height: 100vh;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: #fff;
-        }
-        .container { width: 100%; max-width: 400px; padding: 20px; }
-        .card {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 16px;
-          padding: 40px;
-        }
-        h1 { font-size: 1.5rem; margin-bottom: 8px; text-align: center; }
-        .subtitle { color: rgba(255,255,255,0.6); font-size: 0.875rem; text-align: center; margin-bottom: 32px; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; font-size: 0.875rem; font-weight: 500; margin-bottom: 8px; color: rgba(255,255,255,0.8); }
-        input {
-          width: 100%; padding: 12px 16px; border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 8px; background: rgba(0,0,0,0.3); color: #fff; font-size: 1rem;
-        }
-        input:focus { outline: none; border-color: #7C3AED; }
-        .btn {
-          width: 100%; padding: 14px; border: none; border-radius: 8px;
-          font-size: 1rem; font-weight: 600; cursor: pointer; background: #7C3AED; color: #fff;
-        }
-        .btn:hover { background: #6D28D9; }
-        .btn:disabled { background: #555; cursor: not-allowed; }
-        .error { background: rgba(239,68,68,0.2); border: 1px solid #EF4444; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.875rem; text-align: center; }
-        .success { background: rgba(34,197,94,0.2); border: 1px solid #22C55E; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 0.875rem; text-align: center; }
-        .reset-badge { display: inline-block; background: rgba(124,58,237,0.2); color: #A78BFA; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; margin-bottom: 24px; }
-      </style>
-    </head>
-    <body>
-      <div class="container">
-        <div class="card">
-          <div style="text-align: center;"><span class="reset-badge">PASSWORD RESET</span></div>
-          <h1>Set New Password</h1>
-          <p class="subtitle">Enter your new password below</p>
-          <div id="message"></div>
-          <form id="resetForm">
-            <div class="form-group">
-              <label for="password">New Password</label>
-              <input type="password" id="password" placeholder="At least 8 characters" minlength="8" required>
-            </div>
-            <div class="form-group">
-              <label for="confirmPassword">Confirm Password</label>
-              <input type="password" id="confirmPassword" placeholder="Confirm your password" required>
-            </div>
-            <button type="submit" class="btn" id="submitBtn">Update Password</button>
-          </form>
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reset Password - Personalized Output</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #1a0a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FFF8E7;
+    }
+    .container { width: 100%; max-width: 420px; padding: 24px; }
+    .logo { text-align: center; margin-bottom: 32px; font-size: 1.5rem; font-weight: 600; }
+    .logo span { color: #7C3AED; }
+    .card {
+      background: linear-gradient(145deg, rgba(45,26,45,0.8) 0%, rgba(26,10,26,0.9) 100%);
+      border: 1px solid rgba(124,58,237,0.2);
+      border-radius: 20px;
+      padding: 40px 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    h1 { font-size: 1.75rem; font-weight: 600; margin-bottom: 8px; text-align: center; color: #FFF8E7; }
+    .subtitle { color: rgba(255,248,231,0.6); font-size: 0.9rem; text-align: center; margin-bottom: 28px; }
+    .form-group { margin-bottom: 20px; }
+    label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 8px; color: rgba(255,248,231,0.8); }
+    input {
+      width: 100%; padding: 14px 16px; border: 1px solid rgba(124,58,237,0.3);
+      border-radius: 12px; background: rgba(0,0,0,0.4); color: #FFF8E7; font-size: 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus { outline: none; border-color: #7C3AED; box-shadow: 0 0 0 3px rgba(124,58,237,0.2); }
+    input::placeholder { color: rgba(255,248,231,0.4); }
+    .btn {
+      width: 100%; padding: 16px; border: none; border-radius: 12px;
+      font-size: 1rem; font-weight: 600; cursor: pointer;
+      background: linear-gradient(135deg, #E85A4F 0%, #D64A3F 100%);
+      color: #fff; margin-top: 8px;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(232,90,79,0.4); }
+    .btn:disabled { background: #444; cursor: not-allowed; transform: none; box-shadow: none; }
+    .message { padding: 14px 16px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; text-align: center; }
+    .message.loading { background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); color: #A78BFA; }
+    .message.error { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #FCA5A5; }
+    .message.success { background: rgba(34,197,94,0.15); border: 1px solid rgba(34,197,94,0.3); color: #86EFAC; }
+    .back-link { text-align: center; margin-top: 24px; }
+    .back-link a { color: #7C3AED; text-decoration: none; font-size: 0.875rem; }
+    .back-link a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">Personalized<span>Output</span></div>
+    <div class="card">
+      <h1>Set New Password</h1>
+      <p class="subtitle">Create a secure password for your account</p>
+      <div id="message" class="message loading">Verifying your reset link...</div>
+      <form id="resetForm" style="display:none;">
+        <div class="form-group">
+          <label for="password">New Password</label>
+          <input type="password" id="password" placeholder="At least 8 characters" minlength="8" required>
         </div>
-      </div>
-      <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-      <script>
-        const message = document.getElementById('message');
-        const form = document.getElementById('resetForm');
-        const submitBtn = document.getElementById('submitBtn');
+        <div class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input type="password" id="confirmPassword" placeholder="Re-enter your password" required>
+        </div>
+        <button type="submit" class="btn" id="submitBtn">Update Password</button>
+      </form>
+      <div class="back-link"><a href="/admin/login">Back to Login</a></div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    (function() {
+      var msg = document.getElementById('message');
+      var form = document.getElementById('resetForm');
+      var btn = document.getElementById('submitBtn');
+      var ready = false;
 
-        message.innerHTML = '<div style="color:#A78BFA;padding:12px;text-align:center;">Loading...</div>';
+      var sb = window.supabase.createClient(
+        'https://cndnigkuncvevtrqmtvp.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZG5pZ2t1bmN2ZXZ0cnFtdHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NDI5NzUsImV4cCI6MjA4MTAxODk3NX0.Mll0ihe0cWQWYdWRd3RI-ywHFG1KoWUpo3anJiN6Lek'
+      );
 
-        const supabase = window.supabase.createClient(
-          'https://cndnigkuncvevtrqmtvp.supabase.co',
-          'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNuZG5pZ2t1bmN2ZXZ0cnFtdHZwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU0NDI5NzUsImV4cCI6MjA4MTAxODk3NX0.Mll0ihe0cWQWYdWRd3RI-ywHFG1KoWUpo3anJiN6Lek'
-        );
+      function showForm() {
+        ready = true;
+        msg.className = 'message success';
+        msg.textContent = 'Ready! Enter your new password below.';
+        form.style.display = 'block';
+      }
 
-        let sessionReady = false;
+      function showError(text) {
+        msg.className = 'message error';
+        msg.textContent = text;
+        form.style.display = 'none';
+      }
 
-        // Listen for PASSWORD_RECOVERY event
-        supabase.auth.onAuthStateChange(function(event, session) {
-          console.log('Auth event:', event);
-          if (event === 'PASSWORD_RECOVERY') {
-            sessionReady = true;
-            message.innerHTML = '<div class="success">Ready! Enter your new password.</div>';
-          } else if (event === 'SIGNED_IN' && session) {
-            sessionReady = true;
-            message.innerHTML = '<div class="success">Session active. Enter your new password.</div>';
-          }
+      // Listen for auth events
+      sb.auth.onAuthStateChange(function(event, session) {
+        if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+          showForm();
+        }
+      });
+
+      // Parse hash tokens
+      var hash = window.location.hash;
+      if (hash && hash.indexOf('access_token') > -1) {
+        var params = {};
+        hash.substring(1).split('&').forEach(function(p) {
+          var kv = p.split('=');
+          params[kv[0]] = decodeURIComponent(kv[1] || '');
         });
 
-        // Manual token extraction as backup
-        (async function() {
-          try {
-            const hash = window.location.hash;
-            if (hash && hash.includes('access_token')) {
-              const params = new URLSearchParams(hash.substring(1));
-              const token = params.get('access_token');
-              const refresh = params.get('refresh_token');
-
-              if (token) {
-                message.innerHTML = '<div style="color:#A78BFA;padding:12px;text-align:center;">Setting up session...</div>';
-                const result = await supabase.auth.setSession({
-                  access_token: token,
-                  refresh_token: refresh || token
-                });
-
-                if (result.error) {
-                  message.innerHTML = '<div class="error">' + result.error.message + '</div>';
-                } else {
-                  sessionReady = true;
-                  message.innerHTML = '<div class="success">Ready! Enter your new password.</div>';
-                  history.replaceState(null, '', window.location.pathname);
-                }
-              }
+        if (params.access_token) {
+          sb.auth.setSession({
+            access_token: params.access_token,
+            refresh_token: params.refresh_token || params.access_token
+          }).then(function(res) {
+            if (res.error) {
+              showError('Invalid or expired link. Please request a new password reset.');
             } else {
-              const sess = await supabase.auth.getSession();
-              if (sess.data.session) {
-                sessionReady = true;
-                message.innerHTML = '<div class="success">Session found. Enter your new password.</div>';
-              } else {
-                message.innerHTML = '<div class="error">No reset token found. Please use the link from your email.</div>';
-              }
+              showForm();
+              history.replaceState(null, '', location.pathname);
             }
-          } catch (e) {
-            message.innerHTML = '<div class="error">Init error: ' + e.message + '</div>';
+          }).catch(function() {
+            showError('Failed to verify link. Please try again.');
+          });
+        }
+      } else {
+        sb.auth.getSession().then(function(res) {
+          if (res.data && res.data.session) {
+            showForm();
+          } else {
+            showError('No reset token found. Please click the link in your email.');
           }
-        })();
+        });
+      }
 
-        form.onsubmit = async function(e) {
-          e.preventDefault();
+      form.onsubmit = function(e) {
+        e.preventDefault();
+        if (!ready) return false;
 
-          var pw = document.getElementById('password').value;
-          var pw2 = document.getElementById('confirmPassword').value;
+        var pw = document.getElementById('password').value;
+        var pw2 = document.getElementById('confirmPassword').value;
 
-          if (pw !== pw2) {
-            message.innerHTML = '<div class="error">Passwords do not match</div>';
-            return false;
-          }
-          if (pw.length < 8) {
-            message.innerHTML = '<div class="error">Password must be at least 8 characters</div>';
-            return false;
-          }
-
-          submitBtn.disabled = true;
-          submitBtn.textContent = 'Updating...';
-          message.innerHTML = '<div style="color:#A78BFA;padding:12px;text-align:center;">Updating password...</div>';
-
-          try {
-            var result = await supabase.auth.updateUser({ password: pw });
-
-            if (result.error) {
-              message.innerHTML = '<div class="error">' + result.error.message + '</div>';
-              submitBtn.disabled = false;
-              submitBtn.textContent = 'Update Password';
-            } else {
-              message.innerHTML = '<div class="success">Password updated! Redirecting to login...</div>';
-              setTimeout(function() { window.location.href = '/admin/login'; }, 2000);
-            }
-          } catch (err) {
-            message.innerHTML = '<div class="error">Error: ' + (err.message || err) + '</div>';
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Update Password';
-          }
+        if (pw !== pw2) {
+          msg.className = 'message error';
+          msg.textContent = 'Passwords do not match';
           return false;
-        };
-      </script>
-    </body>
-    </html>
-  `);
+        }
+        if (pw.length < 8) {
+          msg.className = 'message error';
+          msg.textContent = 'Password must be at least 8 characters';
+          return false;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Updating...';
+        msg.className = 'message loading';
+        msg.textContent = 'Updating your password...';
+
+        sb.auth.updateUser({ password: pw }).then(function(res) {
+          if (res.error) {
+            msg.className = 'message error';
+            msg.textContent = res.error.message;
+            btn.disabled = false;
+            btn.textContent = 'Update Password';
+          } else {
+            msg.className = 'message success';
+            msg.textContent = 'Password updated! Redirecting to login...';
+            setTimeout(function() { location.href = '/admin/login'; }, 1500);
+          }
+        }).catch(function(err) {
+          msg.className = 'message error';
+          msg.textContent = 'Error: ' + (err.message || 'Unknown error');
+          btn.disabled = false;
+          btn.textContent = 'Update Password';
+        });
+
+        return false;
+      };
+    })();
+  </script>
+</body>
+</html>`);
 });
 
 // Admin logout
