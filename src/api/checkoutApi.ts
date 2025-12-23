@@ -49,6 +49,17 @@ function isStripeConfigured(): boolean {
   return !!STRIPE_SECRET_KEY;
 }
 
+// VIP emails that get free access (for testing the full user flow)
+const VIP_EMAILS = [
+  'matthew_riley10@outlook.com',
+  'persefit@outlook.com'
+];
+
+function isVipEmail(email: string | undefined): boolean {
+  if (!email) return false;
+  return VIP_EMAILS.includes(email.toLowerCase());
+}
+
 // ============================================================
 // CREATE CHECKOUT SESSION
 // ============================================================
@@ -76,6 +87,57 @@ router.post('/create', async (req: Request, res: Response) => {
     const product = PRODUCTS[productId];
     if (!product || !product.isActive) {
       return res.status(400).json({ error: 'Invalid product' });
+    }
+
+    // VIP bypass - free checkout for admin/test emails
+    if (isVipEmail(email)) {
+      console.log(`[Checkout] VIP bypass for ${email} - ${product.name}`);
+
+      // Create order directly (simulates what webhook does)
+      const order = await createOrder({
+        product_id: productId,
+        customer_email: email!,
+        status: 'paid',
+        stripe_session_id: `vip_${Date.now()}`,
+        amount: 0, // Free for VIP
+        metadata: { vip: true, originalPrice: product.price }
+      });
+
+      if (order) {
+        // Add to email list
+        try {
+          await addToEmailList(email!, productId);
+        } catch (e) {
+          console.error('[Checkout] VIP - Failed to add to email list:', e);
+        }
+
+        // Send confirmation email
+        try {
+          let personalizationUrl = `${SITE_URL}/${product.slug}`;
+          if (productId === 'santa_message') {
+            personalizationUrl = `${SITE_URL}/santa`;
+          } else if (productId === 'vision_board') {
+            personalizationUrl = `${SITE_URL}/vision-board`;
+          }
+
+          await sendPurchaseConfirmation(email!, product.name, {
+            orderId: order.id,
+            amount: 0,
+            accessUrl: personalizationUrl,
+          });
+          console.log(`[Checkout] VIP confirmation email sent to ${email}`);
+        } catch (e) {
+          console.error('[Checkout] VIP - Failed to send email:', e);
+        }
+
+        // Return success URL directly (bypass Stripe checkout page)
+        const successUrl = `${SITE_URL}/purchase/success?session_id=vip_${order.id}`;
+        return res.json({
+          sessionId: `vip_${order.id}`,
+          url: successUrl,
+          vip: true
+        });
+      }
     }
 
     const stripe = getStripe();
@@ -277,13 +339,37 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
  */
 router.get('/session/:sessionId', async (req: Request, res: Response) => {
   try {
+    const { sessionId } = req.params;
+
+    // Handle VIP sessions (format: vip_<orderId>)
+    if (sessionId.startsWith('vip_')) {
+      const orderId = sessionId.replace('vip_', '');
+      const order = await getOrder(orderId);
+
+      if (!order) {
+        return res.status(404).json({ error: 'VIP order not found' });
+      }
+
+      const product = PRODUCTS[order.product_id as ProductType];
+
+      return res.json({
+        status: 'paid',
+        productId: order.product_id,
+        productName: product?.name || 'Unknown Product',
+        productSlug: product?.slug,
+        customerEmail: order.customer_email,
+        amountTotal: 0,
+        currency: 'usd',
+        vip: true
+      });
+    }
+
+    // Regular Stripe session
     if (!isStripeConfigured()) {
       return res.status(503).json({ error: 'Payment processing not available' });
     }
 
-    const { sessionId } = req.params;
     const stripe = getStripe();
-
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (!session) {
