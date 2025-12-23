@@ -510,7 +510,7 @@ export function renderSuccessPage(): string {
             <ol>
               <li><strong>Start the Personalization Experience below</strong> - takes about 5-10 minutes</li>
               <li>Tell us what makes you (or the person you're gifting) unique</li>
-              <li>Your personalized product will be ready instantly! <span class="note">(may take 10-15 min during high traffic)</span></li>
+              <li>Your personalized product will be ready — usually instant! <span class="note">(may take up to 15-20 min during peak times)</span></li>
             </ol>
           </div>
 
