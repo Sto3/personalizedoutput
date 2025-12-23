@@ -216,7 +216,8 @@ router.post('/continue', async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        error: `Session not found: ${sessionId}`
+        error: 'Your session has expired. Please refresh the page and start again.',
+        sessionExpired: true
       });
     }
 
@@ -283,7 +284,8 @@ router.post('/generate', async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({
         success: false,
-        error: `Session not found: ${sessionId}`
+        error: 'Your session has expired. Please refresh the page and start again.',
+        sessionExpired: true
       });
     }
 

@@ -650,7 +650,14 @@ export function renderSantaFormPage(token?: string): string {
           body: JSON.stringify({ sessionId, userMessage: answer })
         });
 
-        if (!response.ok) throw new Error('Failed to continue session');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (errorData.sessionExpired) {
+            showSessionExpiredError();
+            return;
+          }
+          throw new Error(errorData.error || 'Failed to continue session');
+        }
 
         const data = await response.json();
 
@@ -783,6 +790,20 @@ export function renderSantaFormPage(token?: string): string {
 
     function hideError() {
       document.getElementById('errorDisplay').classList.add('hidden');
+    }
+
+    function showSessionExpiredError() {
+      showLoading(false);
+      document.getElementById('formArea').classList.remove('active');
+      document.getElementById('errorDisplay').innerHTML = \`
+        <div style="text-align: center;">
+          <p style="margin-bottom: 16px;">Your session has expired. This can happen if you were away for a while or there was a brief server update.</p>
+          <button onclick="window.location.reload()" style="background: var(--coral); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-family: inherit;">
+            Start Fresh
+          </button>
+        </div>
+      \`;
+      document.getElementById('errorDisplay').classList.remove('hidden');
     }
 
     function handleKeyDown(event) {
