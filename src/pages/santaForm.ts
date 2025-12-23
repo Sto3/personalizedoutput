@@ -559,6 +559,7 @@ export function renderSantaFormPage(token?: string): string {
 
   <script>
     const API_BASE = '/api/thought-chat';
+    const STORAGE_KEY = 'santa_session_progress';
 
     // Get token from URL query parameter
     const urlParams = new URLSearchParams(window.location.search);
@@ -568,6 +569,106 @@ export function renderSantaFormPage(token?: string): string {
     let currentQuestion = '';
     let answers = [];
     let questionCount = 0;
+
+    // Save progress to localStorage
+    function saveProgress() {
+      if (!sessionId) return;
+      const progress = {
+        sessionId,
+        currentQuestion,
+        answers,
+        questionCount,
+        savedAt: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    }
+
+    // Clear saved progress
+    function clearProgress() {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // Check for saved progress on page load
+    function checkSavedProgress() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+
+      try {
+        const progress = JSON.parse(saved);
+        // Check if saved within last 2 hours
+        const twoHours = 2 * 60 * 60 * 1000;
+        if (Date.now() - progress.savedAt > twoHours) {
+          clearProgress();
+          return;
+        }
+
+        // Show resume prompt
+        document.getElementById('startScreen').innerHTML = \`
+          <div class="intro-text">
+            <p><strong>Welcome back!</strong> You have a session in progress with \${progress.answers.length} answer(s) saved.</p>
+          </div>
+          <button class="btn-start" onclick="resumeSession()" style="margin-bottom: 12px;">Continue Where You Left Off</button>
+          <button class="btn-restart" onclick="startFresh()">Start Fresh</button>
+        \`;
+      } catch (e) {
+        clearProgress();
+      }
+    }
+
+    // Resume saved session
+    async function resumeSession() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) {
+        startSession();
+        return;
+      }
+
+      try {
+        const progress = JSON.parse(saved);
+
+        // Verify session still exists on server
+        const response = await fetch(\`\${API_BASE}/session/\${progress.sessionId}\`);
+        if (!response.ok) {
+          clearProgress();
+          showError('Your saved session has expired. Starting fresh.');
+          setTimeout(() => startSession(), 1500);
+          return;
+        }
+
+        // Restore state
+        sessionId = progress.sessionId;
+        currentQuestion = progress.currentQuestion;
+        answers = progress.answers;
+        questionCount = progress.questionCount;
+
+        // Show form
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('formArea').classList.add('active');
+        displayQuestion();
+        updateProgress();
+
+      } catch (e) {
+        clearProgress();
+        startSession();
+      }
+    }
+
+    // Start fresh (clear saved and begin new)
+    function startFresh() {
+      clearProgress();
+      // Reset the start screen HTML
+      document.getElementById('startScreen').innerHTML = \`
+        <div class="intro-text">
+          <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
+          <p>Takes about 5 minutes.</p>
+        </div>
+        <button class="btn-start" onclick="startSession()">Let's Begin Your Personalization Experience</button>
+      \`;
+      startSession();
+    }
+
+    // Check for saved progress when page loads
+    checkSavedProgress();
 
     async function startSession() {
       hideError();
@@ -596,6 +697,8 @@ export function renderSantaFormPage(token?: string): string {
         sessionId = data.sessionId;
         currentQuestion = data.firstAssistantMessage || data.message || '';
         questionCount = 1;
+
+        saveProgress(); // Save after starting
 
         showLoading(false);
         displayQuestion();
@@ -668,6 +771,7 @@ export function renderSantaFormPage(token?: string): string {
         } else {
           currentQuestion = data.assistantMessage || data.message || '';
           questionCount++;
+          saveProgress(); // Save after each answer
           showLoading(false);
           displayQuestion();
           updateProgress();
@@ -761,6 +865,7 @@ export function renderSantaFormPage(token?: string): string {
       }
 
       document.getElementById('resultScreen').classList.add('active');
+      clearProgress(); // Clear saved progress on success
     }
 
     function restart() {
@@ -768,11 +873,19 @@ export function renderSantaFormPage(token?: string): string {
       currentQuestion = '';
       answers = [];
       questionCount = 0;
+      clearProgress();
 
       document.getElementById('resultScreen').classList.remove('active');
       document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.remove('active');
       document.getElementById('startScreen').style.display = 'block';
+      document.getElementById('startScreen').innerHTML = \`
+        <div class="intro-text">
+          <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
+          <p>Takes about 5 minutes.</p>
+        </div>
+        <button class="btn-start" onclick="startSession()">Let's Begin Your Personalization Experience</button>
+      \`;
       document.getElementById('audioPlayer').classList.add('hidden');
       hideError();
     }
