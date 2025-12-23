@@ -21,30 +21,30 @@ export function renderVisionBoardFormPage(): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-white: #ffffff;
-      --bg-light: #f8f9fa;
+      --bg-dark: #0a0a0f;
       --bg-card: #ffffff;
       --coral: #E85A4F;
       --coral-light: #F08B96;
       --text-primary: #1a1a1a;
-      --text-secondary: #4a4a4a;
-      --text-muted: #777777;
+      --text-secondary: #333333;
+      --text-muted: #666666;
+      --text-light: #F5EEF0;
       --border: #e0e0e0;
-      --border-focus: rgba(232, 90, 79, 0.6);
+      --border-dark: rgba(255,255,255,0.12);
     }
 
     body {
       font-family: 'Bodoni Moda', Georgia, serif;
-      background: var(--bg-light);
+      background: var(--bg-dark);
       min-height: 100vh;
-      color: var(--text-primary);
+      color: var(--text-light);
       line-height: 1.7;
     }
 
     /* Header */
     .header {
-      background: var(--bg-white);
-      border-bottom: 1px solid var(--border);
+      background: var(--bg-dark);
+      border-bottom: 1px solid var(--border-dark);
       padding: 16px 24px;
       position: sticky;
       top: 0;
@@ -124,17 +124,16 @@ export function renderVisionBoardFormPage(): string {
     /* Card styling */
     .card {
       background: var(--bg-card);
-      border: 1px solid var(--border);
+      border: none;
       border-radius: 16px;
       padding: 40px;
       margin-bottom: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
     }
 
     /* Start screen */
     .start-screen .intro-text {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-secondary);
+      color: var(--text-primary);
       margin-bottom: 32px;
       line-height: 1.9;
       font-size: 1.05rem;
@@ -161,8 +160,8 @@ export function renderVisionBoardFormPage(): string {
     }
     .order-input {
       width: 100%;
-      background: var(--bg-light);
-      border: 1px solid var(--border);
+      background: #f8f8f8;
+      border: 2px solid #e0e0e0;
       border-radius: 8px;
       padding: 16px;
       color: var(--text-primary);
@@ -176,7 +175,7 @@ export function renderVisionBoardFormPage(): string {
       background: #ffffff;
     }
     .order-input::placeholder {
-      color: var(--text-muted);
+      color: #888;
       font-style: italic;
     }
     .order-hint {
@@ -215,69 +214,12 @@ export function renderVisionBoardFormPage(): string {
       display: block;
     }
 
-    /* Previous answers */
-    .previous-answers {
-      margin-bottom: 24px;
-    }
-    .previous-answers h3 {
-      color: var(--coral);
-      font-family: 'Bodoni Moda', serif;
-      font-size: 1rem;
-      font-weight: 400;
-      font-style: italic;
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .previous-answers h3::before {
-      content: '';
-      width: 3px;
-      height: 18px;
-      background: var(--coral);
-      border-radius: 1px;
-    }
-    .helper-text {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-bottom: 16px;
-      font-style: italic;
-    }
-    .no-answers {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-style: italic;
-      padding: 16px;
-      background: var(--bg-light);
-      border-radius: 8px;
-    }
-    .answer-pair {
-      background: var(--bg-light);
-      border-radius: 8px;
-      padding: 16px;
-      margin-bottom: 12px;
-      border: 1px solid var(--border);
-    }
-    .answer-pair .question {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      margin-bottom: 8px;
-    }
-    .answer-pair .answer {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--text-primary);
-      font-size: 1rem;
-    }
-
     /* Current question */
     .current-question {
-      background: var(--bg-white);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 28px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      background: #ffffff;
+      border: none;
+      border-radius: 16px;
+      padding: 32px;
     }
     .current-question-header {
       font-family: 'Bodoni Moda', serif;
@@ -296,24 +238,24 @@ export function renderVisionBoardFormPage(): string {
     }
     .question-label {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       font-weight: 400;
-      color: var(--text-primary);
+      color: #1a1a1a;
       margin-bottom: 20px;
-      line-height: 1.5;
+      line-height: 1.6;
     }
     .answer-input {
       width: 100%;
-      background: var(--bg-light);
-      border: 1px solid var(--border);
+      background: #f8f8f8;
+      border: 2px solid #e0e0e0;
       border-radius: 8px;
       padding: 16px;
-      color: var(--text-primary);
+      color: #1a1a1a;
       font-family: 'Bodoni Moda', serif;
       font-size: 1rem;
-      min-height: 120px;
+      min-height: 100px;
       resize: vertical;
-      transition: border-color 0.2s, background-color 0.2s;
+      transition: border-color 0.2s;
       line-height: 1.7;
     }
     .answer-input:focus {
@@ -322,7 +264,7 @@ export function renderVisionBoardFormPage(): string {
       background: #ffffff;
     }
     .answer-input::placeholder {
-      color: var(--text-muted);
+      color: #888;
       font-style: italic;
     }
 
@@ -367,7 +309,7 @@ export function renderVisionBoardFormPage(): string {
     }
     .body-text {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-secondary);
+      color: #333;
       text-align: center;
       margin-bottom: 12px;
       line-height: 1.8;
@@ -378,21 +320,21 @@ export function renderVisionBoardFormPage(): string {
       overflow-y: auto;
     }
     .summary-item {
-      background: var(--bg-light);
+      background: #f8f8f8;
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
-      border: 1px solid var(--border);
+      border: 1px solid #e0e0e0;
     }
     .summary-item .q {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
+      color: #666;
       font-size: 0.9rem;
       margin-bottom: 8px;
     }
     .summary-item .a {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-primary);
+      color: #1a1a1a;
       font-size: 1rem;
     }
     .btn-generate {
@@ -431,19 +373,19 @@ export function renderVisionBoardFormPage(): string {
     }
     .result-content {
       font-family: 'Bodoni Moda', serif;
-      background: var(--bg-light);
+      background: #f8f8f8;
       border-radius: 12px;
       padding: 24px;
       white-space: pre-wrap;
       line-height: 1.9;
       font-size: 1.05rem;
-      color: var(--text-secondary);
+      color: #1a1a1a;
       margin-bottom: 24px;
-      border: 1px solid var(--border);
+      border: 1px solid #e0e0e0;
     }
     .result-note {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
+      color: #666;
       font-size: 0.95rem;
       font-style: italic;
       text-align: center;
@@ -453,8 +395,8 @@ export function renderVisionBoardFormPage(): string {
       display: block;
       width: 100%;
       background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid var(--border);
+      color: #666;
+      border: 1px solid #e0e0e0;
       padding: 14px 28px;
       font-size: 0.95rem;
       font-family: 'Bodoni Moda', serif;
@@ -463,8 +405,8 @@ export function renderVisionBoardFormPage(): string {
       transition: all 0.2s;
     }
     .btn-restart:hover {
-      background: var(--bg-light);
-      color: var(--text-primary);
+      background: #f8f8f8;
+      color: #1a1a1a;
       border-color: var(--coral);
     }
 
@@ -569,8 +511,8 @@ export function renderVisionBoardFormPage(): string {
     <!-- Start Screen -->
     <div id="startScreen" class="card start-screen">
       <div class="intro-text">
-        <p>A vision board is a powerful tool for clarity - a visual representation of the life you're creating and the person you're becoming.</p>
-        <p>This guided experience helps you envision your goals with specificity, identify the feelings you want to cultivate, and discover the aesthetic that resonates with your future self.</p>
+        <p>Answer a few questions about your goals and vision. We'll create a personalized vision board based on your answers.</p>
+        <p>Takes about 5 minutes.</p>
       </div>
 
       <div class="order-section" id="nameSection">
@@ -578,7 +520,6 @@ export function renderVisionBoardFormPage(): string {
         <input type="text" id="firstNameInput" class="order-input"
                placeholder="Enter your first name"
                maxlength="50" required>
-        <p class="order-hint">Your vision board will be personalized with your name</p>
       </div>
 
       <button class="btn-start" onclick="startSession()">Begin Personalization Experience</button>
@@ -588,15 +529,7 @@ export function renderVisionBoardFormPage(): string {
     <div id="formArea" class="form-area">
       <div id="progress" class="progress"></div>
 
-      <div id="previousAnswers" class="previous-answers">
-        <h3>What You've Shared</h3>
-        <p class="helper-text">Your vision is taking shape. As you go, you'll see your earlier answers here.</p>
-        <div id="answersList"></div>
-      </div>
-
       <div id="currentQuestion" class="current-question">
-        <div class="current-question-header">Current Question</div>
-        <div class="current-question-hint">Share as much or as little as feels right.</div>
         <div id="questionLabel" class="question-label"></div>
         <textarea
           id="answerInput"
@@ -604,20 +537,18 @@ export function renderVisionBoardFormPage(): string {
           placeholder="Type your answer here..."
           onkeydown="handleKeyDown(event)"
         ></textarea>
-        <button id="nextBtn" class="btn-next" onclick="submitAnswer()">Next</button>
+        <button id="nextBtn" class="btn-next" onclick="submitAnswer()">Continue</button>
       </div>
 
       <div id="loadingQuestion" class="loading hidden">
         <div class="spinner"></div>
-        <p>Reflecting on your vision...</p>
       </div>
     </div>
 
     <!-- Summary Screen -->
     <div id="summaryScreen" class="card summary-screen">
-      <h2>Your Vision is Taking Shape</h2>
-      <p class="body-text">You've just clarified what you want to manifest - the goals, the feelings, and the aesthetic that speaks to you.</p>
-      <p class="body-text">When you click below, we'll use what you've shared to create a personalized vision board that reflects your unique dreams.</p>
+      <h2>Ready to Create</h2>
+      <p class="body-text">Review your answers below, then click Create to generate your vision board.</p>
       <div id="summaryContent" class="summary-content"></div>
       <button class="btn-generate" onclick="generateMessage()">Create My Vision Board</button>
     </div>
@@ -636,12 +567,110 @@ export function renderVisionBoardFormPage(): string {
 
   <script>
     const API_BASE = '/api/thought-chat';
+    const STORAGE_KEY = 'visionboard_session_progress';
 
     let sessionId = null;
     let firstName = null;
     let currentQuestion = '';
     let answers = [];
     let questionCount = 0;
+
+    // Save progress to localStorage
+    function saveProgress() {
+      if (!sessionId) return;
+      const progress = {
+        sessionId,
+        firstName,
+        currentQuestion,
+        answers,
+        questionCount,
+        savedAt: Date.now()
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+    }
+
+    // Clear saved progress
+    function clearProgress() {
+      localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // Check for saved progress on page load
+    async function checkSavedProgress() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+
+      try {
+        const progress = JSON.parse(saved);
+        // Check if saved within last 2 hours
+        const twoHours = 2 * 60 * 60 * 1000;
+        if (Date.now() - progress.savedAt > twoHours) {
+          clearProgress();
+          return;
+        }
+
+        // Verify session still exists on server
+        const response = await fetch(\`\${API_BASE}/session/\${progress.sessionId}\`);
+        if (!response.ok) {
+          clearProgress();
+          return;
+        }
+
+        // Show resume prompt
+        document.getElementById('startScreen').innerHTML = \`
+          <div class="intro-text">
+            <p><strong>Welcome back!</strong> You have a session in progress with \${progress.answers.length} answer(s) saved.</p>
+          </div>
+          <button class="btn-start" onclick="resumeSession()" style="margin-bottom: 12px;">Continue Where You Left Off</button>
+          <button class="btn-restart" onclick="startFresh()">Start Fresh</button>
+        \`;
+      } catch (e) {
+        clearProgress();
+      }
+    }
+
+    // Resume saved session
+    async function resumeSession() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) {
+        location.reload();
+        return;
+      }
+
+      try {
+        const progress = JSON.parse(saved);
+
+        const response = await fetch(\`\${API_BASE}/session/\${progress.sessionId}\`);
+        if (!response.ok) {
+          clearProgress();
+          location.reload();
+          return;
+        }
+
+        sessionId = progress.sessionId;
+        firstName = progress.firstName;
+        currentQuestion = progress.currentQuestion;
+        answers = progress.answers;
+        questionCount = progress.questionCount;
+
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('formArea').classList.add('active');
+        displayQuestion();
+        updateProgress();
+
+      } catch (e) {
+        clearProgress();
+        location.reload();
+      }
+    }
+
+    // Start fresh
+    function startFresh() {
+      clearProgress();
+      location.reload();
+    }
+
+    // Check for saved progress when page loads
+    checkSavedProgress().catch(() => clearProgress());
 
     async function startSession() {
       const nameInput = document.getElementById('firstNameInput');
@@ -674,6 +703,8 @@ export function renderVisionBoardFormPage(): string {
         currentQuestion = data.firstAssistantMessage || data.message || '';
         questionCount = 1;
 
+        saveProgress();
+
         showLoading(false);
         displayQuestion();
         updateProgress();
@@ -689,23 +720,6 @@ export function renderVisionBoardFormPage(): string {
       document.getElementById('answerInput').value = '';
       document.getElementById('answerInput').focus();
       document.getElementById('currentQuestion').classList.remove('hidden');
-      updateAnswersList();
-    }
-
-    function updateAnswersList() {
-      const list = document.getElementById('answersList');
-
-      if (answers.length === 0) {
-        list.innerHTML = '<p class="no-answers">Your previous answers will appear here.</p>';
-        return;
-      }
-
-      list.innerHTML = answers.map((item, i) => \`
-        <div class="answer-pair">
-          <div class="question">\${escapeHtml(item.question)}</div>
-          <div class="answer">\${escapeHtml(item.answer)}</div>
-        </div>
-      \`).join('');
     }
 
     function updateProgress() {
@@ -733,6 +747,7 @@ export function renderVisionBoardFormPage(): string {
 
       hideError();
       answers.push({ question: currentQuestion, answer: answer });
+      saveProgress();
 
       document.getElementById('currentQuestion').classList.add('hidden');
       showLoading(true);
@@ -755,6 +770,7 @@ export function renderVisionBoardFormPage(): string {
         } else {
           currentQuestion = data.assistantMessage || data.message || '';
           questionCount++;
+          saveProgress();
           showLoading(false);
           displayQuestion();
           updateProgress();
@@ -784,7 +800,6 @@ export function renderVisionBoardFormPage(): string {
       document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.add('active');
       showLoading(true);
-      document.getElementById('previousAnswers').classList.add('hidden');
 
       try {
         const response = await fetch(\`\${API_BASE}/generate\`, {
@@ -797,6 +812,7 @@ export function renderVisionBoardFormPage(): string {
 
         const data = await response.json();
 
+        clearProgress(); // Clear progress after successful generation
         showLoading(false);
         document.getElementById('formArea').classList.remove('active');
         showResult(data.output);
@@ -832,7 +848,9 @@ export function renderVisionBoardFormPage(): string {
     }
 
     function restart() {
+      clearProgress();
       sessionId = null;
+      firstName = null;
       currentQuestion = '';
       answers = [];
       questionCount = 0;
@@ -840,7 +858,6 @@ export function renderVisionBoardFormPage(): string {
       document.getElementById('resultScreen').classList.remove('active');
       document.getElementById('summaryScreen').classList.remove('active');
       document.getElementById('formArea').classList.remove('active');
-      document.getElementById('previousAnswers').classList.remove('hidden');
       document.getElementById('startScreen').style.display = 'block';
       hideError();
     }
