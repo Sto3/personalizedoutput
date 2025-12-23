@@ -1,13 +1,14 @@
 /**
- * ISOLATED CAROUSEL JAVASCRIPT - v3.0
+ * ISOLATED CAROUSEL JAVASCRIPT - v3.1
  * Wrapped in IIFE to prevent any conflicts with other code
  * Pure vanilla JS - no dependencies
- * FORTIFIED: Prevents all accidental navigation during swipe gestures
+ * FORTIFIED: Prevents accidental navigation during horizontal swipes
+ * v3.1: Fixed to allow normal vertical page scrolling
  */
 (function() {
   'use strict';
 
-  console.log('[Carousel] Initializing isolated 3D carousel v3.0...');
+  console.log('[Carousel] Initializing isolated 3D carousel v3.1...');
 
   // Product data with launch status
   // ORDERED so Santa Message is in CENTER with Vision Board next to it
@@ -153,7 +154,7 @@
     }
 
     var isMobile = window.innerWidth <= 768;
-    console.log('[Carousel] Initializing 3D coverflow v3.0' + (isMobile ? ' (mobile)' : ' (desktop)'));
+    console.log('[Carousel] Initializing 3D coverflow v3.1' + (isMobile ? ' (mobile)' : ' (desktop)'));
 
     wrapper.innerHTML = '';
     if (dotsEl) dotsEl.innerHTML = '';
@@ -232,34 +233,42 @@
     }
 
     // ========================================
-    // FORTIFIED: Mouse wheel navigation with stronger locking
+    // FORTIFIED: Mouse wheel navigation - ONLY for horizontal swipes
+    // Allow normal vertical page scrolling to pass through
     // ========================================
     var wheelLocked = false;
-    var accumulatedDelta = 0;
-    var DELTA_THRESHOLD = 80; // Increased threshold
-    var LOCK_DURATION = 700; // Longer lock
+    var accumulatedDeltaX = 0;
+    var DELTA_THRESHOLD = 50; // Threshold for horizontal swipes
+    var LOCK_DURATION = 500;
 
     carouselContainer.addEventListener('wheel', function(e) {
-      // Always prevent default on wheel in carousel area
+      // IMPORTANT: Only intercept horizontal scrolls, let vertical scroll pass through for page scrolling
+      var isHorizontal = Math.abs(e.deltaX) > Math.abs(e.deltaY) && Math.abs(e.deltaX) > 5;
+
+      // If it's a vertical scroll (normal page scrolling), let it pass through
+      if (!isHorizontal) {
+        return; // Don't prevent default - allow normal page scroll
+      }
+
+      // Only handle horizontal swipes for carousel navigation
       e.preventDefault();
       e.stopPropagation();
 
       if (wheelLocked || isAnimating) return;
 
-      var delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      accumulatedDelta += delta;
+      accumulatedDeltaX += e.deltaX;
 
-      if (Math.abs(accumulatedDelta) >= DELTA_THRESHOLD) {
+      if (Math.abs(accumulatedDeltaX) >= DELTA_THRESHOLD) {
         wheelLocked = true;
         window._carouselInteracting = true;
 
-        if (accumulatedDelta > 0) {
+        if (accumulatedDeltaX > 0) {
           goToSlide(current + 1);
         } else {
           goToSlide(current - 1);
         }
 
-        accumulatedDelta = 0;
+        accumulatedDeltaX = 0;
 
         setTimeout(function() {
           wheelLocked = false;
@@ -487,7 +496,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] 3D carousel v3.0 initialized - FORTIFIED');
+    console.log('[Carousel] 3D carousel v3.1 initialized - vertical scroll enabled');
   }
 
   // Start when DOM is ready
