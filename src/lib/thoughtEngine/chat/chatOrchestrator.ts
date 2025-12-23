@@ -104,6 +104,22 @@ export async function continueThoughtSession(
   // 7. Call Claude API
   const assistantResponse = await callClaudeAPI(messages, systemPrompt + additionalInstruction);
 
+  // 7b. Check if Claude accidentally generated the full script (instead of just asking questions)
+  // This happens sometimes - detect it and route to generation
+  const looksLikeGeneratedScript = detectGeneratedScript(assistantResponse, session.productId);
+  if (looksLikeGeneratedScript && hasEnoughTurns) {
+    console.log('[ChatOrchestrator] Detected Claude generated script prematurely - routing to generation');
+    session.status = 'ready_for_generation';
+    await saveThoughtSession(session);
+
+    return {
+      session,
+      assistantMessage: "Perfect! Creating your message now...",
+      shouldWrapUp: true,
+      canGenerate: true
+    };
+  }
+
   // 8. Append assistant response to session
   addTurn(session, 'assistant', assistantResponse);
 
@@ -116,6 +132,31 @@ export async function continueThoughtSession(
     shouldWrapUp: shouldWrap,
     canGenerate: hasEnoughTurns
   };
+}
+
+/**
+ * Detect if Claude accidentally generated the full output instead of asking questions
+ */
+function detectGeneratedScript(response: string, productId: string): boolean {
+  const lowerResponse = response.toLowerCase();
+
+  // Santa message indicators
+  if (productId === 'santa_message') {
+    const santaIndicators = [
+      'ho ho ho',
+      "here's santa",
+      "santa's message",
+      "message for",
+      "merry christmas",
+      "santa claus here"
+    ];
+    const hasSantaContent = santaIndicators.some(ind => lowerResponse.includes(ind));
+    const isLongResponse = response.length > 300; // Scripts are usually 500+ chars
+
+    return hasSantaContent && isLongResponse;
+  }
+
+  return false;
 }
 
 /**

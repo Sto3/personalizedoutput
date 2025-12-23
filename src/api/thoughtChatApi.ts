@@ -694,7 +694,14 @@ IMPORTANT FOR OPENING:
 
 Use pronouns ${input.childGender === 'girl' ? 'she/her' : 'he/him'}.
 
-Write ONLY the script Santa will speak. No stage directions, no quotes, just the words.`;
+Write ONLY the script Santa will speak - the exact words he says out loud.
+DO NOT include:
+- Headers like "SANTA'S MESSAGE" or titles
+- Markdown formatting (no ** or ## or ---)
+- Stage directions or notes
+- Quotation marks around the script
+
+Just the words Santa speaks, starting with "Ho... ho... ho..."`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -715,7 +722,37 @@ Write ONLY the script Santa will speak. No stage directions, no quotes, just the
   }
 
   const data = await response.json() as AnthropicResponse;
-  return data.content[0].text || '';
+  let script = data.content[0].text || '';
+
+  // Clean up any markdown or formatting that slipped through
+  script = cleanSantaScript(script);
+
+  return script;
+}
+
+/**
+ * Clean Santa script of any markdown, headers, or formatting
+ */
+function cleanSantaScript(script: string): string {
+  let cleaned = script
+    // Remove markdown bold/italic
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '')
+    // Remove headers
+    .replace(/^#+\s*.*/gm, '')
+    // Remove horizontal rules
+    .replace(/^---+$/gm, '')
+    .replace(/^___+$/gm, '')
+    // Remove any "SANTA'S MESSAGE" type headers
+    .replace(/^.*SANTA'?S?\s+MESSAGE.*$/gim, '')
+    .replace(/^.*MESSAGE\s+FOR\s+\w+.*$/gim, '')
+    // Remove quotation marks at start/end
+    .replace(/^["']|["']$/g, '')
+    // Clean up extra whitespace
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return cleaned;
 }
 
 async function generatePlannerFromChat(
