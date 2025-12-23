@@ -851,12 +851,15 @@ export function renderSantaFormPage(token?: string): string {
       }
     }
 
-    function showResult(data) {
-      // API returns { script, audioUrl, ... } at top level
-      const messageText = data.script || data.message || '';
-      let audioUrl = data.audioUrl || null;
+    // Store audio blob URL globally so we can clean it up
+    let audioBlobUrl = null;
 
-      console.log('[Santa] Showing result - script:', messageText?.substring(0, 50), 'audioUrl:', audioUrl);
+    function showResult(data) {
+      // API returns { script, audioUrl/audioBase64, ... } at top level
+      const messageText = data.script || data.message || '';
+      let audioUrl = data.audioUrl || data.audioBase64 || null;
+
+      console.log('[Santa] Showing result - script:', messageText?.substring(0, 50), 'audioUrl type:', audioUrl?.substring(0, 30));
 
       // Show the script text
       const resultContent = document.getElementById('resultContent');
@@ -873,13 +876,40 @@ export function renderSantaFormPage(token?: string): string {
       const downloadBtn = document.getElementById('downloadBtn');
 
       if (audioUrl) {
-        audioElement.src = audioUrl;
-        audioPlayer.classList.remove('hidden');
-        if (downloadBtn) {
-          downloadBtn.href = audioUrl;
-          downloadBtn.download = 'santa-message.mp3';
-          downloadBtn.classList.remove('hidden');
+        // Check if it's a base64 data URL
+        if (audioUrl.startsWith('data:audio')) {
+          // Convert base64 to blob for better mobile download support
+          const base64Data = audioUrl.split(',')[1];
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const blob = new Blob([byteArray], { type: 'audio/mpeg' });
+
+          // Clean up previous blob URL if exists
+          if (audioBlobUrl) {
+            URL.revokeObjectURL(audioBlobUrl);
+          }
+          audioBlobUrl = URL.createObjectURL(blob);
+
+          audioElement.src = audioBlobUrl;
+          if (downloadBtn) {
+            downloadBtn.href = audioBlobUrl;
+            downloadBtn.download = 'santa-message.mp3';
+            downloadBtn.classList.remove('hidden');
+          }
+        } else {
+          // Regular URL
+          audioElement.src = audioUrl;
+          if (downloadBtn) {
+            downloadBtn.href = audioUrl;
+            downloadBtn.download = 'santa-message.mp3';
+            downloadBtn.classList.remove('hidden');
+          }
         }
+        audioPlayer.classList.remove('hidden');
       } else {
         audioPlayer.classList.add('hidden');
         if (downloadBtn) downloadBtn.classList.add('hidden');

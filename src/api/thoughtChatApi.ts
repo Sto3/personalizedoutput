@@ -476,6 +476,7 @@ router.get('/health', (req: Request, res: Response) => {
 async function generateSantaFromSession(session: any, orderId?: string): Promise<{
   script: string;
   audioUrl?: string;
+  audioBase64?: string;
   warnings?: string[];
   jobId?: string;
 }> {
@@ -507,6 +508,7 @@ async function generateSantaFromSession(session: any, orderId?: string): Promise
 
   // Generate audio if possible
   let audioUrl: string | undefined;
+  let audioBase64: string | undefined;
   let jobId: string | undefined;
 
   if (canGenerateAudio()) {
@@ -515,22 +517,28 @@ async function generateSantaFromSession(session: any, orderId?: string): Promise
     if (ttsResult.success && ttsResult.audioBuffer) {
       recordAudioGeneration(finalScript.length);
 
-      const outputDir = path.join(process.cwd(), 'outputs', 'santa');
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
+      // Return audio as base64 data URL (survives deploys, no filesystem dependency)
+      audioBase64 = `data:audio/mpeg;base64,${ttsResult.audioBuffer.toString('base64')}`;
+      audioUrl = audioBase64; // For backwards compatibility
+
+      // Also save to filesystem for debugging/backup (optional, may be lost on deploy)
+      try {
+        const outputDir = path.join(process.cwd(), 'outputs', 'santa');
+        if (!fs.existsSync(outputDir)) {
+          fs.mkdirSync(outputDir, { recursive: true });
+        }
+        const filenameBase = orderId || input.childFirstName.toLowerCase();
+        const audioFilename = `santa-chat-${filenameBase}-${Date.now()}.mp3`;
+        const filepath = path.join(outputDir, audioFilename);
+        fs.writeFileSync(filepath, ttsResult.audioBuffer);
+        console.log(`[ThoughtChat API] Audio also saved to: ${filepath}`);
+      } catch (fsError) {
+        console.log(`[ThoughtChat API] Could not save audio to filesystem (OK on Render): ${fsError}`);
       }
-
-      // Use orderId in filename if available
-      const filenameBase = orderId || input.childFirstName.toLowerCase();
-      const audioFilename = `santa-chat-${filenameBase}-${Date.now()}.mp3`;
-      const filepath = path.join(outputDir, audioFilename);
-      fs.writeFileSync(filepath, ttsResult.audioBuffer);
-
-      audioUrl = `/outputs/santa/${audioFilename}`;
 
       // Mark order as used after successful audio generation
       if (orderId) {
-        const usageRecord = markOrderIdUsed(orderId, 'santa_message', 'audio', audioFilename);
+        const usageRecord = markOrderIdUsed(orderId, 'santa_message', 'audio', `base64-${Date.now()}.mp3`);
         jobId = usageRecord.jobId;
         console.log(`[ThoughtChat API] Order marked as used: ${orderId} (job: ${jobId})`);
       }
@@ -545,6 +553,7 @@ async function generateSantaFromSession(session: any, orderId?: string): Promise
   return {
     script: finalScript,
     audioUrl,
+    audioBase64,
     warnings: warnings.length > 0 ? warnings : undefined,
     jobId
   };

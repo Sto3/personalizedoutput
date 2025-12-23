@@ -7,6 +7,11 @@
 
 import axios, { AxiosError } from 'axios';
 import { logTTSComplete, logError } from './analyticsLogger';
+import {
+  SANTA_VOICE_SETTINGS as OPTIMIZED_VOICE_SETTINGS,
+  SANTA_MODEL_CONFIG,
+  preprocessSantaScript
+} from './voiceSettings';
 
 // ============================================================
 // CONFIGURATION
@@ -23,11 +28,8 @@ export const TTS_CONFIG = {
 
 export const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 
-export const SANTA_VOICE_SETTINGS = {
-  stability: 0.68,
-  similarity_boost: 0.82,
-  style: 0.32
-};
+// Use the optimized/perfected voice settings from voiceSettings.ts
+export const SANTA_VOICE_SETTINGS = OPTIMIZED_VOICE_SETTINGS;
 
 // ============================================================
 // TYPES
@@ -238,6 +240,11 @@ export async function synthesizeSantaMessageWithRetry(
         console.log(`TTS retry attempt ${attempt}/${TTS_CONFIG.maxRetries}...`);
       }
 
+      // Preprocess the script for better Santa delivery
+      const processedText = preprocessSantaScript(text);
+
+      console.log(`[TTS] Using optimized settings: model=${SANTA_MODEL_CONFIG.model_id}, stability=${SANTA_VOICE_SETTINGS.stability}, style=${SANTA_VOICE_SETTINGS.style}`);
+
       const response = await axios({
         method: 'POST',
         url: `${ELEVENLABS_API_URL}/text-to-speech/${voiceId}`,
@@ -247,9 +254,9 @@ export async function synthesizeSantaMessageWithRetry(
           'xi-api-key': apiKey
         },
         data: {
-          text,
-          model_id: 'eleven_monolingual_v1',
-          voice_settings: SANTA_VOICE_SETTINGS
+          text: processedText,
+          model_id: SANTA_MODEL_CONFIG.model_id, // eleven_multilingual_v2
+          voice_settings: SANTA_VOICE_SETTINGS   // Optimized warm Santa settings
         },
         responseType: 'arraybuffer',
         timeout: TTS_CONFIG.timeoutMs
