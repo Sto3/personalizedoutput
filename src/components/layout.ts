@@ -288,10 +288,10 @@ export function renderNavigation(options: NavOptions = {}): string {
           <a href="/pricing" class="nav-link ${currentPage === 'pricing' ? 'active' : ''}">Pricing</a>
           <a href="/blog" class="nav-link ${currentPage === 'blog' ? 'active' : ''}">Blog</a>
 
-          <!-- Email Signup Dropdown -->
+          <!-- Sign Up Dropdown -->
           <div class="nav-dropdown nav-newsletter-dropdown" id="email-signup-dropdown">
             <button class="nav-link nav-link-dropdown" id="email-signup-btn" type="button">
-              Email Signup
+              Sign Up
               <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                 <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
               </svg>
@@ -302,7 +302,7 @@ export function renderNavigation(options: NavOptions = {}): string {
                 <p>Get early access, exclusive offers & product updates</p>
                 <form class="nav-newsletter-form" id="nav-newsletter-form">
                   <input type="email" name="email" placeholder="your@email.com" required class="nav-newsletter-input" autocomplete="email">
-                  <button type="submit" class="nav-newsletter-btn">Sign Up</button>
+                  <button type="submit" class="nav-newsletter-btn">Join</button>
                 </form>
                 <p class="newsletter-privacy-note">No spam, unsubscribe anytime</p>
               </div>
@@ -718,16 +718,20 @@ export function getNavigationStyles(): string {
       padding: 14px 24px;
       border-radius: 10px;
       border: none;
-      background: var(--gradient-primary);
-      color: white;
+      background: linear-gradient(135deg, #E85A4F 0%, #E85A6B 100%) !important;
+      color: white !important;
       font-weight: 600;
       font-size: 1rem;
       cursor: pointer;
-      transition: all var(--transition-normal);
+      transition: all 0.2s ease;
+      display: block;
+      width: 100%;
+      text-align: center;
     }
     .nav-newsletter-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(232, 90, 107, 0.35);
+      background: linear-gradient(135deg, #d64a3f 0%, #d64a5b 100%) !important;
     }
     .nav-newsletter-btn:active {
       transform: translateY(0);
@@ -1250,7 +1254,7 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
             if (!email) return;
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Signing up...';
+            submitBtn.textContent = 'Joining...';
 
             try {
               const response = await fetch('/api/subscribe', {
@@ -1265,7 +1269,7 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
                 submitBtn.textContent = 'You\\'re in!';
                 submitBtn.style.background = '#22c55e';
                 setTimeout(() => {
-                  submitBtn.textContent = 'Sign Up';
+                  submitBtn.textContent = 'Join';
                   submitBtn.style.background = '';
                   submitBtn.disabled = false;
                   // Close dropdown after success
@@ -1275,7 +1279,7 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
                 submitBtn.textContent = 'Try again';
                 submitBtn.style.background = '#ef4444';
                 setTimeout(() => {
-                  submitBtn.textContent = 'Sign Up';
+                  submitBtn.textContent = 'Join';
                   submitBtn.style.background = '';
                   submitBtn.disabled = false;
                 }, 3000);
@@ -1284,7 +1288,7 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
               submitBtn.textContent = 'Try again';
               submitBtn.style.background = '#ef4444';
               setTimeout(() => {
-                submitBtn.textContent = 'Sign Up';
+                submitBtn.textContent = 'Join';
                 submitBtn.style.background = '';
                 submitBtn.disabled = false;
               }, 3000);
