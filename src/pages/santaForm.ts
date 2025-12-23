@@ -241,9 +241,11 @@ export function renderSantaFormPage(token?: string): string {
       cursor: not-allowed;
     }
 
-    /* Summary screen */
+    /* Summary screen - white */
     .summary-screen {
       display: none;
+      background: #ffffff;
+      border: none;
     }
     .summary-screen.active {
       display: block;
@@ -254,11 +256,11 @@ export function renderSantaFormPage(token?: string): string {
       font-weight: 400;
       text-align: center;
       margin-bottom: 16px;
-      color: var(--text-primary);
+      color: #1a1a1a;
     }
     .body-text {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-secondary);
+      color: #555;
       text-align: center;
       margin-bottom: 12px;
       line-height: 1.8;
@@ -269,21 +271,21 @@ export function renderSantaFormPage(token?: string): string {
       overflow-y: auto;
     }
     .summary-item {
-      background: rgba(255,255,255,0.02);
+      background: #f5f5f5;
       border-radius: 8px;
       padding: 16px;
       margin-bottom: 12px;
-      border: 1px solid var(--border);
+      border: 1px solid #e0e0e0;
     }
     .summary-item .q {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-muted);
+      color: #888;
       font-size: 0.9rem;
       margin-bottom: 8px;
     }
     .summary-item .a {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-primary);
+      color: #1a1a1a;
       font-size: 1rem;
     }
     .btn-generate {
@@ -305,9 +307,11 @@ export function renderSantaFormPage(token?: string): string {
       transform: translateY(-1px);
     }
 
-    /* Result screen */
+    /* Result screen - white */
     .result-screen {
       display: none;
+      background: #ffffff;
+      border: none;
     }
     .result-screen.active {
       display: block;
@@ -322,45 +326,46 @@ export function renderSantaFormPage(token?: string): string {
     }
     .result-content {
       font-family: 'Bodoni Moda', serif;
-      background: rgba(255,255,255,0.03);
+      background: #f5f5f5;
       border-radius: 12px;
       padding: 24px;
       white-space: pre-wrap;
       line-height: 1.9;
-      font-size: 1.05rem;
-      color: var(--text-secondary);
+      font-size: 1rem;
+      color: #333;
       margin-bottom: 24px;
-      border: 1px solid var(--border);
+      border: 1px solid #e0e0e0;
     }
     .audio-player {
-      background: rgba(232, 90, 79, 0.08);
+      background: #f8f8f8;
       border-radius: 12px;
       padding: 24px;
       margin-bottom: 24px;
       text-align: center;
-      border: 1px solid rgba(232, 90, 79, 0.2);
-    }
-    .audio-player h4 {
-      font-family: 'Bodoni Moda', serif;
-      color: var(--coral);
-      margin-bottom: 16px;
-      font-size: 1rem;
-      font-weight: 400;
+      border: 1px solid #e0e0e0;
     }
     .audio-player audio {
       width: 100%;
-      max-width: 400px;
+      margin-bottom: 16px;
     }
-    .result-note {
-      color: var(--text-muted);
-      font-size: 0.9rem;
-      font-style: italic;
-      text-align: center;
-      margin-bottom: 24px;
+    .btn-download {
+      display: inline-block;
+      background: var(--coral);
+      color: #fff;
+      text-decoration: none;
+      padding: 14px 28px;
+      border-radius: 8px;
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+    .btn-download:hover {
+      background: var(--coral-light);
+      transform: translateY(-1px);
     }
     .tag-us-cta {
-      background: linear-gradient(135deg, rgba(232, 90, 79, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
-      border: 1px solid rgba(232, 90, 79, 0.2);
+      background: #f8f8f8;
+      border: 1px solid #e0e0e0;
       border-radius: 12px;
       padding: 20px;
       text-align: center;
@@ -370,12 +375,12 @@ export function renderSantaFormPage(token?: string): string {
       font-family: 'Bodoni Moda', serif;
       font-size: 1.1rem;
       font-weight: 400;
-      color: var(--text-primary);
+      color: #1a1a1a;
       margin-bottom: 8px;
     }
     .tag-us-text {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-secondary);
+      color: #666;
       font-size: 0.95rem;
       margin-bottom: 12px;
     }
@@ -390,8 +395,8 @@ export function renderSantaFormPage(token?: string): string {
       display: block;
       width: 100%;
       background: transparent;
-      color: var(--text-secondary);
-      border: 1px solid var(--border);
+      color: #666;
+      border: 1px solid #ddd;
       padding: 14px 28px;
       font-size: 0.95rem;
       font-family: inherit;
@@ -400,8 +405,8 @@ export function renderSantaFormPage(token?: string): string {
       transition: all 0.2s;
     }
     .btn-restart:hover {
-      background: rgba(255,255,255,0.05);
-      color: var(--text-primary);
+      background: #f5f5f5;
+      color: #333;
     }
 
     /* Loading state */
@@ -540,13 +545,14 @@ export function renderSantaFormPage(token?: string): string {
 
     <!-- Result Screen -->
     <div id="resultScreen" class="card result-screen">
-      <h2>Your Personalized Santa Experience is Ready</h2>
-      <div id="resultContent" class="result-content"></div>
+      <h2>Your Santa Message is Ready!</h2>
+
       <div id="audioPlayer" class="audio-player hidden">
-        <h4>Listen to the Message</h4>
-        <audio id="audioElement" controls></audio>
+        <audio id="audioElement" controls style="width: 100%;"></audio>
+        <a id="downloadBtn" class="btn-download hidden" href="#" download="santa-message.mp3">Download Audio File</a>
       </div>
-      <p class="result-note">This is your final digital file. Check your email for the download link.</p>
+
+      <div id="resultContent" class="result-content"></div>
 
       <div class="tag-us-cta">
         <p class="tag-us-title">We'd love to see the reaction!</p>
@@ -769,9 +775,9 @@ export function renderSantaFormPage(token?: string): string {
         const data = await response.json();
 
         if (data.status === 'ready_for_generation') {
-          showLoading(false);
-          document.getElementById('formArea').classList.remove('active');
-          showSummary();
+          // Skip review - go straight to generation
+          generateMessage();
+          return;
         } else {
           currentQuestion = data.assistantMessage || data.message || '';
           questionCount++;
@@ -824,52 +830,55 @@ export function renderSantaFormPage(token?: string): string {
         }
 
         const data = await response.json();
+        console.log('[Santa] Generation response:', data);
 
         showLoading(false);
         document.getElementById('formArea').classList.remove('active');
-        showResult(data.output);
+        showResult(data);
 
       } catch (err) {
         showError(err.message);
         showLoading(false);
-        document.getElementById('summaryScreen').classList.add('active');
         document.getElementById('formArea').classList.remove('active');
       }
     }
 
-    function showResult(output) {
-      let messageText = '';
-      let audioUrl = null;
+    function showResult(data) {
+      // API returns { script, audioUrl, ... } at top level
+      const messageText = data.script || data.message || '';
+      let audioUrl = data.audioUrl || null;
 
-      if (typeof output === 'string') {
-        messageText = output;
-      } else if (typeof output === 'object') {
-        messageText = output.messageText || output.script || output.message || output.text || '';
-        audioUrl = output.audioUrl || output.audioPath || output.audio || null;
+      console.log('[Santa] Showing result - script:', messageText?.substring(0, 50), 'audioUrl:', audioUrl);
 
-        if (audioUrl && !audioUrl.startsWith('http') && !audioUrl.startsWith('/')) {
-          audioUrl = '/outputs/' + audioUrl;
-        }
-
-        if (!messageText) {
-          messageText = JSON.stringify(output, null, 2);
-        }
+      // Show the script text
+      const resultContent = document.getElementById('resultContent');
+      if (messageText) {
+        resultContent.textContent = messageText;
+        resultContent.style.display = 'block';
+      } else {
+        resultContent.style.display = 'none';
       }
 
-      document.getElementById('resultContent').textContent = messageText;
-
+      // Handle audio player and download
       const audioPlayer = document.getElementById('audioPlayer');
       const audioElement = document.getElementById('audioElement');
+      const downloadBtn = document.getElementById('downloadBtn');
 
       if (audioUrl) {
         audioElement.src = audioUrl;
         audioPlayer.classList.remove('hidden');
+        if (downloadBtn) {
+          downloadBtn.href = audioUrl;
+          downloadBtn.download = 'santa-message.mp3';
+          downloadBtn.classList.remove('hidden');
+        }
       } else {
         audioPlayer.classList.add('hidden');
+        if (downloadBtn) downloadBtn.classList.add('hidden');
       }
 
       document.getElementById('resultScreen').classList.add('active');
-      clearProgress(); // Clear saved progress on success
+      clearProgress();
     }
 
     function restart() {
