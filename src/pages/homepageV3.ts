@@ -38,7 +38,7 @@ export function renderPremiumHomepageV3(): string {
       id: 'vision-board',
       name: 'Custom Vision Board',
       icon: '🎯',
-      description: 'A beautiful, AI-generated vision board that visualizes YOUR specific dreams, goals, and aspirations for 2025.',
+      description: 'A beautiful, AI-generated vision board that visualizes YOUR specific dreams, goals, and aspirations for 2026.',
       href: '/vision-board',
       price: 14,
       tag: 'New Year Ready',

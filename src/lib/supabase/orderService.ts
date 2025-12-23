@@ -54,7 +54,7 @@ export interface ProductSubcategory {
 }
 
 export const VISION_BOARD_SUBCATEGORIES: ProductSubcategory[] = [
-  { id: 'new_year_2025', name: 'New Year 2025 Goals', description: 'Manifest your best year yet', parentProduct: 'vision_board', suggestedTitle: "{name}'s 2025 Vision" },
+  { id: 'new_year_2026', name: 'New Year 2026 Goals', description: 'Manifest your best year yet', parentProduct: 'vision_board', suggestedTitle: "{name}'s 2026 Vision" },
   { id: 'birthday', name: 'Birthday Vision Board', description: 'Celebrate your new chapter', parentProduct: 'vision_board', suggestedTitle: "{name}'s Birthday Vision" },
   { id: 'relationship', name: 'Relationship Goals', description: 'Visualize your ideal partnership', parentProduct: 'vision_board', suggestedTitle: "{name}'s Love Vision" },
   { id: 'career_levelup', name: 'Career Level-Up', description: 'Climb to the next level professionally', parentProduct: 'vision_board', suggestedTitle: "{name}'s Career Level-Up" },
@@ -63,7 +63,7 @@ export const VISION_BOARD_SUBCATEGORIES: ProductSubcategory[] = [
   { id: 'health_wellness', name: 'Health & Wellness', description: 'Your healthiest self awaits', parentProduct: 'vision_board', suggestedTitle: "{name}'s Wellness Vision" },
   { id: 'one_month_reset', name: '1-Month Reset', description: 'Focused transformation in 30 days', parentProduct: 'vision_board', suggestedTitle: "{name}'s 30-Day Reset" },
   { id: 'one_week_motivation', name: '1-Week Motivation', description: 'Quick boost to crush this week', parentProduct: 'vision_board', suggestedTitle: "{name}'s Power Week" },
-  { id: 'glow_up', name: 'Glow-Up Board', description: 'Your complete transformation vision', parentProduct: 'vision_board', suggestedTitle: "{name}'s 2025 Glow-Up" },
+  { id: 'glow_up', name: 'Glow-Up Board', description: 'Your complete transformation vision', parentProduct: 'vision_board', suggestedTitle: "{name}'s 2026 Glow-Up" },
   { id: 'financial', name: 'Financial Goals', description: 'Build your wealth vision', parentProduct: 'vision_board', suggestedTitle: "{name}'s Money Vision" },
   { id: 'self_love', name: 'Self-Love Board', description: 'Celebrate and nurture yourself', parentProduct: 'vision_board', suggestedTitle: "{name}'s Self-Love Vision" },
   { id: 'general', name: 'General Vision Board', description: 'For any vision or goal not listed above', parentProduct: 'vision_board', suggestedTitle: "{name}'s Vision Board" },

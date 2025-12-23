@@ -219,11 +219,11 @@ export function renderPricingPageNew(): string {
               <div class="price-amount">$18</div>
               <ul class="price-features">
                 <li>Year review guide</li>
-                <li>2025 planning tools</li>
+                <li>2026 planning tools</li>
                 <li>Custom intentions</li>
                 <li>Audio companion</li>
               </ul>
-              <a href="/new-year-reset" class="btn btn-secondary">Plan 2025</a>
+              <a href="/new-year-reset" class="btn btn-secondary">Plan 2026</a>
             </div>
 
             <!-- Planning Products -->
