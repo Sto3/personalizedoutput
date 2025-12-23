@@ -39,7 +39,10 @@ export const WARM_SANTA_SETTINGS = {
   similarity_boost: 0.82,
 
   // Moderate style for warmth without theatrics
-  style: 0.32
+  style: 0.32,
+
+  // Speaker boost for clarity
+  use_speaker_boost: true
 };
 
 // ============================================================

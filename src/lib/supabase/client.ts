@@ -105,8 +105,8 @@ export interface Order {
   user_id?: string;
   etsy_order_id?: string;
   product_type: string;
-  source: 'etsy' | 'subscription' | 'referral_reward';
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  source: 'etsy' | 'subscription' | 'referral_reward' | 'website';
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'paid' | 'refunded';
   input_data?: Record<string, unknown>;
   output_url?: string;
   output_metadata?: Record<string, unknown>;

@@ -94,19 +94,22 @@ router.post('/create', async (req: Request, res: Response) => {
       console.log(`[Checkout] VIP bypass for ${email} - ${product.name}`);
 
       // Create order directly (simulates what webhook does)
-      const order = await createOrder({
-        product_id: productId,
-        customer_email: email!,
-        status: 'paid',
-        stripe_session_id: `vip_${Date.now()}`,
-        amount: 0, // Free for VIP
-        metadata: { vip: true, originalPrice: product.price }
+      const { order, error: orderError } = await createOrder({
+        productType: productId,
+        source: 'website',
+        email: email!,
+        inputData: {
+          stripeSessionId: `vip_${Date.now()}`,
+          amountPaid: 0,
+          vip: true,
+          originalPrice: product.price,
+        },
       });
 
-      if (order) {
+      if (order && !orderError) {
         // Add to email list
         try {
-          await addToEmailList(email!, productId);
+          await addToEmailList(email!, 'website_purchase', [productId]);
         } catch (e) {
           console.error('[Checkout] VIP - Failed to add to email list:', e);
         }
@@ -350,14 +353,15 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
         return res.status(404).json({ error: 'VIP order not found' });
       }
 
-      const product = PRODUCTS[order.product_id as ProductType];
+      const product = PRODUCTS[order.product_type as ProductType];
+      const customerEmail = order.output_metadata?.email as string | undefined;
 
       return res.json({
         status: 'paid',
-        productId: order.product_id,
+        productId: order.product_type,
         productName: product?.name || 'Unknown Product',
         productSlug: product?.slug,
-        customerEmail: order.customer_email,
+        customerEmail,
         amountTotal: 0,
         currency: 'usd',
         vip: true

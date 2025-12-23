@@ -313,7 +313,6 @@ export function renderNavigation(options: NavOptions = {}): string {
             </div>
           </div>
 
-          <a href="/login" class="nav-link ${currentPage === 'login' ? 'active' : ''}">Login</a>
           <a href="/demo-lessons" class="nav-cta">Listen to Demos/Samples</a>
         </div>
 
@@ -336,7 +335,6 @@ export function renderNavigation(options: NavOptions = {}): string {
         <a href="/products" class="mobile-link">Products</a>
         <a href="/how-it-works" class="mobile-link">How It Works</a>
         <a href="/blog" class="mobile-link">Blog</a>
-        <a href="/login" class="mobile-link">Login</a>
         <a href="/demo-lessons" class="mobile-cta">Listen to Demos/Samples</a>
 
         <!-- Mobile Email Signup -->

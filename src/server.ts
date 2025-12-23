@@ -23,6 +23,8 @@ import plannerApi from './api/plannerApi';
 import thoughtChatApi from './api/thoughtChatApi';
 import referralApi from './api/referralApi';
 import checkoutApi from './api/checkoutApi';
+import refundApi from './api/refundApi';
+import { renderRefundPage } from './pages/refund';
 import supportReplyApi from './api/supportReplyApi';
 
 // Import token store for order-based access control
@@ -1483,6 +1485,9 @@ app.use('/api/referral', referralApi);
 // Checkout API (Direct product purchases via Stripe)
 app.use('/api/checkout', checkoutApi);
 
+// Refund API (automatic refund processing)
+app.use('/api/refund', refundApi);
+
 // Support email reply API (admin only)
 app.use('/api/support', supportReplyApi);
 
@@ -1524,6 +1529,14 @@ app.get('/login', (req, res) => {
   const redirectTo = req.query.redirect as string | undefined;
   const success = req.query.success === '1';
   res.send(renderLoginPage(error, redirectTo, success));
+});
+
+// Refund request page
+app.get('/refund', (req, res) => {
+  trackEvent('page', 'refund');
+  const orderId = req.query.order as string | undefined;
+  const email = req.query.email as string | undefined;
+  res.send(renderRefundPage(orderId, email));
 });
 
 // Signup page (new auth-based signup, different from email list signup)

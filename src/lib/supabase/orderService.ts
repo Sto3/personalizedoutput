@@ -311,6 +311,28 @@ export async function failOrder(orderId: string, reason: string): Promise<boolea
   return true;
 }
 
+/**
+ * Update order status (generic)
+ */
+export async function updateOrderStatus(orderId: string, status: string): Promise<boolean> {
+  if (!isSupabaseServiceConfigured()) return false;
+
+  const supabase = getSupabaseServiceClient();
+
+  const { error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('id', orderId);
+
+  if (error) {
+    console.error('[OrderService] Error updating order status:', error);
+    return false;
+  }
+
+  console.log(`[OrderService] Order ${orderId} status updated to: ${status}`);
+  return true;
+}
+
 // ============================================================
 // ORDER RETRIEVAL
 // ============================================================

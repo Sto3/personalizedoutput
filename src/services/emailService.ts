@@ -247,6 +247,15 @@ export async function sendPurchaseConfirmation(
                 <strong style="color: ${COLORS.cream};">What happens next?</strong><br>
                 You'll receive another email with your personalized content once it's ready. This usually takes just a few minutes!
               </p>
+
+              <hr style="border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 32px 0;">
+
+              <p style="margin: 0; font-size: 13px; color: ${COLORS.textMuted}; line-height: 1.6; text-align: center;">
+                Need a refund? No questions asked.<br>
+                <a href="${SITE_URL}/refund?order=${orderDetails.orderId}&email=${encodeURIComponent(email)}" style="color: ${COLORS.coral}; text-decoration: underline;">
+                  Request a refund
+                </a>
+              </p>
             </td>
           </tr>`;
 
