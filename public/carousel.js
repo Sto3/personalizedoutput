@@ -24,8 +24,8 @@
   // Santa Message is at index 3 (center of 7 products)
   const SANTA_INDEX = 3;
 
-  // Position configurations for 3D coverflow effect (desktop only)
-  const positions = {
+  // Position configurations for 3D coverflow effect - DESKTOP
+  const desktopPositions = {
     'center':  { tx: 0,    tz: 0,    ry: 0,   scale: 1,    opacity: 1,   zIndex: 10 },
     'left-1':  { tx: -200, tz: -120, ry: 25,  scale: 0.85, opacity: 0.7, zIndex: 5 },
     'left-2':  { tx: -350, tz: -220, ry: 35,  scale: 0.7,  opacity: 0.4, zIndex: 3 },
@@ -35,6 +35,21 @@
     'right-3': { tx: 450,  tz: -300, ry: -40, scale: 0.55, opacity: 0.2, zIndex: 1 },
     'hidden':  { tx: 0,    tz: -400, ry: 0,   scale: 0.3,  opacity: 0,   zIndex: 0 }
   };
+
+  // Position configurations for 3D coverflow effect - MOBILE (tighter spacing)
+  const mobilePositions = {
+    'center':  { tx: 0,    tz: 0,    ry: 0,   scale: 1,    opacity: 1,   zIndex: 10 },
+    'left-1':  { tx: -130, tz: -80,  ry: 30,  scale: 0.75, opacity: 0.5, zIndex: 5 },
+    'left-2':  { tx: -200, tz: -150, ry: 40,  scale: 0.55, opacity: 0.25, zIndex: 3 },
+    'left-3':  { tx: -250, tz: -200, ry: 45,  scale: 0.4,  opacity: 0.1, zIndex: 1 },
+    'right-1': { tx: 130,  tz: -80,  ry: -30, scale: 0.75, opacity: 0.5, zIndex: 5 },
+    'right-2': { tx: 200,  tz: -150, ry: -40, scale: 0.55, opacity: 0.25, zIndex: 3 },
+    'right-3': { tx: 250,  tz: -200, ry: -45, scale: 0.4,  opacity: 0.1, zIndex: 1 },
+    'hidden':  { tx: 0,    tz: -300, ry: 0,   scale: 0.3,  opacity: 0,   zIndex: 0 }
+  };
+
+  // Use mobile or desktop positions based on screen width
+  let positions = window.innerWidth <= 768 ? mobilePositions : desktopPositions;
 
   // Start with Santa Message centered
   let current = SANTA_INDEX;
