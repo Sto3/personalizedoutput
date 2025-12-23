@@ -329,19 +329,12 @@ export function renderNavigation(options: NavOptions = {}): string {
         <button class="mobile-close-btn" aria-label="Close menu">&times;</button>
       </div>
       <div class="mobile-menu-links">
+        <a href="/#products" class="mobile-link">Products</a>
         <a href="/how-it-works" class="mobile-link">How It Works</a>
-        <div class="mobile-submenu">
-          <div class="mobile-submenu-header">Products</div>
-          ${Object.values(PRODUCTS).filter(p => p.isActive).map(p => {
-            const isLaunched = LAUNCHED_PRODUCTS.includes(p.id);
-            const link = isLaunched ? `/${p.slug}` : '/coming-soon';
-            const badge = isLaunched ? '' : ' <span class="mobile-soon">Soon</span>';
-            return `<a href="${link}" class="mobile-submenu-link">${p.name}${badge}</a>`;
-          }).join('')}
-        </div>
         <a href="/pricing" class="mobile-link">Pricing</a>
         <a href="/blog" class="mobile-link">Blog</a>
         <a href="/login" class="mobile-link">Login</a>
+        <a href="/demo-lessons" class="mobile-cta">Listen to Demos</a>
 
         <!-- Mobile Email Signup -->
         <div class="mobile-signup-section">
@@ -352,8 +345,6 @@ export function renderNavigation(options: NavOptions = {}): string {
             <button type="submit" class="mobile-signup-btn">Join</button>
           </form>
         </div>
-
-        <a href="/demo-lessons" class="mobile-cta">Listen to Demos</a>
       </div>
     </div>
   `;
@@ -910,63 +901,64 @@ export function getNavigationStyles(): string {
       transition: all var(--transition-normal);
     }
 
-    /* Mobile Email Signup Section */
+    /* Mobile Email Signup Section - Dark background friendly */
     .mobile-signup-section {
-      margin: 24px 0;
-      padding: 24px;
-      background: rgba(124, 58, 237, 0.08);
+      margin: 24px 0 8px 0;
+      padding: 20px;
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 16px;
-      border: 1px solid rgba(124, 58, 237, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
     .mobile-signup-header {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.25rem;
+      font-size: 1.15rem;
       font-weight: 600;
-      color: var(--text-primary);
-      margin-bottom: 8px;
+      color: white;
+      margin-bottom: 6px;
     }
     .mobile-signup-text {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-bottom: 16px;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 14px;
     }
     .mobile-signup-form {
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
     }
     .mobile-signup-input {
-      padding: 16px;
-      border-radius: 12px;
-      border: 2px solid var(--border-light);
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
       font-size: 1rem;
       width: 100%;
-      background: white;
+      background: rgba(255, 255, 255, 0.95);
+      color: #1a1a1a;
       transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .mobile-signup-input::placeholder {
+      color: #888;
     }
     .mobile-signup-input:focus {
       outline: none;
-      border-color: #7C3AED;
-      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.15);
+      border-color: #E85A4F;
+      box-shadow: 0 0 0 3px rgba(232, 90, 79, 0.3);
     }
     .mobile-signup-btn {
-      padding: 16px 24px;
-      border-radius: 12px;
+      padding: 14px 24px;
+      border-radius: 10px;
       border: none;
       background: linear-gradient(135deg, #E85A4F 0%, #E85A6B 100%);
       color: white;
       font-weight: 600;
-      font-size: 1.1rem;
+      font-size: 1rem;
       cursor: pointer;
       transition: all 0.2s ease;
       width: 100%;
     }
-    .mobile-signup-btn:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(232, 90, 107, 0.35);
-    }
     .mobile-signup-btn:active {
-      transform: translateY(0);
+      transform: scale(0.98);
+      opacity: 0.9;
     }
 
     body.menu-open {
