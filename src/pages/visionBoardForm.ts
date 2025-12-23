@@ -760,8 +760,6 @@ export function renderVisionBoardFormPage(): string {
 
       const generatingMessage = \`
         <strong>Creating Your Vision Board</strong>
-        We're generating 12 unique images just for you.<br>
-        This typically takes 2-3 minutes.
         <small>Please don't refresh or close this page.</small>
       \`;
       showLoading(true, generatingMessage);
