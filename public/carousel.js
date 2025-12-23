@@ -95,54 +95,10 @@
     }
 
     // ========================================
-    // MOBILE MODE — Simple horizontal scroll
+    // UNIFIED 3D CAROUSEL — Works on all devices
     // ========================================
     var isMobile = window.innerWidth <= 768;
-
-    if (isMobile) {
-      console.log('[Carousel] Mobile mode - horizontal scroll');
-
-      // Render all cards in a simple row
-      var html = '';
-      for (var i = 0; i < products.length; i++) {
-        var p = products[i];
-        var cardLink = p.launched ? '/' + p.slug : '/coming-soon';
-        var comingSoonBadge = p.launched ? '' : '<span class="coming-soon-badge">Coming Soon</span>';
-
-        html += '<a href="' + cardLink + '" class="carousel-card">' +
-          '<div class="carousel-card-content">' +
-            comingSoonBadge +
-            '<span class="card-badge">' + p.badge + '</span>' +
-            '<div class="card-icon">' + p.icon + '</div>' +
-            '<h3 class="card-title">' + p.title + '</h3>' +
-            '<p class="card-desc">' + p.desc + '</p>' +
-            '<div class="card-footer">' +
-              '<span class="card-price">' + p.price + '</span>' +
-              '<span class="card-cta">Get Started →</span>' +
-            '</div>' +
-          '</div>' +
-        '</a>';
-      }
-      wrapper.innerHTML = html;
-
-      // Hide dots on mobile
-      if (dotsEl) dotsEl.style.display = 'none';
-
-      // Scroll to Santa Message (index 3) initially on mobile
-      setTimeout(function() {
-        var cardWidth = 280 + 16; // card width + gap
-        var santaScroll = SANTA_INDEX * cardWidth - (wrapper.offsetWidth / 2) + (280 / 2);
-        wrapper.scrollLeft = Math.max(0, santaScroll);
-      }, 100);
-
-      console.log('[Carousel] Mobile mode initialized');
-      return;
-    }
-
-    // ========================================
-    // DESKTOP MODE — Full 3D coverflow
-    // ========================================
-    console.log('[Carousel] Desktop mode - 3D coverflow');
+    console.log('[Carousel] Initializing 3D coverflow' + (isMobile ? ' (mobile)' : ' (desktop)'));
 
     wrapper.innerHTML = '';
     if (dotsEl) dotsEl.innerHTML = '';
@@ -231,16 +187,38 @@
       if (e.key === 'ArrowRight') goToSlide(current + 1);
     });
 
-    // Touch swipe support for desktop (tablets)
+    // Touch swipe support - works on all devices
     var touchStartX = 0;
+    var touchStartY = 0;
+    var isSwiping = false;
+
     wrapper.parentElement.addEventListener('touchstart', function(e) {
       touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
+      isSwiping = true;
     }, { passive: true });
 
+    wrapper.parentElement.addEventListener('touchmove', function(e) {
+      if (!isSwiping) return;
+
+      // Check if horizontal swipe (prevent vertical scroll interference)
+      var diffX = Math.abs(e.touches[0].clientX - touchStartX);
+      var diffY = Math.abs(e.touches[0].clientY - touchStartY);
+
+      if (diffX > diffY && diffX > 10) {
+        e.preventDefault(); // Prevent page scroll during horizontal swipe
+      }
+    }, { passive: false });
+
     wrapper.parentElement.addEventListener('touchend', function(e) {
+      if (!isSwiping) return;
+      isSwiping = false;
+
       var touchEndX = e.changedTouches[0].clientX;
       var diff = touchStartX - touchEndX;
-      if (Math.abs(diff) > 50) {
+
+      // Swipe threshold - 40px for responsive feel
+      if (Math.abs(diff) > 40) {
         if (diff > 0) {
           goToSlide(current + 1);
         } else {
@@ -251,7 +229,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] Desktop mode initialized');
+    console.log('[Carousel] 3D carousel initialized');
   }
 
   // Start when DOM is ready

@@ -213,189 +213,133 @@
 }
 
 /* ========================================
-   MOBILE EXCELLENCE — Premium horizontal scroll
+   MOBILE — Same 3D carousel as desktop, scaled down
    ======================================== */
 @media (max-width: 768px) {
 
   /* Section spacing */
   .products-showcase {
-    padding: 10px 0 40px 0 !important;
+    padding: 10px 0 30px 0 !important;
   }
 
   .products-label {
-    font-size: 0.75rem !important;
-    margin-bottom: 15px !important;
+    font-size: 0.7rem !important;
+    margin-bottom: 0 !important;
   }
 
-  /* Hide desktop-only effects */
-  .active-glow,
-  .floor-reflection,
-  .carousel-dots,
-  .momentum-indicator {
-    display: none !important;
-  }
-
-  /* Carousel stage */
+  /* Smaller 3D stage for mobile */
   .carousel-stage {
-    overflow: visible !important;
-    padding: 0 !important;
-    height: auto !important;
-    perspective: none !important;
-  }
-
-  /* Carousel wrapper — smooth horizontal scroll */
-  .carousel-wrapper {
-    position: relative !important;
-    left: auto !important;
-    top: auto !important;
-    transform: none !important;
-    perspective: none !important;
-    height: auto !important;
-    min-height: 340px !important;
-    width: 100% !important;
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
-    display: flex !important;
-    flex-direction: row !important;
-    align-items: stretch !important;
-    gap: 16px !important;
-    padding: 20px 24px !important;
-
-    /* Smooth iOS scroll */
-    -webkit-overflow-scrolling: touch !important;
-    scroll-behavior: smooth !important;
-
-    /* Snap to cards */
-    scroll-snap-type: x mandatory !important;
-    scroll-padding: 24px !important;
-
-    /* Hide scrollbar but keep functionality */
-    scrollbar-width: none !important;
-    -ms-overflow-style: none !important;
-  }
-
-  .carousel-wrapper::-webkit-scrollbar {
-    display: none !important;
-  }
-
-  /* Cards — clean mobile layout */
-  .carousel-card {
-    position: relative !important;
-    flex: 0 0 auto !important;
-    width: 280px !important;
     height: 320px !important;
-
-    /* Remove all 3D transforms */
-    transform: none !important;
-    opacity: 1 !important;
-    filter: none !important;
-
-    /* Snap behavior */
-    scroll-snap-align: center !important;
-
-    /* No animations */
-    animation: none !important;
-    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    perspective: 1000px !important;
   }
 
-  /* Remove position-based classes */
-  .carousel-card.left-side,
-  .carousel-card.right-side,
-  .carousel-card.active,
-  .carousel-card.distant,
-  .carousel-card.moving {
-    transform: none !important;
-    opacity: 1 !important;
-    filter: none !important;
+  /* Smaller wrapper */
+  .carousel-wrapper {
+    width: 240px !important;
+    height: 290px !important;
   }
 
-  /* Card content */
-  .carousel-card-content {
-    height: 100% !important;
-    padding: 20px !important;
-    background: linear-gradient(165deg, rgba(20, 20, 30, 0.98) 0%, rgba(10, 10, 16, 1) 100%) !important;
-    border-radius: 20px !important;
-    border: 1px solid rgba(124, 58, 237, 0.25) !important;
-    box-shadow:
-      0 4px 15px rgba(0, 0, 0, 0.3),
-      0 10px 40px rgba(0, 0, 0, 0.2) !important;
-  }
-
-  /* Active press state */
-  .carousel-card:active .carousel-card-content {
-    transform: scale(0.98) !important;
-    box-shadow:
-      0 2px 10px rgba(0, 0, 0, 0.3),
-      0 5px 20px rgba(0, 0, 0, 0.2) !important;
+  /* Smaller cards */
+  .carousel-card {
+    width: 240px !important;
+    height: 290px !important;
+    padding: 18px !important;
   }
 
   /* Card elements sizing */
-  .carousel-card-badge,
   .carousel-card .card-badge {
     font-size: 0.65rem !important;
-    padding: 5px 12px !important;
+    padding: 5px 10px !important;
     margin-bottom: 12px !important;
   }
 
-  .carousel-card-icon,
   .carousel-card .card-icon {
-    font-size: 2.2rem !important;
+    font-size: 2rem !important;
     margin-bottom: 10px !important;
   }
 
-  .carousel-card-title,
   .carousel-card .card-title {
-    font-size: 1.1rem !important;
-    margin-bottom: 8px !important;
-    line-height: 1.25 !important;
+    font-size: 1rem !important;
+    margin-bottom: 6px !important;
   }
 
-  .carousel-card-desc,
   .carousel-card .card-desc {
-    font-size: 0.85rem !important;
-    line-height: 1.45 !important;
-    color: rgba(255, 255, 255, 0.6) !important;
-  }
-
-  .carousel-card-footer,
-  .carousel-card .card-footer {
-    padding-top: 12px !important;
-  }
-
-  .carousel-card-price,
-  .carousel-card .card-price {
-    font-size: 1.2rem !important;
-  }
-
-  .carousel-card-cta,
-  .carousel-card .card-cta {
     font-size: 0.8rem !important;
+    line-height: 1.4 !important;
+  }
+
+  .carousel-card .card-footer {
+    padding-top: 10px !important;
+  }
+
+  .carousel-card .card-price {
+    font-size: 1.1rem !important;
+  }
+
+  .carousel-card .card-cta {
+    font-size: 0.75rem !important;
+  }
+
+  /* Smaller glow */
+  .active-glow {
+    width: 280px !important;
+    height: 320px !important;
+  }
+
+  /* Smaller dots */
+  .carousel-dots {
+    margin-top: 20px !important;
+    gap: 8px !important;
+  }
+
+  .carousel-dots .dot {
+    width: 8px !important;
+    height: 8px !important;
   }
 
   /* Coming Soon badge mobile */
   .coming-soon-badge {
-    font-size: 0.55rem !important;
-    padding: 3px 8px !important;
-    top: 10px !important;
-    right: 10px !important;
+    font-size: 0.5rem !important;
+    padding: 3px 7px !important;
+    top: 8px !important;
+    right: 8px !important;
   }
 
-  /* Scroll hint for mobile */
-  .carousel-wrapper::after {
-    content: '';
-    flex: 0 0 8px;
+  /* Smaller reflection */
+  .floor-reflection {
+    width: 300px !important;
+    height: 40px !important;
+    bottom: -30px !important;
   }
 }
 
 /* Small phones */
 @media (max-width: 380px) {
-  .carousel-card {
-    width: 260px !important;
-    height: 300px !important;
+  .carousel-stage {
+    height: 280px !important;
+    perspective: 900px !important;
   }
 
   .carousel-wrapper {
-    gap: 12px !important;
-    padding: 15px 16px !important;
+    width: 210px !important;
+    height: 260px !important;
+  }
+
+  .carousel-card {
+    width: 210px !important;
+    height: 260px !important;
+    padding: 14px !important;
+  }
+
+  .carousel-card .card-icon {
+    font-size: 1.8rem !important;
+  }
+
+  .carousel-card .card-title {
+    font-size: 0.95rem !important;
+  }
+
+  .carousel-card .card-desc {
+    font-size: 0.75rem !important;
   }
 }
