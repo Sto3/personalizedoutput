@@ -56,14 +56,14 @@ export async function renderPremiumHomepageV4(): Promise<string> {
               <!-- Popular Now Section - Seasonal Featured Products -->
               <div class="popular-now-section">
                 <div class="popular-now-cards">
-                  <a href="/santa" class="popular-card">
+                  <a href="/product/santa-message" class="popular-card">
                     <span class="popular-title">Personalized Santa</span>
                     <span class="popular-tag">Holiday Favorite</span>
                   </a>
                   <span class="popular-now-label">Popular Now</span>
-                  <a href="/vision-board" class="popular-card">
+                  <a href="/product/vision-board" class="popular-card">
                     <span class="popular-title">Vision Boards</span>
-                    <span class="popular-tag">New Year 2026</span>
+                    <span class="popular-tag">New Year 2025</span>
                   </a>
                 </div>
               </div>

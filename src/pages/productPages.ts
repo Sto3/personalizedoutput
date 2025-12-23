@@ -414,16 +414,36 @@ export function renderProductPage(productId: ProductType): string {
 
     <!-- Email Modal for Checkout -->
     <div id="emailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
-      <div style="background:#1a1a2e; padding:32px; border-radius:16px; max-width:400px; width:90%; text-align:center; border:1px solid rgba(255,255,255,0.1);">
-        <h3 style="margin:0 0 8px 0; font-family:'Bodoni Moda',serif; font-size:1.5rem;">Continue to Checkout</h3>
-        <p style="margin:0 0 20px 0; color:rgba(255,255,255,0.7); font-size:0.9rem;">Enter your email or gift code</p>
-        <input type="text" id="modalEmail" placeholder="your@email.com or GIFT-XXXX-XXXX" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; margin-bottom:12px;">
-        <label id="giftCheckboxLabel" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:16px; color:rgba(255,255,255,0.8); font-size:0.9rem; cursor:pointer;">
-          <input type="checkbox" id="isGiftCheckbox" style="width:18px; height:18px; cursor:pointer;">
-          This is a gift for someone else
-        </label>
-        <button id="modalSubmit" style="width:100%; padding:14px; background:#E85A6B; color:#fff; border:none; border-radius:50px; font-size:1rem; font-weight:600; cursor:pointer;">Continue</button>
-        <button id="modalCancel" style="width:100%; padding:10px; background:transparent; color:rgba(255,255,255,0.6); border:none; font-size:0.875rem; cursor:pointer; margin-top:8px;">Cancel</button>
+      <div style="background:#1a1a2e; padding:32px; border-radius:16px; max-width:420px; width:90%; text-align:center; border:1px solid rgba(255,255,255,0.1);">
+        <h3 style="margin:0 0 20px 0; font-family:'Bodoni Moda',serif; font-size:1.5rem;">Continue to Checkout</h3>
+
+        <!-- Purchase Section -->
+        <div id="purchaseSection" style="margin-bottom:20px;">
+          <label style="display:block; text-align:left; color:rgba(255,255,255,0.9); font-size:0.85rem; margin-bottom:6px; font-weight:500;">Your Email</label>
+          <input type="email" id="modalEmail" placeholder="your@email.com" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; margin-bottom:10px;">
+          <label style="display:flex; align-items:center; gap:8px; color:rgba(255,255,255,0.8); font-size:0.85rem; cursor:pointer;">
+            <input type="checkbox" id="isGiftCheckbox" style="width:16px; height:16px; cursor:pointer;">
+            I'm buying this as a gift for someone else
+          </label>
+        </div>
+
+        <button id="modalSubmit" style="width:100%; padding:14px; background:#E85A6B; color:#fff; border:none; border-radius:50px; font-size:1rem; font-weight:600; cursor:pointer;">Continue to Payment</button>
+
+        <!-- Divider -->
+        <div style="display:flex; align-items:center; margin:20px 0; gap:12px;">
+          <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
+          <span style="color:rgba(255,255,255,0.5); font-size:0.8rem;">OR</span>
+          <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
+        </div>
+
+        <!-- Gift Code Redemption Section -->
+        <div id="giftCodeSection">
+          <label style="display:block; text-align:left; color:rgba(255,255,255,0.9); font-size:0.85rem; margin-bottom:6px; font-weight:500;">Redeem a Gift Code</label>
+          <input type="text" id="giftCodeInput" placeholder="GIFT-XXXX-XXXX" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; font-family:monospace; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">
+          <button id="redeemBtn" style="width:100%; padding:12px; background:transparent; color:#E85A6B; border:1px solid #E85A6B; border-radius:50px; font-size:0.95rem; font-weight:500; cursor:pointer;">Redeem Gift</button>
+        </div>
+
+        <button id="modalCancel" style="width:100%; padding:10px; background:transparent; color:rgba(255,255,255,0.5); border:none; font-size:0.85rem; cursor:pointer; margin-top:16px;">Cancel</button>
       </div>
     </div>
 
@@ -431,7 +451,9 @@ export function renderProductPage(productId: ProductType): string {
     <script>
       const emailModal = document.getElementById('emailModal');
       const modalEmail = document.getElementById('modalEmail');
+      const giftCodeInput = document.getElementById('giftCodeInput');
       const modalSubmit = document.getElementById('modalSubmit');
+      const redeemBtn = document.getElementById('redeemBtn');
       const modalCancel = document.getElementById('modalCancel');
       let currentProductId = null;
       let currentBtn = null;
@@ -443,6 +465,7 @@ export function renderProductPage(productId: ProductType): string {
           currentBtn = btn;
           emailModal.style.display = 'flex';
           modalEmail.value = '';
+          giftCodeInput.value = '';
           modalEmail.focus();
         });
       });
@@ -457,24 +480,28 @@ export function renderProductPage(productId: ProductType): string {
         if (e.target === emailModal) emailModal.style.display = 'none';
       });
 
-      // Submit email
+      // Regular checkout (email + optional gift)
       modalSubmit.addEventListener('click', processCheckout);
       modalEmail.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') processCheckout();
       });
 
+      // Gift code redemption
+      redeemBtn.addEventListener('click', redeemGiftCode);
+      giftCodeInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') redeemGiftCode();
+      });
+
       async function processCheckout() {
-        const emailOrCode = modalEmail.value.trim();
+        const email = modalEmail.value.trim();
         const isGift = document.getElementById('isGiftCheckbox').checked;
 
-        // Check if it looks like a gift code (GIFT-XXXX-XXXX format)
-        const looksLikeGiftCode = emailOrCode.toUpperCase().startsWith('GIFT-') && emailOrCode.length >= 14;
-
-        // Validate: must be email OR gift code
-        if (!looksLikeGiftCode && (!emailOrCode || !emailOrCode.includes('@'))) {
+        // Validate email
+        if (!email || !email.includes('@')) {
           modalEmail.style.borderColor = '#E85A6B';
           return;
         }
+        modalEmail.style.borderColor = 'rgba(255,255,255,0.2)';
 
         modalSubmit.disabled = true;
         modalSubmit.textContent = 'Processing...';
@@ -485,7 +512,7 @@ export function renderProductPage(productId: ProductType): string {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               productId: currentProductId,
-              email: emailOrCode,
+              email: email,
               isGift: isGift
             })
           });
@@ -497,13 +524,53 @@ export function renderProductPage(productId: ProductType): string {
           } else {
             alert(data.error || 'Something went wrong. Please try again.');
             modalSubmit.disabled = false;
-            modalSubmit.textContent = 'Continue';
+            modalSubmit.textContent = 'Continue to Payment';
           }
         } catch (err) {
           console.error(err);
           alert('Unable to process. Please check your connection and try again.');
           modalSubmit.disabled = false;
-          modalSubmit.textContent = 'Continue';
+          modalSubmit.textContent = 'Continue to Payment';
+        }
+      }
+
+      async function redeemGiftCode() {
+        const code = giftCodeInput.value.trim().toUpperCase();
+
+        // Validate gift code format
+        if (!code || !code.startsWith('GIFT-') || code.length < 14) {
+          giftCodeInput.style.borderColor = '#E85A6B';
+          return;
+        }
+        giftCodeInput.style.borderColor = 'rgba(255,255,255,0.2)';
+
+        redeemBtn.disabled = true;
+        redeemBtn.textContent = 'Redeeming...';
+
+        try {
+          const response = await fetch('/api/checkout/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              productId: currentProductId,
+              email: code  // Gift code goes in email field for validation
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            alert(data.error || 'Invalid or expired gift code. Please check and try again.');
+            redeemBtn.disabled = false;
+            redeemBtn.textContent = 'Redeem Gift';
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Unable to redeem. Please check your connection and try again.');
+          redeemBtn.disabled = false;
+          redeemBtn.textContent = 'Redeem Gift';
         }
       }
 

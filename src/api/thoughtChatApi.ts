@@ -945,10 +945,18 @@ CRITICAL: photoPrompts must describe OBJECTS and SCENES only - never include peo
   // Actually generate the vision board using V12 engine
   console.log(`[ThoughtChat API] Calling Vision Board Engine V12...`);
 
-  const result = await generateVisionBoardV12(engineInput);
+  let result;
+  try {
+    result = await generateVisionBoardV12(engineInput);
+  } catch (genError: any) {
+    console.error(`[ThoughtChat API] Vision board generation error:`, genError.message);
+    console.error(`[ThoughtChat API] Full error:`, genError);
+    throw new Error(`Vision board generation failed: ${genError.message}`);
+  }
 
   if (!result || !result.filepath) {
-    throw new Error('Vision board generation failed - no output file');
+    console.error(`[ThoughtChat API] Vision board result:`, result);
+    throw new Error('Vision board generation failed - no output file returned');
   }
 
   console.log(`[ThoughtChat API] Vision board generated: ${result.filepath}`);
