@@ -136,7 +136,24 @@ export function getThoughtSession(sessionId: string): ThoughtSession | null {
 
   try {
     const data = fs.readFileSync(filepath, 'utf-8');
-    return JSON.parse(data) as ThoughtSession;
+    const parsed = JSON.parse(data);
+
+    // Handle both snake_case (from Supabase save) and camelCase (legacy) formats
+    if (parsed.session_id) {
+      // Convert from snake_case (ThoughtSessionData format)
+      return {
+        sessionId: parsed.session_id,
+        productId: parsed.product_id,
+        turns: parsed.turns,
+        status: parsed.status,
+        metadata: parsed.metadata,
+        createdAtIso: parsed.created_at,
+        updatedAtIso: parsed.updated_at
+      };
+    }
+
+    // Already in camelCase (ThoughtSession format)
+    return parsed as ThoughtSession;
   } catch (error) {
     console.error(`[ThoughtSession] Error reading session ${sessionId}:`, error);
     return null;
