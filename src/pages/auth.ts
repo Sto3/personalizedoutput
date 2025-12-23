@@ -213,7 +213,7 @@ export function renderLoginPage(error?: string, returnUrl?: string, success?: bo
           <div class="logo">Personalized Output</div>
           <div class="tagline">Create deeply personal gifts & planners</div>
 
-          <h1>Welcome Back</h1>
+          <h1>${error ? 'Sign In' : 'Welcome Back'}</h1>
 
           ${success ? `
             <div class="success">

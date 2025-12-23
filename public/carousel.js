@@ -233,6 +233,32 @@
       });
     }
 
+    // Wire up arrow buttons
+    var prevBtn = document.getElementById('carouselPrev');
+    var nextBtn = document.getElementById('carouselNext');
+
+    if (prevBtn) {
+      prevBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isInCooldown() && !isAnimating) {
+          goToSlide(current - 1);
+          lockInteractions(300);
+        }
+      });
+    }
+
+    if (nextBtn) {
+      nextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isInCooldown() && !isAnimating) {
+          goToSlide(current + 1);
+          lockInteractions(300);
+        }
+      });
+    }
+
     // ========================================
     // FORTIFIED: Mouse wheel navigation - ONLY for horizontal swipes
     // Allow normal vertical page scrolling to pass through

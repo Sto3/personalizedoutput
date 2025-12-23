@@ -92,7 +92,11 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="carousel-wrapper" id="carouselWrapper"></div>
           <div class="floor-reflection"></div>
         </div>
-        <div class="carousel-dots" id="carouselDots"></div>
+        <div class="carousel-nav">
+          <button class="carousel-arrow carousel-prev" id="carouselPrev" aria-label="Previous">‹</button>
+          <div class="carousel-dots" id="carouselDots"></div>
+          <button class="carousel-arrow carousel-next" id="carouselNext" aria-label="Next">›</button>
+        </div>
       </section>
 
       <!-- How It Works -->
@@ -1158,12 +1162,58 @@ function getHomepageStyles(): string {
       transform: translateX(4px);
     }
 
+    /* Carousel navigation */
+    .carousel-nav {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 20px;
+      margin-top: 10px;
+    }
+
+    .carousel-arrow {
+      width: 44px;
+      height: 44px;
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      border-radius: 50%;
+      color: #fff;
+      font-size: 24px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .carousel-arrow:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: scale(1.1);
+    }
+
+    .carousel-arrow:active {
+      transform: scale(0.95);
+    }
+
+    @media (max-width: 768px) {
+      .carousel-arrow {
+        width: 40px;
+        height: 40px;
+        font-size: 22px;
+      }
+      .carousel-nav {
+        gap: 15px;
+      }
+    }
+
     /* Pagination dots */
     .carousel-dots {
       display: flex;
       justify-content: center;
       gap: 10px;
-      margin-top: 10px;
     }
 
     .carousel-dot {
