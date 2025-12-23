@@ -112,7 +112,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step">
             <div class="step-number">2</div>
             <h3>Personalization Experience</h3>
-            <p>Have an immersive, conversational experience where you share details about your person — their interests, achievements, dreams, and personality.</p>
+            <p>Have an immersive, conversational experience where you share meaningful details — whether for yourself or someone you love.</p>
           </div>
           <div class="step-connector"></div>
           <div class="step">
@@ -123,8 +123,8 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step-connector"></div>
           <div class="step">
             <div class="step-number">4</div>
-            <h3>Download & Share</h3>
-            <p>Your personalized product is delivered instantly. Download it forever or share directly with the lucky recipient.</p>
+            <h3>Download & Enjoy</h3>
+            <p>Your personalized product is delivered instantly. Download it, keep it forever, or share it as a meaningful gift.</p>
           </div>
         </div>
       </section>

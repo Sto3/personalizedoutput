@@ -1814,7 +1814,7 @@ export function renderPremiumHomepageV3(): string {
           <div class="step">
             <div class="step-number">2</div>
             <h3>Answer Questions</h3>
-            <p>Tell us specific stories, achievements, and details about your person.</p>
+            <p>Share specific stories, achievements, and meaningful details — for yourself or someone you love.</p>
           </div>
           <div class="step">
             <div class="step-number">3</div>

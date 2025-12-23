@@ -288,22 +288,23 @@ export function renderNavigation(options: NavOptions = {}): string {
           <a href="/pricing" class="nav-link ${currentPage === 'pricing' ? 'active' : ''}">Pricing</a>
           <a href="/blog" class="nav-link ${currentPage === 'blog' ? 'active' : ''}">Blog</a>
 
-          <!-- Newsletter Dropdown -->
-          <div class="nav-dropdown nav-newsletter-dropdown">
-            <button class="nav-link nav-link-dropdown">
-              Newsletter
+          <!-- Email Signup Dropdown -->
+          <div class="nav-dropdown nav-newsletter-dropdown" id="email-signup-dropdown">
+            <button class="nav-link nav-link-dropdown" id="email-signup-btn" type="button">
+              Email Signup
               <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
                 <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" stroke-width="1.5" fill="none"/>
               </svg>
             </button>
-            <div class="newsletter-dropdown">
+            <div class="newsletter-dropdown" id="newsletter-dropdown-panel">
               <div class="newsletter-dropdown-content">
-                <h4>Get Early Access</h4>
-                <p>New products & exclusive offers</p>
+                <h4>Stay in the Loop</h4>
+                <p>Get early access, exclusive offers & product updates</p>
                 <form class="nav-newsletter-form" id="nav-newsletter-form">
-                  <input type="email" name="email" placeholder="Email address" required class="nav-newsletter-input">
-                  <button type="submit" class="nav-newsletter-btn">Subscribe</button>
+                  <input type="email" name="email" placeholder="your@email.com" required class="nav-newsletter-input" autocomplete="email">
+                  <button type="submit" class="nav-newsletter-btn">Sign Up</button>
                 </form>
+                <p class="newsletter-privacy-note">No spam, unsubscribe anytime</p>
               </div>
             </div>
           </div>
@@ -648,7 +649,7 @@ export function getNavigationStyles(): string {
       opacity: 1;
     }
 
-    /* Newsletter Dropdown in Header */
+    /* Email Signup Dropdown in Header */
     .nav-newsletter-dropdown button {
       background: none;
       border: none;
@@ -666,60 +667,76 @@ export function getNavigationStyles(): string {
       box-shadow: var(--shadow-xl);
       opacity: 0;
       visibility: hidden;
+      pointer-events: none;
       transition: all var(--transition-normal);
-      min-width: 300px;
+      min-width: 320px;
       margin-top: 20px;
       z-index: 1001;
     }
+    .nav-newsletter-dropdown.open .newsletter-dropdown,
     .nav-newsletter-dropdown:hover .newsletter-dropdown {
       opacity: 1;
       visibility: visible;
+      pointer-events: auto;
       transform: translateX(-50%) translateY(0);
     }
     .newsletter-dropdown-content {
-      padding: 24px;
+      padding: 28px 24px;
       text-align: center;
     }
     .newsletter-dropdown-content h4 {
       font-family: 'Bodoni Moda', serif;
-      font-size: 1.1rem;
+      font-size: 1.2rem;
       color: var(--text-primary);
-      margin-bottom: 6px;
+      margin-bottom: 8px;
     }
-    .newsletter-dropdown-content p {
-      font-size: 0.85rem;
+    .newsletter-dropdown-content > p {
+      font-size: 0.9rem;
       color: var(--text-muted);
-      margin-bottom: 16px;
+      margin-bottom: 20px;
+      line-height: 1.4;
     }
     .nav-newsletter-form {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
     }
     .nav-newsletter-input {
-      padding: 12px 14px;
-      border-radius: 8px;
-      border: 1px solid var(--border-light);
-      font-size: 0.9rem;
+      padding: 14px 16px;
+      border-radius: 10px;
+      border: 2px solid var(--border-light);
+      font-size: 1rem;
       width: 100%;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
     .nav-newsletter-input:focus {
       outline: none;
       border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
     }
     .nav-newsletter-btn {
-      padding: 12px 20px;
-      border-radius: 8px;
+      padding: 14px 24px;
+      border-radius: 10px;
       border: none;
       background: var(--gradient-primary);
       color: white;
       font-weight: 600;
+      font-size: 1rem;
       cursor: pointer;
       transition: all var(--transition-normal);
     }
     .nav-newsletter-btn:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 4px 15px rgba(232, 90, 107, 0.3);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(232, 90, 107, 0.35);
+    }
+    .nav-newsletter-btn:active {
+      transform: translateY(0);
+    }
+    .newsletter-privacy-note {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 12px;
+      opacity: 0.8;
     }
 
     .btn-small {
@@ -1181,6 +1198,46 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
           });
         }
 
+        // Email Signup Dropdown - Click to toggle
+        const emailSignupDropdown = document.getElementById('email-signup-dropdown');
+        const emailSignupBtn = document.getElementById('email-signup-btn');
+        const dropdownPanel = document.getElementById('newsletter-dropdown-panel');
+
+        if (emailSignupBtn && emailSignupDropdown) {
+          // Toggle dropdown on button click
+          emailSignupBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            emailSignupDropdown.classList.toggle('open');
+            // Focus the input when opening
+            if (emailSignupDropdown.classList.contains('open')) {
+              const input = emailSignupDropdown.querySelector('.nav-newsletter-input');
+              if (input) setTimeout(() => input.focus(), 100);
+            }
+          });
+
+          // Keep dropdown open when clicking inside
+          if (dropdownPanel) {
+            dropdownPanel.addEventListener('click', function(e) {
+              e.stopPropagation();
+            });
+          }
+
+          // Close dropdown when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!emailSignupDropdown.contains(e.target)) {
+              emailSignupDropdown.classList.remove('open');
+            }
+          });
+
+          // Close on Escape key
+          document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+              emailSignupDropdown.classList.remove('open');
+            }
+          });
+        }
+
         // Header Newsletter form
         const navNewsletterForm = document.getElementById('nav-newsletter-form');
         if (navNewsletterForm) {
@@ -1193,7 +1250,7 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
             if (!email) return;
 
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Subscribing...';
+            submitBtn.textContent = 'Signing up...';
 
             try {
               const response = await fetch('/api/subscribe', {
@@ -1205,27 +1262,29 @@ export function renderPageEnd(options: { includeFooter?: boolean } = {}): string
 
               if (data.success) {
                 emailInput.value = '';
-                submitBtn.textContent = 'Subscribed!';
+                submitBtn.textContent = 'You\\'re in!';
                 submitBtn.style.background = '#22c55e';
                 setTimeout(() => {
-                  submitBtn.textContent = 'Subscribe';
+                  submitBtn.textContent = 'Sign Up';
                   submitBtn.style.background = '';
                   submitBtn.disabled = false;
-                }, 3000);
+                  // Close dropdown after success
+                  if (emailSignupDropdown) emailSignupDropdown.classList.remove('open');
+                }, 2500);
               } else {
-                submitBtn.textContent = 'Error';
+                submitBtn.textContent = 'Try again';
                 submitBtn.style.background = '#ef4444';
                 setTimeout(() => {
-                  submitBtn.textContent = 'Subscribe';
+                  submitBtn.textContent = 'Sign Up';
                   submitBtn.style.background = '';
                   submitBtn.disabled = false;
                 }, 3000);
               }
             } catch (error) {
-              submitBtn.textContent = 'Error';
+              submitBtn.textContent = 'Try again';
               submitBtn.style.background = '#ef4444';
               setTimeout(() => {
-                submitBtn.textContent = 'Subscribe';
+                submitBtn.textContent = 'Sign Up';
                 submitBtn.style.background = '';
                 submitBtn.disabled = false;
               }, 3000);
