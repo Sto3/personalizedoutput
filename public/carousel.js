@@ -336,7 +336,10 @@
       hasMoved = false;
       window._carouselInteracting = true;
       window._carouselDidSwipe = false;
-    }, { passive: true, capture: true });
+
+      // Prevent browser back gesture by capturing touch early
+      // Note: This needs passive: false to work
+    }, { passive: false, capture: true });
 
     carouselContainer.addEventListener('touchmove', function(e) {
       if (!isTouchActive) return;
@@ -346,9 +349,11 @@
       var absDiffX = Math.abs(diffX);
       var absDiffY = Math.abs(diffY);
 
-      // If horizontal movement is dominant
-      if (absDiffX > absDiffY && absDiffX > 10) {
-        e.preventDefault(); // Prevent page scroll
+      // If horizontal movement is dominant, prevent ALL default behavior
+      // This stops browser back/forward gestures
+      if (absDiffX > absDiffY && absDiffX > 5) {
+        e.preventDefault(); // CRITICAL: Prevent browser back gesture
+        e.stopPropagation();
         hasMoved = true;
         window._carouselDidSwipe = true;
       }

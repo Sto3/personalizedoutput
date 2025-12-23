@@ -1014,6 +1014,9 @@ function getHomepageStyles(): string {
       background: var(--purple);
       overflow: hidden;
       position: relative;
+      /* Prevent browser back/forward gestures on horizontal swipe */
+      overscroll-behavior-x: none;
+      touch-action: pan-y pinch-zoom;
     }
 
     .carousel-eyebrow {
@@ -1034,6 +1037,9 @@ function getHomepageStyles(): string {
       width: 100%;
       padding: 20px 0 40px;
       overflow: visible;
+      /* Prevent browser back/forward gestures */
+      overscroll-behavior-x: none;
+      touch-action: pan-y pinch-zoom;
     }
 
     .carousel-wrapper {
@@ -1043,6 +1049,9 @@ function getHomepageStyles(): string {
       position: relative;
       height: 380px;
       transform-style: preserve-3d;
+      /* Prevent browser back/forward gestures */
+      overscroll-behavior-x: none;
+      touch-action: pan-y pinch-zoom;
     }
 
     /* Individual card - all 3D transforms applied via JS */
