@@ -290,7 +290,6 @@ export function renderNavigation(options: NavOptions = {}): string {
             ${showMegaMenu ? renderMegaMenu(productsByCategory) : ''}
           </div>
 
-          <a href="/pricing" class="nav-link ${currentPage === 'pricing' ? 'active' : ''}">Pricing</a>
           <a href="/blog" class="nav-link ${currentPage === 'blog' ? 'active' : ''}">Blog</a>
 
           <!-- Sign Up Dropdown -->
@@ -336,7 +335,6 @@ export function renderNavigation(options: NavOptions = {}): string {
       <div class="mobile-menu-links">
         <a href="/products" class="mobile-link">Products</a>
         <a href="/how-it-works" class="mobile-link">How It Works</a>
-        <a href="/pricing" class="mobile-link">Pricing</a>
         <a href="/blog" class="mobile-link">Blog</a>
         <a href="/login" class="mobile-link">Login</a>
         <a href="/demo-lessons" class="mobile-cta">Listen to Demos/Samples</a>
@@ -1026,7 +1024,6 @@ export function renderFooter(): string {
             <div class="footer-column">
               <h4>Company</h4>
               <a href="/how-it-works">How It Works</a>
-              <a href="/pricing">Pricing</a>
               <a href="/blog">Blog</a>
               <a href="mailto:hello@personalizedoutput.com">Contact</a>
             </div>

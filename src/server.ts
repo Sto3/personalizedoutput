@@ -1670,10 +1670,9 @@ app.get('/dashboard', async (req, res) => {
   }));
 });
 
-// Pricing page
+// Pricing page - temporarily redirect to home
 app.get('/pricing', (req, res) => {
-  trackEvent('page', 'pricing');
-  res.send(renderPricingPageNew());
+  res.redirect('/');
 });
 
 // Products page
