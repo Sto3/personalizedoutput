@@ -508,11 +508,14 @@ export function renderSuccessPage(): string {
           <div class="next-steps">
             <h2>What Happens Next</h2>
             <ol>
-              <li>Check your email for a confirmation and the Personalization Experience link</li>
-              <li>Complete the Personalization Experience to tell us what makes you unique</li>
-              <li>We'll create your personalized product within 24-48 hours</li>
-              <li>You'll receive an email with your download link</li>
+              <li><strong>Start the Personalization Experience below</strong> - takes about 5-10 minutes</li>
+              <li>Tell us what makes you (or the person you're gifting) unique</li>
+              <li>Your personalized product will be ready instantly! <span class="note">(may take 10-15 min during high traffic)</span></li>
             </ol>
+          </div>
+
+          <div id="start-personalization" class="start-personalization">
+            <a href="#" id="personalization-link" class="btn btn-primary btn-large">Start Personalization Experience →</a>
           </div>
 
           <div class="tag-us-cta">
@@ -533,6 +536,19 @@ export function renderSuccessPage(): string {
       // Get session ID from URL
       const urlParams = new URLSearchParams(window.location.search);
       const sessionId = urlParams.get('session_id');
+
+      // Product to personalization URL mapping
+      const personalizationUrls = {
+        'santa_message': '/santa',
+        'vision_board': '/vision-board',
+        'thought_organizer': '/thought-organizer',
+        'clarity_planner': '/clarity-planner',
+        'flash_cards': '/flash-cards',
+        'learning_session': '/learning-session',
+        'video_learning_session': '/video-learning-session',
+        'holiday_reset': '/holiday-reset',
+        'new_year_reset': '/new-year-reset'
+      };
 
       if (sessionId) {
         fetch('/api/checkout/session/' + sessionId)
@@ -560,6 +576,13 @@ export function renderSuccessPage(): string {
                   </div>
                 </div>
               \`;
+
+              // Set personalization link based on product
+              const personalizationLink = document.getElementById('personalization-link');
+              if (personalizationLink && data.productId) {
+                const url = personalizationUrls[data.productId] || '/' + data.productSlug;
+                personalizationLink.href = url;
+              }
             } else {
               container.innerHTML = '<p>Unable to load order details.</p>';
             }
@@ -1247,6 +1270,22 @@ function getSuccessPageStyles(): string {
       font-weight: 700;
       color: var(--purple);
       margin: 0;
+    }
+
+    .next-steps .note {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      font-style: italic;
+    }
+
+    .start-personalization {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .start-personalization .btn-large {
+      padding: 20px 48px;
+      font-size: 1.15rem;
     }
 
     .success-cta {

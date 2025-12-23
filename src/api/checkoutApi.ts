@@ -24,6 +24,7 @@ import {
   ProductType,
 } from '../lib/supabase/orderService';
 import { addToEmailList } from '../lib/supabase/emailListService';
+import { sendPurchaseConfirmation } from '../services/emailService';
 
 const router = Router();
 
@@ -239,6 +240,29 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       console.log(`[Checkout] Added ${customerEmail} to email list`);
     } catch (e) {
       console.error('[Checkout] Failed to add to email list:', e);
+    }
+
+    // Send purchase confirmation email
+    const product = PRODUCTS[productId];
+    if (product && order) {
+      try {
+        // Build personalization URL based on product type
+        let personalizationUrl = `${SITE_URL}/${product.slug}`;
+        if (productId === 'santa_message') {
+          personalizationUrl = `${SITE_URL}/santa`;
+        } else if (productId === 'vision_board') {
+          personalizationUrl = `${SITE_URL}/vision-board`;
+        }
+
+        await sendPurchaseConfirmation(customerEmail, product.name, {
+          orderId: order.id,
+          amount: session.amount_total || product.price,
+          accessUrl: personalizationUrl,
+        });
+        console.log(`[Checkout] Confirmation email sent to ${customerEmail}`);
+      } catch (e) {
+        console.error('[Checkout] Failed to send confirmation email:', e);
+      }
     }
   }
 }

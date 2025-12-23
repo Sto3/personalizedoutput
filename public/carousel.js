@@ -1,14 +1,14 @@
 /**
- * ISOLATED CAROUSEL JAVASCRIPT - v3.2
+ * ISOLATED CAROUSEL JAVASCRIPT - v3.3
  * Wrapped in IIFE to prevent any conflicts with other code
  * Pure vanilla JS - no dependencies
  * FORTIFIED: Prevents accidental navigation during horizontal swipes
- * v3.2: Fixed mobile taps - only block clicks on actual swipes, not taps
+ * v3.3: Fix browser back gesture on iOS Safari
  */
 (function() {
   'use strict';
 
-  console.log('[Carousel] Initializing isolated 3D carousel v3.2...');
+  console.log('[Carousel] Initializing isolated 3D carousel v3.3...');
 
   // Product data with launch status
   // ORDERED so Santa Message is in CENTER with Vision Board next to it
@@ -154,7 +154,11 @@
     }
 
     var isMobile = window.innerWidth <= 768;
-    console.log('[Carousel] Initializing 3D coverflow v3.2' + (isMobile ? ' (mobile)' : ' (desktop)'));
+    console.log('[Carousel] Initializing 3D coverflow v3.3' + (isMobile ? ' (mobile)' : ' (desktop)'));
+
+    // CRITICAL: Set touch-action on container to prevent browser gestures
+    carouselContainer.style.touchAction = 'pan-y pinch-zoom';
+    wrapper.style.touchAction = 'pan-y pinch-zoom';
 
     wrapper.innerHTML = '';
     if (dotsEl) dotsEl.innerHTML = '';
@@ -506,7 +510,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] 3D carousel v3.2 initialized - mobile taps fixed');
+    console.log('[Carousel] 3D carousel v3.3 initialized - iOS gesture fix');
   }
 
   // Start when DOM is ready
