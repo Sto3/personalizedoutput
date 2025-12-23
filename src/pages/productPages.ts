@@ -403,9 +403,6 @@ export function renderProductPage(productId: ProductType): string {
           <p>${content.heroDescription.split('.')[0]}.</p>
           <div class="final-cta-box">
             <div class="price-final">${priceFormatted}</div>
-            <div class="email-input-wrapper">
-              <input type="email" id="checkoutEmail" class="checkout-email-input" placeholder="Enter your email" required>
-            </div>
             <button class="btn btn-primary btn-large buy-btn" data-product-id="${product.id}">
               Buy ${product.name}
             </button>
@@ -420,15 +417,10 @@ export function renderProductPage(productId: ProductType): string {
       document.querySelectorAll('.buy-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const productId = btn.dataset.productId;
-          const emailInput = document.getElementById('checkoutEmail');
-          const email = emailInput ? emailInput.value.trim() : '';
 
-          // Validate email
-          if (!email || !email.includes('@')) {
-            alert('Please enter a valid email address');
-            if (emailInput) emailInput.focus();
-            return;
-          }
+          // Check for VIP email in URL (for admin testing)
+          const urlParams = new URLSearchParams(window.location.search);
+          const email = urlParams.get('email') || '';
 
           btn.disabled = true;
           btn.textContent = 'Processing...';
@@ -437,7 +429,7 @@ export function renderProductPage(productId: ProductType): string {
             const response = await fetch('/api/checkout/create', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ productId, email })
+              body: JSON.stringify({ productId, email: email || undefined })
             });
 
             const data = await response.json();
