@@ -1,14 +1,14 @@
 /**
- * ISOLATED CAROUSEL JAVASCRIPT - v3.3
+ * ISOLATED CAROUSEL JAVASCRIPT - v3.4
  * Wrapped in IIFE to prevent any conflicts with other code
  * Pure vanilla JS - no dependencies
  * FORTIFIED: Prevents accidental navigation during horizontal swipes
- * v3.3: Fix browser back gesture on iOS Safari
+ * v3.4: Block edge touches to prevent iOS back gesture while allowing center scrolling
  */
 (function() {
   'use strict';
 
-  console.log('[Carousel] Initializing isolated 3D carousel v3.3...');
+  console.log('[Carousel] Initializing isolated 3D carousel v3.4...');
 
   // Product data with launch status
   // ORDERED so Santa Message is in CENTER with Vision Board next to it
@@ -154,7 +154,7 @@
     }
 
     var isMobile = window.innerWidth <= 768;
-    console.log('[Carousel] Initializing 3D coverflow v3.3' + (isMobile ? ' (mobile)' : ' (desktop)'));
+    console.log('[Carousel] Initializing 3D coverflow v3.4' + (isMobile ? ' (mobile)' : ' (desktop)'));
 
     // CRITICAL: Set touch-action on container to prevent browser gestures
     carouselContainer.style.touchAction = 'pan-y pinch-zoom';
@@ -330,6 +330,9 @@
     // ========================================
     // TOUCH EVENTS (with passive: false for full control)
     // ========================================
+    var isEdgeTouch = false; // Track if touch started near screen edge
+    var EDGE_THRESHOLD = 50; // Pixels from edge to consider "edge touch"
+
     carouselContainer.addEventListener('touchstart', function(e) {
       if (isAnimating) return;
 
@@ -338,9 +341,18 @@
       swipeStartTime = Date.now();
       isTouchActive = true;
       hasMoved = false;
-      // DON'T set _carouselInteracting here - only set it if user actually swipes
       window._carouselDidSwipe = false;
-    }, { passive: true, capture: true });
+
+      // Check if touch started near left or right edge (where iOS back gesture triggers)
+      var screenWidth = window.innerWidth;
+      isEdgeTouch = (swipeStartX < EDGE_THRESHOLD || swipeStartX > screenWidth - EDGE_THRESHOLD);
+
+      // If edge touch, prevent default immediately to block browser gesture
+      if (isEdgeTouch) {
+        e.preventDefault();
+        window._carouselInteracting = true;
+      }
+    }, { passive: false, capture: true });
 
     carouselContainer.addEventListener('touchmove', function(e) {
       if (!isTouchActive) return;
@@ -350,14 +362,13 @@
       var absDiffX = Math.abs(diffX);
       var absDiffY = Math.abs(diffY);
 
-      // If horizontal movement is dominant, prevent ALL default behavior
-      // This stops browser back/forward gestures
-      if (absDiffX > absDiffY && absDiffX > 5) {
+      // If edge touch OR horizontal movement is dominant, prevent default
+      if (isEdgeTouch || (absDiffX > absDiffY && absDiffX > 5)) {
         e.preventDefault(); // CRITICAL: Prevent browser back gesture
         e.stopPropagation();
         hasMoved = true;
         window._carouselDidSwipe = true;
-        window._carouselInteracting = true; // Only set when actually swiping
+        window._carouselInteracting = true;
       }
     }, { passive: false, capture: true });
 
@@ -510,7 +521,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] 3D carousel v3.3 initialized - iOS gesture fix');
+    console.log('[Carousel] 3D carousel v3.4 initialized - edge touch blocking');
   }
 
   // Start when DOM is ready
