@@ -6,6 +6,10 @@
  */
 
 import axios, { AxiosError } from 'axios';
+import { execSync } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { logTTSComplete, logError } from './analyticsLogger';
 import {
   SANTA_VOICE_SETTINGS as OPTIMIZED_VOICE_SETTINGS,
@@ -30,6 +34,47 @@ export const ELEVENLABS_API_URL = 'https://api.elevenlabs.io/v1';
 
 // Use the optimized/perfected voice settings from voiceSettings.ts
 export const SANTA_VOICE_SETTINGS = OPTIMIZED_VOICE_SETTINGS;
+
+// ============================================================
+// POST-PROCESSING (matches perfected demos)
+// ============================================================
+
+/**
+ * Apply voice post-processing to match perfected demo quality.
+ * - 5% pitch reduction (makes voice deeper, more grandfatherly)
+ * - 10% volume boost (ensures clarity)
+ */
+async function applyVoicePostProcessing(audioBuffer: Buffer): Promise<Buffer> {
+  const tempDir = os.tmpdir();
+  const inputPath = path.join(tempDir, `santa_input_${Date.now()}.mp3`);
+  const outputPath = path.join(tempDir, `santa_output_${Date.now()}.mp3`);
+
+  try {
+    // Write input audio to temp file
+    fs.writeFileSync(inputPath, audioBuffer);
+
+    // Apply ffmpeg processing: 5% pitch reduction + volume boost
+    // asetrate=44100*0.95 reduces pitch by 5%
+    // aresample=44100 resamples back to standard rate
+    // volume=1.1 adds 10% volume boost
+    const ffmpegCommand = `ffmpeg -y -i "${inputPath}" -af "asetrate=44100*0.95,aresample=44100,volume=1.1" -c:a libmp3lame -q:a 2 "${outputPath}" 2>/dev/null`;
+
+    execSync(ffmpegCommand, { stdio: 'pipe' });
+
+    // Read processed audio
+    const processedBuffer = fs.readFileSync(outputPath);
+
+    return processedBuffer;
+  } finally {
+    // Clean up temp files
+    try {
+      if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+      if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+    } catch (e) {
+      // Ignore cleanup errors
+    }
+  }
+}
 
 // ============================================================
 // TYPES
@@ -275,7 +320,17 @@ export async function synthesizeSantaMessageWithRetry(
         timeout: TTS_CONFIG.timeoutMs
       });
 
-      const audioBuffer = Buffer.from(response.data);
+      let audioBuffer = Buffer.from(response.data);
+
+      // Apply post-processing: 5% pitch reduction + volume boost (matches perfected demos)
+      try {
+        audioBuffer = await applyVoicePostProcessing(audioBuffer);
+        console.log(`[TTS] Post-processing applied: pitch -5%, volume +10%`);
+      } catch (ppError) {
+        console.warn(`[TTS] Post-processing failed, using raw audio:`, ppError);
+        // Continue with raw audio if post-processing fails
+      }
+
       const totalTimeMs = Date.now() - startTime;
 
       // Log success
