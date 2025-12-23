@@ -9,7 +9,6 @@ import {
   SantaQuestionnaireInput,
   SantaScenarioType,
   ProudMomentInput,
-  inferPronouns,
   SCENARIO_CONTEXTS,
   validateSantaInput
 } from '../configs/santa_questionnaire';
@@ -52,7 +51,6 @@ export async function buildSantaScriptDeep(
 // ============================================================
 
 function buildDeepSantaPrompt(input: SantaQuestionnaireInput): string {
-  const pronouns = inferPronouns(input.childGender);
   const scenarioContext = SCENARIO_CONTEXTS[input.primaryScenario];
   const toneDescription = getToneDescription(input.tonePreference);
 
@@ -64,11 +62,11 @@ IMPORTANT GUIDELINES:
 - Focus on: kindness, effort, growth, courage, character
 - Warm, genuine, grounded tone
 - Make both the PARENT and CHILD feel this is truly personal
+- Address the child directly using "you" - avoid third-person pronouns (he/she/him/her)
 
 CHILD INFORMATION:
 Name: ${input.childFirstName}
 Age: ${input.childAge} years old
-Gender: ${input.childGender}
 
 THIS YEAR'S FOCUS: ${scenarioContext}
 
@@ -94,8 +92,6 @@ ${input.whatParentWantsReinforced}
 ${input.anythingToAvoid ? `TOPICS TO AVOID: ${input.anythingToAvoid}` : ''}
 
 TONE: ${toneDescription}
-
-PRONOUNS: Use ${pronouns.subject}/${pronouns.object}/${pronouns.possessive}
 
 ---
 
