@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080, height=1920">
+  <title>Santa Message - Last Minute Gift Promo V2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(165deg, #1a0a0a 0%, #2d0d0d 30%, #150707 100%);
+    }
+    :root {
+      --gold: #D4AF37;
+      --gold-light: #F4D03F;
+      --red-dark: #1a0a0a;
+      --red-mid: #3a1a1a;
+      --cream: #FFF8E7;
+      --red-accent: #C41E3A;
+      --green-accent: #2d5a2d;
+    }
+    .scene {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+    }
+
+    /* Scene 1: Hook - 5s duration, starts at 0s */
+    .scene-hook {
+      animation: scene1 5s ease-in-out forwards;
+    }
+    @keyframes scene1 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 2: Intro - 5s duration, starts at 5s */
+    .scene-intro {
+      animation: scene2 5s ease-in-out 5s forwards;
+    }
+    @keyframes scene2 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 3: Problem - 5s duration, starts at 10s */
+    .scene-problem {
+      animation: scene3 5s ease-in-out 10s forwards;
+    }
+    @keyframes scene3 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 4: Discovery - 5s duration, starts at 15s */
+    .scene-discovery {
+      animation: scene4 5s ease-in-out 15s forwards;
+    }
+    @keyframes scene4 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 5: Product - 6s duration, starts at 20s */
+    .scene-product {
+      animation: scene5 6s ease-in-out 20s forwards;
+    }
+    @keyframes scene5 {
+      0% { opacity: 0; }
+      8% { opacity: 1; }
+      88% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 6: Result - 5s duration, starts at 26s */
+    .scene-result {
+      animation: scene6 5s ease-in-out 26s forwards;
+    }
+    @keyframes scene6 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 7: CTA - 7s duration, starts at 31s, holds at end */
+    .scene-cta {
+      animation: scene7 7s ease-in-out 31s forwards;
+    }
+    @keyframes scene7 {
+      0% { opacity: 0; }
+      8% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+
+    .hook-content { text-align: center; }
+    .hook-emoji {
+      font-size: 140px;
+      margin-bottom: 50px;
+    }
+    .hook-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 80px;
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1.1;
+      margin-bottom: 40px;
+    }
+    .hook-title .gold {
+      color: var(--gold);
+      display: block;
+      font-style: italic;
+    }
+    .hook-subtitle {
+      font-size: 42px;
+      color: rgba(255, 248, 231, 0.7);
+    }
+    .hook-subtitle .highlight {
+      color: var(--gold-light);
+      font-weight: 600;
+    }
+    .snowflake {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 24px;
+      animation: snowfall linear infinite;
+    }
+    @keyframes snowfall {
+      0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(2000px) rotate(360deg); opacity: 0.3; }
+    }
+    .avatar {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--red-mid) 0%, #4a2a2a 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 130px;
+      margin-bottom: 50px;
+      border: 5px solid var(--gold);
+      box-shadow: 0 0 80px rgba(212, 175, 55, 0.3);
+    }
+    .intro-content { text-align: center; }
+    .intro-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 72px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 25px;
+    }
+    .intro-detail {
+      font-size: 36px;
+      color: rgba(255, 248, 231, 0.7);
+      margin-bottom: 15px;
+    }
+    .intro-detail .gold {
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .problem-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 64px;
+      font-style: italic;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.4;
+      max-width: 900px;
+    }
+    .problem-text .name {
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .discovery-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 58px;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.4;
+    }
+    .brand-highlight {
+      color: var(--gold);
+      font-weight: 700;
+      display: block;
+      font-size: 72px;
+      margin-top: 35px;
+    }
+    .product-card {
+      background: linear-gradient(165deg, rgba(58, 26, 26, 0.9) 0%, rgba(38, 13, 13, 0.95) 100%);
+      border-radius: 40px;
+      padding: 55px;
+      text-align: center;
+      border: 2px solid rgba(212, 175, 55, 0.3);
+      box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+      width: 900px;
+    }
+    .product-icon { font-size: 100px; margin-bottom: 30px; }
+    .product-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 52px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 25px;
+    }
+    .product-desc {
+      font-size: 28px;
+      color: rgba(255, 248, 231, 0.8);
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+    .product-price {
+      font-size: 60px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .product-instant {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--red-dark);
+      font-size: 24px;
+      font-weight: 600;
+      padding: 14px 32px;
+      border-radius: 30px;
+      margin-top: 25px;
+    }
+    .result-emoji { font-size: 120px; margin-bottom: 50px; }
+    .result-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 52px;
+      font-style: italic;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.5;
+    }
+    .result-text .gold {
+      color: var(--gold);
+      font-weight: 700;
+      font-style: normal;
+    }
+    .cta-content { text-align: center; }
+    .cta-logo {
+      font-family: 'Inter', sans-serif;
+      font-size: 44px;
+      font-weight: 500;
+      color: var(--cream);
+      margin-bottom: 50px;
+    }
+    .cta-logo .gold {
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .cta-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 68px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 20px;
+    }
+    .cta-subtitle {
+      font-size: 38px;
+      color: var(--gold);
+      margin-bottom: 60px;
+    }
+    .cta-button {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+      color: var(--red-dark);
+      font-size: 38px;
+      font-weight: 700;
+      padding: 30px 70px;
+      border-radius: 50px;
+      display: inline-block;
+      box-shadow: 0 20px 50px rgba(212, 175, 55, 0.4);
+    }
+    .cta-urgency {
+      margin-top: 45px;
+      font-size: 30px;
+      color: rgba(255, 248, 231, 0.6);
+    }
+    .cta-urgency .red {
+      color: var(--red-accent);
+      font-weight: 600;
+    }
+    .shimmer {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+      animation: shimmerMove 8s ease-in-out infinite;
+    }
+    @keyframes shimmerMove {
+      0% { left: -100%; }
+      50% { left: 200%; }
+      100% { left: 200%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shimmer"></div>
+  <div class="snowflake" style="left: 10%; animation-duration: 8s; animation-delay: 0s;">❄</div>
+  <div class="snowflake" style="left: 25%; animation-duration: 12s; animation-delay: 2s;">❄</div>
+  <div class="snowflake" style="left: 40%; animation-duration: 10s; animation-delay: 1s;">✦</div>
+  <div class="snowflake" style="left: 55%; animation-duration: 9s; animation-delay: 3s;">❄</div>
+  <div class="snowflake" style="left: 70%; animation-duration: 11s; animation-delay: 0.5s;">✦</div>
+  <div class="snowflake" style="left: 85%; animation-duration: 8s; animation-delay: 2.5s;">❄</div>
+
+  <!-- Scene 1: Hook - Last Minute Gift Theme -->
+  <div class="scene scene-hook">
+    <div class="hook-content">
+      <div class="hook-emoji">🎁</div>
+      <h1 class="hook-title">Need a<br><span class="gold">Last-Minute Gift?</span></h1>
+      <p class="hook-subtitle">For the <span class="highlight">kids in your life</span></p>
+    </div>
+  </div>
+
+  <!-- Scene 2: Character - Parent -->
+  <div class="scene scene-intro">
+    <div class="avatar">👨‍👩‍👧</div>
+    <div class="intro-content">
+      <h2 class="intro-name">Meet the Johnsons</h2>
+      <p class="intro-detail">Wanted something <span class="gold">truly special</span></p>
+      <p class="intro-detail">for their daughter Lily</p>
+    </div>
+  </div>
+
+  <!-- Scene 3: Problem - Positive framing, no comparison -->
+  <div class="scene scene-problem">
+    <p class="problem-text">"We wanted to make her feel<br><span class="name">truly seen</span>..."</p>
+  </div>
+
+  <!-- Scene 4: Discovery -->
+  <div class="scene scene-discovery">
+    <p class="discovery-text">Then they found<span class="brand-highlight">personalizedoutput.com</span></p>
+  </div>
+
+  <!-- Scene 5: Product - Santa Message -->
+  <div class="scene scene-product">
+    <div class="product-card">
+      <div class="product-icon">🎅</div>
+      <h3 class="product-title">Personalized Santa Message</h3>
+      <p class="product-desc">Santa calls her by name,<br>mentions her accomplishments,<br>and shares heartfelt encouragement.</p>
+      <div class="product-price">$20</div>
+      <div class="product-instant">⚡ Audio ready in minutes</div>
+    </div>
+  </div>
+
+  <!-- Scene 6: Result -->
+  <div class="scene scene-result">
+    <div class="result-emoji">🥹✨</div>
+    <p class="result-text">"Mommy... Santa <span class="gold">KNOWS me!</span>"<br><br>Best gift ever.</p>
+  </div>
+
+  <!-- Scene 7: CTA -->
+  <div class="scene scene-cta">
+    <div class="cta-content">
+      <div class="cta-logo">personalized<span class="gold">output</span></div>
+      <h2 class="cta-title">Make Christmas Special.</h2>
+      <p class="cta-subtitle">Instant digital delivery.</p>
+      <div class="cta-button">Shop Now →</div>
+      <p class="cta-urgency"><span class="red">🎅 Only days left!</span> — ready in minutes</p>
+    </div>
+  </div>
+</body>
+</html>

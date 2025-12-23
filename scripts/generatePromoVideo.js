@@ -21,20 +21,20 @@ const FRAMES_DIR = path.join(__dirname, 'promo-frames');
 const OUTPUT_DIR = path.join(__dirname, '../outputs/social-campaign-v2');
 
 const FPS = 30;
-const DURATION = 46; // seconds (updated from 37)
+const DURATION = 38; // seconds - 5s per slide
 const TOTAL_FRAMES = FPS * DURATION;
 
 // Template configurations
 const TEMPLATES = {
   'vision-board': {
-    htmlFile: path.join(__dirname, 'promo-video.html'),
-    outputName: 'tiktok-promo-vision-board-newyear.mp4',
-    description: 'Vision Board + New Year\'s Theme'
+    htmlFile: path.join(__dirname, 'promo-video-v2.html'),
+    outputName: 'tiktok-promo-vision-board-v2.mp4',
+    description: 'Vision Board - Last Minute Gift (Fast)'
   },
   'santa': {
-    htmlFile: path.join(__dirname, 'promo-santa.html'),
-    outputName: 'tiktok-promo-santa-message.mp4',
-    description: 'Santa Message - Christmas Theme'
+    htmlFile: path.join(__dirname, 'promo-santa-v2.html'),
+    outputName: 'tiktok-promo-santa-v2.mp4',
+    description: 'Santa Message - Last Minute Gift (Fast)'
   }
 };
 

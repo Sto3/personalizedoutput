@@ -425,6 +425,34 @@ export function renderSantaFormPage(token?: string): string {
       text-align: center;
       margin-bottom: 24px;
     }
+    .tag-us-cta {
+      background: linear-gradient(135deg, rgba(232, 90, 79, 0.1) 0%, rgba(167, 139, 250, 0.1) 100%);
+      border: 1px solid rgba(232, 90, 79, 0.2);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .tag-us-title {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.1rem;
+      font-weight: 400;
+      color: var(--text-primary);
+      margin-bottom: 8px;
+    }
+    .tag-us-text {
+      font-family: 'Bodoni Moda', serif;
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+    }
+    .tag-us-handle {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.2rem;
+      font-weight: 600;
+      color: var(--coral);
+      margin: 0;
+    }
     .btn-restart {
       display: block;
       width: 100%;
@@ -596,6 +624,13 @@ export function renderSantaFormPage(token?: string): string {
         <audio id="audioElement" controls></audio>
       </div>
       <p class="result-note">This is your final digital file. Check your email for the download link.</p>
+
+      <div class="tag-us-cta">
+        <p class="tag-us-title">We'd love to see the reaction!</p>
+        <p class="tag-us-text">Tag us in your reaction videos - we might share them!</p>
+        <p class="tag-us-handle">@personalizedoutput</p>
+      </div>
+
       <button class="btn-restart" onclick="restart()">Create Another Message</button>
     </div>
 

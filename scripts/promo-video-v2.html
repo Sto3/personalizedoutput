@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080, height=1920">
+  <title>Vision Board - Last Minute Gift Promo V2</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      font-family: 'Inter', sans-serif;
+      background: linear-gradient(165deg, #0a1f0a 0%, #0d260d 30%, #071507 100%);
+    }
+    :root {
+      --gold: #D4AF37;
+      --gold-light: #F4D03F;
+      --green-dark: #0a1f0a;
+      --green-mid: #1a3a1a;
+      --cream: #FFF8E7;
+      --red-accent: #C41E3A;
+    }
+    .scene {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px;
+    }
+
+    /* Scene 1: Hook - 5s duration, starts at 0s */
+    .scene-hook {
+      animation: scene1 5s ease-in-out forwards;
+    }
+    @keyframes scene1 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 2: Intro - 5s duration, starts at 5s */
+    .scene-intro {
+      animation: scene2 5s ease-in-out 5s forwards;
+    }
+    @keyframes scene2 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 3: Problem - 5s duration, starts at 10s */
+    .scene-problem {
+      animation: scene3 5s ease-in-out 10s forwards;
+    }
+    @keyframes scene3 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 4: Discovery - 5s duration, starts at 15s */
+    .scene-discovery {
+      animation: scene4 5s ease-in-out 15s forwards;
+    }
+    @keyframes scene4 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 5: Product - 6s duration, starts at 20s (longer to show image) */
+    .scene-product {
+      animation: scene5 6s ease-in-out 20s forwards;
+      padding: 0;
+    }
+    @keyframes scene5 {
+      0% { opacity: 0; }
+      8% { opacity: 1; }
+      88% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 6: Result - 5s duration, starts at 26s */
+    .scene-result {
+      animation: scene6 5s ease-in-out 26s forwards;
+    }
+    @keyframes scene6 {
+      0% { opacity: 0; }
+      10% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    /* Scene 7: CTA - 7s duration, starts at 31s, holds at end */
+    .scene-cta {
+      animation: scene7 7s ease-in-out 31s forwards;
+    }
+    @keyframes scene7 {
+      0% { opacity: 0; }
+      8% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+
+    .hook-content { text-align: center; }
+    .hook-emoji {
+      font-size: 140px;
+      margin-bottom: 50px;
+    }
+    .hook-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 80px;
+      font-weight: 700;
+      color: var(--cream);
+      line-height: 1.1;
+      margin-bottom: 40px;
+    }
+    .hook-title .gold {
+      color: var(--gold);
+      display: block;
+      font-style: italic;
+    }
+    .hook-subtitle {
+      font-size: 42px;
+      color: rgba(255, 248, 231, 0.7);
+    }
+    .hook-subtitle .highlight {
+      color: var(--gold-light);
+      font-weight: 600;
+    }
+    .snowflake {
+      position: absolute;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 24px;
+      animation: snowfall linear infinite;
+    }
+    @keyframes snowfall {
+      0% { transform: translateY(-100px) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(2000px) rotate(360deg); opacity: 0.3; }
+    }
+    .avatar {
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--green-mid) 0%, #2d4a2d 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 150px;
+      margin-bottom: 50px;
+      border: 5px solid var(--gold);
+      box-shadow: 0 0 80px rgba(212, 175, 55, 0.3);
+    }
+    .intro-content { text-align: center; }
+    .intro-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 72px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 25px;
+    }
+    .intro-detail {
+      font-size: 36px;
+      color: rgba(255, 248, 231, 0.7);
+      margin-bottom: 15px;
+    }
+    .intro-detail .gold {
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .problem-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 64px;
+      font-style: italic;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.4;
+      max-width: 900px;
+    }
+    .problem-text .name {
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .discovery-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 58px;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.4;
+    }
+    .brand-highlight {
+      color: var(--gold);
+      font-weight: 700;
+      display: block;
+      font-size: 72px;
+      margin-top: 35px;
+    }
+
+    /* Full-page product scene with vision board */
+    .product-fullpage {
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+    .vision-board-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center center;
+    }
+    .product-overlay {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: linear-gradient(to top, rgba(10, 31, 10, 0.95) 0%, rgba(10, 31, 10, 0.85) 70%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 60px;
+      padding-top: 150px;
+      text-align: center;
+    }
+    .product-icon { font-size: 60px; margin-bottom: 10px; }
+    .product-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 10px;
+    }
+    .product-desc {
+      font-size: 26px;
+      color: rgba(255, 248, 231, 0.85);
+      margin-bottom: 15px;
+    }
+    .product-row {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+    }
+    .product-price {
+      font-size: 52px;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .product-instant {
+      display: inline-block;
+      background: var(--gold);
+      color: var(--green-dark);
+      font-size: 20px;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 25px;
+    }
+
+    .result-emoji { font-size: 120px; margin-bottom: 50px; }
+    .result-text {
+      font-family: 'Playfair Display', serif;
+      font-size: 52px;
+      font-style: italic;
+      color: var(--cream);
+      text-align: center;
+      line-height: 1.5;
+    }
+    .result-text .gold {
+      color: var(--gold);
+      font-weight: 700;
+      font-style: normal;
+    }
+    .cta-content { text-align: center; }
+    .cta-logo {
+      font-family: 'Inter', sans-serif;
+      font-size: 44px;
+      font-weight: 500;
+      color: var(--cream);
+      margin-bottom: 50px;
+    }
+    .cta-logo .gold {
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .cta-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 68px;
+      font-weight: 700;
+      color: var(--cream);
+      margin-bottom: 20px;
+    }
+    .cta-subtitle {
+      font-size: 38px;
+      color: var(--gold);
+      margin-bottom: 60px;
+    }
+    .cta-button {
+      background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+      color: var(--green-dark);
+      font-size: 38px;
+      font-weight: 700;
+      padding: 30px 70px;
+      border-radius: 50px;
+      display: inline-block;
+      box-shadow: 0 20px 50px rgba(212, 175, 55, 0.4);
+    }
+    .cta-urgency {
+      margin-top: 45px;
+      font-size: 30px;
+      color: rgba(255, 248, 231, 0.6);
+    }
+    .cta-urgency .red {
+      color: var(--red-accent);
+      font-weight: 600;
+    }
+    .shimmer {
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.1), transparent);
+      animation: shimmerMove 8s ease-in-out infinite;
+    }
+    @keyframes shimmerMove {
+      0% { left: -100%; }
+      50% { left: 200%; }
+      100% { left: 200%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shimmer"></div>
+  <div class="snowflake" style="left: 10%; animation-duration: 8s; animation-delay: 0s;">❄</div>
+  <div class="snowflake" style="left: 25%; animation-duration: 12s; animation-delay: 2s;">❄</div>
+  <div class="snowflake" style="left: 40%; animation-duration: 10s; animation-delay: 1s;">✦</div>
+  <div class="snowflake" style="left: 55%; animation-duration: 9s; animation-delay: 3s;">❄</div>
+  <div class="snowflake" style="left: 70%; animation-duration: 11s; animation-delay: 0.5s;">✦</div>
+  <div class="snowflake" style="left: 85%; animation-duration: 8s; animation-delay: 2.5s;">❄</div>
+
+  <!-- Scene 1: Hook -->
+  <div class="scene scene-hook">
+    <div class="hook-content">
+      <div class="hook-emoji">🎁</div>
+      <h1 class="hook-title">Need a<br><span class="gold">Last-Minute Gift?</span></h1>
+      <p class="hook-subtitle">Perfect for <span class="highlight">Christmas & New Year's</span></p>
+    </div>
+  </div>
+
+  <!-- Scene 2: Character intro -->
+  <div class="scene scene-intro">
+    <div class="avatar">👩‍💼</div>
+    <div class="intro-content">
+      <h2 class="intro-name">Meet Rachel</h2>
+      <p class="intro-detail">Forgot her best friend's gift</p>
+      <p class="intro-detail">at <span class="gold">the last minute</span></p>
+    </div>
+  </div>
+
+  <!-- Scene 3: Problem -->
+  <div class="scene scene-problem">
+    <p class="problem-text">"Amazon won't deliver in time..."</p>
+  </div>
+
+  <!-- Scene 4: Discovery -->
+  <div class="scene scene-discovery">
+    <p class="discovery-text">Then she found<span class="brand-highlight">personalizedoutput.com</span></p>
+  </div>
+
+  <!-- Scene 5: Product with Full-Page Vision Board Image -->
+  <div class="scene scene-product">
+    <div class="product-fullpage">
+      <img src="../outputs/social-campaign-v2/vision-boards/boards/sofia_glow_up.png" class="vision-board-image" alt="Vision Board Example">
+      <div class="product-overlay">
+        <div class="product-icon">🎯</div>
+        <h3 class="product-title">Custom Vision Board</h3>
+        <p class="product-desc">Help them start 2025 with clarity.</p>
+        <div class="product-row">
+          <div class="product-price">$15</div>
+          <div class="product-instant">⚡ Ready in minutes</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scene 6: Result -->
+  <div class="scene scene-result">
+    <div class="result-emoji">🥹💝</div>
+    <p class="result-text">"How is this so perfect?<br><span class="gold">It's like you read my mind."</span></p>
+  </div>
+
+  <!-- Scene 7: CTA -->
+  <div class="scene scene-cta">
+    <div class="cta-content">
+      <div class="cta-logo">personalized<span class="gold">output</span></div>
+      <h2 class="cta-title">Start 2025 Right.</h2>
+      <p class="cta-subtitle">Instant digital delivery.</p>
+      <div class="cta-button">Shop Now →</div>
+      <p class="cta-urgency"><span class="red">🎄 Order now</span> — ready in minutes</p>
+    </div>
+  </div>
+</body>
+</html>

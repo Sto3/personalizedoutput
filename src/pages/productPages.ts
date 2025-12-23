@@ -515,6 +515,12 @@ export function renderSuccessPage(): string {
             </ol>
           </div>
 
+          <div class="tag-us-cta">
+            <p class="tag-us-title">We'd love to see the reaction!</p>
+            <p class="tag-us-text">Tag us in your reaction videos - we might share them!</p>
+            <p class="tag-us-handle">@personalizedoutput</p>
+          </div>
+
           <div class="success-cta">
             <a href="/" class="btn btn-secondary">Return Home</a>
             <a href="/products" class="btn btn-primary">Browse More Products</a>
@@ -1212,6 +1218,35 @@ function getSuccessPageStyles(): string {
 
     .next-steps li {
       margin-bottom: 8px;
+    }
+
+    .tag-us-cta {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.1) 0%, rgba(232, 90, 107, 0.1) 100%);
+      border: 1px solid rgba(124, 58, 237, 0.2);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .tag-us-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--navy);
+      margin-bottom: 8px;
+    }
+
+    .tag-us-text {
+      color: #64748b;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+    }
+
+    .tag-us-handle {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--purple);
+      margin: 0;
     }
 
     .success-cta {

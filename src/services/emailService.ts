@@ -340,7 +340,20 @@ export async function sendProductDeliveryEmail(
                 This link will expire in 7 days. Make sure to download your content before then!
               </p>
 
-              <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1);">
+              <!-- Tag Us CTA -->
+              <div style="margin-top: 32px; padding: 24px; background: linear-gradient(135deg, rgba(124, 58, 237, 0.15) 0%, rgba(232, 90, 79, 0.15) 100%); border-radius: 16px; border: 1px solid rgba(124, 58, 237, 0.3);">
+                <p style="margin: 0 0 8px; font-size: 18px; color: ${COLORS.cream}; font-weight: 600;">
+                  We'd love to see the reaction!
+                </p>
+                <p style="margin: 0 0 16px; font-size: 15px; color: ${COLORS.textMuted}; line-height: 1.6;">
+                  Tag us in your reaction videos - we might share them!
+                </p>
+                <p style="margin: 0; font-size: 20px; font-weight: 700; color: ${COLORS.purple};">
+                  @personalizedoutput
+                </p>
+              </div>
+
+              <div style="margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,0.1);">
                 <p style="margin: 0 0 12px; font-size: 14px; color: ${COLORS.cream};">
                   Love what you see? Share with friends!
                 </p>
