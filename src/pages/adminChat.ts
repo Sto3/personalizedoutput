@@ -56,6 +56,21 @@ export function renderAdminChatPage(adminEmail: string): string {
           gap: 6px;
         }
         .back-link:hover { color: #fff; }
+        .new-chat-btn {
+          background: rgba(124, 58, 237, 0.2);
+          border: 1px solid rgba(124, 58, 237, 0.4);
+          color: #A78BFA;
+          padding: 8px 16px;
+          border-radius: 8px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .new-chat-btn:hover {
+          background: rgba(124, 58, 237, 0.3);
+          color: #fff;
+        }
 
         .main {
           flex: 1;
@@ -266,12 +281,17 @@ export function renderAdminChatPage(adminEmail: string): string {
           <span class="stor-badge">STOR</span>
           AI Business Assistant
         </div>
-        <a href="/admin" class="back-link">
-          <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
-          </svg>
-          Back to Dashboard
-        </a>
+        <div style="display: flex; gap: 16px; align-items: center;">
+          <button onclick="newConversation()" class="new-chat-btn" title="Start a new conversation">
+            + New Chat
+          </button>
+          <a href="/admin" class="back-link">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M11.354 1.646a.5.5 0 0 1 0 .708L5.707 8l5.647 5.646a.5.5 0 0 1-.708.708l-6-6a.5.5 0 0 1 0-.708l6-6a.5.5 0 0 1 .708 0z"/>
+            </svg>
+            Back
+          </a>
+        </div>
       </div>
 
       <div class="main">
@@ -312,17 +332,69 @@ export function renderAdminChatPage(adminEmail: string): string {
         const inputEl = document.getElementById('input');
         const sendBtn = document.getElementById('sendBtn');
         const welcomeEl = document.getElementById('welcome');
+        const STORAGE_KEY = 'stor_session_id';
 
-        // Create a new session on load
+        // Initialize session - restore existing or create new
         async function initSession() {
+          // Try to restore existing session from localStorage
+          const storedSessionId = localStorage.getItem(STORAGE_KEY);
+
+          if (storedSessionId) {
+            // Try to load existing session messages
+            try {
+              const res = await fetch('/api/stor/sessions/' + storedSessionId + '/messages');
+              const data = await res.json();
+
+              if (data.messages && data.messages.length > 0) {
+                // Restore session and messages
+                sessionId = storedSessionId;
+                restoreMessages(data.messages);
+                return;
+              }
+            } catch (err) {
+              console.log('Could not restore session, creating new one');
+            }
+          }
+
+          // Create new session if no valid existing session
           try {
             const res = await fetch('/api/stor/sessions', { method: 'POST' });
             const data = await res.json();
             sessionId = data.session?.id;
+            if (sessionId) {
+              localStorage.setItem(STORAGE_KEY, sessionId);
+            }
           } catch (err) {
             console.error('Failed to create session:', err);
           }
         }
+
+        // Restore messages from session history
+        function restoreMessages(messages) {
+          // Hide welcome screen
+          if (welcomeEl) welcomeEl.style.display = 'none';
+
+          // Add each message to the UI
+          messages.forEach(msg => {
+            addMessage(msg.role, msg.content, msg.is_sensitive);
+          });
+        }
+
+        // Start new conversation (clear current session)
+        function newConversation() {
+          localStorage.removeItem(STORAGE_KEY);
+          sessionId = null;
+          // Clear messages
+          messagesEl.innerHTML = '';
+          // Show welcome
+          if (welcomeEl) {
+            welcomeEl.style.display = 'block';
+            messagesEl.appendChild(welcomeEl);
+          }
+          // Create new session
+          initSession();
+        }
+
         initSession();
 
         function autoResize(el) {

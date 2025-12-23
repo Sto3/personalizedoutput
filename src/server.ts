@@ -69,6 +69,10 @@ import {
   renderAdminLoginPage,
   renderAdminSetupPage,
   renderAdminDashboardPage,
+  renderAdminErrorPage,
+  renderAdminStatsPage,
+  renderAdminAlertPage,
+  renderAdminUsagePage,
 } from './lib/adminAuth';
 
 // Import Stor chat
@@ -1961,14 +1965,14 @@ app.get('/admin/chat', requireAdmin, (req, res) => {
 // Stor API (protected)
 app.use('/api/stor', requireAdmin, storApi);
 
-// Admin stats endpoint (password-protected - legacy, also accessible from dashboard)
+// Admin stats page (password-protected - accessible from dashboard)
 // Access: https://personalizedoutput.com/admin/stats?key=YOUR_SECRET
 app.get('/admin/stats', (req, res) => {
   const adminKey = req.query.key;
-  const expectedKey = process.env.ADMIN_KEY || 'po-admin-2024'; // Set ADMIN_KEY in Render env vars
+  const expectedKey = process.env.ADMIN_KEY || 'po-admin-2024';
 
   if (adminKey !== expectedKey) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).send(renderAdminErrorPage('Unauthorized', 'Invalid admin key. Please access this page from the admin dashboard.'));
   }
 
   // Calculate summary stats
@@ -1989,56 +1993,83 @@ app.get('/admin/stats', (req, res) => {
   const lastHourTraffic = analytics.hourlyTraffic[lastHourKey] || 0;
   const isSpike = lastHourTraffic > 100;
 
-  res.json({
+  // Render HTML page
+  res.send(renderAdminStatsPage({
     status: isSpike ? '🚨 HIGH TRAFFIC' : '✅ Normal',
-    summary: {
-      totalPageViews,
-      totalApiCalls,
-      totalGenerations,
-      lastHourTraffic,
-      upSince: analytics.startTime
-    },
+    isSpike,
+    totalPageViews,
+    totalApiCalls,
+    totalGenerations,
+    lastHourTraffic,
+    upSince: analytics.startTime,
     pageViews: analytics.pageViews,
     apiCalls: analytics.apiCalls,
     generations: analytics.generations,
     last24Hours,
     lastUpdated: analytics.lastUpdated,
-    alertThreshold: '100 requests/hour triggers spike warning',
-    emailAlerts: isAlertConfigured() ? '✅ Configured' : '❌ Not configured (set RESEND_API_KEY and ALERT_EMAIL)'
-  });
+    emailAlerts: isAlertConfigured() ? '✅ Configured' : '❌ Not configured'
+  }));
 });
 
-// Test email alert endpoint
+// Test email alert page
 app.get('/admin/test-alert', async (req, res) => {
   const adminKey = req.query.key;
   const expectedKey = process.env.ADMIN_KEY || 'po-admin-2024';
 
   if (adminKey !== expectedKey) {
-    return res.status(401).json({ error: 'Unauthorized' });
+    return res.status(401).send(renderAdminErrorPage('Unauthorized', 'Invalid admin key. Please access this page from the admin dashboard.'));
   }
 
   if (!isAlertConfigured()) {
-    return res.json({
+    return res.send(renderAdminAlertPage({
       success: false,
-      message: 'Email alerts not configured. Set RESEND_API_KEY and ALERT_EMAIL in Render environment variables.',
-      instructions: {
-        step1: 'Sign up at resend.com',
-        step2: 'Get your API key from the dashboard',
-        step3: 'In Render dashboard, go to Environment and add:',
-        variables: {
-          RESEND_API_KEY: 'your-resend-api-key',
-          ALERT_EMAIL: 'your-personal-email@example.com',
-          FROM_EMAIL: 'alerts@yourdomain.com (optional, requires verified domain)'
-        }
-      }
-    });
+      configured: false,
+      message: 'Email alerts not configured',
+      instructions: [
+        'Sign up at resend.com',
+        'Get your API key from the dashboard',
+        'In Render dashboard, go to Environment and add RESEND_API_KEY and ALERT_EMAIL'
+      ]
+    }));
   }
 
   const sent = await sendTestAlert();
-  res.json({
+  res.send(renderAdminAlertPage({
     success: sent,
-    message: sent ? 'Test email sent! Check your inbox.' : 'Failed to send test email. Check logs.'
-  });
+    configured: true,
+    message: sent ? 'Test email sent! Check your inbox.' : 'Failed to send test email. Check server logs.'
+  }));
+});
+
+// Admin API usage page (HTML version)
+app.get('/admin/usage', async (req, res) => {
+  const adminKey = req.query.key;
+  const expectedKey = process.env.ADMIN_KEY || 'po-admin-2024';
+
+  if (adminKey !== expectedKey) {
+    return res.status(401).send(renderAdminErrorPage('Unauthorized', 'Invalid admin key. Please access this page from the admin dashboard.'));
+  }
+
+  try {
+    const usage = await checkAllUsage();
+    const state = getUsageState();
+
+    // Transform usage data to match the UsageData interface
+    const services = Object.entries(usage).map(([name, data]: [string, any]) => ({
+      name,
+      used: data.used || 0,
+      limit: data.limit || 0,
+      percentage: data.percentage || 0,
+      status: data.percentage >= 90 ? 'Critical' : data.percentage >= 80 ? 'Warning' : 'OK'
+    }));
+
+    res.send(renderAdminUsagePage({
+      services,
+      lastChecked: state.lastCheck || 'never'
+    }));
+  } catch (error: any) {
+    res.send(renderAdminErrorPage('Error', `Failed to fetch usage data: ${error.message}`));
+  }
 });
 
 // ============================================================

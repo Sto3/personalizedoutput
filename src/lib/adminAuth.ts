@@ -676,7 +676,7 @@ export function renderAdminDashboardPage(adminEmail: string): string {
           <div class="card">
             <h3>API Usage</h3>
             <p>Monitor Claude, ElevenLabs, and other API usage</p>
-            <a href="/api/admin/usage?key=${process.env.ADMIN_KEY || 'po-admin-2024'}" class="card-link">Check Usage</a>
+            <a href="/admin/usage?key=${process.env.ADMIN_KEY || 'po-admin-2024'}" class="card-link">Check Usage</a>
           </div>
 
           <div class="card">
@@ -696,6 +696,423 @@ export function renderAdminDashboardPage(adminEmail: string): string {
             <p>View and manage customer orders</p>
             <span class="coming-soon">Coming Soon</span>
           </div>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+// ============================================================
+// ADMIN SUB-PAGES (Stats, Alerts, Usage, Error)
+// ============================================================
+
+const ADMIN_PAGE_STYLES = `
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #1a0a1a;
+    min-height: 100vh;
+    color: #F5EEF0;
+  }
+  .header {
+    background: #0a0a10;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .logo {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #F5EEF0;
+    text-decoration: none;
+  }
+  .logo span { color: #E85A4F; }
+  .back-link {
+    color: rgba(245, 238, 240, 0.6);
+    text-decoration: none;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.2s;
+  }
+  .back-link:hover { color: #E85A4F; }
+  .container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+  h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: 2rem;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: rgba(245, 238, 240, 0.6);
+    margin-bottom: 32px;
+  }
+  .card {
+    background: #0a0a10;
+    border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 24px;
+  }
+  .card h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.25rem;
+    margin-bottom: 16px;
+    font-weight: 600;
+  }
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .stat-box {
+    background: rgba(124, 58, 237, 0.1);
+    border: 1px solid rgba(124, 58, 237, 0.2);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #E85A4F;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 0.85rem;
+    color: rgba(245, 238, 240, 0.6);
+  }
+  .status-badge {
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .status-ok {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ADE80;
+  }
+  .status-warning {
+    background: rgba(251, 191, 36, 0.15);
+    color: #FBBF24;
+  }
+  .status-error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #FCA5A5;
+  }
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .data-table th, .data-table td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid rgba(124, 58, 237, 0.15);
+  }
+  .data-table th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: rgba(245, 238, 240, 0.5);
+  }
+  .data-table td {
+    font-size: 0.9rem;
+  }
+  .message-box {
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+  }
+  .message-success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #4ADE80;
+  }
+  .message-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #FCA5A5;
+  }
+  .message-info {
+    background: rgba(124, 58, 237, 0.15);
+    border: 1px solid rgba(124, 58, 237, 0.3);
+    color: rgba(245, 238, 240, 0.8);
+  }
+  ul.instructions {
+    list-style: decimal;
+    margin-left: 24px;
+    margin-top: 12px;
+  }
+  ul.instructions li {
+    margin-bottom: 8px;
+    color: rgba(245, 238, 240, 0.7);
+  }
+`;
+
+/**
+ * Render admin error page
+ */
+export function renderAdminErrorPage(title: string, message: string): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${title} - Admin</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+      <style>${ADMIN_PAGE_STYLES}</style>
+    </head>
+    <body>
+      <div class="header">
+        <a href="/admin" class="logo">personalized<span>output</span></a>
+        <a href="/admin" class="back-link">← Back to Dashboard</a>
+      </div>
+      <div class="container">
+        <h1>${title}</h1>
+        <div class="card">
+          <div class="message-box message-error">
+            <p>${message}</p>
+          </div>
+          <a href="/admin" style="color: #E85A4F; text-decoration: none;">Return to Dashboard →</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+interface StatsData {
+  status: string;
+  isSpike: boolean;
+  totalPageViews: number;
+  totalApiCalls: number;
+  totalGenerations: number;
+  lastHourTraffic: number;
+  upSince: string;
+  pageViews: Record<string, number>;
+  apiCalls: Record<string, number>;
+  generations: Record<string, number>;
+  last24Hours: Record<string, number>;
+  lastUpdated: string;
+  emailAlerts: string;
+}
+
+/**
+ * Render admin stats page
+ */
+export function renderAdminStatsPage(data: StatsData): string {
+  const pageViewsRows = Object.entries(data.pageViews)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([page, count]) => `<tr><td>${page}</td><td>${count}</td></tr>`)
+    .join('');
+
+  const generationsRows = Object.entries(data.generations)
+    .sort((a, b) => b[1] - a[1])
+    .map(([product, count]) => `<tr><td>${product}</td><td>${count}</td></tr>`)
+    .join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Analytics - Admin</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+      <style>${ADMIN_PAGE_STYLES}</style>
+    </head>
+    <body>
+      <div class="header">
+        <a href="/admin" class="logo">personalized<span>output</span></a>
+        <a href="/admin" class="back-link">← Back to Dashboard</a>
+      </div>
+      <div class="container">
+        <h1>Analytics Dashboard</h1>
+        <p class="subtitle">Real-time traffic and usage statistics</p>
+
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2>Status</h2>
+            <span class="status-badge ${data.isSpike ? 'status-warning' : 'status-ok'}">${data.status}</span>
+          </div>
+          <div class="stat-grid">
+            <div class="stat-box">
+              <div class="stat-value">${data.totalPageViews.toLocaleString()}</div>
+              <div class="stat-label">Total Page Views</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${data.totalApiCalls.toLocaleString()}</div>
+              <div class="stat-label">API Calls</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${data.totalGenerations.toLocaleString()}</div>
+              <div class="stat-label">Generations</div>
+            </div>
+            <div class="stat-box">
+              <div class="stat-value">${data.lastHourTraffic}</div>
+              <div class="stat-label">Last Hour Traffic</div>
+            </div>
+          </div>
+          <p style="font-size: 0.85rem; color: rgba(245,238,240,0.5);">
+            Up since: ${data.upSince} | Email Alerts: ${data.emailAlerts}
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Top Pages</h2>
+          <table class="data-table">
+            <thead>
+              <tr><th>Page</th><th>Views</th></tr>
+            </thead>
+            <tbody>
+              ${pageViewsRows || '<tr><td colspan="2" style="color: rgba(245,238,240,0.5);">No data yet</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <h2>Generations by Product</h2>
+          <table class="data-table">
+            <thead>
+              <tr><th>Product</th><th>Count</th></tr>
+            </thead>
+            <tbody>
+              ${generationsRows || '<tr><td colspan="2" style="color: rgba(245,238,240,0.5);">No generations yet</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+interface AlertData {
+  success: boolean;
+  configured: boolean;
+  message: string;
+  instructions?: string[];
+}
+
+/**
+ * Render admin alert test page
+ */
+export function renderAdminAlertPage(data: AlertData): string {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Email Alerts - Admin</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+      <style>${ADMIN_PAGE_STYLES}</style>
+    </head>
+    <body>
+      <div class="header">
+        <a href="/admin" class="logo">personalized<span>output</span></a>
+        <a href="/admin" class="back-link">← Back to Dashboard</a>
+      </div>
+      <div class="container">
+        <h1>Email Alerts</h1>
+        <p class="subtitle">Test and configure email alert system</p>
+
+        <div class="card">
+          <div class="message-box ${data.success ? 'message-success' : data.configured ? 'message-error' : 'message-info'}">
+            <p style="font-weight: 600; margin-bottom: 8px;">${data.message}</p>
+            ${data.instructions ? `
+              <ul class="instructions">
+                ${data.instructions.map(i => `<li>${i}</li>`).join('')}
+              </ul>
+            ` : ''}
+          </div>
+          <a href="/admin" style="color: #E85A4F; text-decoration: none;">← Return to Dashboard</a>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+interface UsageData {
+  services: Array<{
+    name: string;
+    used: number;
+    limit: number;
+    percentage: number;
+    status: string;
+  }>;
+  lastChecked: string;
+}
+
+/**
+ * Render admin API usage page
+ */
+export function renderAdminUsagePage(data: UsageData): string {
+  const rows = data.services.map(s => {
+    const statusClass = s.percentage >= 90 ? 'status-error' : s.percentage >= 80 ? 'status-warning' : 'status-ok';
+    return `
+      <tr>
+        <td>${s.name}</td>
+        <td>${s.used.toLocaleString()} / ${s.limit.toLocaleString()}</td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="flex: 1; height: 8px; background: rgba(124,58,237,0.2); border-radius: 4px; overflow: hidden;">
+              <div style="width: ${Math.min(s.percentage, 100)}%; height: 100%; background: ${s.percentage >= 90 ? '#EF4444' : s.percentage >= 80 ? '#FBBF24' : '#4ADE80'}; border-radius: 4px;"></div>
+            </div>
+            <span style="font-size: 0.85rem; color: rgba(245,238,240,0.6);">${s.percentage.toFixed(1)}%</span>
+          </div>
+        </td>
+        <td><span class="status-badge ${statusClass}">${s.status}</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>API Usage - Admin</title>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
+      <style>${ADMIN_PAGE_STYLES}</style>
+    </head>
+    <body>
+      <div class="header">
+        <a href="/admin" class="logo">personalized<span>output</span></a>
+        <a href="/admin" class="back-link">← Back to Dashboard</a>
+      </div>
+      <div class="container">
+        <h1>API Usage</h1>
+        <p class="subtitle">Monitor usage across all API services</p>
+
+        <div class="card">
+          <h2>Service Usage</h2>
+          <table class="data-table">
+            <thead>
+              <tr><th>Service</th><th>Used / Limit</th><th>Usage</th><th>Status</th></tr>
+            </thead>
+            <tbody>
+              ${rows || '<tr><td colspan="4" style="color: rgba(245,238,240,0.5);">No usage data available</td></tr>'}
+            </tbody>
+          </table>
+          <p style="font-size: 0.85rem; color: rgba(245,238,240,0.5); margin-top: 16px;">
+            Last checked: ${data.lastChecked}
+          </p>
         </div>
       </div>
     </body>
