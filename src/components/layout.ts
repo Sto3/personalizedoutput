@@ -98,7 +98,10 @@ export function getSharedStyles(): string {
       --border-subtle: rgba(255,255,255,0.15);
     }
 
-    html { scroll-behavior: smooth; }
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -106,6 +109,8 @@ export function getSharedStyles(): string {
       color: var(--text-primary);
       line-height: 1.6;
       overflow-x: hidden;
+      position: relative;
+      width: 100%;
     }
 
     /* Typography */

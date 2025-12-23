@@ -641,6 +641,12 @@ function getHomepageStyles(): string {
       --off-white: #fafafa;
     }
 
+    /* Prevent horizontal scroll on entire page */
+    main {
+      overflow-x: hidden;
+      max-width: 100vw;
+    }
+
     /* ================================================
        HERO SECTION - BLACK Background, Split Layout (Round 6)
        ================================================ */
