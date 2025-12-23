@@ -547,7 +547,7 @@ export function renderPremiumHomepage(): string {
             <a href="/blog" class="nav-link">Blog</a>
             <a href="/pricing" class="nav-link">Pricing</a>
             <a href="/login" class="nav-link">Login</a>
-            <a href="/signup" class="nav-cta">Start Free</a>
+            <a href="/auth/signup" class="nav-cta">Sign Up</a>
           </div>
         </div>
       </nav>

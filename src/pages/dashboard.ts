@@ -257,7 +257,7 @@ export function renderDashboardPage(data: DashboardData | null, error?: string):
             <a href="/" class="logo">Personalized Output</a>
             <div class="nav-links">
               <a href="/login" class="nav-link">Login</a>
-              <a href="/signup" class="nav-link">Sign Up</a>
+              <a href="/auth/signup" class="nav-link">Sign Up</a>
             </div>
           </div>
           <div class="login-prompt">
@@ -265,7 +265,7 @@ export function renderDashboardPage(data: DashboardData | null, error?: string):
             <h2>Welcome to Your Dashboard</h2>
             <p>Sign in to view your subscription, track usage, and create personalized outputs.</p>
             <a href="/login" class="btn btn-primary" style="margin-right: 12px;">Login</a>
-            <a href="/signup" class="btn btn-secondary">Create Account</a>
+            <a href="/auth/signup" class="btn btn-secondary">Create Account</a>
           </div>
         </div>
       </body>

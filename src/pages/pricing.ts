@@ -47,7 +47,7 @@ export function renderPricingPageNew(): string {
                 <li>Rollover unused credits</li>
                 <li>Email support</li>
               </ul>
-              <a href="/signup?plan=starter" class="btn btn-secondary">Get Started</a>
+              <a href="/auth/signup?plan=starter" class="btn btn-secondary">Get Started</a>
               <p class="sub-savings">Save 17% vs individual</p>
             </div>
 
@@ -67,7 +67,7 @@ export function renderPricingPageNew(): string {
                 <li>Priority support</li>
                 <li>Early access to new products</li>
               </ul>
-              <a href="/signup?plan=regular" class="btn btn-primary">Get Started</a>
+              <a href="/auth/signup?plan=regular" class="btn btn-primary">Get Started</a>
               <p class="sub-savings">Save 35% vs individual</p>
             </div>
 
@@ -87,7 +87,7 @@ export function renderPricingPageNew(): string {
                 <li>Early access to new products</li>
                 <li>Bulk generation tools</li>
               </ul>
-              <a href="/signup?plan=power" class="btn btn-secondary">Get Started</a>
+              <a href="/auth/signup?plan=power" class="btn btn-secondary">Get Started</a>
               <p class="sub-savings">Save 51% vs individual</p>
             </div>
           </div>
