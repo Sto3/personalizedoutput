@@ -29,7 +29,7 @@ import supportReplyApi from './api/supportReplyApi';
 import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tokenStore';
 
 // Import email alerts
-import { alertTrafficSpike, sendTestAlert, isAlertConfigured, sendDailySummary } from './lib/alerts/emailAlerts';
+import { alertTrafficSpike, sendTestAlert, isAlertConfigured, sendDailySummary, scheduleDailyDigest, alertNewPurchase } from './lib/alerts/emailAlerts';
 
 // Import API usage monitor
 import { startMonitoring as startUsageMonitoring, checkAllUsage, getUsageState } from './services/apiUsageMonitor';
@@ -57,6 +57,23 @@ import { addToEmailList } from './lib/supabase/emailListService';
 import { isStripeConfigured, createCheckoutSession, createPortalSession, constructWebhookEvent, handleWebhookEvent } from './lib/stripe/stripeService';
 // Email triage service temporarily disabled - add back when Render deploy stabilizes
 // import { handleInboundWebhook } from './services/emailTriageService';
+
+// Import admin auth system
+import {
+  isAdminSetup,
+  setupAdminPassword,
+  signInAdmin,
+  requireAdmin,
+  setAdminSession,
+  clearAdminSession,
+  renderAdminLoginPage,
+  renderAdminSetupPage,
+  renderAdminDashboardPage,
+} from './lib/adminAuth';
+
+// Import Stor chat
+import storApi from './api/storApi';
+import { renderAdminChatPage } from './pages/adminChat';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1663,7 +1680,92 @@ app.get('/health', (req, res) => {
   res.json({ ok: true });
 });
 
-// Admin stats endpoint (password-protected)
+// ============================================================
+// ADMIN AUTHENTICATION ROUTES
+// ============================================================
+
+// Admin login page
+app.get('/admin/login', async (req, res) => {
+  // Check if admin is already set up
+  const setup = await isAdminSetup();
+  if (!setup) {
+    return res.redirect('/admin/setup');
+  }
+  res.send(renderAdminLoginPage());
+});
+
+// Admin login POST
+app.post('/admin/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  const result = await signInAdmin(email, password);
+
+  if (!result.success || !result.token) {
+    return res.send(renderAdminLoginPage(result.error || 'Login failed'));
+  }
+
+  setAdminSession(res, result.token);
+  res.redirect('/admin');
+});
+
+// Admin setup page (first-time password setup)
+app.get('/admin/setup', async (req, res) => {
+  const setup = await isAdminSetup();
+  if (setup) {
+    return res.redirect('/admin/login');
+  }
+  res.send(renderAdminSetupPage());
+});
+
+// Admin setup POST
+app.post('/admin/setup', async (req, res) => {
+  const { password, confirmPassword } = req.body;
+
+  if (password !== confirmPassword) {
+    return res.send(renderAdminSetupPage('Passwords do not match'));
+  }
+
+  if (password.length < 8) {
+    return res.send(renderAdminSetupPage('Password must be at least 8 characters'));
+  }
+
+  const result = await setupAdminPassword(password);
+
+  if (!result.success) {
+    return res.send(renderAdminSetupPage(result.error || 'Setup failed'));
+  }
+
+  // Auto-login after setup
+  const loginResult = await signInAdmin('persefit@outlook.com', password);
+  if (loginResult.success && loginResult.token) {
+    setAdminSession(res, loginResult.token);
+  }
+
+  res.redirect('/admin');
+});
+
+// Admin logout
+app.get('/admin/logout', (req, res) => {
+  clearAdminSession(res);
+  res.redirect('/admin/login');
+});
+
+// Admin dashboard (protected)
+app.get('/admin', requireAdmin, (req, res) => {
+  const adminEmail = (req as any).admin?.email || 'Admin';
+  res.send(renderAdminDashboardPage(adminEmail));
+});
+
+// Stor Chat Page (protected)
+app.get('/admin/chat', requireAdmin, (req, res) => {
+  const adminEmail = (req as any).admin?.email || 'Admin';
+  res.send(renderAdminChatPage(adminEmail));
+});
+
+// Stor API (protected)
+app.use('/api/stor', requireAdmin, storApi);
+
+// Admin stats endpoint (password-protected - legacy, also accessible from dashboard)
 // Access: https://personalizedoutput.com/admin/stats?key=YOUR_SECRET
 app.get('/admin/stats', (req, res) => {
   const adminKey = req.query.key;
@@ -2031,6 +2133,30 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 app.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)
   startUsageMonitoring();
+
+  // Schedule daily digest email at 9am EST
+  scheduleDailyDigest(() => {
+    const totalPageViews = Object.values(analytics.pageViews).reduce((a, b) => a + b, 0);
+    const totalGenerations = Object.values(analytics.generations).reduce((a, b) => a + b, 0);
+
+    // Find top product
+    let topProduct = 'None';
+    let maxGen = 0;
+    for (const [product, count] of Object.entries(analytics.generations)) {
+      if (count > maxGen) {
+        maxGen = count;
+        topProduct = product;
+      }
+    }
+
+    // Find peak hour traffic
+    let hourlyPeak = 0;
+    for (const count of Object.values(analytics.hourlyTraffic)) {
+      if (count > hourlyPeak) hourlyPeak = count;
+    }
+
+    return { totalPageViews, totalGenerations, topProduct, hourlyPeak };
+  });
 
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗

@@ -319,3 +319,147 @@ export async function addEtsyCustomerOptIn(
   const result = await addToEmailList(email, 'etsy_fulfillment', interests);
   return result.success;
 }
+
+// ============================================================
+// NEWSLETTER SENDING
+// ============================================================
+
+import { Resend } from 'resend';
+
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'hello@personalizedoutput.com';
+
+interface NewsletterContent {
+  subject: string;
+  preheader?: string;
+  htmlContent: string;
+}
+
+/**
+ * Send newsletter to all subscribed emails
+ */
+export async function sendNewsletter(
+  content: NewsletterContent,
+  interests?: string[]
+): Promise<{ sent: number; failed: number; errors: string[] }> {
+  if (!resend) {
+    console.log('[Newsletter] Resend not configured');
+    return { sent: 0, failed: 0, errors: ['Resend not configured'] };
+  }
+
+  const subscribers = await getSubscribedEmails(interests);
+  let sent = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (const subscriber of subscribers) {
+    try {
+      await resend.emails.send({
+        from: FROM_EMAIL,
+        to: subscriber.email,
+        subject: content.subject,
+        html: wrapNewsletterTemplate(content.htmlContent, subscriber.email),
+      });
+      sent++;
+
+      // Rate limiting - pause between emails
+      await new Promise(resolve => setTimeout(resolve, 100));
+    } catch (error) {
+      failed++;
+      errors.push(`${subscriber.email}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  console.log(`[Newsletter] Sent: ${sent}, Failed: ${failed}`);
+  return { sent, failed, errors };
+}
+
+/**
+ * Wrap content in branded newsletter template
+ */
+function wrapNewsletterTemplate(content: string, recipientEmail: string): string {
+  const unsubscribeUrl = `https://personalizedoutput.com/unsubscribe?email=${encodeURIComponent(recipientEmail)}`;
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    </head>
+    <body style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; background-color: #1a0a1a;">
+      <div style="max-width: 600px; margin: 0 auto; background-color: #1a0a1a; color: #ffffff;">
+        <!-- Header -->
+        <div style="padding: 32px 24px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 500; color: #ffffff;">
+            Personalized<span style="color: #7C3AED;">Output</span>
+          </h1>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 32px 24px;">
+          ${content}
+        </div>
+
+        <!-- Footer -->
+        <div style="padding: 24px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.5); font-size: 12px;">
+          <p style="margin: 0 0 8px 0;">You're receiving this because you signed up for updates.</p>
+          <p style="margin: 0;">
+            <a href="${unsubscribeUrl}" style="color: #E85A4F; text-decoration: none;">Unsubscribe</a>
+          </p>
+          <p style="margin: 16px 0 0 0; color: rgba(255,255,255,0.3);">
+            &copy; ${new Date().getFullYear()} Personalized Output
+          </p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+/**
+ * Schedule bi-weekly newsletter
+ * Call this once when server starts
+ */
+export function scheduleNewsletterCron(
+  getNewsletterContent: () => NewsletterContent | null
+): void {
+  const BIWEEKLY_MS = 14 * 24 * 60 * 60 * 1000; // 14 days
+
+  const sendIfContent = async () => {
+    const content = getNewsletterContent();
+    if (content) {
+      await sendNewsletter(content);
+    } else {
+      console.log('[Newsletter] No content to send');
+    }
+  };
+
+  // Calculate next Tuesday at 10am EST
+  const getNextNewsletterTime = (): number => {
+    const now = new Date();
+    const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+
+    // Find next Tuesday
+    const daysUntilTuesday = (2 - estNow.getDay() + 7) % 7 || 7;
+    const nextTuesday = new Date(estNow);
+    nextTuesday.setDate(nextTuesday.getDate() + daysUntilTuesday);
+    nextTuesday.setHours(10, 0, 0, 0);
+
+    return nextTuesday.getTime() - now.getTime();
+  };
+
+  const scheduleNext = () => {
+    const msUntilNext = getNextNewsletterTime();
+    console.log(`[Newsletter] Next scheduled in ${Math.round(msUntilNext / 1000 / 60 / 60)} hours`);
+
+    setTimeout(async () => {
+      await sendIfContent();
+      // Schedule next one (2 weeks later)
+      setTimeout(scheduleNext, BIWEEKLY_MS);
+    }, msUntilNext);
+  };
+
+  scheduleNext();
+  console.log('[Newsletter] Bi-weekly scheduler initialized');
+}

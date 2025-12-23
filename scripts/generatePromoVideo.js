@@ -1,10 +1,15 @@
 /**
  * Generate TikTok Promo Video
  *
- * Takes screenshots of the promo-video.html animation at 30fps
+ * Takes screenshots of the promo HTML animation at 30fps
  * and combines them into an MP4 video using ffmpeg.
  *
- * Output: 1080x1920 vertical video, ~37 seconds
+ * Output: 1080x1920 vertical video, ~46 seconds
+ *
+ * Usage:
+ *   node generatePromoVideo.js                    # Generate vision board video
+ *   node generatePromoVideo.js --template=santa   # Generate Santa message video
+ *   node generatePromoVideo.js --template=all     # Generate both videos
  */
 
 const puppeteer = require('puppeteer');
@@ -14,15 +19,34 @@ const fs = require('fs');
 
 const FRAMES_DIR = path.join(__dirname, 'promo-frames');
 const OUTPUT_DIR = path.join(__dirname, '../outputs/social-campaign-v2');
-const HTML_FILE = path.join(__dirname, 'promo-video.html');
 
 const FPS = 30;
-const DURATION = 37; // seconds
+const DURATION = 46; // seconds (updated from 37)
 const TOTAL_FRAMES = FPS * DURATION;
 
-async function generateVideo() {
+// Template configurations
+const TEMPLATES = {
+  'vision-board': {
+    htmlFile: path.join(__dirname, 'promo-video.html'),
+    outputName: 'tiktok-promo-vision-board-newyear.mp4',
+    description: 'Vision Board + New Year\'s Theme'
+  },
+  'santa': {
+    htmlFile: path.join(__dirname, 'promo-santa.html'),
+    outputName: 'tiktok-promo-santa-message.mp4',
+    description: 'Santa Message - Christmas Theme'
+  }
+};
+
+async function generateVideo(templateKey) {
+  const template = TEMPLATES[templateKey];
+  if (!template) {
+    throw new Error(`Unknown template: ${templateKey}. Available: ${Object.keys(TEMPLATES).join(', ')}`);
+  }
+
   console.log('='.repeat(60));
-  console.log('TIKTOK PROMO VIDEO GENERATOR');
+  console.log(`TIKTOK PROMO VIDEO GENERATOR`);
+  console.log(`Template: ${template.description}`);
   console.log('='.repeat(60));
   console.log(`Target: ${TOTAL_FRAMES} frames at ${FPS}fps (${DURATION}s)`);
 
@@ -47,8 +71,8 @@ async function generateVideo() {
   const page = await browser.newPage();
   await page.setViewport({ width: 1080, height: 1920 });
 
-  console.log('Loading HTML...');
-  await page.goto(`file://${HTML_FILE}`, {
+  console.log(`Loading HTML: ${path.basename(template.htmlFile)}`);
+  await page.goto(`file://${template.htmlFile}`, {
     waitUntil: 'networkidle0'
   });
 
@@ -72,7 +96,8 @@ async function generateVideo() {
     if (i > 0 && i % FPS === 0) {
       const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
       const progress = ((i / TOTAL_FRAMES) * 100).toFixed(0);
-      console.log(`  ${progress}% (${i}/${TOTAL_FRAMES} frames) - ${elapsed}s elapsed`);
+      const second = i / FPS;
+      console.log(`  ${progress}% (${second}s/${DURATION}s) - ${elapsed}s elapsed`);
     }
 
     // Wait for animation to progress (simulate real-time playback)
@@ -86,7 +111,7 @@ async function generateVideo() {
 
   // Combine frames into video using ffmpeg
   console.log('\nCombining frames into video...');
-  const outputPath = path.join(OUTPUT_DIR, 'tiktok-promo-lastminute-gift.mp4');
+  const outputPath = path.join(OUTPUT_DIR, template.outputName);
 
   return new Promise((resolve, reject) => {
     const ffmpeg = spawn('ffmpeg', [
@@ -142,13 +167,52 @@ async function generateVideo() {
   });
 }
 
-// Run
-generateVideo()
-  .then(outputPath => {
-    console.log(`\nVideo ready: ${outputPath}`);
+async function main() {
+  // Parse command line arguments
+  const args = process.argv.slice(2);
+  let templateArg = 'vision-board'; // default
+
+  for (const arg of args) {
+    if (arg.startsWith('--template=')) {
+      templateArg = arg.split('=')[1];
+    }
+  }
+
+  try {
+    if (templateArg === 'all') {
+      // Generate both videos
+      console.log('\n' + '='.repeat(60));
+      console.log('GENERATING BOTH VIDEO TEMPLATES');
+      console.log('='.repeat(60) + '\n');
+
+      const outputs = [];
+
+      // Vision Board first
+      console.log('\n[1/2] Vision Board + New Year\'s Theme\n');
+      const vbOutput = await generateVideo('vision-board');
+      outputs.push(vbOutput);
+
+      // Santa second
+      console.log('\n[2/2] Santa Message - Christmas Theme\n');
+      const santaOutput = await generateVideo('santa');
+      outputs.push(santaOutput);
+
+      console.log('\n' + '='.repeat(60));
+      console.log('ALL VIDEOS COMPLETE!');
+      console.log('='.repeat(60));
+      outputs.forEach(o => console.log(`  - ${o}`));
+
+    } else {
+      // Generate single video
+      await generateVideo(templateArg);
+    }
+
     process.exit(0);
-  })
-  .catch(err => {
+  } catch (err) {
     console.error('Error:', err.message);
     process.exit(1);
-  });
+  }
+}
+
+// Run
+main();

@@ -238,3 +238,100 @@ export async function sendTestAlert(): Promise<boolean> {
 export function isAlertConfigured(): boolean {
   return !!(resend && ALERT_EMAIL);
 }
+
+/**
+ * New purchase/order alert - real-time notification
+ */
+export async function alertNewPurchase(
+  productType: string,
+  amount: number,
+  customerEmail?: string
+): Promise<void> {
+  const subject = `💰 New Purchase: ${productType} - $${amount.toFixed(2)}`;
+  const html = `
+    <h2>New Purchase!</h2>
+    <table style="border-collapse: collapse; width: 100%;">
+      <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Product</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${productType}</td></tr>
+      <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Amount</strong></td><td style="padding: 8px; border: 1px solid #ddd;">$${amount.toFixed(2)}</td></tr>
+      ${customerEmail ? `<tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Customer</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${customerEmail}</td></tr>` : ''}
+      <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Time</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${new Date().toLocaleString('en-US', { timeZone: 'America/New_York' })} EST</td></tr>
+    </table>
+    <hr>
+    <p><small>PersonalizedOutput Alert System</small></p>
+  `;
+
+  await sendAlert(subject, html, 'purchase');
+}
+
+/**
+ * Low API quota warning
+ */
+export async function alertLowQuota(
+  service: string,
+  percentUsed: number,
+  limit: number
+): Promise<void> {
+  const subject = `⚠️ Low API Quota: ${service} at ${percentUsed}%`;
+  const html = `
+    <h2>API Quota Warning</h2>
+    <p>Your <strong>${service}</strong> API is running low on quota.</p>
+    <table style="border-collapse: collapse; width: 100%;">
+      <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Usage</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${percentUsed}%</td></tr>
+      <tr><td style="padding: 8px; border: 1px solid #ddd;"><strong>Limit</strong></td><td style="padding: 8px; border: 1px solid #ddd;">${limit}</td></tr>
+    </table>
+    <p style="margin-top: 20px;"><strong>Action:</strong> Consider upgrading your plan or reducing usage.</p>
+    <hr>
+    <p><small>PersonalizedOutput Alert System</small></p>
+  `;
+
+  await sendAlert(subject, html, 'quota_warning');
+}
+
+/**
+ * Schedule daily digest to run at 9am EST
+ * Call this once when server starts
+ */
+export function scheduleDailyDigest(getStatsCallback: () => {
+  totalPageViews: number;
+  totalGenerations: number;
+  topProduct: string;
+  hourlyPeak: number;
+}): void {
+  const sendDigest = async () => {
+    const stats = getStatsCallback();
+    await sendDailySummary(stats);
+  };
+
+  // Calculate time until 9am EST
+  const getMillisUntil9amEST = (): number => {
+    const now = new Date();
+    const estNow = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+
+    // Set target to 9am today
+    const target = new Date(estNow);
+    target.setHours(9, 0, 0, 0);
+
+    // If it's past 9am, schedule for tomorrow
+    if (estNow >= target) {
+      target.setDate(target.getDate() + 1);
+    }
+
+    // Convert back to UTC for proper timeout
+    const targetUTC = new Date(target.toLocaleString('en-US', { timeZone: 'UTC' }));
+    return targetUTC.getTime() - now.getTime();
+  };
+
+  const scheduleNext = () => {
+    const msUntilDigest = getMillisUntil9amEST();
+    console.log(`[Alerts] Daily digest scheduled in ${Math.round(msUntilDigest / 1000 / 60)} minutes`);
+
+    setTimeout(async () => {
+      await sendDigest();
+      // Schedule next day's digest
+      scheduleNext();
+    }, msUntilDigest);
+  };
+
+  scheduleNext();
+  console.log('[Alerts] Daily digest scheduler initialized');
+}
