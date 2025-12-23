@@ -132,10 +132,14 @@ export function renderSantaFormPage(token?: string): string {
       margin-bottom: 24px;
     }
 
-    /* Start screen */
+    /* Start screen - white card */
+    .start-screen {
+      background: #ffffff;
+      border: none;
+    }
     .start-screen .intro-text {
       font-family: 'Bodoni Moda', serif;
-      color: var(--text-secondary);
+      color: #333;
       margin-bottom: 32px;
       line-height: 1.9;
       font-size: 1.05rem;
@@ -503,7 +507,7 @@ export function renderSantaFormPage(token?: string): string {
         <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
         <p>Takes about 5 minutes.</p>
       </div>
-      <button class="btn-start" onclick="startSession()">Let's Begin Your Personalization Experience</button>
+      <button class="btn-start" onclick="startSession()">Let's Begin Your<br>Personalization Experience</button>
     </div>
 
     <!-- Form Area -->
@@ -662,7 +666,7 @@ export function renderSantaFormPage(token?: string): string {
           <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
           <p>Takes about 5 minutes.</p>
         </div>
-        <button class="btn-start" onclick="startSession()">Let's Begin Your Personalization Experience</button>
+        <button class="btn-start" onclick="startSession()">Let's Begin Your<br>Personalization Experience</button>
       \`;
       startSession();
     }
@@ -884,7 +888,7 @@ export function renderSantaFormPage(token?: string): string {
           <p>Answer a few questions about your child's year - their proud moments, growth, and what makes them special. We'll use your answers to create a personalized audio message from Santa.</p>
           <p>Takes about 5 minutes.</p>
         </div>
-        <button class="btn-start" onclick="startSession()">Let's Begin Your Personalization Experience</button>
+        <button class="btn-start" onclick="startSession()">Let's Begin Your<br>Personalization Experience</button>
       \`;
       document.getElementById('audioPlayer').classList.add('hidden');
       hideError();
