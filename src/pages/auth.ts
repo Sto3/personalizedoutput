@@ -4,7 +4,7 @@
  * Login, Signup, and Password Reset pages.
  */
 
-export function renderLoginPage(error?: string, returnUrl?: string): string {
+export function renderLoginPage(error?: string, returnUrl?: string, success?: boolean): string {
   return `
     <!DOCTYPE html>
     <html lang="en">
@@ -123,6 +123,26 @@ export function renderLoginPage(error?: string, returnUrl?: string): string {
           font-size: 0.875rem;
           text-align: center;
         }
+        .success {
+          background: rgba(74, 222, 128, 0.15);
+          border: 1px solid #4ade80;
+          padding: 16px;
+          border-radius: 12px;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        .success h3 {
+          font-family: 'Bodoni Moda', serif;
+          font-size: 1.1rem;
+          font-weight: 500;
+          margin-bottom: 6px;
+          color: #4ade80;
+        }
+        .success p {
+          color: rgba(255,255,255,0.85);
+          font-size: 0.875rem;
+          margin: 0;
+        }
         .links {
           text-align: center;
           margin-top: 24px;
@@ -194,6 +214,13 @@ export function renderLoginPage(error?: string, returnUrl?: string): string {
           <div class="tagline">Create deeply personal gifts & planners</div>
 
           <h1>Welcome Back</h1>
+
+          ${success ? `
+            <div class="success">
+              <h3>Account Created!</h3>
+              <p>Please check your email to confirm your account, then sign in below.</p>
+            </div>
+          ` : ''}
 
           ${error ? `<div class="error">${error}</div>` : ''}
 

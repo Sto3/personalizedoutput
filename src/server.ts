@@ -1515,7 +1515,8 @@ app.get('/login', (req, res) => {
   trackEvent('page', 'login');
   const error = req.query.error as string | undefined;
   const redirectTo = req.query.redirect as string | undefined;
-  res.send(renderLoginPage(error, redirectTo));
+  const success = req.query.success === '1';
+  res.send(renderLoginPage(error, redirectTo, success));
 });
 
 // Signup page (new auth-based signup, different from email list signup)
