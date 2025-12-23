@@ -730,33 +730,33 @@ app.get('/planner', (req, res) => {
   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-planner.html'));
 });
 
-// Custom Flash Cards form
-app.get('/flash-cards', (req, res) => {
-  trackEvent('page', 'flash-cards');
-  res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-flashcards.html'));
-});
+// COMING SOON - Flash Cards (disabled)
+// app.get('/flash-cards', (req, res) => {
+//   trackEvent('page', 'flash-cards');
+//   res.sendFile(path.join(process.cwd(), 'dev', 'thought-form-flashcards.html'));
+// });
 
 // ============================================================
 // PRODUCT DETAIL PAGES (Premium pages with Stripe checkout)
 // ============================================================
 
-// Learning Session product page (Audio)
-app.get('/learning-session', (req, res) => {
-  trackEvent('page', 'learning-session');
-  res.send(renderProductPage('learning_session'));
-});
+// COMING SOON - Learning Session (disabled)
+// app.get('/learning-session', (req, res) => {
+//   trackEvent('page', 'learning-session');
+//   res.send(renderProductPage('learning_session'));
+// });
 
-// Video Learning Session product page
-app.get('/video-lesson', (req, res) => {
-  trackEvent('page', 'video-lesson');
-  res.send(renderProductPage('video_learning_session'));
-});
+// COMING SOON - Video Learning Session (disabled)
+// app.get('/video-lesson', (req, res) => {
+//   trackEvent('page', 'video-lesson');
+//   res.send(renderProductPage('video_learning_session'));
+// });
 
-// Flash Cards product page (different from the form above)
-app.get('/product/flash-cards', (req, res) => {
-  trackEvent('page', 'product-flash-cards');
-  res.send(renderProductPage('flash_cards'));
-});
+// COMING SOON - Flash Cards product page (disabled)
+// app.get('/product/flash-cards', (req, res) => {
+//   trackEvent('page', 'product-flash-cards');
+//   res.send(renderProductPage('flash_cards'));
+// });
 
 // Vision Board product page
 app.get('/product/vision-board', (req, res) => {
@@ -1208,8 +1208,8 @@ const OLD_DEMO_LESSONS_HTML_ARCHIVED = `<!DOCTYPE html>
       <p style="margin-bottom: 1rem; color: rgba(255,255,255,0.9); font-size: 1.1rem;">
         <strong>Ready to create your own?</strong>
       </p>
-      <a href="/flash-cards" class="cta-button">Create Personalized Lesson</a>
-      <a href="/santa" class="cta-button santa">Create Santa Message</a>
+      <a href="/product/vision-board" class="cta-button">Create Vision Board</a>
+      <a href="/product/santa" class="cta-button santa">Create Santa Message</a>
     </div>
 
     <a href="/" class="back-link">&larr; Back to Home</a>

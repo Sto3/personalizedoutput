@@ -184,95 +184,6 @@ export function renderDemoLessonsPage(): string {
         </div>
       </section>
 
-      <!-- Full-Length Lesson Demos Section -->
-      <section class="demos-section">
-        <div class="container">
-          <div class="section-header">
-            <h2><span class="icon">🎬</span> Full-Length Personalized Lessons</h2>
-            <p>Experience complete personalized lessons - audio-only for adults, video+audio for kids</p>
-          </div>
-
-          <div class="demo-grid full-lesson-grid">
-            <div class="demo-card full-lesson-card">
-              <div class="full-badge">Full Lesson - Audio Only</div>
-              <div class="audio-container">
-                <div class="audio-visual">
-                  <div class="audio-icons-row">
-                    <span class="audio-icon-large">🧠</span>
-                    <span class="audio-icon">🎧</span>
-                  </div>
-                  <span class="audio-label">Listen to the Full Lesson</span>
-                </div>
-                <audio controls preload="metadata" style="width: 100%;">
-                  <source src="/demos/sarah-bakery-mortgage-full.mp3" type="audio/mpeg">
-                  Your browser does not support audio.
-                </audio>
-              </div>
-              <div class="demo-info">
-                <h3>Sarah: Bakery → Understanding Mortgages (Audio)</h3>
-                <p>Adult • Full voice-narrated lesson explaining mortgages through bakery business concepts. Perfect for commutes, walks, or focused listening.</p>
-                <div class="demo-tags">
-                  <span class="tag full">Full Length</span>
-                  <span class="tag featured">Audio Only</span>
-                  <span class="tag">Adult Learning</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="demo-card full-lesson-card">
-              <div class="full-badge">Full Lesson - Audio Only</div>
-              <div class="audio-container">
-                <div class="audio-visual">
-                  <span class="audio-icon">🦕</span>
-                  <span class="audio-label">Listen to the Full Lesson</span>
-                </div>
-                <audio controls preload="metadata" style="width: 100%;">
-                  <source src="/demos/joe-dinosaurs-fractions-full.mp3" type="audio/mpeg">
-                  Your browser does not support audio.
-                </audio>
-              </div>
-              <div class="demo-info">
-                <h3>Joe: Dinosaurs → Fractions (Audio)</h3>
-                <p>6 years old • Full voice-narrated lesson teaching fractions through dinosaur adventures. Perfect for car rides, bedtime learning, or focused listening time.</p>
-                <div class="demo-tags">
-                  <span class="tag full">Full Length</span>
-                  <span class="tag featured">Audio Only</span>
-                  <span class="tag">Kid-Friendly</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Flash Cards Section -->
-      <section class="demos-section alt">
-        <div class="container">
-          <div class="section-header">
-            <h2><span class="icon">📚</span> Custom Flash Cards</h2>
-            <p>Educational flash cards designed around what your child loves</p>
-          </div>
-
-          <div class="demo-grid flash-grid">
-            <div class="demo-card flash-card">
-              <div class="image-container clickable-image" onclick="openLightbox('/demos/sample-flashcards-dinosaurs.png', 'Dino Math Cards')">
-                <img src="/demos/sample-flashcards-dinosaurs.png" alt="Dinosaur Math Flash Cards - Addition, Subtraction, Counting" loading="lazy">
-                <div class="image-overlay"><span>Click to view full screen</span></div>
-              </div>
-              <div class="demo-info">
-                <h3>Dino Math Cards</h3>
-                <p>Math concepts taught through friendly dinosaurs - addition, subtraction, counting, multiplication, and word problems</p>
-                <div class="demo-tags">
-                  <span class="tag flash">Fully Custom</span>
-                  <span class="tag">Ages 4-8</span>
-                  <span class="tag">Math</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <!-- What Makes It Special -->
       <section class="features-section">
         <div class="container">
@@ -303,8 +214,8 @@ export function renderDemoLessonsPage(): string {
           <h2>Ready to Create Your Own?</h2>
           <p>Choose a product and create something special for someone you love.</p>
           <div class="cta-buttons">
-            <a href="/santa" class="btn btn-primary santa-btn">Create Santa Message</a>
-            <a href="/flash-cards" class="btn btn-secondary">Create Learning Session</a>
+            <a href="/product/santa" class="btn btn-primary santa-btn">Create Santa Message</a>
+            <a href="/product/vision-board" class="btn btn-secondary">Create Vision Board</a>
           </div>
         </div>
       </section>

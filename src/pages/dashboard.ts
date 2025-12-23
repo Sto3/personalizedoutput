@@ -283,10 +283,6 @@ export function renderDashboardPage(data: DashboardData | null, error?: string):
   const products = [
     { icon: '🎅', name: 'Santa Message', href: '/santa', desc: 'Personalized audio' },
     { icon: '🎯', name: 'Vision Board', href: '/vision-board', desc: 'Goal visualization' },
-    { icon: '🎄', name: 'Holiday Reset', href: '/holiday-reset', desc: 'Relationship planner' },
-    { icon: '✨', name: 'New Year Reset', href: '/new-year-reset', desc: 'Reflection planner' },
-    { icon: '💡', name: 'Clarity Planner', href: '/clarity-planner', desc: 'Life direction guide' },
-    { icon: '📚', name: 'Flash Cards', href: '/flash-cards', desc: 'Learning for kids' },
   ];
 
   return `

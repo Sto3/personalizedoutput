@@ -110,7 +110,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     price: 2299, // $22.99
     category: 'learning',
     slug: 'learning-session',
-    isActive: true,
+    isActive: false, // COMING SOON
     createdAt: new Date('2024-12-01'),
   },
   video_learning_session: {
@@ -120,7 +120,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     price: 3299, // $32.99
     category: 'learning',
     slug: 'video-lesson',
-    isActive: true,
+    isActive: false, // COMING SOON
     createdAt: new Date('2024-12-15'),
   },
   flash_cards: {
@@ -130,7 +130,7 @@ export const PRODUCTS: Record<ProductType, ProductInfo> = {
     price: 1499, // $14.99
     category: 'learning',
     slug: 'flash-cards',
-    isActive: true,
+    isActive: false, // COMING SOON
     createdAt: new Date('2024-12-01'),
   },
   vision_board: {

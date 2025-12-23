@@ -179,51 +179,6 @@ export function renderPricingPageNew(): string {
               <a href="/santa" class="btn btn-primary">Create Message</a>
             </div>
 
-            <div class="price-card">
-              <div class="price-badge">For Kids</div>
-              <div class="price-icon">📚</div>
-              <h3>Flash Cards</h3>
-              <p class="price-desc">Custom learning cards based on interests</p>
-              <div class="price-amount">$12</div>
-              <ul class="price-features">
-                <li>50+ personalized cards</li>
-                <li>Any subject matter</li>
-                <li>Print-ready PDF</li>
-                <li>Digital version included</li>
-              </ul>
-              <a href="/flash-cards" class="btn btn-secondary">Create Cards</a>
-            </div>
-
-            <div class="price-card">
-              <div class="price-badge">For Kids</div>
-              <div class="price-icon">🎧</div>
-              <h3>Audio Lesson</h3>
-              <p class="price-desc">30-min personalized audio lesson</p>
-              <div class="price-amount">$23</div>
-              <ul class="price-features">
-                <li>30-min custom lesson</li>
-                <li>Based on their interests</li>
-                <li>Professional narration</li>
-                <li>Downloadable MP3</li>
-              </ul>
-              <a href="/learning-session" class="btn btn-secondary">Create Lesson</a>
-            </div>
-
-            <div class="price-card">
-              <div class="price-badge">For Kids</div>
-              <div class="price-icon">🎬</div>
-              <h3>Video Lesson</h3>
-              <p class="price-desc">30-min personalized video lesson</p>
-              <div class="price-amount">$33</div>
-              <ul class="price-features">
-                <li>30-min custom video</li>
-                <li>Custom animations</li>
-                <li>Professional production</li>
-                <li>Downloadable MP4</li>
-              </ul>
-              <a href="/video-lesson" class="btn btn-secondary">Create Video</a>
-            </div>
-
             <!-- Adult Products -->
             <div class="price-card featured">
               <div class="popular-tag">Most Popular</div>
