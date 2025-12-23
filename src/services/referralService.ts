@@ -378,5 +378,5 @@ export async function getReferralStats(userId: string): Promise<{
  */
 export function generateReferralLink(code: string): string {
   const baseUrl = process.env.SITE_URL || 'https://personalizedoutput.com';
-  return `${baseUrl}/signup?ref=${code}`;
+  return `${baseUrl}/auth/signup?ref=${code}`;
 }

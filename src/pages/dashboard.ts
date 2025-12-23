@@ -383,7 +383,7 @@ export function renderDashboardPage(data: DashboardData | null, error?: string):
               <button class="copy-btn" onclick="copyCode()">Copy</button>
             </div>
             <p class="referral-link">
-              Share link: https://personalizedoutput.com/signup?ref=${referralStats.referralCode}
+              Share link: https://personalizedoutput.com/auth/signup?ref=${referralStats.referralCode}
             </p>
           </div>
         </div>

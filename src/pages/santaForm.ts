@@ -23,25 +23,25 @@ export function renderSantaFormPage(token?: string): string {
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     :root {
-      --bg-light: #fafafa;
-      --bg-white: #ffffff;
-      --bg-card: #ffffff;
-      --bg-card-hover: #f5f5f5;
+      --bg-dark: #1a1a2e;
+      --bg-purple: #2d1b4e;
+      --bg-card: rgba(255,255,255,0.08);
+      --bg-card-hover: rgba(255,255,255,0.12);
       --coral: #E85A6B;
       --coral-light: #F08B96;
       --purple: #7C3AED;
       --purple-light: #A78BFA;
       --navy: #1a1a2e;
-      --text-primary: #1a1a2e;
-      --text-secondary: #64748b;
-      --text-muted: #94a3b8;
-      --border: rgba(0,0,0,0.1);
-      --border-focus: rgba(124, 58, 237, 0.5);
+      --text-primary: #ffffff;
+      --text-secondary: rgba(255,255,255,0.7);
+      --text-muted: rgba(255,255,255,0.5);
+      --border: rgba(255,255,255,0.15);
+      --border-focus: rgba(124, 58, 237, 0.7);
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-light);
+      background: linear-gradient(135deg, var(--bg-dark) 0%, var(--bg-purple) 50%, var(--bg-dark) 100%);
       min-height: 100vh;
       color: var(--text-primary);
       line-height: 1.6;
@@ -124,7 +124,8 @@ export function renderSantaFormPage(token?: string): string {
       border-radius: 20px;
       padding: 40px;
       margin-bottom: 24px;
-      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
     }
 
     /* Start screen */
@@ -172,8 +173,8 @@ export function renderSantaFormPage(token?: string): string {
       margin-bottom: 24px;
     }
     .previous-answers h3 {
-      color: var(--purple);
-      font-family: 'Bodoni Moda', serif;
+      color: var(--purple-light);
+      font-family: 'Cormorant SC', serif;
       font-size: 1rem;
       font-weight: 600;
       margin-bottom: 8px;
@@ -249,7 +250,7 @@ export function renderSantaFormPage(token?: string): string {
     }
     .answer-input {
       width: 100%;
-      background: #fff;
+      background: rgba(255,255,255,0.08);
       border: 1px solid var(--border);
       border-radius: 12px;
       padding: 16px;
@@ -259,12 +260,13 @@ export function renderSantaFormPage(token?: string): string {
       min-height: 120px;
       resize: vertical;
       transition: border-color 0.2s, box-shadow 0.2s;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
     .answer-input:focus {
       outline: none;
       border-color: var(--purple);
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+      background: rgba(255,255,255,0.12);
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.3);
     }
     .answer-input::placeholder {
       color: var(--text-muted);

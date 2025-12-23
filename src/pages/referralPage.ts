@@ -394,25 +394,25 @@ export function renderReferralDashboard(stats: ReferralStats, userName: string =
       <div class="referral-code-box">
         <div class="referral-code">${stats.code || 'LOADING...'}</div>
         <div class="referral-link" id="referralLink">
-          https://personalizedoutput.com/signup?ref=${stats.code}
+          https://personalizedoutput.com/auth/signup?ref=${stats.code}
         </div>
         <button class="copy-btn" onclick="copyLink()">Copy Link</button>
       </div>
 
       <div class="share-buttons">
-        <a href="https://twitter.com/intent/tweet?text=Check%20out%20Personalized%20Output%21%20Use%20my%20code%20${stats.code}%20for%20exclusive%20rewards%3A%20https%3A%2F%2Fpersonalizedoutput.com%2Fsignup%3Fref%3D${stats.code}" target="_blank" class="share-btn share-twitter">
+        <a href="https://twitter.com/intent/tweet?text=Check%20out%20Personalized%20Output%21%20Use%20my%20code%20${stats.code}%20for%20exclusive%20rewards%3A%20https%3A%2F%2Fpersonalizedoutput.com%2Fauth%2Fsignup%3Fref%3D${stats.code}" target="_blank" class="share-btn share-twitter">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/>
           </svg>
           Share on X
         </a>
-        <a href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fpersonalizedoutput.com%2Fsignup%3Fref%3D${stats.code}" target="_blank" class="share-btn share-facebook">
+        <a href="https://www.facebook.com/sharer/sharer.php?u=https%3A%2F%2Fpersonalizedoutput.com%2Fauth%2Fsignup%3Fref%3D${stats.code}" target="_blank" class="share-btn share-facebook">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
           </svg>
           Share on Facebook
         </a>
-        <a href="mailto:?subject=Check%20out%20Personalized%20Output&body=I've%20been%20using%20Personalized%20Output%20and%20thought%20you'd%20love%20it!%20Use%20my%20referral%20code%20${stats.code}%20when%20you%20sign%20up%3A%20https%3A%2F%2Fpersonalizedoutput.com%2Fsignup%3Fref%3D${stats.code}" class="share-btn share-email">
+        <a href="mailto:?subject=Check%20out%20Personalized%20Output&body=I've%20been%20using%20Personalized%20Output%20and%20thought%20you'd%20love%20it!%20Use%20my%20referral%20code%20${stats.code}%20when%20you%20sign%20up%3A%20https%3A%2F%2Fpersonalizedoutput.com%2Fauth%2Fsignup%3Fref%3D${stats.code}" class="share-btn share-email">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
             <polyline points="22,6 12,13 2,6"/>
