@@ -161,6 +161,27 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           </div>
         </div>
       </section>
+
+      <!-- Newsletter Signup -->
+      <section class="newsletter-section">
+        <div class="newsletter-container container-narrow">
+          <div class="newsletter-content">
+            <h3>Stay in the Loop</h3>
+            <p>Get early access to new products, exclusive discounts, and personalization tips delivered to your inbox.</p>
+            <form class="newsletter-form" action="/api/subscribe" method="POST" id="newsletter-form">
+              <input
+                type="email"
+                name="email"
+                placeholder="Enter your email"
+                required
+                class="newsletter-input"
+              >
+              <button type="submit" class="newsletter-btn">Subscribe</button>
+            </form>
+            <p class="newsletter-privacy">We respect your inbox. Unsubscribe anytime.</p>
+          </div>
+        </div>
+      </section>
     </main>
   `;
 
@@ -1485,6 +1506,94 @@ function getHomepageStyles(): string {
     }
 
     /* ================================================
+       NEWSLETTER
+       ================================================ */
+    .newsletter-section {
+      padding: 60px 24px;
+      background: linear-gradient(165deg, #0f0f14 0%, #1a1a2e 100%);
+    }
+
+    .newsletter-container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .newsletter-content {
+      text-align: center;
+    }
+
+    .newsletter-content h3 {
+      font-family: 'Bodoni Moda', serif;
+      font-size: 1.75rem;
+      color: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .newsletter-content > p {
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 24px;
+      font-size: 1rem;
+    }
+
+    .newsletter-form {
+      display: flex;
+      gap: 12px;
+      max-width: 480px;
+      margin: 0 auto 16px;
+    }
+
+    .newsletter-input {
+      flex: 1;
+      padding: 14px 18px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      font-size: 1rem;
+    }
+
+    .newsletter-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .newsletter-input:focus {
+      outline: none;
+      border-color: var(--coral);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .newsletter-btn {
+      padding: 14px 28px;
+      border-radius: 8px;
+      border: none;
+      background: var(--coral);
+      color: #ffffff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .newsletter-btn:hover {
+      background: var(--coral-light);
+      transform: translateY(-1px);
+    }
+
+    .newsletter-privacy {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    @media (max-width: 480px) {
+      .newsletter-form {
+        flex-direction: column;
+      }
+
+      .newsletter-btn {
+        width: 100%;
+      }
+    }
+
+    /* ================================================
        RESPONSIVE
        ================================================ */
     @media (max-width: 1200px) {
@@ -1622,6 +1731,62 @@ function getHomepageScripts(): string {
 
     // Start the 30-second loop
     setInterval(resetHeadlineAnimation, 30000);
+
+    // Newsletter form handler
+    const newsletterForm = document.getElementById('newsletter-form');
+    if (newsletterForm) {
+      newsletterForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const form = this;
+        const emailInput = form.querySelector('.newsletter-input');
+        const submitBtn = form.querySelector('.newsletter-btn');
+        const email = emailInput.value.trim();
+
+        if (!email) return;
+
+        // Disable button
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Subscribing...';
+
+        try {
+          const response = await fetch('/api/subscribe', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            emailInput.value = '';
+            submitBtn.textContent = 'Subscribed!';
+            submitBtn.style.background = '#22c55e';
+            setTimeout(() => {
+              submitBtn.textContent = 'Subscribe';
+              submitBtn.style.background = '';
+              submitBtn.disabled = false;
+            }, 3000);
+          } else {
+            submitBtn.textContent = data.error || 'Error';
+            submitBtn.style.background = '#ef4444';
+            setTimeout(() => {
+              submitBtn.textContent = 'Subscribe';
+              submitBtn.style.background = '';
+              submitBtn.disabled = false;
+            }, 3000);
+          }
+        } catch (error) {
+          submitBtn.textContent = 'Error';
+          submitBtn.style.background = '#ef4444';
+          setTimeout(() => {
+            submitBtn.textContent = 'Subscribe';
+            submitBtn.style.background = '';
+            submitBtn.disabled = false;
+          }, 3000);
+        }
+      });
+    }
   `;
 }
 

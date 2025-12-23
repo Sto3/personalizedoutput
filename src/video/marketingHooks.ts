@@ -142,7 +142,7 @@ export const MARKETING_HOOKS: MarketingHook[] = [
     id: 'santa_social_02',
     product: 'santa',
     category: 'social_proof',
-    hook: "Five stars, hundreds of happy families, countless magical moments. This is what we do.",
+    hook: "Every message is deeply personalized. Every child's name, their achievements, their dreams.",
     cta: "Create your family's moment.",
     duration: '15s',
     tone: 'excited'
@@ -491,7 +491,7 @@ export const MARKETING_HOOKS: MarketingHook[] = [
     id: 'flash_social_02',
     product: 'flash_cards',
     category: 'social_proof',
-    hook: "Five hundred families this month. Five stars average. Zero bored kids.",
+    hook: "Custom flash cards built around their interests. Learning that actually sticks.",
     cta: "Join the learning revolution.",
     duration: '15s',
     tone: 'excited'
@@ -662,7 +662,7 @@ export const MARKETING_HOOKS: MarketingHook[] = [
     id: 'clarity_social_02',
     product: 'clarity_planner',
     category: 'social_proof',
-    hook: "Four point nine stars. Hundreds of calmer people. One custom planner.",
+    hook: "Your thoughts organized. Your priorities clear. Your path forward visible.",
     cta: "Join them. Transform your days.",
     duration: '15s',
     tone: 'excited'

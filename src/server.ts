@@ -1934,6 +1934,36 @@ app.post('/api/signup', (req, res) => {
   }
 });
 
+// Newsletter subscribe API endpoint (JSON response for AJAX)
+app.post('/api/subscribe', async (req, res) => {
+  const { email } = req.body;
+
+  // Validate email
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ success: false, error: 'Email is required' });
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email.trim())) {
+    return res.status(400).json({ success: false, error: 'Please enter a valid email address' });
+  }
+
+  try {
+    // Add to Supabase email list
+    const result = await addToEmailList(email.trim(), 'website_signup');
+
+    if (result.success) {
+      console.log(`[Subscribe] New email: ${email}`);
+      res.json({ success: true, message: 'Successfully subscribed!' });
+    } else {
+      res.status(500).json({ success: false, error: result.error || 'Failed to subscribe' });
+    }
+  } catch (error) {
+    console.error('[Subscribe] Error:', error);
+    res.status(500).json({ success: false, error: 'Something went wrong. Please try again.' });
+  }
+});
+
 // Detailed status endpoint (for debugging)
 app.get('/status', (req, res) => {
   res.json({

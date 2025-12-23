@@ -305,13 +305,9 @@ A truly personal Santa message does more than create a Christmas morning moment�
 
 **Extended magic**: For children on the edge of disbelief, a highly personalized message can extend the magic of Christmas by another year or two.
 
-## Real Parent Testimonials
+## What Makes These Messages Special
 
-*"My daughter kept saying 'How did he KNOW about Mr. Whiskers and the time he knocked over the Christmas tree?!' She played that message probably 40 times on Christmas Day."* — Jennifer, mom of 6-year-old Emma
-
-*"My son has autism and a very specific interest in trains. When Santa mentioned the exact trains in his collection and acknowledged how proud he should be of knowing all their names and histories, he was overwhelmed with joy. It was the best Christmas moment we've ever had."* — Marcus, dad of 8-year-old Lucas
-
-*"We had a rough year—my dad passed away and my daughter was very close to him. When Santa acknowledged that Grandpa Jack was watching from heaven and would be so proud of how she's been helping take care of Grandma, we all cried. In the best way."* — Sarah, mom of 7-year-old Lily
+Each Santa message is crafted to include the specific details parents share—a child's exact accomplishments, their unique interests, even the name of their pet or their favorite activity. The result is a message that feels impossibly personal, one that captures this exact moment in your child's life.
 
 ## Ready to Create Christmas Magic?
 
@@ -479,13 +475,9 @@ Your vision board should evolve as you do. Every three months, assess:
 - What no longer resonates?
 - What new goals or dreams have emerged?
 
-## Real Results from Personalized Vision Boards
+## What Makes Personalized Vision Boards Different
 
-*"I used to make Pinterest-style vision boards every year and forget about them by February. This year, I did the values work first, and my board finally felt like MINE. I look at it every day, and I've already achieved two of my 2024 goals."* — Michelle, 34
-
-*"The specificity was the game-changer. Instead of a generic picture of a fit person, I found an image of someone my age, my body type, doing the exact activity I wanted to do. It made it feel possible, not aspirational."* — David, 42
-
-*"I realized I'd been putting someone else's dreams on my vision boards for years. When I actually asked myself what I wanted, the board looked completely different—and for the first time, it felt exciting instead of pressuring."* — Lauren, 28
+The difference between a generic vision board and a personalized one is ownership. When you do the values work first and choose imagery that reflects your specific life and goals—not a generic ideal—the board becomes something you actually want to look at daily. Specificity is the game-changer: instead of abstract aspirations, you see a reflection of your actual goals, making them feel possible rather than distant.
 
 ## The Difference Between Wishing and Vision Boarding
 
@@ -676,11 +668,9 @@ The planner helps you:
 
 Sometimes what we need isn't more tips—it's to feel truly understood and to have a plan that acknowledges our specific reality.
 
-## Real Testimonials
+## How the Holiday Reset Planner Helps
 
-*"I went into Thanksgiving this year with an actual plan for the first time. When my mother-in-law started criticizing my parenting, I had my responses ready. I felt in control instead of reactive. That's never happened before."* — Jennifer, 38
-
-*"The planner helped me realize I'd been trying to manage everyone else's emotions for years. It gave me permission to stop doing that. Christmas was still hard, but I came home without needing three days to recover."* — Marcus, 45
+The planner helps you identify your specific triggers, plan for difficult conversations before they happen, and develop responses that feel authentic to you. It gives you permission to set boundaries and helps you arrive at family gatherings with a clear sense of what you need.
 
 ## You Deserve Peace
 
@@ -854,13 +844,11 @@ The experience takes about 20 minutes. We ask you questions about your specific 
 - **Sets intentions**: Not generic resolutions, but intentions rooted in your actual values and desires
 - **Gives you permission**: Sometimes we need someone to tell us what we already know. The permission to rest, to change, to dream, to try—we give you the words you've been waiting to hear
 
-## Real Testimonials
+## What the New Year Reset Delivers
 
-*"I've done year-end reflection journals for years, but this was different. The personalized output actually made me cry—it named things I'd been feeling but couldn't articulate. I finally understand why I kept burning out and what I need to change."* — Sarah, 34
+The personalized output names things you've been feeling but couldn't articulate. It helps you understand patterns in your year—why certain things kept happening, what you've been avoiding, what you're ready to change. The "secret dream" question in particular often unlocks realizations people have been carrying for years.
 
-*"The 'secret dream' question unlocked something. I realized I've been dismissing my creative aspirations as childish for twenty years. Seeing permission to pursue them written out—specifically for me, acknowledging my specific fears—gave me the push I needed."* — Michael, 47
-
-*"I did this with my husband and we each got our own personalized output. Sharing them with each other led to the best conversation we've had in years. We're entering the new year actually aligned for once."* — Rebecca, 41
+The process works particularly well when done with a partner—each person receives their own personalized output, and sharing them with each other often leads to meaningful conversations about the year ahead.
 
 ## The Gift of Intention
 
@@ -1075,13 +1063,11 @@ We match our approach to their learning style—visual, verbal, kinesthetic, or 
 **Step 5: Format Optimization**
 We deliver in formats optimized for learning—digital for interactive use, printable for hands-on practice, or both.
 
-## Real Parent Testimonials
+## How Personalized Flash Cards Work
 
-*"My son struggled with multiplication for a year. Nothing worked. Then we tried personalized flash cards based on his Minecraft obsession. Within two weeks, he was voluntarily practicing because he wanted to figure out how many blocks he'd need for his builds. The tables finally clicked."* — Jennifer, mom of 8-year-old Tyler
+Imagine your child learning multiplication through Minecraft—figuring out how many blocks they need for their builds. Or learning sight words through their love of horses, with words like "mare," "stable," and "gallop" woven into sentences alongside required vocabulary. When the subject matter comes from what they already love, practice stops feeling like work and starts feeling like play.
 
-*"My daughter has dyslexia and the generic sight word cards were torture. The personalized cards used her love of horses throughout—'mare,' 'stable,' 'gallop' alongside the required sight words in horse-related sentences. For the first time, she asked to practice reading."* — Sarah, mom of 7-year-old Emma
-
-*"We tried so many flash card apps. Our son would use them for two days then lose interest. The personalized cards featuring his favorite soccer team? He's still using them a month later."* — Marcus, dad of 10-year-old Jake
+The difference is engagement that lasts—because the content isn't just educational, it's personally meaningful.
 
 ## The Investment in Personalization
 
@@ -1491,13 +1477,11 @@ The process takes about 20 minutes. You'll answer questions about what you're fa
 
 This isn't generic advice. It's insight created specifically for you, based on what you've shared.
 
-## Real Testimonials
+## What Clarity Feels Like
 
-*"I'd been agonizing over whether to leave my job for six months. Twenty minutes with the Clarity Planner helped me realize the job wasn't really the question—the question was whether I was allowed to want more. When I read that part, I started crying. It was exactly what I needed to hear."* — Jennifer, 38
+The Clarity Planner helps you distinguish between what you actually know and what you're afraid might happen. The "facts vs fears" exercise separates real constraints from imagined worst-case scenarios—often revealing that what felt overwhelming was mostly anxiety, not reality. The personalized output then names what you've been struggling to articulate: sometimes the real question isn't the surface-level decision, but whether you're allowed to want what you want.
 
-*"The 'facts vs fears' exercise alone was worth it. I realized 90% of what was driving my anxiety was imagined worst-case scenarios, not anything that had actually happened. That perspective shift gave me room to breathe."* — Marcus, 45
-
-*"I thought I needed advice. What I actually needed was someone to help me see what I already knew but was too scared to admit. The personalized output did exactly that."* — Sarah, 29
+Most people don't need more information—they need help seeing what they already know but haven't been able to articulate.
 
 ## Clarity Is Closer Than You Think
 

@@ -69,26 +69,9 @@ export function renderPremiumHomepageV3(): string {
     },
   ];
 
-  const testimonials = [
-    {
-      quote: "I finally understand my mortgage because they explained it using my bakery! 20 years of confusion, finally clear.",
-      author: "Sarah K.",
-      product: "Learning Session",
-      rating: 5,
-    },
-    {
-      quote: "My son learned fractions through dinosaurs. He asked for MORE math homework. I didn't know that was possible.",
-      author: "Michael R.",
-      product: "Learning Session",
-      rating: 5,
-    },
-    {
-      quote: "I cried. The vision board captured exactly what I've been feeling but couldn't articulate.",
-      author: "Jessica T.",
-      product: "Vision Board",
-      rating: 5,
-    },
-  ];
+  // NOTE: Testimonials removed until we have real customer reviews
+  // Add verified testimonials here once customers provide feedback
+  const testimonials: Array<{ quote: string; author: string; product: string; rating: number }> = [];
 
   return `
     <!DOCTYPE html>
@@ -2085,7 +2068,7 @@ export function renderPremiumHomepageV3(): string {
             <a href="/privacy">Privacy</a>
           </div>
           <div class="footer-copyright">
-            © ${new Date().getFullYear()} Personalized Output LLC
+            © ${new Date().getFullYear()} Personalized Output
           </div>
         </div>
       </footer>

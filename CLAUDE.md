@@ -291,6 +291,83 @@ Test Files:
 
 ---
 
+## CUSTOMER PERSONALIZATION FLOWS (For Support Reference)
+
+### Santa Message ($20) - Flow
+
+**Step 1: Purchase**
+- Customer visits `/santa` product page
+- Clicks "Get Started" → Stripe checkout
+- Pays $20 → Redirected to success page with unique access token
+
+**Step 2: Chat Experience (~5-7 minutes)**
+- Opens personalization link from email/success page
+- Engages in guided conversation with AI:
+  1. Child's first name and age
+  2. What season of their year was like (challenges, victories)
+  3. A specific proud moment with vivid details
+  4. What the child said or did that made them proud
+  5. Character traits that stand out (kind, brave, curious, etc.)
+  6. What the parent wants Santa to reinforce
+  7. Optional: faith-based content preference
+
+**Step 3: Generation**
+- Claude API crafts personalized 45-60 second script
+- ElevenLabs Santa voice synthesizes audio
+- MP3 delivered instantly via download
+
+**Output:** 45-60 second MP3 audio file featuring child's name, specific achievements, and parent's message woven naturally into Santa's warm voice.
+
+---
+
+### Vision Board ($15) - Flow
+
+**Step 1: Purchase**
+- Customer visits `/vision-board` product page
+- Clicks "Get Started" → Stripe checkout
+- Pays $15 → Redirected to success page with unique access token
+
+**Step 2: Chat Experience (~7-10 minutes)**
+- Opens personalization link from email/success page
+- Engages in guided conversation with AI:
+  1. First name (REQUIRED for personalized title)
+  2. Season of life (fresh start, rebuilding, leveling up)
+  3. Core feeling desired (freedom, peace, abundance, etc.)
+  4. 2-3 specific goals to manifest
+  5. What's been getting in the way
+  6. Aesthetic preference (soft/feminine, bold/confident, dark/moody, minimalist, earthy)
+  7. One word/theme for the board
+
+**Step 3: Generation**
+- Claude API extracts vision board parameters
+- Ideogram API generates 12 personalized images
+- V12 engine composes polaroid-style board with name, theme, mantra
+
+**Output:** High-resolution vision board with:
+- Personalized title (e.g., "Maya's 2025 Glow-Up")
+- 12 AI-generated images matching their goals and aesthetic
+- Theme word and personal mantra
+- Formatted for print (24x36, 16x20) and digital (desktop, phone wallpaper)
+
+---
+
+### Common Support Issues
+
+**"I didn't receive my product"**
+- Check email spam/promotions folder
+- Verify order in Stripe dashboard
+- Regenerate and resend if needed
+
+**"The personalization feels wrong"**
+- Offer one free regeneration with adjusted inputs
+- Ask what specifically felt off
+
+**"How long does generation take?"**
+- Santa: 30-60 seconds
+- Vision Board: 2-5 minutes (12 images)
+
+---
+
 ## DEEP PERSONALIZATION PATTERN
 
 When creating ANY new product, follow this pattern:
