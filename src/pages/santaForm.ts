@@ -191,25 +191,24 @@ export function renderSantaFormPage(token?: string): string {
     }
     .answer-input {
       width: 100%;
-      background: rgba(255,255,255,0.04);
-      border: 1px solid var(--border);
+      background: #ffffff;
+      border: 2px solid var(--border);
       border-radius: 8px;
       padding: 16px;
-      color: var(--text-primary);
+      color: #1a1a1a;
       font-family: 'Bodoni Moda', serif;
       font-size: 1rem;
       min-height: 120px;
       resize: vertical;
-      transition: border-color 0.2s, background-color 0.2s;
+      transition: border-color 0.2s;
       line-height: 1.7;
     }
     .answer-input:focus {
       outline: none;
       border-color: var(--coral);
-      background: rgba(255,255,255,0.06);
     }
     .answer-input::placeholder {
-      color: var(--text-muted);
+      color: #999;
       font-style: italic;
     }
 
