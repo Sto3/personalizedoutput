@@ -56,13 +56,13 @@ export const apiRateLimiter = rateLimit({
   }
 });
 
-// Generation rate limit (very restrictive for expensive AI operations)
+// Generation rate limit (allow enough for full conversation + generation)
 export const generationRateLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: 5, // 5 generations per 5 mins per IP (1 per minute average)
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 requests per 15 mins per IP (enough for full session)
   message: {
     error: 'Generation limit reached. Please wait before generating more content.',
-    retryAfter: '5 minutes'
+    retryAfter: '15 minutes'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -75,7 +75,7 @@ export const generationRateLimiter = rateLimit({
     console.log(`[RateLimit] Generation limit hit for IP: ${req.ip}`);
     res.status(429).json({
       error: 'You have reached the generation limit. Please wait a few minutes before trying again.',
-      retryAfter: 300
+      retryAfter: 900
     });
   }
 });
