@@ -687,10 +687,10 @@ Based on this conversation, create Santa's voice message. The message should:
 ${input.includeChristianMessage ? '7. Include appropriate Christian/faith-based language as the parent requested' : '7. Keep the message secular - no religious references'}
 
 IMPORTANT FOR OPENING:
-- Start with a gentle "Ho... ho... ho..." (with ellipses between each "ho" for natural pauses)
-- Then a warm greeting like "Well hello there, ${input.childFirstName}..." or "Hello, ${input.childFirstName}..."
-- The opening should sound unhurried and grandfatherly, NOT rushed or artificial
-- NEVER write a rapid "Ho ho ho!" without pauses - this sounds robotic when spoken
+- Start with a warm, simple greeting: "Well hello there, ${input.childFirstName}... This is Santa."
+- Or: "Hello ${input.childFirstName}... It's Santa Claus here."
+- DO NOT use "Ho ho ho" - it sounds artificial when spoken by text-to-speech
+- The opening should sound warm and grandfatherly, like a kind old man speaking directly to the child
 
 Use pronouns ${input.childGender === 'girl' ? 'she/her' : 'he/him'}.
 
@@ -746,6 +746,9 @@ function cleanSantaScript(script: string): string {
     // Remove any "SANTA'S MESSAGE" type headers
     .replace(/^.*SANTA'?S?\s+MESSAGE.*$/gim, '')
     .replace(/^.*MESSAGE\s+FOR\s+\w+.*$/gim, '')
+    // Remove "Ho ho ho" variations (sounds bad in TTS)
+    .replace(/^ho\s*ho\s*ho[.!,\s]*/gim, '')
+    .replace(/ho\.\.\.\s*ho\.\.\.\s*ho[.!,\s]*/gim, '')
     // Remove quotation marks at start/end
     .replace(/^["']|["']$/g, '')
     // Clean up extra whitespace

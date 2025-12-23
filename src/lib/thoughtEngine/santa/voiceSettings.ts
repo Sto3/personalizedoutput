@@ -28,20 +28,20 @@
 export type SantaVoiceVariant = 'warm' | 'gentle';
 
 // ============================================================
-// WARM SANTA - Perfected settings (slower, deeper delivery)
+// WARM SANTA - Deep, slow, grandfatherly delivery
 // ============================================================
 
 export const WARM_SANTA_SETTINGS = {
-  // Higher stability = slower, more consistent pacing
-  stability: 0.78,
+  // High stability = very slow, deliberate pacing
+  stability: 0.85,
 
-  // Higher similarity for deep, rich voice character
-  similarity_boost: 0.85,
+  // High similarity for consistent deep voice character
+  similarity_boost: 0.88,
 
-  // Lower style = calmer, deeper delivery (less animated)
-  style: 0.22,
+  // Very low style = calm, deep, unhurried (no animation)
+  style: 0.15,
 
-  // Speaker boost for clarity
+  // Speaker boost for clarity and depth
   use_speaker_boost: true
 };
 
