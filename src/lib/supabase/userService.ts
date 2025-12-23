@@ -26,13 +26,17 @@ export async function signUp(
   fullName?: string,
   referralCode?: string
 ): Promise<{ user: Profile | null; error: string | null }> {
+  console.log('[SignUp] Starting signup for:', email);
+
   if (!isSupabaseConfigured()) {
-    return { user: null, error: 'Supabase not configured' };
+    console.log('[SignUp] Supabase not configured');
+    return { user: null, error: 'Account system is not available. Please try again later.' };
   }
 
   const supabase = getSupabaseClient();
 
   // Sign up the user
+  console.log('[SignUp] Calling Supabase auth.signUp...');
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
@@ -43,12 +47,23 @@ export async function signUp(
     },
   });
 
+  console.log('[SignUp] Supabase response - user:', authData?.user?.id || 'null', 'error:', authError?.message || 'none');
+
   if (authError) {
+    console.log('[SignUp] Auth error:', authError.message);
     return { user: null, error: authError.message };
   }
 
   if (!authData.user) {
-    return { user: null, error: 'Failed to create user' };
+    console.log('[SignUp] No user returned from Supabase');
+    return { user: null, error: 'Could not create account. Please try again.' };
+  }
+
+  // Check if this is a "fake" signup (user already exists but Supabase returns success for security)
+  // Supabase returns identities=[] when user already exists
+  if (authData.user.identities && authData.user.identities.length === 0) {
+    console.log('[SignUp] User already exists (identities array is empty)');
+    return { user: null, error: 'An account with this email already exists. Please sign in instead.' };
   }
 
   // If there's a referral code, link the referral
@@ -57,7 +72,32 @@ export async function signUp(
   }
 
   // Fetch the created profile
+  console.log('[SignUp] Fetching profile for user:', authData.user.id);
   const profile = await getProfile(authData.user.id);
+
+  if (!profile) {
+    // Profile might not exist yet if database trigger hasn't run
+    // This is actually OK for Supabase - the user IS created, they just need to confirm email
+    console.log('[SignUp] Profile not found yet - user created, awaiting email confirmation');
+
+    // Create a minimal profile response
+    const minimalProfile: Profile = {
+      id: authData.user.id,
+      email: authData.user.email || email,
+      full_name: fullName,
+      referral_code: '',
+      subscription_tier: 'free',
+      subscription_status: 'inactive',
+      monthly_outputs_used: 0,
+      monthly_outputs_limit: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    return { user: minimalProfile, error: null };
+  }
+
+  console.log('[SignUp] Success - profile found');
   return { user: profile, error: null };
 }
 
