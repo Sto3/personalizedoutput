@@ -18,3 +18,5 @@ services:
         sync: false
       - key: IDEOGRAM_API_KEY
         sync: false
+      - key: RESEND_API_KEY
+        sync: false
