@@ -1,14 +1,14 @@
 /**
- * ISOLATED CAROUSEL JAVASCRIPT - v3.4
+ * ISOLATED CAROUSEL JAVASCRIPT - v3.5
  * Wrapped in IIFE to prevent any conflicts with other code
  * Pure vanilla JS - no dependencies
  * FORTIFIED: Prevents accidental navigation during horizontal swipes
- * v3.4: Block edge touches to prevent iOS back gesture while allowing center scrolling
+ * v3.5: AGGRESSIVE - Block ALL touch gestures on carousel to prevent iOS back gesture
  */
 (function() {
   'use strict';
 
-  console.log('[Carousel] Initializing isolated 3D carousel v3.4...');
+  console.log('[Carousel] Initializing isolated 3D carousel v3.5...');
 
   // Product data with launch status
   // ORDERED so Santa Message is in CENTER with Vision Board next to it
@@ -154,11 +154,27 @@
     }
 
     var isMobile = window.innerWidth <= 768;
-    console.log('[Carousel] Initializing 3D coverflow v3.4' + (isMobile ? ' (mobile)' : ' (desktop)'));
+    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    // CRITICAL: Set touch-action on container to prevent browser gestures
-    carouselContainer.style.touchAction = 'pan-y pinch-zoom';
-    wrapper.style.touchAction = 'pan-y pinch-zoom';
+    console.log('[Carousel] Initializing 3D coverflow v3.5' +
+                (isMobile ? ' (mobile)' : ' (desktop)') +
+                (isIOS ? ' [iOS detected - aggressive touch blocking]' : ''));
+
+    // CRITICAL v3.5: On iOS, completely block all touch gestures to prevent back gesture
+    // This is the "aggressive" approach that the user confirmed works
+    if (isIOS || isMobile) {
+      carouselContainer.style.touchAction = 'none';
+      wrapper.style.touchAction = 'none';
+      carouselContainer.style.overscrollBehavior = 'none';
+      carouselContainer.style.overscrollBehaviorX = 'none';
+      wrapper.style.overscrollBehavior = 'none';
+      wrapper.style.overscrollBehaviorX = 'none';
+    } else {
+      // Desktop can use pan-y for vertical scrolling
+      carouselContainer.style.touchAction = 'pan-y pinch-zoom';
+      wrapper.style.touchAction = 'pan-y pinch-zoom';
+    }
 
     wrapper.innerHTML = '';
     if (dotsEl) dotsEl.innerHTML = '';
@@ -328,11 +344,9 @@
     }, true);
 
     // ========================================
-    // TOUCH EVENTS (with passive: false for full control)
+    // TOUCH EVENTS - v3.5 AGGRESSIVE MODE
+    // Block ALL default touch behavior on carousel to prevent iOS back gesture
     // ========================================
-    var isEdgeTouch = false; // Track if touch started near screen edge
-    var EDGE_THRESHOLD = 50; // Pixels from edge to consider "edge touch"
-
     carouselContainer.addEventListener('touchstart', function(e) {
       if (isAnimating) return;
 
@@ -343,15 +357,8 @@
       hasMoved = false;
       window._carouselDidSwipe = false;
 
-      // Check if touch started near left or right edge (where iOS back gesture triggers)
-      var screenWidth = window.innerWidth;
-      isEdgeTouch = (swipeStartX < EDGE_THRESHOLD || swipeStartX > screenWidth - EDGE_THRESHOLD);
-
-      // If edge touch, prevent default immediately to block browser gesture
-      if (isEdgeTouch) {
-        e.preventDefault();
-        window._carouselInteracting = true;
-      }
+      // v3.5: ALWAYS prevent default on touchstart to block iOS gestures
+      e.preventDefault();
     }, { passive: false, capture: true });
 
     carouselContainer.addEventListener('touchmove', function(e) {
@@ -362,10 +369,12 @@
       var absDiffX = Math.abs(diffX);
       var absDiffY = Math.abs(diffY);
 
-      // If edge touch OR horizontal movement is dominant, prevent default
-      if (isEdgeTouch || (absDiffX > absDiffY && absDiffX > 5)) {
-        e.preventDefault(); // CRITICAL: Prevent browser back gesture
-        e.stopPropagation();
+      // v3.5: ALWAYS prevent default to block any browser gesture
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Mark as moved if there's significant movement
+      if (absDiffX > 10 || absDiffY > 10) {
         hasMoved = true;
         window._carouselDidSwipe = true;
         window._carouselInteracting = true;
@@ -521,7 +530,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] 3D carousel v3.4 initialized - edge touch blocking');
+    console.log('[Carousel] 3D carousel v3.5 initialized - AGGRESSIVE touch blocking for iOS');
   }
 
   // Start when DOM is ready
