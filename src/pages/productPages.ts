@@ -412,43 +412,87 @@ export function renderProductPage(productId: ProductType): string {
       </section>
     </main>
 
+    <!-- Email Modal for Checkout -->
+    <div id="emailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
+      <div style="background:#1a1a2e; padding:32px; border-radius:16px; max-width:400px; width:90%; text-align:center; border:1px solid rgba(255,255,255,0.1);">
+        <h3 style="margin:0 0 8px 0; font-family:'Bodoni Moda',serif; font-size:1.5rem;">Continue to Checkout</h3>
+        <p style="margin:0 0 20px 0; color:rgba(255,255,255,0.7); font-size:0.9rem;">Enter your email to proceed</p>
+        <input type="email" id="modalEmail" placeholder="your@email.com" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; margin-bottom:16px;">
+        <button id="modalSubmit" style="width:100%; padding:14px; background:#E85A6B; color:#fff; border:none; border-radius:50px; font-size:1rem; font-weight:600; cursor:pointer;">Continue</button>
+        <button id="modalCancel" style="width:100%; padding:10px; background:transparent; color:rgba(255,255,255,0.6); border:none; font-size:0.875rem; cursor:pointer; margin-top:8px;">Cancel</button>
+      </div>
+    </div>
+
     <!-- Checkout Script -->
     <script>
+      const emailModal = document.getElementById('emailModal');
+      const modalEmail = document.getElementById('modalEmail');
+      const modalSubmit = document.getElementById('modalSubmit');
+      const modalCancel = document.getElementById('modalCancel');
+      let currentProductId = null;
+      let currentBtn = null;
+
+      // Show modal when buy button clicked
       document.querySelectorAll('.buy-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-          const productId = btn.dataset.productId;
-
-          // Check for VIP email in URL (for admin testing)
-          const urlParams = new URLSearchParams(window.location.search);
-          const email = urlParams.get('email') || '';
-
-          btn.disabled = true;
-          btn.textContent = 'Processing...';
-
-          try {
-            const response = await fetch('/api/checkout/create', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ productId, email: email || undefined })
-            });
-
-            const data = await response.json();
-
-            if (data.url) {
-              window.location.href = data.url;
-            } else {
-              alert(data.error || 'Something went wrong. Please try again.');
-              btn.disabled = false;
-              btn.innerHTML = 'Buy Now <span class="arrow">→</span>';
-            }
-          } catch (err) {
-            console.error(err);
-            alert('Unable to process. Please check your connection and try again.');
-            btn.disabled = false;
-            btn.innerHTML = 'Buy Now <span class="arrow">→</span>';
-          }
+        btn.addEventListener('click', () => {
+          currentProductId = btn.dataset.productId;
+          currentBtn = btn;
+          emailModal.style.display = 'flex';
+          modalEmail.value = '';
+          modalEmail.focus();
         });
       });
+
+      // Cancel modal
+      modalCancel.addEventListener('click', () => {
+        emailModal.style.display = 'none';
+      });
+
+      // Close on background click
+      emailModal.addEventListener('click', (e) => {
+        if (e.target === emailModal) emailModal.style.display = 'none';
+      });
+
+      // Submit email
+      modalSubmit.addEventListener('click', processCheckout);
+      modalEmail.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') processCheckout();
+      });
+
+      async function processCheckout() {
+        const email = modalEmail.value.trim();
+
+        if (!email || !email.includes('@')) {
+          modalEmail.style.borderColor = '#E85A6B';
+          return;
+        }
+
+        modalSubmit.disabled = true;
+        modalSubmit.textContent = 'Processing...';
+
+        try {
+          const response = await fetch('/api/checkout/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: currentProductId, email })
+          });
+
+          const data = await response.json();
+
+          if (data.url) {
+            window.location.href = data.url;
+          } else {
+            alert(data.error || 'Something went wrong. Please try again.');
+            modalSubmit.disabled = false;
+            modalSubmit.textContent = 'Continue';
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Unable to process. Please check your connection and try again.');
+          modalSubmit.disabled = false;
+          modalSubmit.textContent = 'Continue';
+        }
+      }
 
       // FAQ accordion
       document.querySelectorAll('.faq-question').forEach(q => {
