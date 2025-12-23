@@ -15,6 +15,7 @@ import { Router, Request, Response } from 'express';
 import {
   createThoughtSession,
   getThoughtSession,
+  getThoughtSessionAsync,
   saveThoughtSession,
   startThoughtSession,
   continueThoughtSession,
@@ -220,8 +221,11 @@ router.post('/continue', async (req: Request, res: Response) => {
       });
     }
 
-    // Load session
-    const session = getThoughtSession(sessionId);
+    // Load session (try filesystem first, then Supabase)
+    let session = getThoughtSession(sessionId);
+    if (!session) {
+      session = await getThoughtSessionAsync(sessionId);
+    }
     if (!session) {
       return res.status(404).json({
         success: false,
@@ -288,8 +292,11 @@ router.post('/generate', async (req: Request, res: Response) => {
       });
     }
 
-    // Load session
-    const session = getThoughtSession(sessionId);
+    // Load session (try filesystem first, then Supabase)
+    let session = getThoughtSession(sessionId);
+    if (!session) {
+      session = await getThoughtSessionAsync(sessionId);
+    }
     if (!session) {
       return res.status(404).json({
         success: false,
@@ -385,11 +392,15 @@ router.post('/generate', async (req: Request, res: Response) => {
 // Get session details
 // ============================================================
 
-router.get('/session/:sessionId', (req: Request, res: Response) => {
+router.get('/session/:sessionId', async (req: Request, res: Response) => {
   const { sessionId } = req.params;
 
   try {
-    const session = getThoughtSession(sessionId);
+    // Try filesystem first, then Supabase
+    let session = getThoughtSession(sessionId);
+    if (!session) {
+      session = await getThoughtSessionAsync(sessionId);
+    }
 
     if (!session) {
       return res.status(404).json({

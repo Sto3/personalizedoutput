@@ -12,6 +12,7 @@ export {
   SessionStatus,
   createThoughtSession,
   getThoughtSession,
+  getThoughtSessionAsync,
   saveThoughtSession,
   deleteThoughtSession,
   listAllSessions,

@@ -3,11 +3,20 @@
  *
  * Core data model for chat-based thought organization sessions.
  * Supports Santa messages, Holiday Reset, and New Year Reset products.
+ *
+ * Now uses Supabase for persistence (survives Render deploys)
+ * with filesystem fallback for local development.
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  saveSession,
+  loadSession,
+  deleteSession as deleteSessionFromStore,
+  ThoughtSessionData
+} from '../../supabase/sessionService';
 
 // ============================================================
 // TYPES
@@ -34,7 +43,7 @@ export interface ThoughtSession {
 }
 
 // ============================================================
-// PERSISTENCE CONFIGURATION
+// PERSISTENCE CONFIGURATION (for fallback)
 // ============================================================
 
 const SESSIONS_DIR = path.join(process.cwd(), 'data', 'sessions');
@@ -45,8 +54,32 @@ function ensureSessionsDir(): void {
   }
 }
 
-function getSessionFilePath(sessionId: string): string {
-  return path.join(SESSIONS_DIR, `${sessionId}.json`);
+// ============================================================
+// CONVERSION HELPERS
+// ============================================================
+
+function toStorageFormat(session: ThoughtSession): ThoughtSessionData {
+  return {
+    session_id: session.sessionId,
+    product_id: session.productId,
+    turns: session.turns,
+    status: session.status,
+    metadata: session.metadata,
+    created_at: session.createdAtIso,
+    updated_at: session.updatedAtIso
+  };
+}
+
+function fromStorageFormat(data: ThoughtSessionData): ThoughtSession {
+  return {
+    sessionId: data.session_id,
+    productId: data.product_id,
+    turns: data.turns,
+    status: data.status,
+    metadata: data.metadata,
+    createdAtIso: data.created_at,
+    updatedAtIso: data.updated_at
+  };
 }
 
 // ============================================================
@@ -57,8 +90,6 @@ function getSessionFilePath(sessionId: string): string {
  * Create a new thought session for a product
  */
 export function createThoughtSession(productId: ProductId): ThoughtSession {
-  ensureSessionsDir();
-
   const now = new Date().toISOString();
   const session: ThoughtSession = {
     sessionId: uuidv4(),
@@ -69,23 +100,37 @@ export function createThoughtSession(productId: ProductId): ThoughtSession {
     status: 'in_progress'
   };
 
-  // Save immediately
-  saveThoughtSessionSync(session);
+  // Save immediately (async, but don't block)
+  saveSession(toStorageFormat(session)).catch(err => {
+    console.error(`[ThoughtSession] Background save failed:`, err);
+  });
 
   console.log(`[ThoughtSession] Created session ${session.sessionId} for ${productId}`);
   return session;
 }
 
 /**
- * Get a thought session by ID
+ * Get a thought session by ID (async - now loads from Supabase)
+ */
+export async function getThoughtSessionAsync(sessionId: string): Promise<ThoughtSession | null> {
+  const data = await loadSession(sessionId);
+  if (!data) {
+    console.log(`[ThoughtSession] Session not found: ${sessionId}`);
+    return null;
+  }
+  return fromStorageFormat(data);
+}
+
+/**
+ * Get a thought session by ID (sync - filesystem only, for backwards compat)
  */
 export function getThoughtSession(sessionId: string): ThoughtSession | null {
   ensureSessionsDir();
 
-  const filepath = getSessionFilePath(sessionId);
+  const filepath = path.join(SESSIONS_DIR, `${sessionId}.json`);
 
   if (!fs.existsSync(filepath)) {
-    console.log(`[ThoughtSession] Session not found: ${sessionId}`);
+    // Don't log - async version will try Supabase
     return null;
   }
 
@@ -99,34 +144,29 @@ export function getThoughtSession(sessionId: string): ThoughtSession | null {
 }
 
 /**
- * Save a thought session (async)
+ * Save a thought session (async - saves to Supabase + filesystem)
  */
 export async function saveThoughtSession(session: ThoughtSession): Promise<void> {
-  ensureSessionsDir();
-
   session.updatedAtIso = new Date().toISOString();
-  const filepath = getSessionFilePath(session.sessionId);
-
-  try {
-    await fs.promises.writeFile(filepath, JSON.stringify(session, null, 2), 'utf-8');
-    console.log(`[ThoughtSession] Saved session ${session.sessionId}`);
-  } catch (error) {
-    console.error(`[ThoughtSession] Error saving session ${session.sessionId}:`, error);
-    throw error;
-  }
+  await saveSession(toStorageFormat(session));
+  console.log(`[ThoughtSession] Saved session ${session.sessionId}`);
 }
 
 /**
- * Save a thought session (sync)
+ * Save a thought session (sync - filesystem only)
  */
 export function saveThoughtSessionSync(session: ThoughtSession): void {
   ensureSessionsDir();
 
   session.updatedAtIso = new Date().toISOString();
-  const filepath = getSessionFilePath(session.sessionId);
+  const filepath = path.join(SESSIONS_DIR, `${session.sessionId}.json`);
 
   try {
     fs.writeFileSync(filepath, JSON.stringify(session, null, 2), 'utf-8');
+    // Also trigger async Supabase save
+    saveSession(toStorageFormat(session)).catch(err => {
+      console.error(`[ThoughtSession] Background Supabase save failed:`, err);
+    });
   } catch (error) {
     console.error(`[ThoughtSession] Error saving session ${session.sessionId}:`, error);
     throw error;
@@ -136,15 +176,9 @@ export function saveThoughtSessionSync(session: ThoughtSession): void {
 /**
  * Delete a thought session
  */
-export function deleteThoughtSession(sessionId: string): boolean {
-  const filepath = getSessionFilePath(sessionId);
-
-  if (!fs.existsSync(filepath)) {
-    return false;
-  }
-
+export async function deleteThoughtSession(sessionId: string): Promise<boolean> {
   try {
-    fs.unlinkSync(filepath);
+    await deleteSessionFromStore(sessionId);
     console.log(`[ThoughtSession] Deleted session ${sessionId}`);
     return true;
   } catch (error) {
@@ -154,7 +188,7 @@ export function deleteThoughtSession(sessionId: string): boolean {
 }
 
 /**
- * List all sessions (for debugging/admin)
+ * List all sessions (for debugging/admin) - filesystem only
  */
 export function listAllSessions(): ThoughtSession[] {
   ensureSessionsDir();
