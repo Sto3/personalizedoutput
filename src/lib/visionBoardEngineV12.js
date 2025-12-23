@@ -24,11 +24,12 @@ const CANVAS_WIDTH = 1080;
 const CANVAS_HEIGHT = 1350;
 const COST_PER_IMAGE = 0.025;
 
-// Typography - exact fontconfig names for SVG rendering
+// Typography - cross-platform fonts (bundled in /fonts directory)
+// These work on both macOS and Linux (Render)
 const FONTS = {
-  script: "Snell Roundhand",  // For feminine boards
-  serifCaps: "Bodoni 72 Smallcaps",  // For masculine/neutral boards (NOT Oldstyle)
-  serifQuote: "Cormorant Garamond, Playfair Display, Georgia, serif",
+  script: "Great Vibes, Snell Roundhand, cursive",  // Elegant script - Great Vibes on Linux, Snell on Mac
+  serifCaps: "Cinzel, Bodoni 72 Smallcaps, serif",  // Elegant caps - Cinzel on Linux, Bodoni on Mac
+  serifQuote: "Playfair Display SC, Cormorant Garamond, Georgia, serif",
   sans: "Helvetica Neue, Arial, sans-serif"
 };
 

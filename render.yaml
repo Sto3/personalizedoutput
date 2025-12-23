@@ -3,13 +3,15 @@ services:
     name: personalizedoutput
     env: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && npm run build && fc-cache -fv fonts/
     startCommand: npm start
     autoDeploy: true
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
+      - key: FONTCONFIG_PATH
+        value: /opt/render/project/src/fonts
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: ELEVENLABS_API_KEY

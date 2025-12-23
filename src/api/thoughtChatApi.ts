@@ -841,6 +841,8 @@ async function generateVisionBoardFromSession(session: any, orderId?: string, fi
   // Enhanced extraction prompt that generates photo prompts for the V12 engine
   const extractionPrompt = `Based on this conversation, extract parameters for generating a personalized vision board.
 
+The person's name is: ${firstName || 'Unknown'}
+
 <conversation_transcript>
 ${transcript}
 </conversation_transcript>
@@ -850,7 +852,7 @@ Return a JSON object with:
   "theme": "one word theme (e.g., 'abundance', 'clarity', 'growth')",
   "goals": ["list of 3-5 specific goals mentioned"],
   "aesthetic": "visual style (e.g., 'feminine dreamy soft', 'masculine dark discipline', 'warm romantic cozy')",
-  "isMasculine": true/false based on the person's preferences and goals,
+  "isMasculine": true/false - SET TO TRUE if the name suggests male (Matt, John, Mike, David, James, etc.) OR if the goals/preferences suggest masculine aesthetic (business, discipline, fitness, executive, dark themes). Default to TRUE for typically male names.,
   "isRelationship": true/false if this is about couples/relationship goals,
   "subtitle": "3 words separated by bullets like 'GROW • THRIVE • BLOOM'",
   "photoPrompts": [
@@ -869,14 +871,17 @@ Return a JSON object with:
     "cozy reading corner with fairy lights"
   ],
   "colors": {
-    "background": "hex color for background (light for feminine, dark for masculine)",
-    "banner": "hex color for title banner",
-    "bannerText": "hex color for banner text",
+    "background": "hex color - USE #0a0a0f (near black) for masculine boards, #fdf8f0 (cream) for feminine boards",
+    "banner": "hex color - USE #000000 for masculine, #b8860b (gold) for feminine",
+    "bannerText": "hex color - USE #c9a962 (gold) for masculine, #FFFFFF for feminine",
     "accents": ["4 hex accent colors that match the mood"]
   }
 }
 
-CRITICAL: photoPrompts must describe OBJECTS and SCENES only - never include people, faces, or body parts.`;
+CRITICAL RULES:
+1. photoPrompts must describe OBJECTS and SCENES only - never include people, faces, or body parts.
+2. For masculine boards (male names or masculine aesthetic): ALWAYS use dark background (#0a0a0f), gold text on black banner
+3. For feminine boards: use cream background, gold banner with white text`;
 
   const response = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
