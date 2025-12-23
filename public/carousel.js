@@ -206,11 +206,13 @@
     var touchStartX = 0;
     var touchStartY = 0;
     var isSwiping = false;
+    var didSwipe = false; // Track if an actual swipe happened
 
     wrapper.parentElement.addEventListener('touchstart', function(e) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       isSwiping = true;
+      didSwipe = false;
     }, { passive: true });
 
     wrapper.parentElement.addEventListener('touchmove', function(e) {
@@ -222,6 +224,7 @@
 
       if (diffX > diffY && diffX > 10) {
         e.preventDefault(); // Prevent page scroll during horizontal swipe
+        didSwipe = true; // Mark that we're swiping
       }
     }, { passive: false });
 
@@ -234,6 +237,7 @@
 
       // Swipe threshold - 40px for responsive feel
       if (Math.abs(diff) > 40) {
+        didSwipe = true;
         if (diff > 0) {
           goToSlide(current + 1);
         } else {
@@ -241,6 +245,15 @@
         }
       }
     }, { passive: true });
+
+    // Prevent card link clicks when swiping
+    wrapper.addEventListener('click', function(e) {
+      if (didSwipe) {
+        e.preventDefault();
+        e.stopPropagation();
+        didSwipe = false;
+      }
+    }, { capture: true });
 
     // Initial render
     render();
