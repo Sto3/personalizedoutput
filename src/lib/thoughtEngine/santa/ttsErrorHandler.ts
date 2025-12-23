@@ -243,7 +243,15 @@ export async function synthesizeSantaMessageWithRetry(
       // Preprocess the script for better Santa delivery
       const processedText = preprocessSantaScript(text);
 
-      console.log(`[TTS] Using optimized settings: model=${SANTA_MODEL_CONFIG.model_id}, stability=${SANTA_VOICE_SETTINGS.stability}, style=${SANTA_VOICE_SETTINGS.style}`);
+      // Log exact settings being used (for debugging)
+      console.log(`[TTS] ========== SANTA VOICE SETTINGS ==========`);
+      console.log(`[TTS] Voice ID: ${voiceId}`);
+      console.log(`[TTS] Model: ${SANTA_MODEL_CONFIG.model_id}`);
+      console.log(`[TTS] Stability: ${SANTA_VOICE_SETTINGS.stability}`);
+      console.log(`[TTS] Similarity Boost: ${SANTA_VOICE_SETTINGS.similarity_boost}`);
+      console.log(`[TTS] Style: ${SANTA_VOICE_SETTINGS.style}`);
+      console.log(`[TTS] Speaker Boost: ${SANTA_VOICE_SETTINGS.use_speaker_boost}`);
+      console.log(`[TTS] ===========================================`);
 
       const response = await axios({
         method: 'POST',
@@ -255,8 +263,13 @@ export async function synthesizeSantaMessageWithRetry(
         },
         data: {
           text: processedText,
-          model_id: SANTA_MODEL_CONFIG.model_id, // eleven_multilingual_v2
-          voice_settings: SANTA_VOICE_SETTINGS   // Optimized warm Santa settings
+          model_id: SANTA_MODEL_CONFIG.model_id,
+          voice_settings: {
+            stability: SANTA_VOICE_SETTINGS.stability,
+            similarity_boost: SANTA_VOICE_SETTINGS.similarity_boost,
+            style: SANTA_VOICE_SETTINGS.style,
+            use_speaker_boost: SANTA_VOICE_SETTINGS.use_speaker_boost
+          }
         },
         responseType: 'arraybuffer',
         timeout: TTS_CONFIG.timeoutMs
