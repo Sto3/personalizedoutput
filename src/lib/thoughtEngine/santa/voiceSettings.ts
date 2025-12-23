@@ -28,21 +28,18 @@
 export type SantaVoiceVariant = 'warm' | 'gentle';
 
 // ============================================================
-// WARM SANTA - Deep American (smooth, flowing delivery)
+// WARM SANTA - Perfected settings (matches perfected demos)
 // ============================================================
 
 export const WARM_SANTA_SETTINGS = {
-  // HIGH stability for smooth, effortless flow (no choppiness)
-  stability: 0.85,
+  // Lower stability = more natural speech variation
+  stability: 0.68,
 
-  // Moderate similarity for natural, relaxed voice
-  similarity_boost: 0.72,
+  // Higher similarity for character consistency
+  similarity_boost: 0.82,
 
-  // LOW style to avoid forced/theatrical delivery
-  style: 0.20,
-
-  // Speaker boost for warmth and presence
-  use_speaker_boost: true
+  // Moderate style for warmth without theatrics
+  style: 0.32
 };
 
 // ============================================================
@@ -74,8 +71,8 @@ export const SANTA_VOICE_SETTINGS = WARM_SANTA_SETTINGS;
 // ============================================================
 
 export const SANTA_MODEL_CONFIG = {
-  // Using multilingual v2 for better accent control and quality
-  model_id: 'eleven_multilingual_v2',
+  // Using monolingual v1 (matches perfected demos - better for English)
+  model_id: 'eleven_monolingual_v1',
 
   // Output format
   output_format: 'mp3_44100_128'
