@@ -17,7 +17,7 @@ RESPONSE FORMAT:
 
 WHAT TO GATHER:
 - Child's first name/nickname (MUST GET FIRST)
-- Age and gender (for pronouns)
+- Age and gender (boy/girl - we will infer pronouns, DO NOT ask about pronouns)
 - 1-2 proud moments from this year
 - What makes this child special
 - What message the parent wants reinforced

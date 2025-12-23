@@ -599,7 +599,7 @@ export function renderSantaFormPage(token?: string): string {
     }
 
     // Check for saved progress on page load
-    function checkSavedProgress() {
+    async function checkSavedProgress() {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (!saved) return;
 
@@ -608,6 +608,14 @@ export function renderSantaFormPage(token?: string): string {
         // Check if saved within last 2 hours
         const twoHours = 2 * 60 * 60 * 1000;
         if (Date.now() - progress.savedAt > twoHours) {
+          clearProgress();
+          return;
+        }
+
+        // Verify session still exists on server before offering resume
+        const response = await fetch(\`\${API_BASE}/session/\${progress.sessionId}\`);
+        if (!response.ok) {
+          // Session is gone (server restarted), clear localStorage silently
           clearProgress();
           return;
         }
@@ -639,9 +647,9 @@ export function renderSantaFormPage(token?: string): string {
         // Verify session still exists on server
         const response = await fetch(\`\${API_BASE}/session/\${progress.sessionId}\`);
         if (!response.ok) {
+          // Session gone (server restarted) - just start fresh silently
           clearProgress();
-          showError('Your saved session has expired. Starting fresh.');
-          setTimeout(() => startSession(), 1500);
+          startSession();
           return;
         }
 
@@ -678,7 +686,7 @@ export function renderSantaFormPage(token?: string): string {
     }
 
     // Check for saved progress when page loads
-    checkSavedProgress();
+    checkSavedProgress().catch(() => clearProgress());
 
     async function startSession() {
       hideError();
