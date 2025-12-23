@@ -1822,9 +1822,53 @@ app.get('/admin/reset-password', (req, res) => {
         const form = document.getElementById('resetForm');
         const message = document.getElementById('message');
         const submitBtn = document.getElementById('submitBtn');
+        let sessionReady = false;
+
+        // Handle the recovery token from URL hash
+        async function initSession() {
+          // Check for hash params (Supabase sends token in URL hash)
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          const type = hashParams.get('type');
+
+          if (type === 'recovery' && accessToken) {
+            // Set the session from the recovery tokens
+            const { error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken || ''
+            });
+
+            if (error) {
+              message.innerHTML = '<div class="error">Invalid or expired reset link. Please request a new one.</div>';
+              submitBtn.disabled = true;
+              return;
+            }
+            sessionReady = true;
+            // Clear the hash from URL
+            history.replaceState(null, '', window.location.pathname);
+          } else {
+            // Check if we already have a session
+            const { data } = await supabase.auth.getSession();
+            if (data.session) {
+              sessionReady = true;
+            } else {
+              message.innerHTML = '<div class="error">No valid reset token found. Please use the link from your email.</div>';
+              submitBtn.disabled = true;
+            }
+          }
+        }
+
+        initSession();
 
         form.addEventListener('submit', async (e) => {
           e.preventDefault();
+
+          if (!sessionReady) {
+            message.innerHTML = '<div class="error">Session not ready. Please use the link from your email.</div>';
+            return;
+          }
+
           const password = document.getElementById('password').value;
           const confirmPassword = document.getElementById('confirmPassword').value;
 
@@ -1833,18 +1877,29 @@ app.get('/admin/reset-password', (req, res) => {
             return;
           }
 
+          if (password.length < 8) {
+            message.innerHTML = '<div class="error">Password must be at least 8 characters</div>';
+            return;
+          }
+
           submitBtn.disabled = true;
           submitBtn.textContent = 'Updating...';
 
-          const { error } = await supabase.auth.updateUser({ password });
+          try {
+            const { error } = await supabase.auth.updateUser({ password });
 
-          if (error) {
-            message.innerHTML = '<div class="error">' + error.message + '</div>';
+            if (error) {
+              message.innerHTML = '<div class="error">' + error.message + '</div>';
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Update Password';
+            } else {
+              message.innerHTML = '<div class="success">Password updated! Redirecting to login...</div>';
+              setTimeout(() => window.location.href = '/admin/login', 2000);
+            }
+          } catch (err) {
+            message.innerHTML = '<div class="error">An error occurred. Please try again.</div>';
             submitBtn.disabled = false;
             submitBtn.textContent = 'Update Password';
-          } else {
-            message.innerHTML = '<div class="success">Password updated! Redirecting to login...</div>';
-            setTimeout(() => window.location.href = '/admin/login', 2000);
           }
         });
       </script>
