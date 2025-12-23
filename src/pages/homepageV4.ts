@@ -63,7 +63,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
                   <span class="popular-now-label">Popular Now</span>
                   <a href="/product/vision-board" class="popular-card">
                     <span class="popular-title">Vision Boards</span>
-                    <span class="popular-tag">New Year 2025</span>
+                    <span class="popular-tag">New Year 2026</span>
                   </a>
                 </div>
               </div>
