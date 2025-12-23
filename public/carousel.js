@@ -1,14 +1,13 @@
 /**
- * ISOLATED CAROUSEL JAVASCRIPT - v3.5
+ * ISOLATED CAROUSEL JAVASCRIPT - v3.6
  * Wrapped in IIFE to prevent any conflicts with other code
  * Pure vanilla JS - no dependencies
- * FORTIFIED: Prevents accidental navigation during horizontal swipes
- * v3.5: AGGRESSIVE - Block ALL touch gestures on carousel to prevent iOS back gesture
+ * v3.6: NO SWIPE - Touch swipe disabled, navigate via dots or clicking cards
  */
 (function() {
   'use strict';
 
-  console.log('[Carousel] Initializing isolated 3D carousel v3.5...');
+  console.log('[Carousel] Initializing isolated 3D carousel v3.6 (no swipe)...');
 
   // Product data with launch status
   // ORDERED so Santa Message is in CENTER with Vision Board next to it
@@ -154,27 +153,9 @@
     }
 
     var isMobile = window.innerWidth <= 768;
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
-    console.log('[Carousel] Initializing 3D coverflow v3.5' +
-                (isMobile ? ' (mobile)' : ' (desktop)') +
-                (isIOS ? ' [iOS detected - aggressive touch blocking]' : ''));
-
-    // CRITICAL v3.5: On iOS, completely block all touch gestures to prevent back gesture
-    // This is the "aggressive" approach that the user confirmed works
-    if (isIOS || isMobile) {
-      carouselContainer.style.touchAction = 'none';
-      wrapper.style.touchAction = 'none';
-      carouselContainer.style.overscrollBehavior = 'none';
-      carouselContainer.style.overscrollBehaviorX = 'none';
-      wrapper.style.overscrollBehavior = 'none';
-      wrapper.style.overscrollBehaviorX = 'none';
-    } else {
-      // Desktop can use pan-y for vertical scrolling
-      carouselContainer.style.touchAction = 'pan-y pinch-zoom';
-      wrapper.style.touchAction = 'pan-y pinch-zoom';
-    }
+    console.log('[Carousel] Initializing 3D coverflow v3.6 (no swipe)' +
+                (isMobile ? ' (mobile)' : ' (desktop)'));
 
     wrapper.innerHTML = '';
     if (dotsEl) dotsEl.innerHTML = '';
@@ -344,83 +325,11 @@
     }, true);
 
     // ========================================
-    // TOUCH EVENTS - v3.5 AGGRESSIVE MODE
-    // Block ALL default touch behavior on carousel to prevent iOS back gesture
+    // TOUCH EVENTS - v3.6 NO SWIPE MODE
+    // Swipe disabled to avoid iOS back gesture issues
+    // Users navigate via dots or tapping on cards
     // ========================================
-    carouselContainer.addEventListener('touchstart', function(e) {
-      if (isAnimating) return;
-
-      swipeStartX = e.touches[0].clientX;
-      swipeStartY = e.touches[0].clientY;
-      swipeStartTime = Date.now();
-      isTouchActive = true;
-      hasMoved = false;
-      window._carouselDidSwipe = false;
-
-      // v3.5: ALWAYS prevent default on touchstart to block iOS gestures
-      e.preventDefault();
-    }, { passive: false, capture: true });
-
-    carouselContainer.addEventListener('touchmove', function(e) {
-      if (!isTouchActive) return;
-
-      var diffX = e.touches[0].clientX - swipeStartX;
-      var diffY = e.touches[0].clientY - swipeStartY;
-      var absDiffX = Math.abs(diffX);
-      var absDiffY = Math.abs(diffY);
-
-      // v3.5: ALWAYS prevent default to block any browser gesture
-      e.preventDefault();
-      e.stopPropagation();
-
-      // Mark as moved if there's significant movement
-      if (absDiffX > 10 || absDiffY > 10) {
-        hasMoved = true;
-        window._carouselDidSwipe = true;
-        window._carouselInteracting = true;
-      }
-    }, { passive: false, capture: true });
-
-    carouselContainer.addEventListener('touchend', function(e) {
-      if (!isTouchActive) return;
-      isTouchActive = false;
-
-      var touchEndX = e.changedTouches[0].clientX;
-      var diff = swipeStartX - touchEndX;
-      var swipeTime = Date.now() - swipeStartTime;
-
-      // If user didn't move (it's a tap), immediately allow clicks
-      if (!hasMoved) {
-        window._carouselInteracting = false;
-        window._carouselDidSwipe = false;
-        return; // Let the tap/click happen naturally
-      }
-
-      // Only trigger swipe if threshold met and within time limit
-      if (Math.abs(diff) > SWIPE_THRESHOLD && swipeTime < SWIPE_TIME_LIMIT && hasMoved) {
-        if (diff > 0) {
-          goToSlide(current + 1);
-        } else {
-          goToSlide(current - 1);
-        }
-      }
-
-      // Keep swipe flag active longer to block accidental clicks after swipe
-      lockInteractions(500);
-      setTimeout(function() {
-        window._carouselInteracting = false;
-        window._carouselDidSwipe = false;
-      }, 500);
-    }, { passive: true, capture: true });
-
-    carouselContainer.addEventListener('touchcancel', function() {
-      isTouchActive = false;
-      hasMoved = false;
-      setTimeout(function() {
-        window._carouselInteracting = false;
-        window._carouselDidSwipe = false;
-      }, 200);
-    }, { passive: true });
+    // Touch events removed - navigation via dots/clicks only
 
     // ========================================
     // MOUSE EVENTS (for trackpad and mouse drag)
@@ -530,7 +439,7 @@
 
     // Initial render
     render();
-    console.log('[Carousel] 3D carousel v3.5 initialized - AGGRESSIVE touch blocking for iOS');
+    console.log('[Carousel] 3D carousel v3.6 initialized - dots/clicks only, no swipe');
   }
 
   // Start when DOM is ready

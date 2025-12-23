@@ -167,7 +167,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
 
   const pageScripts = `
     <link rel="stylesheet" href="/carousel.css">
-    <script src="/carousel.js?v=3.5"></script>
+    <script src="/carousel.js?v=3.6"></script>
     <script>
       ${getHomepageScripts()}
     </script>
