@@ -1,0 +1,12 @@
+{
+  "codes": [
+    {
+      "code": "GIFT-TEST-CODE",
+      "productId": "vision_board",
+      "purchaserEmail": "test@test.com",
+      "recipientName": "Test Recipient",
+      "used": false,
+      "createdAt": "2024-12-23T00:00:00.000Z"
+    }
+  ]
+}

@@ -762,11 +762,22 @@ export function renderVisionBoardFormPage(): string {
     }
 
     function showResult(data) {
+      console.log('[VisionBoard] Result data:', data);
       const imageUrl = data.imageUrl;
 
       if (imageUrl) {
+        console.log('[VisionBoard] Image URL:', imageUrl);
         // Display the vision board image
         const img = document.getElementById('visionBoardImage');
+        img.onerror = function() {
+          console.error('[VisionBoard] Failed to load image:', imageUrl);
+          img.style.display = 'none';
+          document.getElementById('resultScreen').querySelector('h2').textContent = 'Generation In Progress';
+          document.querySelector('.result-note').textContent = 'Your vision board is being created. This may take a few minutes. Please check back or refresh the page.';
+        };
+        img.onload = function() {
+          console.log('[VisionBoard] Image loaded successfully');
+        };
         img.src = imageUrl;
         img.alt = firstName ? \`\${firstName}'s Vision Board\` : 'Your Vision Board';
 
@@ -774,6 +785,12 @@ export function renderVisionBoardFormPage(): string {
         const downloadBtn = document.getElementById('downloadBtn');
         downloadBtn.href = imageUrl;
         downloadBtn.download = firstName ? \`\${firstName}_vision_board.png\` : 'vision_board.png';
+      } else {
+        console.error('[VisionBoard] No imageUrl in response');
+        // Show error state
+        document.getElementById('visionBoardImage').style.display = 'none';
+        document.getElementById('resultScreen').querySelector('h2').textContent = 'Something Went Wrong';
+        document.querySelector('.result-note').textContent = 'We couldn\\'t generate your vision board. Please try again or contact support.';
       }
 
       document.getElementById('resultScreen').classList.add('active');

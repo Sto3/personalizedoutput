@@ -416,8 +416,12 @@ export function renderProductPage(productId: ProductType): string {
     <div id="emailModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.7); z-index:9999; align-items:center; justify-content:center;">
       <div style="background:#1a1a2e; padding:32px; border-radius:16px; max-width:400px; width:90%; text-align:center; border:1px solid rgba(255,255,255,0.1);">
         <h3 style="margin:0 0 8px 0; font-family:'Bodoni Moda',serif; font-size:1.5rem;">Continue to Checkout</h3>
-        <p style="margin:0 0 20px 0; color:rgba(255,255,255,0.7); font-size:0.9rem;">Enter your email to proceed</p>
-        <input type="email" id="modalEmail" placeholder="your@email.com" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; margin-bottom:16px;">
+        <p style="margin:0 0 20px 0; color:rgba(255,255,255,0.7); font-size:0.9rem;">Enter your email or gift code</p>
+        <input type="text" id="modalEmail" placeholder="your@email.com or GIFT-XXXX-XXXX" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; margin-bottom:12px;">
+        <label id="giftCheckboxLabel" style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:16px; color:rgba(255,255,255,0.8); font-size:0.9rem; cursor:pointer;">
+          <input type="checkbox" id="isGiftCheckbox" style="width:18px; height:18px; cursor:pointer;">
+          This is a gift for someone else
+        </label>
         <button id="modalSubmit" style="width:100%; padding:14px; background:#E85A6B; color:#fff; border:none; border-radius:50px; font-size:1rem; font-weight:600; cursor:pointer;">Continue</button>
         <button id="modalCancel" style="width:100%; padding:10px; background:transparent; color:rgba(255,255,255,0.6); border:none; font-size:0.875rem; cursor:pointer; margin-top:8px;">Cancel</button>
       </div>
@@ -460,9 +464,14 @@ export function renderProductPage(productId: ProductType): string {
       });
 
       async function processCheckout() {
-        const email = modalEmail.value.trim();
+        const emailOrCode = modalEmail.value.trim();
+        const isGift = document.getElementById('isGiftCheckbox').checked;
 
-        if (!email || !email.includes('@')) {
+        // Check if it looks like a gift code (GIFT-XXXX-XXXX format)
+        const looksLikeGiftCode = emailOrCode.toUpperCase().startsWith('GIFT-') && emailOrCode.length >= 14;
+
+        // Validate: must be email OR gift code
+        if (!looksLikeGiftCode && (!emailOrCode || !emailOrCode.includes('@'))) {
           modalEmail.style.borderColor = '#E85A6B';
           return;
         }
@@ -474,7 +483,11 @@ export function renderProductPage(productId: ProductType): string {
           const response = await fetch('/api/checkout/create', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId: currentProductId, email })
+            body: JSON.stringify({
+              productId: currentProductId,
+              email: emailOrCode,
+              isGift: isGift
+            })
           });
 
           const data = await response.json();
@@ -610,37 +623,82 @@ export function renderSuccessPage(): string {
             const personalizationNote = document.querySelector('.personalization-note');
 
             if (data.productName) {
-              container.innerHTML = \`
-                <div class="order-info">
-                  <div class="order-row">
-                    <span class="label">Product:</span>
-                    <span class="value">\${data.productName}</span>
+              // Check if this is a gift purchase
+              if (data.isGift && data.giftCode) {
+                // Gift purchase - show gift code prominently
+                container.innerHTML = \`
+                  <div class="order-info">
+                    <div class="order-row">
+                      <span class="label">Product:</span>
+                      <span class="value">\${data.productName}</span>
+                    </div>
+                    <div class="order-row">
+                      <span class="label">Status:</span>
+                      <span class="value status-paid">✓ Paid</span>
+                    </div>
                   </div>
-                  <div class="order-row">
-                    <span class="label">Email:</span>
-                    <span class="value">\${data.customerEmail || 'Not provided'}</span>
+                  <div class="gift-code-section" style="background:#1a1a2e; border-radius:12px; padding:24px; margin-top:20px; text-align:center;">
+                    <h3 style="color:#E85A6B; margin:0 0 8px 0; font-size:1.1rem;">🎁 Gift Code for Your Recipient</h3>
+                    <p style="color:rgba(255,255,255,0.7); margin:0 0 16px 0; font-size:0.9rem;">Share this code with them to redeem their personalized experience:</p>
+                    <div style="background:#000; padding:16px 24px; border-radius:8px; font-family:monospace; font-size:1.5rem; color:#fff; letter-spacing:2px; user-select:all;">\${data.giftCode}</div>
+                    <p style="color:rgba(255,255,255,0.5); margin:16px 0 0 0; font-size:0.8rem;">They can enter this code at checkout to access their gift</p>
                   </div>
-                  <div class="order-row">
-                    <span class="label">Amount:</span>
-                    <span class="value">$\${(data.amountTotal / 100).toFixed(2)} \${data.currency?.toUpperCase() || 'USD'}</span>
-                  </div>
-                  <div class="order-row">
-                    <span class="label">Status:</span>
-                    <span class="value status-paid">✓ Paid</span>
-                  </div>
-                </div>
-              \`;
+                \`;
 
-              // Set personalization link based on product
-              if (personalizationLink && data.productId) {
-                const url = personalizationUrls[data.productId] || '/' + (data.productSlug || 'santa');
-                personalizationLink.href = url;
-                console.log('[Success] Set personalization link to:', url);
-              }
+                // Hide personalization section for gift purchases
+                const personalizationSection = document.getElementById('start-personalization');
+                if (personalizationSection) {
+                  personalizationSection.style.display = 'none';
+                }
 
-              // Hide the note once we have the real link
-              if (personalizationNote) {
-                personalizationNote.style.display = 'none';
+                // Update next steps for gift
+                const nextSteps = document.querySelector('.next-steps');
+                if (nextSteps) {
+                  nextSteps.innerHTML = \`
+                    <h2>How to Gift This</h2>
+                    <ol>
+                      <li><strong>Copy the gift code above</strong></li>
+                      <li>Share the code with your recipient (text, email, card, etc.)</li>
+                      <li>They visit personalizedoutput.com and click "Buy Now" on the product</li>
+                      <li>They enter the gift code instead of their email</li>
+                      <li>They complete their own personalization experience!</li>
+                    </ol>
+                  \`;
+                }
+              } else {
+                // Regular purchase
+                container.innerHTML = \`
+                  <div class="order-info">
+                    <div class="order-row">
+                      <span class="label">Product:</span>
+                      <span class="value">\${data.productName}</span>
+                    </div>
+                    <div class="order-row">
+                      <span class="label">Email:</span>
+                      <span class="value">\${data.customerEmail || 'Not provided'}</span>
+                    </div>
+                    <div class="order-row">
+                      <span class="label">Amount:</span>
+                      <span class="value">$\${(data.amountTotal / 100).toFixed(2)} \${data.currency?.toUpperCase() || 'USD'}</span>
+                    </div>
+                    <div class="order-row">
+                      <span class="label">Status:</span>
+                      <span class="value status-paid">✓ Paid</span>
+                    </div>
+                  </div>
+                \`;
+
+                // Set personalization link based on product
+                if (personalizationLink && data.productId) {
+                  const url = personalizationUrls[data.productId] || '/' + (data.productSlug || 'santa');
+                  personalizationLink.href = url;
+                  console.log('[Success] Set personalization link to:', url);
+                }
+
+                // Hide the note once we have the real link
+                if (personalizationNote) {
+                  personalizationNote.style.display = 'none';
+                }
               }
             } else {
               container.innerHTML = '<p>Unable to load order details. You can still start your personalization below.</p>';

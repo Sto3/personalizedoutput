@@ -25,6 +25,13 @@ import {
 } from '../lib/supabase/orderService';
 import { addToEmailList } from '../lib/supabase/emailListService';
 import { sendPurchaseConfirmation } from '../services/emailService';
+import {
+  validateGiftCode,
+  redeemGiftCode,
+  createGiftCode,
+  looksLikeGiftCode,
+  ensureTestCodeExists
+} from '../lib/giftCodes';
 
 const router = Router();
 
@@ -67,6 +74,8 @@ function isVipEmail(email: string | undefined): boolean {
 interface CreateCheckoutBody {
   productId: ProductType;
   email?: string;
+  isGift?: boolean;
+  recipientName?: string;
   successUrl?: string;
   cancelUrl?: string;
 }
@@ -81,12 +90,50 @@ router.post('/create', async (req: Request, res: Response) => {
       return res.status(503).json({ error: 'Payment processing not available' });
     }
 
-    const { productId, email, successUrl, cancelUrl } = req.body as CreateCheckoutBody;
+    const { productId, email, isGift, recipientName, successUrl, cancelUrl } = req.body as CreateCheckoutBody;
 
     // Validate product
     const product = PRODUCTS[productId];
     if (!product || !product.isActive) {
       return res.status(400).json({ error: 'Invalid product' });
+    }
+
+    // Gift code redemption - check if email field contains a valid gift code
+    if (email && looksLikeGiftCode(email)) {
+      const giftCode = validateGiftCode(email);
+      if (giftCode && giftCode.productId === productId) {
+        console.log(`[Checkout] Gift code redemption: ${email} for ${product.name}`);
+
+        // Create order for gift recipient
+        const { order, error: orderError } = await createOrder({
+          productType: productId,
+          source: 'website',
+          email: `gift_${giftCode.code}@redeemed.local`,
+          inputData: {
+            giftCode: giftCode.code,
+            purchaserEmail: giftCode.purchaserEmail,
+            recipientName: giftCode.recipientName,
+            isGiftRedemption: true,
+            amountPaid: 0
+          }
+        });
+
+        if (order && !orderError) {
+          // Mark gift code as used
+          redeemGiftCode(giftCode.code, 'gift_recipient');
+
+          // Return success URL directly
+          const successUrl = `${SITE_URL}/purchase/success?session_id=gift_${order.id}`;
+          return res.json({
+            sessionId: `gift_${order.id}`,
+            url: successUrl,
+            giftRedemption: true
+          });
+        }
+      } else if (looksLikeGiftCode(email)) {
+        // Invalid or wrong product gift code
+        return res.status(400).json({ error: 'Invalid or expired gift code, or code is for a different product' });
+      }
     }
 
     // VIP bypass - free checkout for admin/test emails
@@ -166,11 +213,13 @@ router.post('/create', async (req: Request, res: Response) => {
           quantity: 1,
         },
       ],
-      success_url: successUrl || `${SITE_URL}/purchase/success?session_id={CHECKOUT_SESSION_ID}`,
+      success_url: successUrl || `${SITE_URL}/purchase/success?session_id={CHECKOUT_SESSION_ID}${isGift ? '&gift=true' : ''}`,
       cancel_url: cancelUrl || `${SITE_URL}/${product.slug}`,
       metadata: {
         productId: product.id,
         productName: product.name,
+        isGift: isGift ? 'true' : 'false',
+        recipientName: recipientName || '',
       },
       // Allow promotion codes
       allow_promotion_codes: true,
@@ -264,13 +313,23 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   const productId = session.metadata?.productId as ProductType;
   const customerEmail = session.customer_details?.email || session.customer_email;
   const paymentIntentId = session.payment_intent as string;
+  const isGift = session.metadata?.isGift === 'true';
+  const recipientName = session.metadata?.recipientName || undefined;
 
   console.log(`[Checkout] Processing completed session: ${session.id}`);
-  console.log(`[Checkout] Product: ${productId}, Email: ${customerEmail}`);
+  console.log(`[Checkout] Product: ${productId}, Email: ${customerEmail}, isGift: ${isGift}`);
 
   if (!productId) {
     console.error('[Checkout] No productId in session metadata');
     return;
+  }
+
+  // Create gift code if this is a gift purchase
+  let giftCode: string | undefined;
+  if (isGift && customerEmail) {
+    const giftCodeRecord = createGiftCode(productId, customerEmail, recipientName, session.id);
+    giftCode = giftCodeRecord.code;
+    console.log(`[Checkout] Gift code created: ${giftCode}`);
   }
 
   // Create order in Supabase
@@ -283,6 +342,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       stripeSessionId: session.id,
       amountPaid: session.amount_total,
       currency: session.currency,
+      isGift,
+      giftCode,
+      recipientName,
     },
   });
 
@@ -291,7 +353,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     return;
   }
 
-  console.log(`[Checkout] Order created: ${order?.id}`);
+  console.log(`[Checkout] Order created: ${order?.id}${giftCode ? ` with gift code ${giftCode}` : ''}`);
 
   // Add customer to email list
   if (customerEmail) {
@@ -368,6 +430,28 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
       });
     }
 
+    // Handle gift redemption sessions (format: gift_<orderId>)
+    if (sessionId.startsWith('gift_')) {
+      const orderId = sessionId.replace('gift_', '');
+      const order = await getOrder(orderId);
+
+      if (!order) {
+        return res.status(404).json({ error: 'Gift order not found' });
+      }
+
+      const product = PRODUCTS[order.product_type as ProductType];
+
+      return res.json({
+        status: 'paid',
+        productId: order.product_type,
+        productName: product?.name || 'Unknown Product',
+        productSlug: product?.slug,
+        amountTotal: 0,
+        currency: 'usd',
+        giftRedemption: true
+      });
+    }
+
     // Regular Stripe session
     if (!isStripeConfigured()) {
       return res.status(503).json({ error: 'Payment processing not available' });
@@ -382,6 +466,23 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
 
     const productId = session.metadata?.productId as ProductType;
     const product = productId ? PRODUCTS[productId] : null;
+    const isGift = session.metadata?.isGift === 'true';
+
+    // Look up gift code if this was a gift purchase
+    let giftCode: string | undefined;
+    if (isGift) {
+      // Find gift code by Stripe session ID
+      const { getGiftCode } = await import('../lib/giftCodes');
+      const giftCodeStore = require('fs').readFileSync(
+        require('path').join(process.cwd(), 'data', 'gift_codes.json'),
+        'utf-8'
+      );
+      const codes = JSON.parse(giftCodeStore).codes;
+      const matchingCode = codes.find((c: any) => c.orderId === session.id);
+      if (matchingCode) {
+        giftCode = matchingCode.code;
+      }
+    }
 
     return res.json({
       status: session.payment_status,
@@ -391,6 +492,8 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
       customerEmail: session.customer_details?.email || session.customer_email,
       amountTotal: session.amount_total,
       currency: session.currency,
+      isGift,
+      giftCode,
     });
   } catch (error) {
     console.error('[Checkout] Error retrieving session:', error);
