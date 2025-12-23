@@ -508,15 +508,15 @@ export function renderSantaFormPage(token?: string): string {
   <div class="container">
     <div class="page-title">
       <span class="badge">Christmas Magic</span>
-      <h1>Personalized Santa Message</h1>
-      <p>A magical audio message crafted from your stories</p>
+      <h1>Personalized Santa</h1>
+      <p>A magical audio experience crafted from your stories</p>
     </div>
 
     <!-- Start Screen -->
     <div id="startScreen" class="card start-screen">
       <div class="intro-text">
         <p>In a few thoughtful questions, we'll help you remember the moments, details, and quiet acts of courage that you most want Santa to notice about your child.</p>
-        <p>This isn't a quiz and it's not therapy. It's a focused space to organize your thoughts so the final Santa message feels specific, honest, and deeply personal - without any pressure on you to "say it perfectly."</p>
+        <p>This isn't a quiz and it's not therapy. It's a focused space to organize your thoughts so the final Santa experience feels specific, honest, and deeply personal - without any pressure on you to "say it perfectly."</p>
       </div>
       <button class="btn-start" onclick="startSession()">Begin the Questions</button>
     </div>
@@ -554,14 +554,14 @@ export function renderSantaFormPage(token?: string): string {
     <div id="summaryScreen" class="card summary-screen">
       <h2>You've reached the end of the questions</h2>
       <p class="body-text">You've just done the hardest and most important part: putting into words what this year has really been like for your child, and what you most want them to hear.</p>
-      <p class="body-text">When you click below, we'll use everything you've shared to create a personalized Santa message that names their courage, kindness, and growth in a way that feels true to them.</p>
+      <p class="body-text">When you click below, we'll use everything you've shared to create a personalized Santa experience that names their courage, kindness, and growth in a way that feels true to them.</p>
       <div id="summaryContent" class="summary-content"></div>
-      <button class="btn-generate" onclick="generateMessage()">Generate Santa Message</button>
+      <button class="btn-generate" onclick="generateMessage()">Create Santa Experience</button>
     </div>
 
     <!-- Result Screen -->
     <div id="resultScreen" class="card result-screen">
-      <h2>Your Personalized Santa Message is Ready</h2>
+      <h2>Your Personalized Santa Experience is Ready</h2>
       <div id="resultContent" class="result-content"></div>
       <div id="audioPlayer" class="audio-player hidden">
         <h4>Listen to the Message</h4>

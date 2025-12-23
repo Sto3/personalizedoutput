@@ -15,7 +15,7 @@
     { badge: 'Education', icon: '📚', title: 'Custom Flash Cards', desc: 'Personalized learning cards', price: '$12', slug: 'flash-cards', launched: false },
     { badge: 'Planning', icon: '💡', title: 'Clarity Planner', desc: 'Achieve your goals', price: '$25', slug: 'clarity-planner', launched: false },
     { badge: 'For Adults', icon: '🎯', title: 'Custom Vision Board', desc: 'Personalized vision board', price: '$15', slug: 'vision-board', launched: true },
-    { badge: 'For Kids', icon: '🎁', title: 'Personalized Santa Message', desc: 'A magical audio message from Santa', price: '$20', slug: 'santa', launched: true },
+    { badge: 'For Kids', icon: '🎁', title: 'Personalized Santa', desc: 'A magical audio experience from Santa', price: '$20', slug: 'santa', launched: true },
     { badge: 'Life Planning', icon: '✨', title: 'Thought Organizer™', desc: 'Ideas into insights', price: '$20', slug: 'thought-organizer', launched: false },
     { badge: 'Learning', icon: '🎧', title: '30-Minute Audio Lesson', desc: 'Learn through what you love', price: '$23', slug: 'learning-session', launched: false },
     { badge: 'Learning', icon: '🎬', title: '30-Minute Video Lesson', desc: 'Video lesson with visuals', price: '$33', slug: 'video-learning-session', launched: false }
@@ -143,6 +143,12 @@
         '</div>';
 
       card.addEventListener('click', function(e) {
+        // Prevent navigation if we just swiped
+        if (window._carouselDidSwipe) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         if (index !== current) {
           e.preventDefault();
           goToSlide(index);
@@ -206,13 +212,13 @@
     var touchStartX = 0;
     var touchStartY = 0;
     var isSwiping = false;
-    var didSwipe = false; // Track if an actual swipe happened
+    window._carouselDidSwipe = false; // Global flag to prevent click navigation
 
     wrapper.parentElement.addEventListener('touchstart', function(e) {
       touchStartX = e.touches[0].clientX;
       touchStartY = e.touches[0].clientY;
       isSwiping = true;
-      didSwipe = false;
+      window._carouselDidSwipe = false;
     }, { passive: true });
 
     wrapper.parentElement.addEventListener('touchmove', function(e) {
@@ -224,7 +230,7 @@
 
       if (diffX > diffY && diffX > 10) {
         e.preventDefault(); // Prevent page scroll during horizontal swipe
-        didSwipe = true; // Mark that we're swiping
+        window._carouselDidSwipe = true; // Mark that we're swiping
       }
     }, { passive: false });
 
@@ -237,23 +243,19 @@
 
       // Swipe threshold - 40px for responsive feel
       if (Math.abs(diff) > 40) {
-        didSwipe = true;
+        window._carouselDidSwipe = true;
         if (diff > 0) {
           goToSlide(current + 1);
         } else {
           goToSlide(current - 1);
         }
       }
-    }, { passive: true });
 
-    // Prevent card link clicks when swiping
-    wrapper.addEventListener('click', function(e) {
-      if (didSwipe) {
-        e.preventDefault();
-        e.stopPropagation();
-        didSwipe = false;
-      }
-    }, { capture: true });
+      // Reset swipe flag after a short delay to allow click to be blocked
+      setTimeout(function() {
+        window._carouselDidSwipe = false;
+      }, 300);
+    }, { passive: true });
 
     // Initial render
     render();

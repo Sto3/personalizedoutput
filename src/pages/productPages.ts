@@ -130,7 +130,7 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
 
   santa_message: {
     heroSubtitle: 'Christmas Magic',
-    heroDescription: 'A personalized audio message from Santa that knows their name, their interests, their accomplishments, and their wishes. Pure Christmas magic.',
+    heroDescription: 'A personalized audio experience from Santa that knows their name, their interests, their accomplishments, and their wishes. Pure Christmas magic.',
     features: [
       { icon: '🎅', title: 'Deeply Personal', description: 'Santa knows their name, their pet, their achievements, their wishes - everything you share.' },
       { icon: '🎙️', title: 'Professional Voice', description: 'Warm, authentic Santa voice that sounds like the real deal.' },
@@ -140,16 +140,16 @@ const PRODUCT_CONTENT: Record<ProductType, ProductPageContent> = {
     processSteps: [
       { step: 1, title: 'Share the Details', description: 'Tell us everything - their name, interests, accomplishments, wishes, and what Santa should say.' },
       { step: 2, title: 'Script Creation', description: 'We craft a heartfelt, personalized script just for them.' },
-      { step: 3, title: 'Professional Recording', description: 'Your message is voiced by our Santa with warmth and authenticity.' },
+      { step: 3, title: 'Professional Recording', description: 'Your personalized script is voiced by our Santa with warmth and authenticity.' },
       { step: 4, title: 'Instant Delivery', description: 'Download your MP3 immediately. Play it Christmas morning or anytime.' },
     ],
     faqs: [
       { question: 'How personal can it be?', answer: 'Very! Santa can mention their name, siblings, pets, favorite activities, recent accomplishments, specific wishes, and more.' },
-      { question: 'When will I receive it?', answer: 'Most messages are ready within 24-48 hours. Rush delivery available for same-day turnaround.' },
+      { question: 'When will I receive it?', answer: 'Most orders are ready within 24-48 hours. Rush delivery available for same-day turnaround.' },
       { question: 'Can I preview before sharing?', answer: 'Of course! You receive the file first to review before playing for the child.' },
     ],
     testimonials: [],
-    deliverables: ['2-3 minute personalized audio', 'MP3 download', 'Transcript of the message', 'Christmas memory forever'],
+    deliverables: ['2-3 minute personalized audio', 'MP3 download', 'Transcript included', 'Christmas memory forever'],
     guarantee: 'Not magical enough? Full refund - we\'re that confident',
   },
 

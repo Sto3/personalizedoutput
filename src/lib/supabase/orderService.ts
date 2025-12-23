@@ -95,8 +95,8 @@ export function getSubcategoriesForProduct(productType: ProductType): ProductSub
 export const PRODUCTS: Record<ProductType, ProductInfo> = {
   santa_message: {
     id: 'santa_message',
-    name: 'Personalized Santa Message',
-    description: 'A magical, personalized audio message from Santa Claus',
+    name: 'Personalized Santa',
+    description: 'A magical, personalized audio experience from Santa Claus',
     price: 1999, // $19.99
     category: 'kids',
     slug: 'santa',

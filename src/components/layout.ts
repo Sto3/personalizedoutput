@@ -473,10 +473,11 @@ export function getNavigationStyles(): string {
       gap: 32px;
       align-items: center;
     }
-    .nav-link {
+    .nav-link,
+    button.nav-link {
       color: rgba(255, 255, 255, 0.75);
       text-decoration: none;
-      font-family: 'Cormorant SC', serif;
+      font-family: 'Cormorant SC', serif !important;
       font-size: 1rem;
       font-weight: 600;
       letter-spacing: 0.06em;
@@ -486,6 +487,9 @@ export function getNavigationStyles(): string {
       display: flex;
       align-items: center;
       gap: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
     }
     .nav-link::after {
       content: '';

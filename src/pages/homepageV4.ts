@@ -57,7 +57,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
               <div class="popular-now-section">
                 <div class="popular-now-cards">
                   <a href="/santa" class="popular-card">
-                    <span class="popular-title">Santa Messages</span>
+                    <span class="popular-title">Personalized Santa</span>
                     <span class="popular-tag">Holiday Magic</span>
                   </a>
                   <span class="popular-now-label">Popular Now</span>
@@ -106,7 +106,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           <div class="step">
             <div class="step-number">1</div>
             <h3>Choose Product</h3>
-            <p>Pick from Santa messages, vision boards, learning sessions, and more.</p>
+            <p>Pick from personalized Santa, vision boards, learning sessions, and more.</p>
           </div>
           <div class="step-connector"></div>
           <div class="step">
@@ -810,6 +810,10 @@ function getHomepageStyles(): string {
       border: 2px solid rgba(255, 255, 255, 0.4);
       color: white;
       box-shadow: none;
+      font-family: 'Cormorant SC', serif;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
 
     .btn-hero-outline:hover {
