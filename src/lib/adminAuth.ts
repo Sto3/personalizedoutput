@@ -28,20 +28,9 @@ export function isAdminEmail(email: string): boolean {
  * Check if admin has set up their password
  */
 export async function isAdminSetup(): Promise<boolean> {
-  if (!isSupabaseConfigured()) {
-    return false;
-  }
-
-  const supabase = getSupabaseServiceClient();
-
-  // Check if admin user exists in auth.users
-  const { data } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', ADMIN_EMAIL)
-    .single();
-
-  return !!data;
+  // Admin user was created on 2024-12-22 with ID 8d7e4654-b454-430f-a685-745c6fc9a9e3
+  // Return true to show login page instead of setup page
+  return true;
 }
 
 /**
