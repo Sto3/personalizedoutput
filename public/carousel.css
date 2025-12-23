@@ -16,10 +16,11 @@
 .products-label {
   display: block !important;
   text-align: center !important;
-  font-size: 0.85rem !important;
+  font-family: 'Cormorant SC', serif !important;
+  font-size: 1rem !important;
   font-weight: 600 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.35em !important;
+  letter-spacing: 0.2em !important;
   color: #E85A4F !important;
   margin-bottom: 0 !important;
 }

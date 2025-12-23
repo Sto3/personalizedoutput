@@ -153,7 +153,7 @@ export async function renderPremiumHomepageV4(): Promise<string> {
           </p>
           <div class="cta-buttons">
             <a href="/demo-lessons" class="btn btn-primary btn-large">
-              Listen to Demo Lessons
+              Listen to Demos/Samples
             </a>
             <a href="#products" class="btn btn-secondary btn-large">
               Browse All Products
@@ -780,12 +780,15 @@ function getHomepageStyles(): string {
 
     .btn-hero {
       padding: 14px 28px;
-      font-size: 0.95rem;
+      font-size: 1rem;
       border-radius: 100px;
       background: var(--coral);
       color: white;
       text-decoration: none;
+      font-family: 'Cormorant SC', serif;
       font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
       transition: all 0.3s ease;
       box-shadow: 0 4px 20px rgba(232, 90, 107, 0.4);
     }

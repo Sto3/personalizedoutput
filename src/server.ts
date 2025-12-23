@@ -265,8 +265,14 @@ app.get('/sw.js', (req, res) => {
 // PRODUCTION ROUTES - Clean URLs for Etsy buyers
 // ============================================================
 
-// Santa Message form (with token-based access control)
+// Santa Message form - Direct access (Stripe checkout flow)
 app.get('/santa', (req, res) => {
+  trackEvent('page', 'santa');
+  res.send(renderSantaFormPage());
+});
+
+// Legacy token validation endpoint (for old Etsy orders)
+app.get('/santa-legacy', (req, res) => {
   const token = req.query.token as string | undefined;
 
   // If token provided, validate it
@@ -275,7 +281,7 @@ app.get('/santa', (req, res) => {
 
     if (validation.valid) {
       // Valid token - show the premium Santa form
-      trackEvent('page', 'santa');
+      trackEvent('page', 'santa-legacy');
       return res.send(renderSantaFormPage(token));
     }
 

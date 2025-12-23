@@ -1704,7 +1704,7 @@ export function renderPremiumHomepageV3(): string {
             <p>We turn YOUR interests into the teaching method. Your child loves dinosaurs? That's how we'll teach fractions. You own a bakery? That's how we'll explain mortgages. 30-minute lessons that actually stick.</p>
             <div class="hero-buttons">
               <a href="/demo-lessons" class="btn btn-primary">
-                Listen to Demo Lessons
+                Listen to Demos/Samples
                 <span class="btn-arrow">→</span>
               </a>
               <a href="#products" class="btn btn-secondary">
@@ -2048,7 +2048,7 @@ export function renderPremiumHomepageV3(): string {
           <h2>Ready to Learn Your Way?</h2>
           <p>Watch real demo lessons and see how Thought Organizer™ connects what you love to what you need to learn. For kids AND adults.</p>
           <div class="cta-buttons">
-            <a href="/demo-lessons" class="btn btn-primary">Listen to Demo Lessons</a>
+            <a href="/demo-lessons" class="btn btn-primary">Listen to Demos/Samples</a>
             <button id="pwa-install-btn" class="btn btn-secondary" style="display: none;">
               📱 Install App
             </button>
