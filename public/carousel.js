@@ -10,15 +10,19 @@
   console.log('[Carousel] Initializing isolated 3D carousel...');
 
   // Product data with launch status
+  // ORDERED so Santa Message is in CENTER with Vision Board next to it
   const products = [
-    { badge: 'For Kids', icon: '🎁', title: 'Personalized Santa Message', desc: 'A magical audio message from Santa', price: '$20', slug: 'santa', launched: true },
-    { badge: 'Learning', icon: '🎧', title: '30-Minute Audio Lesson', desc: 'Learn through what you love', price: '$23', slug: 'learning-session', launched: false },
-    { badge: 'Learning', icon: '🎬', title: '30-Minute Video Lesson', desc: 'Video lesson with visuals', price: '$33', slug: 'video-learning-session', launched: false },
-    { badge: 'For Adults', icon: '🎯', title: 'Custom Vision Board', desc: 'Personalized vision board', price: '$15', slug: 'vision-board', launched: true },
-    { badge: 'Life Planning', icon: '✨', title: 'Thought Organizer™', desc: 'Ideas into insights', price: '$20', slug: 'thought-organizer', launched: false },
     { badge: 'Education', icon: '📚', title: 'Custom Flash Cards', desc: 'Personalized learning cards', price: '$12', slug: 'flash-cards', launched: false },
-    { badge: 'Planning', icon: '💡', title: 'Clarity Planner', desc: 'Achieve your goals', price: '$25', slug: 'clarity-planner', launched: false }
+    { badge: 'Planning', icon: '💡', title: 'Clarity Planner', desc: 'Achieve your goals', price: '$25', slug: 'clarity-planner', launched: false },
+    { badge: 'For Adults', icon: '🎯', title: 'Custom Vision Board', desc: 'Personalized vision board', price: '$15', slug: 'vision-board', launched: true },
+    { badge: 'For Kids', icon: '🎁', title: 'Personalized Santa Message', desc: 'A magical audio message from Santa', price: '$20', slug: 'santa', launched: true },
+    { badge: 'Life Planning', icon: '✨', title: 'Thought Organizer™', desc: 'Ideas into insights', price: '$20', slug: 'thought-organizer', launched: false },
+    { badge: 'Learning', icon: '🎧', title: '30-Minute Audio Lesson', desc: 'Learn through what you love', price: '$23', slug: 'learning-session', launched: false },
+    { badge: 'Learning', icon: '🎬', title: '30-Minute Video Lesson', desc: 'Video lesson with visuals', price: '$33', slug: 'video-learning-session', launched: false }
   ];
+
+  // Santa Message is at index 3 (center of 7 products)
+  const SANTA_INDEX = 3;
 
   // Position configurations for 3D coverflow effect (desktop only)
   const positions = {
@@ -32,7 +36,8 @@
     'hidden':  { tx: 0,    tz: -400, ry: 0,   scale: 0.3,  opacity: 0,   zIndex: 0 }
   };
 
-  let current = Math.floor(products.length / 2);
+  // Start with Santa Message centered
+  let current = SANTA_INDEX;
   let cards = [];
   let dots = [];
   let wrapper = null;
@@ -123,11 +128,11 @@
       // Hide dots on mobile
       if (dotsEl) dotsEl.style.display = 'none';
 
-      // Scroll to center initially
+      // Scroll to Santa Message (index 3) initially on mobile
       setTimeout(function() {
-        var cardWidth = 280 + 16;
-        var centerScroll = (products.length / 2 - 1) * cardWidth;
-        wrapper.scrollLeft = centerScroll;
+        var cardWidth = 280 + 16; // card width + gap
+        var santaScroll = SANTA_INDEX * cardWidth - (wrapper.offsetWidth / 2) + (280 / 2);
+        wrapper.scrollLeft = Math.max(0, santaScroll);
       }, 100);
 
       console.log('[Carousel] Mobile mode initialized');

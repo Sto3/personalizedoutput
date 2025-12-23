@@ -184,33 +184,45 @@ export function renderAdminLoginPage(error?: string): string {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Admin Login - Personalized Output</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: 'Inter', sans-serif;
-          background: linear-gradient(135deg, #1a0a1a 0%, #2d1a2d 100%);
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: #1a0a1a;
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #fff;
+          color: #F5EEF0;
         }
-        .container { width: 100%; max-width: 400px; padding: 20px; }
+        .container { width: 100%; max-width: 420px; padding: 24px; }
         .card {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 16px;
-          padding: 40px;
+          background: #0a0a10;
+          border: 1px solid rgba(124, 58, 237, 0.2);
+          border-radius: 20px;
+          padding: 48px 40px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
-        h1 {
+        .logo {
+          text-align: center;
+          margin-bottom: 8px;
+          font-family: 'Playfair Display', serif;
           font-size: 1.5rem;
+          font-weight: 700;
+          color: #F5EEF0;
+        }
+        .logo span { color: #E85A4F; }
+        h1 {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.75rem;
           margin-bottom: 8px;
           text-align: center;
+          font-weight: 600;
         }
         .subtitle {
-          color: rgba(255,255,255,0.6);
-          font-size: 0.875rem;
+          color: rgba(245, 238, 240, 0.6);
+          font-size: 0.9rem;
           text-align: center;
           margin-bottom: 32px;
         }
@@ -220,59 +232,80 @@ export function renderAdminLoginPage(error?: string): string {
           font-size: 0.875rem;
           font-weight: 500;
           margin-bottom: 8px;
-          color: rgba(255,255,255,0.8);
+          color: rgba(245, 238, 240, 0.8);
         }
         input {
           width: 100%;
-          padding: 12px 16px;
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 8px;
-          background: rgba(0,0,0,0.3);
-          color: #fff;
+          padding: 14px 18px;
+          border: 1px solid rgba(124, 58, 237, 0.3);
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          color: #F5EEF0;
           font-size: 1rem;
+          transition: all 0.2s;
         }
         input:focus {
           outline: none;
-          border-color: #7C3AED;
+          border-color: #E85A4F;
+          background: rgba(255, 255, 255, 0.08);
         }
+        input::placeholder { color: rgba(245, 238, 240, 0.4); }
         .btn {
           width: 100%;
-          padding: 14px;
+          padding: 16px;
           border: none;
-          border-radius: 8px;
+          border-radius: 10px;
           font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
-          background: #7C3AED;
+          background: linear-gradient(135deg, #E85A4F 0%, #D64A3F 100%);
           color: #fff;
+          transition: all 0.2s;
+          box-shadow: 0 4px 15px rgba(232, 90, 79, 0.3);
         }
-        .btn:hover { background: #6D28D9; }
+        .btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(232, 90, 79, 0.4);
+        }
         .error {
-          background: rgba(239, 68, 68, 0.2);
-          border: 1px solid #EF4444;
-          padding: 12px;
-          border-radius: 8px;
+          background: rgba(239, 68, 68, 0.15);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          padding: 14px;
+          border-radius: 10px;
           margin-bottom: 20px;
           font-size: 0.875rem;
           text-align: center;
+          color: #FCA5A5;
         }
         .admin-badge {
           display: inline-block;
-          background: rgba(124, 58, 237, 0.2);
-          color: #A78BFA;
-          padding: 4px 12px;
+          background: rgba(232, 90, 79, 0.15);
+          color: #E85A4F;
+          padding: 6px 16px;
           border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 600;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
           margin-bottom: 24px;
+          text-transform: uppercase;
         }
+        .forgot-link {
+          display: block;
+          text-align: center;
+          margin-top: 20px;
+          color: rgba(245, 238, 240, 0.5);
+          font-size: 0.85rem;
+          text-decoration: none;
+        }
+        .forgot-link:hover { color: #E85A4F; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="card">
+          <div class="logo">personalized<span>output</span></div>
           <div style="text-align: center;">
-            <span class="admin-badge">ADMIN ACCESS</span>
+            <span class="admin-badge">Admin Access</span>
           </div>
           <h1>Welcome Back</h1>
           <p class="subtitle">Sign in to access the admin dashboard</p>
@@ -308,33 +341,45 @@ export function renderAdminSetupPage(error?: string): string {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Admin Setup - Personalized Output</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: 'Inter', sans-serif;
-          background: linear-gradient(135deg, #1a0a1a 0%, #2d1a2d 100%);
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: #1a0a1a;
           min-height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #fff;
+          color: #F5EEF0;
         }
-        .container { width: 100%; max-width: 400px; padding: 20px; }
+        .container { width: 100%; max-width: 420px; padding: 24px; }
         .card {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 16px;
-          padding: 40px;
+          background: #0a0a10;
+          border: 1px solid rgba(124, 58, 237, 0.2);
+          border-radius: 20px;
+          padding: 48px 40px;
+          box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
-        h1 {
+        .logo {
+          text-align: center;
+          margin-bottom: 8px;
+          font-family: 'Playfair Display', serif;
           font-size: 1.5rem;
+          font-weight: 700;
+          color: #F5EEF0;
+        }
+        .logo span { color: #E85A4F; }
+        h1 {
+          font-family: 'Playfair Display', serif;
+          font-size: 1.75rem;
           margin-bottom: 8px;
           text-align: center;
+          font-weight: 600;
         }
         .subtitle {
-          color: rgba(255,255,255,0.6);
-          font-size: 0.875rem;
+          color: rgba(245, 238, 240, 0.6);
+          font-size: 0.9rem;
           text-align: center;
           margin-bottom: 32px;
         }
@@ -344,68 +389,82 @@ export function renderAdminSetupPage(error?: string): string {
           font-size: 0.875rem;
           font-weight: 500;
           margin-bottom: 8px;
-          color: rgba(255,255,255,0.8);
+          color: rgba(245, 238, 240, 0.8);
         }
         input {
           width: 100%;
-          padding: 12px 16px;
-          border: 1px solid rgba(255,255,255,0.2);
-          border-radius: 8px;
-          background: rgba(0,0,0,0.3);
-          color: #fff;
+          padding: 14px 18px;
+          border: 1px solid rgba(124, 58, 237, 0.3);
+          border-radius: 10px;
+          background: rgba(255, 255, 255, 0.05);
+          color: #F5EEF0;
           font-size: 1rem;
+          transition: all 0.2s;
         }
         input:focus {
           outline: none;
-          border-color: #7C3AED;
+          border-color: #E85A4F;
+          background: rgba(255, 255, 255, 0.08);
         }
+        input::placeholder { color: rgba(245, 238, 240, 0.4); }
         .btn {
           width: 100%;
-          padding: 14px;
+          padding: 16px;
           border: none;
-          border-radius: 8px;
+          border-radius: 10px;
           font-size: 1rem;
           font-weight: 600;
           cursor: pointer;
-          background: #7C3AED;
+          background: linear-gradient(135deg, #E85A4F 0%, #D64A3F 100%);
           color: #fff;
+          transition: all 0.2s;
+          box-shadow: 0 4px 15px rgba(232, 90, 79, 0.3);
         }
-        .btn:hover { background: #6D28D9; }
+        .btn:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 20px rgba(232, 90, 79, 0.4);
+        }
         .error {
-          background: rgba(239, 68, 68, 0.2);
-          border: 1px solid #EF4444;
-          padding: 12px;
-          border-radius: 8px;
+          background: rgba(239, 68, 68, 0.15);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          padding: 14px;
+          border-radius: 10px;
           margin-bottom: 20px;
           font-size: 0.875rem;
           text-align: center;
+          color: #FCA5A5;
         }
         .setup-badge {
           display: inline-block;
-          background: rgba(34, 197, 94, 0.2);
+          background: rgba(34, 197, 94, 0.15);
           color: #4ADE80;
-          padding: 4px 12px;
+          padding: 6px 16px;
           border-radius: 20px;
-          font-size: 0.75rem;
-          font-weight: 600;
+          font-size: 0.7rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
           margin-bottom: 24px;
+          text-transform: uppercase;
         }
         .info-box {
           background: rgba(124, 58, 237, 0.1);
-          border: 1px solid rgba(124, 58, 237, 0.3);
-          border-radius: 8px;
+          border: 1px solid rgba(124, 58, 237, 0.25);
+          border-radius: 10px;
           padding: 16px;
           margin-bottom: 24px;
           font-size: 0.875rem;
-          color: rgba(255,255,255,0.8);
+          color: rgba(245, 238, 240, 0.8);
+          text-align: center;
         }
+        .info-box strong { color: #E85A4F; }
       </style>
     </head>
     <body>
       <div class="container">
         <div class="card">
+          <div class="logo">personalized<span>output</span></div>
           <div style="text-align: center;">
-            <span class="setup-badge">FIRST-TIME SETUP</span>
+            <span class="setup-badge">First-Time Setup</span>
           </div>
           <h1>Create Admin Account</h1>
           <p class="subtitle">Set up your admin password</p>
@@ -445,108 +504,152 @@ export function renderAdminDashboardPage(adminEmail: string): string {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Admin Dashboard - Personalized Output</title>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@600;700&display=swap" rel="stylesheet">
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-          font-family: 'Inter', sans-serif;
-          background: #0f0f0f;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+          background: #1a0a1a;
           min-height: 100vh;
-          color: #fff;
+          color: #F5EEF0;
         }
         .header {
-          background: rgba(255,255,255,0.05);
-          border-bottom: 1px solid rgba(255,255,255,0.1);
+          background: #0a0a10;
+          border-bottom: 1px solid rgba(124, 58, 237, 0.2);
           padding: 16px 24px;
           display: flex;
           justify-content: space-between;
           align-items: center;
         }
         .logo {
-          font-size: 1.25rem;
-          font-weight: 600;
+          font-family: 'Playfair Display', serif;
+          font-size: 1.35rem;
+          font-weight: 700;
+          color: #F5EEF0;
         }
-        .logo span { color: #7C3AED; }
+        .logo span { color: #E85A4F; }
+        .admin-badge {
+          display: inline-block;
+          background: rgba(232, 90, 79, 0.15);
+          color: #E85A4F;
+          padding: 4px 12px;
+          border-radius: 20px;
+          font-size: 0.65rem;
+          font-weight: 700;
+          letter-spacing: 0.1em;
+          margin-left: 12px;
+          text-transform: uppercase;
+        }
         .user-info {
           display: flex;
           align-items: center;
           gap: 16px;
         }
         .user-email {
-          color: rgba(255,255,255,0.6);
+          color: rgba(245, 238, 240, 0.6);
           font-size: 0.875rem;
         }
         .logout-btn {
-          background: rgba(239, 68, 68, 0.2);
-          color: #EF4444;
+          background: rgba(239, 68, 68, 0.15);
+          color: #FCA5A5;
           border: 1px solid rgba(239, 68, 68, 0.3);
           padding: 8px 16px;
-          border-radius: 6px;
+          border-radius: 8px;
           font-size: 0.875rem;
           cursor: pointer;
           text-decoration: none;
+          transition: all 0.2s;
         }
-        .logout-btn:hover { background: rgba(239, 68, 68, 0.3); }
+        .logout-btn:hover {
+          background: rgba(239, 68, 68, 0.25);
+        }
         .container {
           max-width: 1200px;
           margin: 0 auto;
-          padding: 32px 24px;
+          padding: 40px 24px;
         }
         h1 {
-          font-size: 1.75rem;
+          font-family: 'Playfair Display', serif;
+          font-size: 2rem;
           margin-bottom: 8px;
+          font-weight: 600;
         }
         .subtitle {
-          color: rgba(255,255,255,0.6);
-          margin-bottom: 32px;
+          color: rgba(245, 238, 240, 0.6);
+          margin-bottom: 40px;
         }
         .cards {
           display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-          gap: 20px;
+          grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+          gap: 24px;
         }
         .card {
-          background: rgba(255,255,255,0.05);
-          border: 1px solid rgba(255,255,255,0.1);
-          border-radius: 12px;
-          padding: 24px;
+          background: #0a0a10;
+          border: 1px solid rgba(124, 58, 237, 0.2);
+          border-radius: 16px;
+          padding: 28px;
+          transition: all 0.2s;
+        }
+        .card:hover {
+          border-color: rgba(124, 58, 237, 0.4);
+          transform: translateY(-2px);
         }
         .card h3 {
-          font-size: 1rem;
+          font-family: 'Playfair Display', serif;
+          font-size: 1.1rem;
           margin-bottom: 8px;
           display: flex;
           align-items: center;
           gap: 8px;
+          font-weight: 600;
         }
         .card p {
-          color: rgba(255,255,255,0.6);
+          color: rgba(245, 238, 240, 0.6);
           font-size: 0.875rem;
-          margin-bottom: 16px;
+          margin-bottom: 20px;
+          line-height: 1.5;
         }
         .card-link {
           display: inline-block;
-          background: #7C3AED;
+          background: linear-gradient(135deg, #E85A4F 0%, #D64A3F 100%);
           color: #fff;
-          padding: 10px 20px;
-          border-radius: 6px;
+          padding: 12px 24px;
+          border-radius: 8px;
           text-decoration: none;
+          font-size: 0.875rem;
+          font-weight: 600;
+          transition: all 0.2s;
+          box-shadow: 0 4px 12px rgba(232, 90, 79, 0.25);
+        }
+        .card-link:hover {
+          transform: translateY(-1px);
+          box-shadow: 0 6px 16px rgba(232, 90, 79, 0.35);
+        }
+        .coming-soon {
+          display: inline-block;
+          background: rgba(124, 58, 237, 0.15);
+          color: rgba(124, 58, 237, 0.7);
+          padding: 12px 24px;
+          border-radius: 8px;
           font-size: 0.875rem;
           font-weight: 500;
         }
-        .card-link:hover { background: #6D28D9; }
-        .coming-soon {
-          display: inline-block;
-          background: rgba(255,255,255,0.1);
-          color: rgba(255,255,255,0.5);
-          padding: 10px 20px;
-          border-radius: 6px;
-          font-size: 0.875rem;
+
+        @media (max-width: 768px) {
+          .header {
+            flex-direction: column;
+            gap: 16px;
+            text-align: center;
+          }
+          .cards {
+            grid-template-columns: 1fr;
+          }
         }
       </style>
     </head>
     <body>
       <div class="header">
-        <div class="logo">Personalized<span>Output</span> Admin</div>
+        <div class="logo">personalized<span>output</span><span class="admin-badge">Admin</span></div>
         <div class="user-info">
           <span class="user-email">${adminEmail}</span>
           <a href="/admin/logout" class="logout-btn">Sign Out</a>

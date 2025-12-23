@@ -84,6 +84,29 @@ export async function renderPremiumHomepageV4(): Promise<string> {
         </div>
       </section>
 
+      <!-- Email Signup - Prominent position near top -->
+      <section class="email-signup-hero">
+        <div class="email-signup-container container">
+          <div class="email-signup-content">
+            <span class="email-icon">✉️</span>
+            <div class="email-text">
+              <h4>Get Early Access & Exclusive Offers</h4>
+              <p>Be the first to know about new products and special discounts.</p>
+            </div>
+            <form class="email-signup-form" action="/api/subscribe" method="POST" id="hero-newsletter-form">
+              <input
+                type="email"
+                name="email"
+                placeholder="Enter your email"
+                required
+                class="email-signup-input"
+              >
+              <button type="submit" class="email-signup-btn">Subscribe</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
       <!-- Product Showcase - Isolated 3D Carousel (external CSS/JS files) -->
       <section class="products-showcase" id="products">
         <span class="products-label">Our Products</span>
@@ -589,6 +612,9 @@ function renderFeatureCards(products: ProductWithScore[]): string {
   `;
 }
 
+// Products that are actually launched and ready for purchase
+const LAUNCHED_PRODUCTS = ['santa_message', 'vision_board'];
+
 function renderProductCard(product: ProductWithScore, index: number): string {
   // Unique icons - distinctive for each product
   const icons: Record<string, string> = {
@@ -616,11 +642,15 @@ function renderProductCard(product: ProductWithScore, index: number): string {
   };
 
   const isFeatured = index === 0;
+  const isLaunched = LAUNCHED_PRODUCTS.includes(product.id);
   const productBenefits = benefits[product.id] || ['Deeply personalized', 'Instant delivery', 'Digital format'];
+  const cardLink = isLaunched ? `/${product.slug}` : '/coming-soon';
+  const ctaText = isLaunched ? 'Get Started' : 'Coming Soon';
 
   return `
-    <div class="product-card ${isFeatured ? 'featured' : ''}" data-index="${index}">
-      ${product.salesScore > 0 ? `<span class="product-tag">Popular</span>` : ''}
+    <div class="product-card ${isFeatured ? 'featured' : ''} ${!isLaunched ? 'coming-soon' : ''}" data-index="${index}">
+      ${!isLaunched ? '<span class="coming-soon-tag">Coming Soon</span>' : ''}
+      ${product.salesScore > 0 && isLaunched ? `<span class="product-tag">Popular</span>` : ''}
       <div class="product-icon">${icons[product.id] || '📦'}</div>
       <h3 class="product-name">${product.name}${product.id === 'thought_organizer' ? '<sup>™</sup>' : ''}</h3>
       <p class="product-desc">${product.description}</p>
@@ -632,7 +662,7 @@ function renderProductCard(product: ProductWithScore, index: number): string {
           <span class="price-currency">$</span>
           <span class="price-amount">${(product.price / 100).toFixed(0)}</span>
         </div>
-        <a href="/${product.slug}" class="btn btn-primary btn-small">Get Started</a>
+        <a href="${cardLink}" class="btn ${isLaunched ? 'btn-primary' : 'btn-secondary'} btn-small">${ctaText}</a>
       </div>
     </div>
   `;
@@ -1503,6 +1533,145 @@ function getHomepageStyles(): string {
     .btn-large {
       padding: 16px 32px;
       font-size: 1rem;
+    }
+
+    /* ================================================
+       EMAIL SIGNUP - HERO POSITION
+       ================================================ */
+    .email-signup-hero {
+      background: linear-gradient(135deg, #1a0a1a 0%, #0a0a10 100%);
+      padding: 20px 24px;
+      border-bottom: 1px solid rgba(124, 58, 237, 0.2);
+    }
+
+    .email-signup-container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .email-signup-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .email-icon {
+      font-size: 1.8rem;
+    }
+
+    .email-text {
+      text-align: left;
+    }
+
+    .email-text h4 {
+      color: #ffffff;
+      font-size: 1rem;
+      font-weight: 600;
+      margin: 0 0 4px 0;
+    }
+
+    .email-text p {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 0.85rem;
+      margin: 0;
+    }
+
+    .email-signup-form {
+      display: flex;
+      gap: 10px;
+    }
+
+    .email-signup-input {
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid rgba(124, 58, 237, 0.3);
+      background: rgba(255, 255, 255, 0.08);
+      color: #ffffff;
+      font-size: 0.9rem;
+      min-width: 220px;
+    }
+
+    .email-signup-input::placeholder {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .email-signup-input:focus {
+      outline: none;
+      border-color: var(--coral);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .email-signup-btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      border: none;
+      background: var(--coral);
+      color: #ffffff;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .email-signup-btn:hover {
+      background: var(--coral-light);
+      transform: translateY(-1px);
+    }
+
+    @media (max-width: 768px) {
+      .email-signup-content {
+        flex-direction: column;
+        text-align: center;
+        gap: 16px;
+      }
+
+      .email-text {
+        text-align: center;
+      }
+
+      .email-signup-form {
+        flex-direction: column;
+        width: 100%;
+        max-width: 300px;
+      }
+
+      .email-signup-input {
+        min-width: auto;
+        width: 100%;
+      }
+
+      .email-signup-btn {
+        width: 100%;
+      }
+    }
+
+    /* ================================================
+       COMING SOON TAG (Product Grid)
+       ================================================ */
+    .coming-soon-tag {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      z-index: 10;
+      box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+    }
+
+    .product-card.coming-soon {
+      opacity: 0.9;
+    }
+
+    .product-card.coming-soon:hover {
+      opacity: 1;
     }
 
     /* ================================================
