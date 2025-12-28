@@ -56,6 +56,7 @@ import { isSupabaseConfigured, isSupabaseServiceConfigured } from './lib/supabas
 import { signUp, signIn, signOut, getSession, resetPassword, getProfile, getReferralStats } from './lib/supabase/userService';
 import { getPublishedPosts, getPostBySlug } from './lib/supabase/blogService';
 import { addToEmailList } from './lib/supabase/emailListService';
+import { trackPageView, getAnalyticsSummary } from './lib/supabase/analyticsService';
 
 // Import Stripe services
 import { isStripeConfigured, createCheckoutSession, createPortalSession, constructWebhookEvent, handleWebhookEvent } from './lib/stripe/stripeService';
@@ -238,6 +239,23 @@ app.use('/api/planner', generationRateLimiter);
 app.get('/api/health', (req, res) => {
   const health = getSystemHealth();
   res.json(health);
+});
+
+// ============================================================
+// PAGE VIEW TRACKING (Privacy-friendly analytics)
+// ============================================================
+app.use((req, res, next) => {
+  // Only track GET requests to pages (not API, assets, etc.)
+  if (req.method === 'GET' && !req.path.startsWith('/api/') && !req.path.startsWith('/outputs/') &&
+      !req.path.includes('.') && req.path !== '/health') {
+    // Track asynchronously - don't slow down the request
+    trackPageView(req.path, {
+      referrer: req.get('referer'),
+      userAgent: req.get('user-agent'),
+      ip: req.ip || req.connection?.remoteAddress,
+    }).catch(() => {}); // Silently ignore errors
+  }
+  next();
 });
 
 // Static file serving
@@ -2197,6 +2215,98 @@ app.get('/admin/usage', async (req, res) => {
   } catch (error: any) {
     res.send(renderAdminErrorPage('Error', `Failed to fetch usage data: ${error.message}`));
   }
+});
+
+// ============================================================
+// ADMIN ANALYTICS
+// ============================================================
+
+app.get('/admin/analytics', requireAdmin, async (req, res) => {
+  const days = parseInt(req.query.days as string) || 7;
+  const summary = await getAnalyticsSummary(days);
+
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Analytics - Admin</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    h1 { color: #333; margin-bottom: 20px; }
+    .back-link { color: #666; text-decoration: none; margin-bottom: 20px; display: inline-block; }
+    .back-link:hover { color: #333; }
+    .summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
+    .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .card h3 { font-size: 0.9rem; color: #666; margin-bottom: 8px; }
+    .card .number { font-size: 2rem; font-weight: bold; color: #333; }
+    table { width: 100%; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 30px; }
+    th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid #eee; }
+    th { background: #f8f8f8; font-weight: 600; color: #555; }
+    .section-title { font-size: 1.2rem; color: #333; margin: 30px 0 15px; }
+    .device-bar { display: flex; height: 30px; border-radius: 4px; overflow: hidden; margin-top: 10px; }
+    .device-bar div { display: flex; align-items: center; justify-content: center; color: white; font-size: 0.8rem; }
+    .mobile { background: #4CAF50; }
+    .tablet { background: #2196F3; }
+    .desktop { background: #9C27B0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="/admin" class="back-link">&larr; Back to Admin</a>
+    <h1>Analytics (Last ${days} Days)</h1>
+
+    <div class="summary-cards">
+      <div class="card">
+        <h3>Total Page Views</h3>
+        <div class="number">${summary.totals.views.toLocaleString()}</div>
+      </div>
+      <div class="card">
+        <h3>Unique Visitors</h3>
+        <div class="number">${summary.totals.unique.toLocaleString()}</div>
+      </div>
+      <div class="card">
+        <h3>Mobile</h3>
+        <div class="number">${summary.devices.mobile || 0}</div>
+      </div>
+      <div class="card">
+        <h3>Desktop</h3>
+        <div class="number">${summary.devices.desktop || 0}</div>
+      </div>
+    </div>
+
+    <h2 class="section-title">Daily Breakdown</h2>
+    <table>
+      <thead>
+        <tr><th>Date</th><th>Page Views</th><th>Unique Visitors</th></tr>
+      </thead>
+      <tbody>
+        ${summary.daily.length > 0
+          ? summary.daily.map(d => `<tr><td>${d.date}</td><td>${d.total_views}</td><td>${d.unique_visitors}</td></tr>`).join('')
+          : '<tr><td colspan="3" style="text-align:center;color:#999;">No data yet - tracking just started!</td></tr>'
+        }
+      </tbody>
+    </table>
+
+    <h2 class="section-title">Top Pages</h2>
+    <table>
+      <thead>
+        <tr><th>Page</th><th>Views</th><th>Unique Visitors</th></tr>
+      </thead>
+      <tbody>
+        ${summary.topPages.length > 0
+          ? summary.topPages.map(p => `<tr><td>${p.path}</td><td>${p.views}</td><td>${p.unique_visitors}</td></tr>`).join('')
+          : '<tr><td colspan="3" style="text-align:center;color:#999;">No data yet</td></tr>'
+        }
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>
+  `);
 });
 
 // ============================================================
