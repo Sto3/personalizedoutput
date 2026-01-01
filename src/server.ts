@@ -2625,12 +2625,12 @@ app.listen(PORT, () => {
   console.log(`
 ╔═══════════════════════════════════════════════════════════════╗
 ║                                                               ║
-║   EtsyInnovations API Server                                  ║
+║   Personalized Output - API Server                            ║
 ║   Deep Personalization Product Engine                         ║
 ║                                                               ║
 ║   Server running at: http://localhost:${PORT}                   ║
 ║                                                               ║
-║   Product Pages (for Etsy buyers):                            ║
+║   Product Pages:                                              ║
 ║   • Santa Message:    http://localhost:${PORT}/santa              ║
 ║   • Holiday Reset:    http://localhost:${PORT}/holiday-reset      ║
 ║   • New Year Reset:   http://localhost:${PORT}/new-year-reset     ║

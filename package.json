@@ -1,7 +1,7 @@
 {
-  "name": "etsyinnovations",
+  "name": "personalized-output",
   "version": "2.0.0",
-  "description": "Deep Personalization Product Engine for Etsy",
+  "description": "Deep Personalization Product Engine - personalizedoutput.com",
   "main": "dist/server.js",
   "scripts": {
     "dev": "npx ts-node src/server.ts",

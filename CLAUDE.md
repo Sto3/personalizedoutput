@@ -1,4 +1,4 @@
-# CLAUDE CODE INSTRUCTIONS - EtsyInnovations / Personalized Output
+# CLAUDE CODE INSTRUCTIONS - Personalized Output
 
 This file contains critical instructions for Claude Code. Read this FIRST at the start of every session.
 
