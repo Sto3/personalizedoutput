@@ -74,6 +74,15 @@ import {
   closeVoiceService
 } from '../lib/redi/voiceService';
 
+import {
+  startSessionTracking,
+  endSessionTracking,
+  recordAIResponse,
+  recordUserQuestion,
+  recordVisualAnalysis,
+  recordMotionClipAnalysis
+} from '../lib/redi/sessionHistoryService';
+
 // Connection tracking: sessionId -> Map<deviceId, WebSocket>
 const sessionConnections = new Map<string, Map<string, WebSocket>>();
 const contexts = new Map<string, DecisionContext>();
@@ -162,7 +171,15 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
 
   // Initialize session services if this is the first connection (host)
   if (isHostDevice && !contexts.has(session.id)) {
-    await initializeSessionServices(session.id, session.mode, session.sensitivity, session.voiceGender);
+    await initializeSessionServices(
+      session.id,
+      session.mode,
+      session.sensitivity,
+      session.voiceGender,
+      session.userId,
+      deviceId,
+      session.durationMinutes
+    );
   }
 
   // Send session info to this device
@@ -225,7 +242,10 @@ async function initializeSessionServices(
   sessionId: string,
   mode: RediMode,
   sensitivity: number,
-  voiceGender: 'male' | 'female'
+  voiceGender: 'male' | 'female',
+  userId?: string,
+  deviceId?: string,
+  durationMinutes: number = 30
 ): Promise<void> {
   // Initialize decision context
   const context = createInitialContext(sessionId, mode, sensitivity);
@@ -233,6 +253,9 @@ async function initializeSessionServices(
 
   // Initialize frame buffer
   frameBuffers.set(sessionId, []);
+
+  // Start session history tracking
+  startSessionTracking(sessionId, userId || 'anonymous', mode, durationMinutes, deviceId);
 
   try {
     // Start transcription
@@ -391,6 +414,9 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
 
   // Check if this is a question requiring immediate response
   if (chunk.isFinal && chunk.text.trim().endsWith('?')) {
+    // Track user question for history
+    recordUserQuestion(sessionId, chunk.text);
+
     const session = getSession(sessionId);
     if (session) {
       const response = await generateQuestionResponse(
@@ -426,6 +452,9 @@ async function handleMotionClip(sessionId: string, deviceId: string, message: WS
     ctx.transcriptBuffer.slice(-3).join(' ')
   );
 
+  // Track motion clip analysis for history
+  recordMotionClipAnalysis(sessionId, analysis.description);
+
   // Update visual context
   updateVisualContext(ctx, analysis.description);
 
@@ -435,12 +464,15 @@ async function handleMotionClip(sessionId: string, deviceId: string, message: WS
     await speakResponse(sessionId, feedback);
   }
 
-  // Broadcast analysis to all devices
+  // Broadcast analysis to all devices (include source for debugging/UI)
   broadcastToSession(sessionId, {
     type: 'visual_analysis',
     sessionId,
     timestamp: Date.now(),
-    payload: analysis
+    payload: {
+      ...analysis,
+      analysisSource: analysis.source || 'claude'  // GPT-4o or Claude
+    }
   });
 }
 
@@ -472,6 +504,10 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
       session.mode,
       ctx.transcriptBuffer.slice(-3).join(' ')
     );
+
+    // Track snapshot analysis for history
+    recordVisualAnalysis(sessionId, analysis.description);
+
     updateVisualContext(ctx, analysis.description);
 
     broadcastToSession(sessionId, {
@@ -491,6 +527,9 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
     session.mode,
     ctx.transcriptBuffer.slice(-3).join(' ')
   );
+
+  // Track multi-angle analysis for history
+  recordVisualAnalysis(sessionId, analysis.description);
 
   updateVisualContext(ctx, analysis.description);
 
@@ -589,6 +628,9 @@ Be concise (2-3 sentences max).`;
 async function speakResponse(sessionId: string, text: string): Promise<void> {
   const ctx = contexts.get(sessionId);
   if (!ctx) return;
+
+  // Track AI response for history
+  recordAIResponse(sessionId, text);
 
   // Broadcast text response to all devices
   broadcastToSession(sessionId, {
@@ -753,7 +795,7 @@ function handleDeviceDisconnect(sessionId: string, deviceId: string): void {
 /**
  * Handle full session end
  */
-function handleSessionEnd(sessionId: string): void {
+async function handleSessionEnd(sessionId: string): Promise<void> {
   console.log(`[Redi WebSocket] Ending session ${sessionId}`);
 
   // Notify all devices
@@ -787,6 +829,15 @@ function handleSessionEnd(sessionId: string): void {
   if (result) {
     console.log(`[Redi WebSocket] Session ${sessionId} costs:`, result.costs);
   }
+
+  // Save session history to database (async, don't block shutdown)
+  endSessionTracking(sessionId).then(historyEntry => {
+    if (historyEntry) {
+      console.log(`[Redi WebSocket] Session history saved for ${sessionId}`);
+    }
+  }).catch(error => {
+    console.error(`[Redi WebSocket] Failed to save session history for ${sessionId}:`, error);
+  });
 
   // Close all connections
   const connections = sessionConnections.get(sessionId);

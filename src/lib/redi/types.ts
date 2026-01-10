@@ -83,6 +83,7 @@ export interface VisualAnalysis {
   textContent: string[];
   suggestions: string[];
   timestamp: number;
+  source?: 'gpt4o' | 'claude';  // Which AI analyzed this
 }
 
 export interface MotionClip {

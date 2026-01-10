@@ -4,10 +4,18 @@
  * Tracks and stores Redi session history for user progress viewing.
  */
 
-import { supabase } from '../supabase/client';
+import { getSupabaseServiceClient, isSupabaseServiceConfigured } from '../supabase/client';
 import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic();
+
+// Helper to get supabase client
+function getSupabase() {
+  if (!isSupabaseServiceConfigured()) {
+    throw new Error('Supabase not configured');
+  }
+  return getSupabaseServiceClient();
+}
 
 export interface SessionHistoryEntry {
   id: string;
@@ -100,13 +108,39 @@ export function recordSnapshotAnalysis(sessionId: string): void {
 }
 
 /**
- * Record motion clip analysis
+ * Record visual/snapshot analysis with description
  */
-export function recordMotionClipAnalysis(sessionId: string): void {
+export function recordVisualAnalysis(sessionId: string, description: string): void {
+  const session = activeSessions.get(sessionId);
+  if (!session) return;
+
+  session.snapshotsAnalyzed++;
+
+  // If the description contains useful feedback, add to keyFeedback
+  if (description.length > 50 && session.keyFeedback.length < 10) {
+    const firstSentence = description.split('.')[0] + '.';
+    if (firstSentence.length > 20) {
+      session.keyFeedback.push(firstSentence);
+    }
+  }
+}
+
+/**
+ * Record motion clip analysis with description
+ */
+export function recordMotionClipAnalysis(sessionId: string, description: string): void {
   const session = activeSessions.get(sessionId);
   if (!session) return;
 
   session.motionClipsAnalyzed++;
+
+  // Motion analysis often contains valuable feedback
+  if (description.length > 30 && session.keyFeedback.length < 10) {
+    const firstSentence = description.split('.')[0] + '.';
+    if (firstSentence.length > 20) {
+      session.keyFeedback.push(firstSentence);
+    }
+  }
 }
 
 /**
@@ -149,7 +183,7 @@ export async function endSessionTracking(sessionId: string): Promise<SessionHist
 
   // Save to Supabase
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('redi_session_history')
       .insert(entry)
       .select()
@@ -181,7 +215,7 @@ export async function getUserSessionHistory(
   offset: number = 0
 ): Promise<SessionHistoryEntry[]> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('redi_session_history')
       .select('*')
       .eq('user_id', userId)
@@ -210,7 +244,7 @@ export async function getUserSessionStats(userId: string): Promise<{
   averageSessionLength: number;
 }> {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await getSupabase()
       .from('redi_session_history')
       .select('mode, actual_duration_seconds')
       .eq('user_id', userId);
