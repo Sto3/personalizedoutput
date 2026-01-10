@@ -146,7 +146,7 @@ router.post('/checkout', async (req: Request, res: Response) => {
 
   const {
     duration,
-    mode,
+    mode: rediMode,
     voiceGender,
     sensitivity,
     deviceId,
@@ -161,7 +161,7 @@ router.post('/checkout', async (req: Request, res: Response) => {
   }
 
   // Validate mode
-  if (!MODE_CONFIGS[mode as RediMode]) {
+  if (!MODE_CONFIGS[rediMode as RediMode]) {
     res.status(400).json({ error: 'Invalid mode.' });
     return;
   }
@@ -176,7 +176,7 @@ router.post('/checkout', async (req: Request, res: Response) => {
           currency: 'usd',
           product_data: {
             name: `Redi - ${duration} Minute Session`,
-            description: `${getModeDisplayName(mode as RediMode)} mode with ${voiceGender} voice`,
+            description: `${getModeDisplayName(rediMode as RediMode)} mode with ${voiceGender} voice`,
             images: ['https://personalizedoutput.com/images/redi-logo.png']
           },
           unit_amount: PRICES[duration.toString() as '30' | '60']
@@ -186,14 +186,14 @@ router.post('/checkout', async (req: Request, res: Response) => {
       metadata: {
         product: 'redi',
         duration: duration.toString(),
-        mode,
+        mode: rediMode,
         voiceGender: voiceGender || 'female',
         sensitivity: (sensitivity || 0.5).toString(),
         deviceId: deviceId || uuidv4()
       },
       success_url: successUrl || `${process.env.BASE_URL || 'https://personalizedoutput.com'}/redi/session?checkout_session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: cancelUrl || `${process.env.BASE_URL || 'https://personalizedoutput.com'}/redi`
-    });
+    } as any);
 
     res.json({
       checkoutUrl: checkoutSession.url,
@@ -643,7 +643,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 
       // Subscription created
       case 'customer.subscription.created':
-        const newSubscription = event.data.object as Stripe.Subscription;
+        const newSubscription = event.data.object as any;
         if (newSubscription.metadata?.product === 'redi_subscription') {
           const userId = newSubscription.metadata.userId;
           const tier = newSubscription.metadata.tier as RediSubscriptionTier;
@@ -664,7 +664,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 
       // Subscription updated (plan change, etc.)
       case 'customer.subscription.updated':
-        const updatedSubscription = event.data.object as Stripe.Subscription;
+        const updatedSubscription = event.data.object as any;
         if (updatedSubscription.metadata?.product === 'redi_subscription') {
           const userId = updatedSubscription.metadata.userId ||
             findUserByStripeSubscription(updatedSubscription.id);
@@ -700,7 +700,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 
       // Subscription deleted/canceled
       case 'customer.subscription.deleted':
-        const deletedSubscription = event.data.object as Stripe.Subscription;
+        const deletedSubscription = event.data.object as any;
         if (deletedSubscription.metadata?.product === 'redi_subscription') {
           const userId = deletedSubscription.metadata.userId ||
             findUserByStripeSubscription(deletedSubscription.id);
@@ -714,14 +714,14 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 
       // Invoice paid (billing cycle renewal)
       case 'invoice.paid':
-        const paidInvoice = event.data.object as Stripe.Invoice;
+        const paidInvoice = event.data.object as any;
         if (paidInvoice.subscription) {
           // Fetch the subscription to get metadata
           const subId = typeof paidInvoice.subscription === 'string'
             ? paidInvoice.subscription
             : paidInvoice.subscription.id;
 
-          const subscription = await stripe.subscriptions.retrieve(subId);
+          const subscription = await stripe.subscriptions.retrieve(subId) as any;
 
           if (subscription.metadata?.product === 'redi_subscription') {
             const userId = subscription.metadata.userId ||
@@ -743,7 +743,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 
       // Invoice payment failed
       case 'invoice.payment_failed':
-        const failedInvoice = event.data.object as Stripe.Invoice;
+        const failedInvoice = event.data.object as any;
         if (failedInvoice.subscription) {
           const subId = typeof failedInvoice.subscription === 'string'
             ? failedInvoice.subscription

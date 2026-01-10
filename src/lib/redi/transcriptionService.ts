@@ -144,7 +144,8 @@ export function sendAudio(sessionId: string, audioBuffer: Buffer): void {
   }
 
   try {
-    session.connection.send(audioBuffer);
+    // Send audio buffer - cast to any for WebSocket compatibility
+    (session.connection as any).send(audioBuffer);
   } catch (error) {
     console.error(`[Redi Transcription] Error sending audio for ${sessionId}:`, error);
   }
