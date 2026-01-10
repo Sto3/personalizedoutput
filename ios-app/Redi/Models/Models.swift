@@ -379,3 +379,80 @@ struct AnyCodable: Codable {
         }
     }
 }
+
+// MARK: - Session History
+
+struct SessionHistoryEntry: Codable, Identifiable {
+    let id: String
+    let userId: String
+    let deviceId: String?
+    let mode: String
+    let durationMinutes: Int
+    let actualDurationSeconds: Int?
+    let aiResponsesCount: Int
+    let userQuestionsCount: Int
+    let snapshotsAnalyzed: Int
+    let motionClipsAnalyzed: Int
+    let aiSummary: String?
+    let keyFeedback: [String]?
+    let startedAt: Date
+    let endedAt: Date?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId = "user_id"
+        case deviceId = "device_id"
+        case mode
+        case durationMinutes = "duration_minutes"
+        case actualDurationSeconds = "actual_duration_seconds"
+        case aiResponsesCount = "ai_responses_count"
+        case userQuestionsCount = "user_questions_count"
+        case snapshotsAnalyzed = "snapshots_analyzed"
+        case motionClipsAnalyzed = "motion_clips_analyzed"
+        case aiSummary = "ai_summary"
+        case keyFeedback = "key_feedback"
+        case startedAt = "started_at"
+        case endedAt = "ended_at"
+    }
+
+    var modeDisplayName: String {
+        let modes: [String: String] = [
+            "studying": "Studying & Learning",
+            "meeting": "Meeting & Presentation",
+            "sports": "Sports & Movement",
+            "music": "Music & Instrument",
+            "assembly": "Building & Assembly",
+            "monitoring": "Watching Over"
+        ]
+        return modes[mode] ?? mode.capitalized
+    }
+
+    var formattedDuration: String {
+        guard let seconds = actualDurationSeconds else {
+            return "\(durationMinutes) min"
+        }
+        let minutes = seconds / 60
+        return "\(minutes) min"
+    }
+
+    var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        return formatter.string(from: startedAt)
+    }
+}
+
+struct SessionStats: Codable {
+    let totalSessions: Int
+    let totalMinutes: Int
+    let favoriteMode: String?
+    let averageSessionLength: Int
+
+    enum CodingKeys: String, CodingKey {
+        case totalSessions = "total_sessions"
+        case totalMinutes = "total_minutes"
+        case favoriteMode = "favorite_mode"
+        case averageSessionLength = "average_session_length"
+    }
+}

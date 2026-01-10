@@ -51,6 +51,17 @@ import {
   findUserByStripeSubscription
 } from '../lib/redi/subscriptionService';
 
+import {
+  startSessionTracking,
+  endSessionTracking,
+  getUserSessionHistory,
+  getUserSessionStats,
+  recordAIResponse,
+  recordUserQuestion,
+  recordSnapshotAnalysis,
+  recordMotionClipAnalysis
+} from '../lib/redi/sessionHistoryService';
+
 import { getConnectionStats } from '../websocket/rediSocket';
 import { isDeepgramConfigured } from '../lib/redi/transcriptionService';
 import { isElevenLabsConfigured, getAvailableVoices } from '../lib/redi/voiceService';
@@ -763,6 +774,57 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
   } catch (error) {
     console.error('[Redi API] Webhook error:', error);
     res.status(400).json({ error: 'Webhook verification failed' });
+  }
+});
+
+// ============================================================
+// SESSION HISTORY ENDPOINTS
+// ============================================================
+
+/**
+ * GET /api/redi/history
+ * Get session history for a user
+ */
+router.get('/history', async (req: Request, res: Response) => {
+  const { userId, limit, offset } = req.query;
+
+  if (!userId || typeof userId !== 'string') {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
+
+  try {
+    const history = await getUserSessionHistory(
+      userId,
+      parseInt(limit as string) || 20,
+      parseInt(offset as string) || 0
+    );
+
+    res.json({ history });
+  } catch (error) {
+    console.error('[Redi API] History fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch session history' });
+  }
+});
+
+/**
+ * GET /api/redi/history/stats
+ * Get session stats for a user
+ */
+router.get('/history/stats', async (req: Request, res: Response) => {
+  const { userId } = req.query;
+
+  if (!userId || typeof userId !== 'string') {
+    res.status(400).json({ error: 'userId is required' });
+    return;
+  }
+
+  try {
+    const stats = await getUserSessionStats(userId);
+    res.json(stats);
+  } catch (error) {
+    console.error('[Redi API] Stats fetch error:', error);
+    res.status(500).json({ error: 'Failed to fetch session stats' });
   }
 });
 

@@ -22,6 +22,7 @@ struct HomeView: View {
     @State private var logoTapCount = 0
     @State private var lastTapTime = Date()
     @State private var showingAdminBypass = false
+    @State private var showingHistory = false
 
     var body: some View {
         NavigationView {
@@ -95,18 +96,34 @@ struct HomeView: View {
 
     private var headerSection: some View {
         VStack(spacing: 8) {
-            Text("Redi")
-                .font(.system(size: 48, weight: .bold))
-                .foregroundStyle(
-                    LinearGradient(
-                        colors: [Color.cyan, Color.purple],
-                        startPoint: .leading,
-                        endPoint: .trailing
+            HStack {
+                Spacer()
+
+                Text("Redi")
+                    .font(.system(size: 48, weight: .bold))
+                    .foregroundStyle(
+                        LinearGradient(
+                            colors: [Color.cyan, Color.purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
                     )
-                )
-                .onTapGesture {
-                    handleLogoTap()
+                    .onTapGesture {
+                        handleLogoTap()
+                    }
+
+                Spacer()
+
+                // History button
+                Button(action: {
+                    showingHistory = true
+                }) {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.title2)
+                        .foregroundColor(.gray)
                 }
+                .padding(.trailing, 8)
+            }
 
             Text("PRESENT. ACTIVE. ALWAYS READY.")
                 .font(.caption)
@@ -114,6 +131,9 @@ struct HomeView: View {
                 .foregroundColor(.gray)
         }
         .padding(.top, 40)
+        .sheet(isPresented: $showingHistory) {
+            HistoryView()
+        }
     }
 
     // MARK: - Admin Bypass Logic

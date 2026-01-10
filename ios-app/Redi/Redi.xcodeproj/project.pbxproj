@@ -18,6 +18,7 @@
 		929C224DD38B492B7C9D0330 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD078B8E09E9F023A212E581 /* Models.swift */; };
 		A66634CF8EC7740D40897F19 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914EA6EA78E0805AC7676CEA /* SessionView.swift */; };
 		BA0B1E2C9D418685240D4414 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE5395098EB5DED9990A4C0 /* HomeView.swift */; };
+		DED19773F5CEE6421A1D38AC /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C63A793466E4E7AAF9988A /* HistoryView.swift */; };
 		ED79ACF21932FDCFD407078B /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150F0DC41592737940795313 /* AudioService.swift */; };
 /* End PBXBuildFile section */
 
@@ -25,6 +26,7 @@
 		11FC2B0A07423D27282940F2 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		150F0DC41592737940795313 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
 		67DFA597214E78B4FF52CEC3 /* SessionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionViewModel.swift; sourceTree = "<group>"; };
+		74C63A793466E4E7AAF9988A /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		89FED5AD019E3A6E33F5A1E3 /* RediApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediApp.swift; sourceTree = "<group>"; };
 		8C9C0A0F441E508F2A48580E /* WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketService.swift; sourceTree = "<group>"; };
 		8CE5395098EB5DED9990A4C0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -49,6 +51,7 @@
 		0498F34336D682844E8FE2E0 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				74C63A793466E4E7AAF9988A /* HistoryView.swift */,
 				8CE5395098EB5DED9990A4C0 /* HomeView.swift */,
 				DA8A2494A90C7565782AB51B /* OnboardingView.swift */,
 				914EA6EA78E0805AC7676CEA /* SessionView.swift */,
@@ -178,6 +181,7 @@
 			files = (
 				ED79ACF21932FDCFD407078B /* AudioService.swift in Sources */,
 				02C31AED37CCB58BF6AD1EE2 /* CameraService.swift in Sources */,
+				DED19773F5CEE6421A1D38AC /* HistoryView.swift in Sources */,
 				BA0B1E2C9D418685240D4414 /* HomeView.swift in Sources */,
 				8B52A1E276920B500C7052D7 /* HomeViewModel.swift in Sources */,
 				929C224DD38B492B7C9D0330 /* Models.swift in Sources */,
