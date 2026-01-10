@@ -19,25 +19,52 @@ struct OnboardingView: View {
             icon: "sparkles",
             title: "Meet Redi",
             description: "An AI presence that's always with you. No prompting required - just presence.",
-            color: .cyan
+            color: .cyan,
+            tips: nil
         ),
         OnboardingPage(
             icon: "eye.fill",
             title: "Redi Sees",
             description: "Point your camera at what you're working on. Redi understands the context.",
-            color: .purple
+            color: .purple,
+            tips: [
+                "📱 Prop your phone where it can see your work",
+                "🎯 For sports, angle it to capture your full movement",
+                "📚 For studying, point it at your notes or screen"
+            ]
         ),
         OnboardingPage(
             icon: "ear.fill",
             title: "Redi Listens",
             description: "Speak naturally. Redi hears when you're stuck or could use help.",
-            color: .blue
+            color: .blue,
+            tips: [
+                "💬 Talk through problems out loud",
+                "❓ Ask questions anytime - Redi responds",
+                "🤫 Stay quiet and Redi stays quiet too"
+            ]
         ),
         OnboardingPage(
             icon: "waveform",
             title: "Redi Speaks",
             description: "When Redi has something valuable to add, it speaks up naturally.",
-            color: .green
+            color: .green,
+            tips: [
+                "🎚️ Adjust sensitivity: Passive → Active",
+                "⏸️ Passive: Only speaks when you ask",
+                "🗣️ Active: Proactive tips and observations"
+            ]
+        ),
+        OnboardingPage(
+            icon: "figure.run",
+            title: "For Athletes",
+            description: "Redi captures your movement and provides real-time technique feedback.",
+            color: .orange,
+            tips: [
+                "🎾 Perfect for solo practice sessions",
+                "📹 Motion detection captures key moments",
+                "🏋️ Get form corrections without a coach"
+            ]
         )
     ]
 
@@ -95,11 +122,11 @@ struct OnboardingView: View {
     }
 
     private func pageView(_ page: OnboardingPage) -> some View {
-        VStack(spacing: 30) {
+        VStack(spacing: 24) {
             Spacer()
 
             Image(systemName: page.icon)
-                .font(.system(size: 80))
+                .font(.system(size: 70))
                 .foregroundColor(page.color)
 
             Text(page.title)
@@ -112,6 +139,22 @@ struct OnboardingView: View {
                 .multilineTextAlignment(.center)
                 .foregroundColor(.gray)
                 .padding(.horizontal, 40)
+
+            // Tips section
+            if let tips = page.tips {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(tips, id: \.self) { tip in
+                        Text(tip)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.08))
+                .cornerRadius(12)
+                .padding(.horizontal, 30)
+            }
 
             Spacer()
         }
@@ -187,6 +230,7 @@ struct OnboardingPage {
     let title: String
     let description: String
     let color: Color
+    let tips: [String]?
 }
 
 struct PermissionRow: View {

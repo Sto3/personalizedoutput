@@ -12,6 +12,7 @@ struct SessionView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var viewModel: SessionViewModel
     @State private var showingParticipants = false
+    @State private var showingHelp = false
 
     init(session: RediSession) {
         _viewModel = StateObject(wrappedValue: SessionViewModel(session: session))
@@ -69,6 +70,9 @@ struct SessionView: View {
         } message: {
             Text("Are you sure you want to end your session early?")
         }
+        .sheet(isPresented: $showingHelp) {
+            helpSheet
+        }
     }
 
     // MARK: - Top Bar
@@ -123,6 +127,15 @@ struct SessionView: View {
 
             Spacer()
 
+            // Help button
+            Button(action: {
+                showingHelp = true
+            }) {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+
             // End button
             Button(action: {
                 viewModel.showingEndAlert = true
@@ -133,6 +146,111 @@ struct SessionView: View {
             }
         }
         .foregroundColor(.white)
+    }
+
+    // MARK: - Help Sheet
+
+    private var helpSheet: some View {
+        NavigationView {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    // How Redi Works
+                    helpSection(
+                        icon: "sparkles",
+                        title: "How Redi Works",
+                        tips: [
+                            "Redi sees through your camera and hears through your mic",
+                            "Speak naturally - ask questions or think out loud",
+                            "Redi responds when it has something valuable to add"
+                        ]
+                    )
+
+                    // Sensitivity
+                    helpSection(
+                        icon: "slider.horizontal.3",
+                        title: "Sensitivity Slider",
+                        tips: [
+                            "Passive: Redi only speaks when you ask",
+                            "Balanced: Speaks during natural pauses",
+                            "Active: Proactive tips and observations"
+                        ]
+                    )
+
+                    // Camera Tips
+                    helpSection(
+                        icon: "camera.fill",
+                        title: "Camera Positioning",
+                        tips: [
+                            "Prop your phone where it can see your work",
+                            "For sports, angle to capture full body movement",
+                            "Good lighting helps Redi see better"
+                        ]
+                    )
+
+                    // Controls
+                    helpSection(
+                        icon: "hand.tap.fill",
+                        title: "Controls",
+                        tips: [
+                            "🎤 Mute/unmute your microphone",
+                            "🎚️ Adjust how often Redi speaks",
+                            "📷 Switch front/back camera",
+                            "⏸️ Pause/resume the session"
+                        ]
+                    )
+
+                    // Multi-phone
+                    if viewModel.session.isHost {
+                        helpSection(
+                            icon: "person.2.fill",
+                            title: "Multi-Phone Sessions",
+                            tips: [
+                                "Tap 'Invite Others' to share your session",
+                                "Others can join with the code",
+                                "Choose who hears Redi's voice"
+                            ]
+                        )
+                    }
+                }
+                .padding()
+            }
+            .background(Color.black.ignoresSafeArea())
+            .navigationTitle("Help")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarItems(
+                trailing: Button("Done") {
+                    showingHelp = false
+                }
+                .foregroundColor(.cyan)
+            )
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func helpSection(icon: String, title: String, tips: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .foregroundColor(.cyan)
+                    .font(.title3)
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                ForEach(tips, id: \.self) { tip in
+                    Text("• \(tip)")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+            }
+            .padding(.leading, 34)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(12)
     }
 
     // MARK: - Join Code Display
