@@ -56,14 +56,15 @@ struct OnboardingView: View {
             ]
         ),
         OnboardingPage(
-            icon: "figure.run",
-            title: "For Athletes",
-            description: "Redi captures your movement and provides real-time technique feedback.",
+            icon: "figure.mixed.cardio",
+            title: "Motion Capture",
+            description: "Redi detects movement and captures clips for technique feedback.",
             color: .orange,
             tips: [
-                "🎾 Perfect for solo practice sessions",
-                "📹 Motion detection captures key moments",
-                "🏋️ Get form corrections without a coach"
+                "🎾 Sports: Tennis, golf, basketball form",
+                "🎸 Music: Instrument technique & posture",
+                "🧘 Fitness: Yoga poses, workout form",
+                "🔧 DIY: Assembly & hands-on projects"
             ]
         )
     ]
