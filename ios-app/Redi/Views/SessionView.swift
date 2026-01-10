@@ -137,31 +137,96 @@ struct SessionView: View {
 
     // MARK: - Join Code Display
 
+    @State private var showingInviteSheet = false
+
     private func joinCodeDisplay(code: String) -> some View {
-        VStack(spacing: 4) {
-            Text("Share this code to invite others:")
-                .font(.caption)
-                .foregroundColor(.gray)
-
-            HStack(spacing: 8) {
-                Text(code)
-                    .font(.system(size: 28, weight: .bold, design: .monospaced))
-                    .foregroundColor(.cyan)
-                    .tracking(4)
-
-                Button(action: {
-                    UIPasteboard.general.string = code
-                }) {
-                    Image(systemName: "doc.on.doc")
-                        .foregroundColor(.cyan)
-                }
+        Button(action: {
+            showingInviteSheet = true
+        }) {
+            HStack(spacing: 6) {
+                Image(systemName: "person.badge.plus")
+                Text("Invite Others")
+                    .font(.subheadline)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 10)
-            .background(Color.black.opacity(0.7))
-            .cornerRadius(12)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color.cyan.opacity(0.3))
+            .cornerRadius(20)
+            .foregroundColor(.cyan)
         }
-        .padding(.top, 8)
+        .sheet(isPresented: $showingInviteSheet) {
+            inviteSheet(code: code)
+        }
+    }
+
+    private func inviteSheet(code: String) -> some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Image(systemName: "person.3.fill")
+                        .font(.system(size: 48))
+                        .foregroundStyle(
+                            LinearGradient(
+                                colors: [Color.cyan, Color.purple],
+                                startPoint: .leading,
+                                endPoint: .trailing
+                            )
+                        )
+
+                    Text("Invite Others")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Share this code with others to join your session")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                        .multilineTextAlignment(.center)
+                }
+                .padding(.top, 40)
+
+                // Code display
+                VStack(spacing: 8) {
+                    Text(code)
+                        .font(.system(size: 42, weight: .bold, design: .monospaced))
+                        .foregroundColor(.cyan)
+                        .tracking(6)
+
+                    Button(action: {
+                        UIPasteboard.general.string = code
+                    }) {
+                        HStack {
+                            Image(systemName: "doc.on.doc")
+                            Text("Copy Code")
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 10)
+                        .background(Color.cyan.opacity(0.2))
+                        .cornerRadius(8)
+                        .foregroundColor(.cyan)
+                    }
+                }
+                .padding()
+                .background(Color.white.opacity(0.05))
+                .cornerRadius(16)
+
+                Text("They can join from the Redi home screen by tapping 'Join Existing Session'")
+                    .font(.caption)
+                    .foregroundColor(.gray)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+
+                Spacer()
+            }
+            .padding()
+            .background(Color.black.ignoresSafeArea())
+            .navigationBarItems(
+                trailing: Button("Done") {
+                    showingInviteSheet = false
+                }
+                .foregroundColor(.cyan)
+            )
+        }
+        .preferredColorScheme(.dark)
     }
 
     // MARK: - Audio Output Overlay (Host Only)
@@ -439,22 +504,38 @@ struct SessionView: View {
 struct CameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer?
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
+    func makeUIView(context: Context) -> CameraPreviewUIView {
+        let view = CameraPreviewUIView()
         view.backgroundColor = .black
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            // Remove old layer
-            uiView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+    func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
+        uiView.previewLayer = previewLayer
+    }
+}
 
-            // Add preview layer
-            if let previewLayer = previewLayer {
-                previewLayer.frame = uiView.bounds
-                uiView.layer.addSublayer(previewLayer)
-            }
+class CameraPreviewUIView: UIView {
+    var previewLayer: AVCaptureVideoPreviewLayer? {
+        didSet {
+            setupPreviewLayer()
+        }
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        previewLayer?.frame = bounds
+    }
+
+    private func setupPreviewLayer() {
+        // Remove old layers
+        layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+
+        // Add preview layer
+        if let previewLayer = previewLayer {
+            previewLayer.videoGravity = .resizeAspectFill
+            previewLayer.frame = bounds
+            layer.addSublayer(previewLayer)
         }
     }
 }

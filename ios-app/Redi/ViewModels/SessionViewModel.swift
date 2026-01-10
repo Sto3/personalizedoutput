@@ -6,6 +6,7 @@
 
 import Foundation
 import Combine
+import AVFoundation
 
 class SessionViewModel: ObservableObject {
     // MARK: - Published Properties
@@ -159,28 +160,56 @@ class SessionViewModel: ObservableObject {
     // MARK: - Session Control
 
     func startSession() {
-        // Connect WebSocket
-        webSocketService.connect(sessionId: session.id)
+        // IMPORTANT: Start countdown timer FIRST (most critical for UX)
+        startTimer()
 
-        // Start camera
-        cameraService.start()
-
-        // Start audio recording
-        audioService.startRecording()
-
-        // Setup periodic snapshots if mode uses them
-        let interval = session.mode.snapshotIntervalMs
-        if interval > 0 {
-            cameraService.startPeriodicSnapshots(intervalMs: interval)
+        // Connect WebSocket (async, non-blocking)
+        // Skip WebSocket for test sessions
+        if !session.id.hasPrefix("test-") {
+            webSocketService.connect(sessionId: session.id)
         }
+
+        // Request camera permission and start
+        requestCameraAndStart()
+
+        // Request microphone permission and start
+        requestMicrophoneAndStart()
 
         // Start motion detection if mode uses it
         if session.mode.usesMotionDetection {
             motionService.startMonitoring()
         }
+    }
 
-        // Start countdown timer
-        startTimer()
+    private func requestCameraAndStart() {
+        AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+            guard granted else {
+                print("[Session] Camera permission denied")
+                return
+            }
+
+            DispatchQueue.main.async {
+                self?.cameraService.start()
+
+                // Setup periodic snapshots if mode uses them
+                if let interval = self?.session.mode.snapshotIntervalMs, interval > 0 {
+                    self?.cameraService.startPeriodicSnapshots(intervalMs: interval)
+                }
+            }
+        }
+    }
+
+    private func requestMicrophoneAndStart() {
+        AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+            guard granted else {
+                print("[Session] Microphone permission denied")
+                return
+            }
+
+            DispatchQueue.main.async {
+                self?.audioService.startRecording()
+            }
+        }
     }
 
     func endSession() {
