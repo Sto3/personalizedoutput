@@ -1,15 +1,15 @@
 {
-  "lastCheck": "2025-12-20T14:24:40.727Z",
+  "lastCheck": "2026-01-10T05:19:46.180Z",
   "services": {
     "ElevenLabs": {
       "service": "ElevenLabs",
       "used": 0,
-      "limit": 0,
+      "limit": 111513,
       "percentUsed": 0,
       "unit": "characters",
-      "status": "error",
-      "message": "Failed to fetch usage",
-      "error": "TypeError: fetch failed"
+      "status": "ok",
+      "message": "0 / 111,513 chars (0%)",
+      "resetDate": "2026-02-05T11:00:30.000Z"
     },
     "Anthropic Claude": {
       "service": "Anthropic Claude",

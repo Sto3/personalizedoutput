@@ -464,15 +464,12 @@ async function handleMotionClip(sessionId: string, deviceId: string, message: WS
     await speakResponse(sessionId, feedback);
   }
 
-  // Broadcast analysis to all devices (include source for debugging/UI)
+  // Broadcast analysis to all devices
   broadcastToSession(sessionId, {
     type: 'visual_analysis',
     sessionId,
     timestamp: Date.now(),
-    payload: {
-      ...analysis,
-      analysisSource: analysis.source || 'claude'  // GPT-4o or Claude
-    }
+    payload: analysis
   });
 }
 

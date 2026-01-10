@@ -1,19 +1,13 @@
 /**
  * Redi Vision Service
  *
- * Analyzes images and video frames using Claude Vision and GPT-4o.
- * Claude Vision for snapshots, GPT-4o for motion clips (better temporal understanding).
+ * Analyzes images and video frames using Claude Vision.
  * Supports both periodic snapshots and motion-triggered clip analysis.
  */
 
 import Anthropic from '@anthropic-ai/sdk';
 import { VisualAnalysis, RediMode, MODE_CONFIGS, MotionClip } from './types';
 import { trackCost } from './sessionManager';
-import {
-  analyzeMotionClip as gpt4oAnalyzeMotionClip,
-  isOpenAIConfigured,
-  VideoAnalysisResult
-} from './gpt4oVideoService';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -110,86 +104,12 @@ Be concise and focused on what's relevant to helping the user.`;
 
 /**
  * Analyze a motion clip (multiple frames)
- * Uses GPT-4o when available for better temporal understanding,
- * falls back to Claude Vision otherwise.
  */
 export async function analyzeMotionClip(
   sessionId: string,
   clip: MotionClip,
   mode: RediMode,
   recentTranscript: string = ''
-): Promise<VisualAnalysis> {
-  // Try GPT-4o first for better temporal/motion understanding
-  if (isOpenAIConfigured()) {
-    try {
-      const gpt4oResult = await analyzeWithGPT4o(sessionId, clip, mode, recentTranscript);
-      if (gpt4oResult) {
-        return gpt4oResult;
-      }
-    } catch (error) {
-      console.log(`[Redi Vision] GPT-4o failed, falling back to Claude:`, error);
-    }
-  }
-
-  // Fall back to Claude Vision
-  return analyzeWithClaude(sessionId, clip, mode, recentTranscript);
-}
-
-/**
- * Analyze motion clip with GPT-4o (better temporal understanding)
- */
-async function analyzeWithGPT4o(
-  sessionId: string,
-  clip: MotionClip,
-  mode: RediMode,
-  recentTranscript: string
-): Promise<VisualAnalysis | null> {
-  // Convert Buffer frames to base64 strings
-  const framesBase64 = clip.frames.map(frame => frame.toString('base64'));
-
-  // Select key frames (max 6 for GPT-4o)
-  const keyFrameIndices = selectKeyFrames(framesBase64.length, 6);
-  const keyFrames = keyFrameIndices.map(i => framesBase64[i]);
-
-  try {
-    const result = await gpt4oAnalyzeMotionClip(
-      keyFrames,
-      mode,
-      recentTranscript || undefined,
-      clip.duration
-    );
-
-    // Track cost (GPT-4o is slightly more expensive)
-    trackCost(sessionId, 'vision', 0.003 * keyFrames.length);
-
-    // Convert GPT-4o result to VisualAnalysis format
-    const analysis: VisualAnalysis = {
-      description: result.description,
-      detectedObjects: [],
-      textContent: [],
-      suggestions: result.suggestions || [result.techniqueFeedback].filter(Boolean) as string[],
-      timestamp: Date.now(),
-      source: 'gpt4o'
-    };
-
-    updateContextBuffer(sessionId, analysis.description);
-    console.log(`[Redi Vision] GPT-4o analysis complete for ${sessionId}`);
-
-    return analysis;
-  } catch (error) {
-    console.error(`[Redi Vision] GPT-4o analysis failed for ${sessionId}:`, error);
-    return null;
-  }
-}
-
-/**
- * Analyze motion clip with Claude Vision (fallback)
- */
-async function analyzeWithClaude(
-  sessionId: string,
-  clip: MotionClip,
-  mode: RediMode,
-  recentTranscript: string
 ): Promise<VisualAnalysis> {
   const modeConfig = MODE_CONFIGS[mode];
 
@@ -245,8 +165,7 @@ Be encouraging but honest. Focus on ONE key improvement at a time.`;
       detectedObjects: [],
       textContent: [],
       suggestions: extractSuggestions(analysisText),
-      timestamp: Date.now(),
-      source: 'claude'
+      timestamp: Date.now()
     };
 
     updateContextBuffer(sessionId, analysis.description);
