@@ -403,7 +403,15 @@ struct HomeView: View {
                 .font(.headline)
                 .foregroundColor(.white)
 
-            HStack(spacing: 12) {
+            HStack(spacing: 8) {
+                DurationCard(
+                    minutes: 20,
+                    price: 14,
+                    isSelected: viewModel.config.durationMinutes == 20
+                ) {
+                    viewModel.config.durationMinutes = 20
+                }
+
                 DurationCard(
                     minutes: 30,
                     price: 26,
@@ -482,7 +490,16 @@ struct HomeView: View {
     // MARK: - Start Button (One-Time)
 
     private var startButton: some View {
-        Button(action: {
+        let priceForDuration: Int = {
+            switch viewModel.config.durationMinutes {
+            case 20: return 14
+            case 30: return 26
+            case 60: return 49
+            default: return 26
+            }
+        }()
+
+        return Button(action: {
             viewModel.startCheckout()
         }) {
             HStack {
@@ -492,7 +509,7 @@ struct HomeView: View {
                 } else {
                     Text("Start \(viewModel.config.durationMinutes) Min Session")
                         .font(.headline)
-                    Text("$\(viewModel.config.durationMinutes == 30 ? 26 : 49)")
+                    Text("$\(priceForDuration)")
                         .font(.headline)
                         .opacity(0.8)
                 }

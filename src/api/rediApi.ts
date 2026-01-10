@@ -74,13 +74,15 @@ const stripe = process.env.STRIPE_SECRET_KEY
   : null;
 
 // Pricing
-const PRICES = {
+const PRICES: Record<string, number> = {
+  '20': 1400,   // $14.00 in cents
   '30': 2600,   // $26.00 in cents
   '60': 4900    // $49.00 in cents
 };
 
 // Stripe Price IDs (create these in Stripe dashboard)
-const STRIPE_PRICE_IDS = {
+const STRIPE_PRICE_IDS: Record<string, string> = {
+  '20': process.env.STRIPE_REDI_20MIN_PRICE_ID || '',
   '30': process.env.STRIPE_REDI_30MIN_PRICE_ID || '',
   '60': process.env.STRIPE_REDI_60MIN_PRICE_ID || ''
 };
@@ -117,6 +119,7 @@ router.get('/config', (req: Request, res: Response) => {
 
   // One-time purchase pricing
   const oneTimePricing = {
+    '20': { price: 14, currency: 'USD', label: '20 minutes', type: 'one_time' },
     '30': { price: 26, currency: 'USD', label: '30 minutes', type: 'one_time' },
     '60': { price: 49, currency: 'USD', label: '60 minutes', type: 'one_time' }
   };
@@ -166,8 +169,8 @@ router.post('/checkout', async (req: Request, res: Response) => {
   } = req.body;
 
   // Validate duration
-  if (duration !== 30 && duration !== 60) {
-    res.status(400).json({ error: 'Invalid duration. Must be 30 or 60.' });
+  if (duration !== 20 && duration !== 30 && duration !== 60) {
+    res.status(400).json({ error: 'Invalid duration. Must be 20, 30, or 60.' });
     return;
   }
 
@@ -190,7 +193,7 @@ router.post('/checkout', async (req: Request, res: Response) => {
             description: `${getModeDisplayName(rediMode as RediMode)} mode with ${voiceGender} voice`,
             images: ['https://personalizedoutput.com/images/redi-logo.png']
           },
-          unit_amount: PRICES[duration.toString() as '30' | '60']
+          unit_amount: PRICES[duration.toString()]
         },
         quantity: 1
       }],
@@ -249,7 +252,7 @@ router.post('/session', async (req: Request, res: Response) => {
       mode: (metadata.mode as RediMode) || 'studying',
       sensitivity: parseFloat(metadata.sensitivity || '0.5'),
       voiceGender: (metadata.voiceGender as VoiceGender) || 'female',
-      durationMinutes: parseInt(metadata.duration || '30') as 30 | 60
+      durationMinutes: parseInt(metadata.duration || '30') as 20 | 30 | 60
     };
 
     // Use deviceId from request or from checkout metadata

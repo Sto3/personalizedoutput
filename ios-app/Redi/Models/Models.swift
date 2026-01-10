@@ -213,10 +213,11 @@ struct OneTimePurchase: Identifiable {
     let duration: Int
     let price: Int
 
+    static let twentyMinutes = OneTimePurchase(id: 20, duration: 20, price: 14)
     static let thirtyMinutes = OneTimePurchase(id: 30, duration: 30, price: 26)
     static let sixtyMinutes = OneTimePurchase(id: 60, duration: 60, price: 49)
 
-    static let all: [OneTimePurchase] = [thirtyMinutes, sixtyMinutes]
+    static let all: [OneTimePurchase] = [twentyMinutes, thirtyMinutes, sixtyMinutes]
 }
 
 // MARK: - Configuration

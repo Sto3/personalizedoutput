@@ -29,7 +29,7 @@ export interface SubscriptionTierConfig {
  * One-time purchase configuration
  */
 export interface OneTimePurchaseConfig {
-  duration: 30 | 60;
+  duration: 20 | 30 | 60;
   price: number;               // Price in cents
 }
 
@@ -114,6 +114,10 @@ export const SUBSCRIPTION_TIERS: Record<RediSubscriptionTier, SubscriptionTierCo
 
 // One-time purchase configurations
 export const ONE_TIME_PURCHASES: Record<string, OneTimePurchaseConfig> = {
+  '20': {
+    duration: 20,
+    price: 1400               // $14.00
+  },
   '30': {
     duration: 30,
     price: 2600               // $26.00
@@ -126,6 +130,7 @@ export const ONE_TIME_PURCHASES: Record<string, OneTimePurchaseConfig> = {
 
 // Stripe price ID environment variable names
 export const STRIPE_PRICE_ENV_KEYS = {
+  oneTime20: 'STRIPE_REDI_20MIN_PRICE_ID',
   oneTime30: 'STRIPE_REDI_30MIN_PRICE_ID',
   oneTime60: 'STRIPE_REDI_60MIN_PRICE_ID',
   starter: 'STRIPE_REDI_STARTER_PRICE_ID',
@@ -144,9 +149,13 @@ export function getStripePriceId(tier: RediSubscriptionTier): string {
 /**
  * Get Stripe price ID for one-time purchase
  */
-export function getOneTimePriceId(duration: 30 | 60): string {
-  const envKey = duration === 30 ? STRIPE_PRICE_ENV_KEYS.oneTime30 : STRIPE_PRICE_ENV_KEYS.oneTime60;
-  return process.env[envKey] || '';
+export function getOneTimePriceId(duration: 20 | 30 | 60): string {
+  const envKeyMap: Record<number, string> = {
+    20: STRIPE_PRICE_ENV_KEYS.oneTime20,
+    30: STRIPE_PRICE_ENV_KEYS.oneTime30,
+    60: STRIPE_PRICE_ENV_KEYS.oneTime60
+  };
+  return process.env[envKeyMap[duration]] || '';
 }
 
 /**
@@ -167,7 +176,7 @@ export function getTierDisplayPrice(tier: RediSubscriptionTier): string {
 /**
  * Get display price for one-time purchase
  */
-export function getOneTimeDisplayPrice(duration: 30 | 60): string {
+export function getOneTimeDisplayPrice(duration: 20 | 30 | 60): string {
   const config = ONE_TIME_PURCHASES[duration.toString()];
   return `$${(config.price / 100).toFixed(0)}`;
 }
