@@ -13,6 +13,7 @@ import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
+import { createServer } from 'http';
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +27,25 @@ import checkoutApi from './api/checkoutApi';
 import refundApi from './api/refundApi';
 import { renderRefundPage } from './pages/refund';
 import supportReplyApi from './api/supportReplyApi';
+import homeworkApi from './api/homeworkApi';
+import analyticsApi from './api/analyticsApi';
+import rediApi from './api/rediApi';
+import { initRediWebSocket } from './websocket/rediSocket';
+
+// Import Homework Rescue pages
+import {
+  renderHomeworkRescuePage,
+  renderHomeworkRescueStartPage,
+  renderOrderStatusPage,
+  renderSuccessPage as renderHomeworkSuccessPage,
+  renderRemakePage
+} from './pages/homeworkRescue';
+import {
+  renderTermsOfUsePage as renderHomeworkTermsPage,
+  renderPrivacyPolicyPage as renderHomeworkPrivacyPage,
+  renderRefundPolicyPage as renderHomeworkRefundPage,
+  renderChildSafetyPolicyPage
+} from './pages/homeworkPolicies';
 
 // Import token store for order-based access control
 import { validateToken, createOrReuseToken } from './lib/thoughtEngine/santa/tokenStore';
@@ -50,6 +70,7 @@ import { renderTermsPage, renderPrivacyPage, renderCopyrightPage } from './pages
 import { renderProductPage, renderSuccessPage } from './pages/productPages';
 import { renderSantaFormPage } from './pages/santaForm';
 import { renderVisionBoardFormPage } from './pages/visionBoardForm';
+import { renderRediLandingPage } from './pages/rediLanding';
 
 // Import Supabase services
 import { isSupabaseConfigured, isSupabaseServiceConfigured } from './lib/supabase/client';
@@ -177,6 +198,11 @@ const outputDirs = [
   path.join(process.cwd(), 'outputs', 'santa'),
   path.join(process.cwd(), 'outputs', 'santa', 'previews'),
   path.join(process.cwd(), 'outputs', 'planners'),
+  path.join(process.cwd(), 'outputs', 'homework'),
+  path.join(process.cwd(), 'outputs', 'logs'),
+  path.join(process.cwd(), 'outputs', 'logs', 'emails'),
+  path.join(process.cwd(), 'public', 'homework-videos'),
+  path.join(process.cwd(), 'public', 'homework-pdfs'),
   path.join(process.cwd(), 'data'),
   path.join(process.cwd(), 'data', 'sessions')
 ];
@@ -234,6 +260,7 @@ app.use('/api', apiRateLimiter);
 app.use('/api/santa', generationRateLimiter);
 app.use('/api/thought-chat', generationRateLimiter);
 app.use('/api/planner', generationRateLimiter);
+app.use('/api/homework-rescue', generationRateLimiter);
 
 // System health endpoint
 app.get('/api/health', (req, res) => {
@@ -284,6 +311,12 @@ app.get('/sw.js', (req, res) => {
 // ============================================================
 // PRODUCTION ROUTES - Clean URLs for Etsy buyers
 // ============================================================
+
+// Redi - AI Presence App
+app.get('/redi', (req, res) => {
+  trackEvent('page', 'redi');
+  renderRediLandingPage(req, res);
+});
 
 // Santa Message form - Direct access (Stripe checkout flow)
 app.get('/santa', (req, res) => {
@@ -817,6 +850,65 @@ app.get('/purchase/success', (req, res) => {
   trackEvent('page', 'purchase-success');
   res.send(renderSuccessPage());
 });
+
+// ============================================================
+// HOMEWORK RESCUE PAGES
+// ============================================================
+
+// Landing page
+app.get('/homework-rescue', (req, res) => {
+  trackEvent('page', 'homework-rescue');
+  res.send(renderHomeworkRescuePage());
+});
+
+// Start personalization experience
+app.get('/homework-rescue/start', (req, res) => {
+  trackEvent('page', 'homework-rescue-start');
+  res.send(renderHomeworkRescueStartPage());
+});
+
+// Order status page
+app.get('/homework-rescue/order/:orderId/status', (req, res) => {
+  trackEvent('page', 'homework-rescue-status');
+  res.send(renderOrderStatusPage(req.params.orderId));
+});
+
+// Success page (after checkout)
+app.get('/homework-rescue/order/:orderId/success', (req, res) => {
+  trackEvent('page', 'homework-rescue-success');
+  res.send(renderHomeworkSuccessPage(req.params.orderId));
+});
+
+// Remake request page
+app.get('/homework-rescue/order/:orderId/remake', (req, res) => {
+  trackEvent('page', 'homework-rescue-remake');
+  res.send(renderRemakePage(req.params.orderId));
+});
+
+// Homework Rescue policy pages
+app.get('/homework-rescue/terms', (req, res) => {
+  trackEvent('page', 'homework-rescue-terms');
+  res.send(renderHomeworkTermsPage());
+});
+
+app.get('/homework-rescue/privacy', (req, res) => {
+  trackEvent('page', 'homework-rescue-privacy');
+  res.send(renderHomeworkPrivacyPage());
+});
+
+app.get('/homework-rescue/refund-policy', (req, res) => {
+  trackEvent('page', 'homework-rescue-refund');
+  res.send(renderHomeworkRefundPage());
+});
+
+app.get('/homework-rescue/child-safety', (req, res) => {
+  trackEvent('page', 'homework-rescue-child-safety');
+  res.send(renderChildSafetyPolicyPage());
+});
+
+// Static files for homework videos and PDFs
+app.use('/homework-videos', express.static(path.join(process.cwd(), 'public', 'homework-videos')));
+app.use('/homework-pdfs', express.static(path.join(process.cwd(), 'public', 'homework-pdfs')));
 
 // Coming Soon page for unlaunched products
 app.get('/coming-soon', (req, res) => {
@@ -1508,6 +1600,13 @@ app.use('/api/refund', refundApi);
 
 // Support email reply API (admin only)
 app.use('/api/support', supportReplyApi);
+
+// Homework Rescue API
+app.use('/api/homework-rescue', homeworkApi);
+app.use('/api/analytics', analyticsApi);
+
+// Redi - Real-time AI Presence
+app.use('/api/redi', rediApi);
 
 // ============================================================
 // STRIPE WEBHOOK (must be before body parser for raw body)
@@ -2594,7 +2693,13 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // START SERVER
 // ============================================================
 
-app.listen(PORT, () => {
+// Create HTTP server for WebSocket support
+const server = createServer(app);
+
+// Initialize Redi WebSocket server
+initRediWebSocket(server);
+
+server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)
   startUsageMonitoring();
 
@@ -2639,6 +2744,8 @@ app.listen(PORT, () => {
 ║   • Santa API:      /api/santa                                ║
 ║   • Planner API:    /api/planner                              ║
 ║   • Thought Chat:   /api/thought-chat                         ║
+║   • Redi API:       /api/redi                                 ║
+║   • Redi WebSocket: /ws/redi                                  ║
 ║                                                               ║
 ║   Static Files:                                               ║
 ║   • Audio outputs:  /outputs/*                                ║
