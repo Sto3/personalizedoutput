@@ -276,3 +276,22 @@ export function getAvailableVoices(): { id: string; name: string; gender: VoiceG
     { id: VOICE_IDS.female, name: 'Sarah', gender: 'female' }
   ];
 }
+
+/**
+ * Generate voice audio directly (for video production, etc.)
+ * Uses the same human-like settings as session-based voice
+ */
+export async function generateVoiceAudio(
+  text: string,
+  voiceGender: VoiceGender = 'female'
+): Promise<Buffer> {
+  const apiKey = process.env.ELEVENLABS_API_KEY;
+  if (!apiKey) {
+    throw new Error('ELEVENLABS_API_KEY not configured');
+  }
+
+  const voiceId = VOICE_IDS[voiceGender];
+  const config = VOICE_CONFIGS[voiceGender];
+
+  return generateSpeech(text, voiceId, config, apiKey);
+}
