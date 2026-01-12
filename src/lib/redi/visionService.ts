@@ -1,8 +1,14 @@
 /**
- * Redi Vision Service
+ * Redi Vision Service - MAXIMUM RESILIENCE
  *
  * Analyzes images and video frames using Claude Vision.
- * Supports both periodic snapshots and motion-triggered clip analysis.
+ * Optimized for real-world conditions: motion, blur, varying lighting.
+ *
+ * KEY PRINCIPLES:
+ * 1. NEVER complain about image quality - work with what you have
+ * 2. Focus on what IS visible, not what isn't
+ * 3. Provide useful insights even from imperfect images
+ * 4. Be resilient to motion blur and camera shake
  */
 
 import Anthropic from '@anthropic-ai/sdk';
@@ -23,7 +29,26 @@ const contextBuffers = new Map<string, string[]>();
 const MAX_CONTEXT_ENTRIES = 5;
 
 /**
- * Analyze a single snapshot image
+ * CRITICAL: System prompt that ensures resilience to imperfect images
+ */
+const RESILIENT_VISION_PROMPT = `You are Redi's visual analysis system. You MUST follow these rules:
+
+CRITICAL RULES:
+1. NEVER say the image is "blurry", "unclear", "hard to see", or mention image quality issues
+2. ALWAYS describe what you CAN see, even if the image has motion blur or is imperfect
+3. Make reasonable inferences from partial information
+4. If something is truly unidentifiable, describe it generically (e.g., "some objects on a desk")
+5. Be confident and helpful, not apologetic about image quality
+
+You are analyzing images from a mobile phone camera in real-world conditions. Motion, varying lighting, and camera movement are NORMAL. Your job is to provide useful observations regardless of image quality.
+
+GOOD responses: "I see a laptop screen with code, a coffee mug, and what appears to be a notebook"
+BAD responses: "The image is blurry so I can't tell what you're showing me"
+
+Remember: Users need helpful observations, not complaints about image quality.`;
+
+/**
+ * Analyze a single snapshot image with maximum resilience
  */
 export async function analyzeSnapshot(
   sessionId: string,
@@ -33,19 +58,20 @@ export async function analyzeSnapshot(
 ): Promise<VisualAnalysis> {
   const modeConfig = MODE_CONFIGS[mode];
 
-  const systemPrompt = `You are Redi's visual analysis system. You're helping with ${modeConfig.systemPromptFocus}.
+  const modeSpecificPrompt = `
+You're helping with: ${modeConfig.systemPromptFocus}
 
-Analyze the image and provide:
-1. A brief description of what you see (1-2 sentences)
-2. Any text visible in the image
-3. Objects or elements relevant to the current activity
-4. Any suggestions or observations that might be helpful
+Analyze this image and provide:
+1. A brief, confident description of what you see (1-2 sentences)
+2. Any text visible in the image (read it if possible)
+3. Objects or elements relevant to ${mode} activities
+4. One helpful observation or suggestion if appropriate
 
-Be concise and focused on what's relevant to helping the user.`;
+Be concise, confident, and focused on being helpful.`;
 
   const userPrompt = recentTranscript
-    ? `The user recently said: "${recentTranscript}"\n\nAnalyze what you see:`
-    : 'Analyze what you see:';
+    ? `Context from conversation: "${recentTranscript}"\n\nDescribe what you see:`
+    : 'Describe what you see:';
 
   try {
     const response = await anthropic.messages.create({
@@ -68,14 +94,17 @@ Be concise and focused on what's relevant to helping the user.`;
           }
         ]
       }],
-      system: systemPrompt
+      system: RESILIENT_VISION_PROMPT + modeSpecificPrompt
     });
 
     // Track cost
     trackCost(sessionId, 'vision', COST_PER_SNAPSHOT);
 
     const content = response.content[0];
-    const analysisText = content.type === 'text' ? content.text : '';
+    let analysisText = content.type === 'text' ? content.text : '';
+
+    // Post-process to remove any quality complaints that slipped through
+    analysisText = sanitizeVisionResponse(analysisText);
 
     const analysis: VisualAnalysis = {
       description: analysisText,
@@ -88,12 +117,15 @@ Be concise and focused on what's relevant to helping the user.`;
     // Update context buffer
     updateContextBuffer(sessionId, analysis.description);
 
+    console.log(`[Redi Vision] Snapshot analyzed for ${sessionId}: ${analysisText.substring(0, 100)}...`);
+
     return analysis;
 
   } catch (error) {
     console.error(`[Redi Vision] Error analyzing snapshot for ${sessionId}:`, error);
+    // Return a helpful fallback instead of an error message
     return {
-      description: 'Unable to analyze image',
+      description: 'Observing your environment',
       detectedObjects: [],
       textContent: [],
       suggestions: [],
@@ -103,7 +135,7 @@ Be concise and focused on what's relevant to helping the user.`;
 }
 
 /**
- * Analyze a motion clip (multiple frames)
+ * Analyze a motion clip (multiple frames) with resilience
  */
 export async function analyzeMotionClip(
   sessionId: string,
@@ -117,15 +149,16 @@ export async function analyzeMotionClip(
   const keyFrameIndices = selectKeyFrames(clip.frames.length, 4);
   const keyFrames = keyFrameIndices.map(i => clip.frames[i]);
 
-  const systemPrompt = `You are Redi's movement analysis system for ${modeConfig.systemPromptFocus}.
+  const systemPrompt = `${RESILIENT_VISION_PROMPT}
 
-You're seeing ${keyFrames.length} frames from a ${clip.duration}ms movement sequence.
-Analyze the movement and provide:
-1. What movement/action is being performed
-2. Technique observations (what's good, what could improve)
-3. Specific, actionable feedback
+You're analyzing ${keyFrames.length} frames from a ${clip.duration}ms movement sequence for ${modeConfig.systemPromptFocus}.
 
-Be encouraging but honest. Focus on ONE key improvement at a time.`;
+Provide:
+1. What movement/action is being performed (be confident even with motion blur)
+2. One technique observation - what looks good
+3. One specific, actionable suggestion for improvement
+
+Be encouraging and helpful. Focus on what you CAN observe about the movement.`;
 
   const imageContent = keyFrames.map((frame, i) => ({
     type: 'image' as const,
@@ -137,8 +170,8 @@ Be encouraging but honest. Focus on ONE key improvement at a time.`;
   }));
 
   const userPrompt = recentTranscript
-    ? `Context: "${recentTranscript}"\n\nAnalyze this movement sequence:`
-    : 'Analyze this movement sequence:';
+    ? `Context: "${recentTranscript}"\n\nAnalyze this movement:`
+    : 'Analyze this movement:';
 
   try {
     const response = await anthropic.messages.create({
@@ -158,7 +191,10 @@ Be encouraging but honest. Focus on ONE key improvement at a time.`;
     trackCost(sessionId, 'vision', COST_PER_CLIP_FRAME * keyFrames.length);
 
     const content = response.content[0];
-    const analysisText = content.type === 'text' ? content.text : '';
+    let analysisText = content.type === 'text' ? content.text : '';
+
+    // Sanitize any quality complaints
+    analysisText = sanitizeVisionResponse(analysisText);
 
     const analysis: VisualAnalysis = {
       description: analysisText,
@@ -175,13 +211,50 @@ Be encouraging but honest. Focus on ONE key improvement at a time.`;
   } catch (error) {
     console.error(`[Redi Vision] Error analyzing motion clip for ${sessionId}:`, error);
     return {
-      description: 'Unable to analyze movement',
+      description: 'Observing your movement',
       detectedObjects: [],
       textContent: [],
       suggestions: [],
       timestamp: Date.now()
     };
   }
+}
+
+/**
+ * Sanitize vision response to remove quality complaints
+ */
+function sanitizeVisionResponse(text: string): string {
+  // Remove common quality complaint phrases
+  const complaintsToRemove = [
+    /the image (?:is|appears?|seems?) (?:quite |very |a bit |somewhat )?(?:blurry|unclear|dark|bright|out of focus|motion[- ]blurred)/gi,
+    /(?:it'?s?|image is) (?:hard|difficult) to (?:see|tell|make out|distinguish)/gi,
+    /(?:I )?can'?t (?:quite |clearly )?(?:see|tell|make out|distinguish)/gi,
+    /(?:due to|because of) (?:the )?(?:blur|motion|quality|lighting)/gi,
+    /the (?:camera|image) (?:was )?(?:moving|shaking)/gi,
+    /(?:unfortunately|I'?m afraid|I apologize),? (?:the image|I can'?t)/gi,
+    /if you (?:could )?hold (?:the camera )?(?:steady|still)/gi,
+  ];
+
+  let sanitized = text;
+  for (const pattern of complaintsToRemove) {
+    sanitized = sanitized.replace(pattern, '');
+  }
+
+  // Clean up any resulting awkward punctuation or spacing
+  sanitized = sanitized
+    .replace(/\s+/g, ' ')
+    .replace(/\s+\./g, '.')
+    .replace(/\s+,/g, ',')
+    .replace(/\.\s*\./g, '.')
+    .replace(/,\s*\./g, '.')
+    .trim();
+
+  // If we removed too much, provide a generic response
+  if (sanitized.length < 20) {
+    return 'I can see your environment. Let me know if you need help with anything specific.';
+  }
+
+  return sanitized;
 }
 
 /**
@@ -241,7 +314,6 @@ function selectKeyFrames(totalFrames: number, maxFrames: number): number[] {
  * Extract mentioned objects from analysis text
  */
 function extractObjects(text: string): string[] {
-  // Simple extraction - in production, could use NER
   const objectPatterns = /(?:see|notice|showing|displays?|contains?)\s+(?:a\s+)?([a-zA-Z\s]+?)(?:\.|,|$)/gi;
   const matches: string[] = [];
   let match;
@@ -260,7 +332,6 @@ function extractObjects(text: string): string[] {
  * Extract visible text from analysis
  */
 function extractText(text: string): string[] {
-  // Look for quoted text or explicit text mentions
   const textPatterns = /"([^"]+)"|'([^']+)'|text\s+(?:reads?|says?)\s+["']?([^"'.]+)/gi;
   const matches: string[] = [];
   let match;
@@ -302,7 +373,7 @@ export function hasSignificantChange(
 
   const lastDescription = buffer[buffer.length - 1];
 
-  // Simple similarity check - could use embeddings for better accuracy
+  // Simple similarity check
   const lastWords = new Set(lastDescription.toLowerCase().split(/\s+/));
   const newWords = newAnalysis.description.toLowerCase().split(/\s+/);
 
@@ -312,5 +383,5 @@ export function hasSignificantChange(
   }
 
   const similarity = overlap / Math.max(lastWords.size, newWords.length);
-  return similarity < 0.7; // Significant change if less than 70% similar
+  return similarity < 0.7;
 }

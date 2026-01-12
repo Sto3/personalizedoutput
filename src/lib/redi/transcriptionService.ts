@@ -3,6 +3,9 @@
  *
  * Real-time speech-to-text using Deepgram's streaming API.
  * Provides low-latency transcription with voice activity detection.
+ *
+ * IMPORTANT: "Redi" recognition - uses keywords + post-processing to ensure
+ * the AI assistant name is always transcribed as "Redi" not "ready"
  */
 
 import { createClient, LiveTranscriptionEvents, LiveClient } from '@deepgram/sdk';
@@ -12,6 +15,48 @@ import { trackCost } from './sessionManager';
 
 // Deepgram pricing: $0.0043 per minute (Nova-2)
 const COST_PER_MINUTE = 0.0043;
+
+/**
+ * Post-process transcript to ensure "Redi" is recognized correctly
+ * Deepgram keywords help but sometimes "ready" still slips through
+ */
+function normalizeRediName(text: string): string {
+  // Common misrecognitions to fix:
+  // "hey ready" → "hey Redi"
+  // "ask ready" → "ask Redi"
+  // "tell ready" → "tell Redi"
+  // "okay ready" → "okay Redi"
+  // "thanks ready" → "thanks Redi"
+  // "hi ready" → "hi Redi"
+  // "Ready," at start of sentence when addressing AI
+
+  const patterns: [RegExp, string][] = [
+    // Direct address patterns (case insensitive)
+    [/\b(hey|hi|hello|okay|ok|thanks|thank you|yo)\s+ready\b/gi, '$1 Redi'],
+    [/\bask\s+ready\b/gi, 'ask Redi'],
+    [/\btell\s+ready\b/gi, 'tell Redi'],
+    [/\bwith\s+ready\b/gi, 'with Redi'],
+    [/\bfor\s+ready\b/gi, 'for Redi'],
+    [/\babout\s+ready\b/gi, 'about Redi'],
+    [/\bto\s+ready\b/gi, 'to Redi'],
+    // Start of sentence addressing (when followed by comma or question)
+    [/^ready,/gi, 'Redi,'],
+    [/^ready\?/gi, 'Redi?'],
+    // "Ready can you..." → "Redi can you..."
+    [/^ready\s+(can|could|will|would|should|do|does|is|are|what|how|why|when|where|who)\b/gi, 'Redi $1'],
+    // "...said ready" (referring to the AI)
+    [/\bsaid\s+ready\b/gi, 'said Redi'],
+    // "...from ready" (referring to the AI)
+    [/\bfrom\s+ready\b/gi, 'from Redi'],
+  ];
+
+  let normalized = text;
+  for (const [pattern, replacement] of patterns) {
+    normalized = normalized.replace(pattern, replacement);
+  }
+
+  return normalized;
+}
 
 interface TranscriptionSession {
   sessionId: string;
@@ -81,8 +126,12 @@ export async function startTranscription(sessionId: string): Promise<EventEmitte
       const transcript = data.channel?.alternatives?.[0];
       if (!transcript) return;
 
+      // Get the raw transcript text and normalize "ready" → "Redi"
+      const rawText = transcript.transcript || '';
+      const normalizedText = normalizeRediName(rawText);
+
       const chunk: TranscriptChunk = {
-        text: transcript.transcript || '',
+        text: normalizedText,
         isFinal: data.is_final || false,
         confidence: transcript.confidence || 0,
         timestamp: Date.now()

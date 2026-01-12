@@ -19,22 +19,35 @@ const VOICE_IDS: Record<VoiceGender, string> = {
   female: process.env.ELEVENLABS_REDI_FEMALE_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'   // Sarah
 };
 
-// Voice configurations for natural, human-like conversation
-// Settings optimized based on Santa voice that sounded indistinguishable from human
+/**
+ * Voice configurations for MAXIMUM human-like quality
+ *
+ * CRITICAL: These settings are based on the Santa/Emma voice that was
+ * indistinguishable from a human. Key insights:
+ *
+ * 1. Use eleven_monolingual_v1 (NOT multilingual_v2) for English
+ * 2. High stability (0.90) = smooth, natural pacing
+ * 3. High similarity (0.90) = consistent, clear voice
+ * 4. Very low style (0.10) = calm, human delivery (NOT animated/robotic)
+ * 5. Speaker boost = clarity and presence
+ */
 const VOICE_CONFIGS: Record<VoiceGender, Omit<VoiceConfig, 'voiceId'>> = {
   male: {
     gender: 'male',
-    stability: 0.85,         // High stability = smooth, natural delivery (was 0.5)
-    similarityBoost: 0.82,   // High similarity = consistent voice (was 0.75)
-    style: 0.15              // Low style = calm, natural tone (was 0.3)
+    stability: 0.90,         // Maximum natural pacing (Santa uses 0.92)
+    similarityBoost: 0.90,   // Maximum voice clarity (Santa uses 0.95)
+    style: 0.10              // Minimum = most human-like (Santa uses 0.08)
   },
   female: {
     gender: 'female',
-    stability: 0.85,         // High stability = smooth, natural delivery (was 0.5)
-    similarityBoost: 0.82,   // High similarity = consistent voice (was 0.75)
-    style: 0.15              // Low style = calm, natural tone (was 0.3)
+    stability: 0.90,         // Maximum natural pacing
+    similarityBoost: 0.90,   // Maximum voice clarity
+    style: 0.10              // Minimum = most human-like, NOT animated
   }
 };
+
+// Use monolingual model for best English quality (like Santa voice)
+const VOICE_MODEL = 'eleven_monolingual_v1';
 
 interface SpeechSession {
   sessionId: string;
@@ -119,12 +132,12 @@ async function generateSpeech(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
     {
       text,
-      model_id: 'eleven_multilingual_v2',  // Highest quality model
+      model_id: VOICE_MODEL,  // Monolingual v1 = most human-like for English
       voice_settings: {
         stability: config.stability,
         similarity_boost: config.similarityBoost,
         style: config.style,
-        use_speaker_boost: true
+        use_speaker_boost: true  // Clarity and presence like Santa voice
       }
     },
     {
@@ -158,12 +171,12 @@ async function streamSpeech(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
         text,
-        model_id: 'eleven_multilingual_v2',  // Highest quality model
+        model_id: VOICE_MODEL,  // Monolingual v1 = most human-like for English
         voice_settings: {
           stability: config.stability,
           similarity_boost: config.similarityBoost,
           style: config.style,
-          use_speaker_boost: true
+          use_speaker_boost: true  // Clarity and presence like Santa voice
         }
       },
       {

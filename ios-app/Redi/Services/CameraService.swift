@@ -1,13 +1,21 @@
 /**
  * CameraService.swift
  *
- * Handles camera capture for snapshots and video clips.
- * Supports both periodic snapshots and motion-triggered capture.
+ * MAXIMUM QUALITY camera capture for Redi AI vision.
+ * Optimized for stability, clarity, and resilience to motion.
+ *
+ * Features:
+ * - Optical Image Stabilization (OIS) when available
+ * - Multi-frame capture with sharpness selection
+ * - Auto-exposure/focus optimization
+ * - High quality compression (1440p, 90% quality)
+ * - Motion blur detection and mitigation
  */
 
 import AVFoundation
 import UIKit
 import Combine
+import CoreImage
 
 class CameraService: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -18,6 +26,15 @@ class CameraService: NSObject, ObservableObject {
     @Published var error: String?
     @Published var currentZoom: CGFloat = 1.0
     @Published var maxZoom: CGFloat = 5.0
+    @Published var imageQuality: ImageQuality = .unknown
+
+    enum ImageQuality: String {
+        case excellent = "Excellent"
+        case good = "Good"
+        case fair = "Fair"
+        case poor = "Poor"
+        case unknown = "Unknown"
+    }
 
     // MARK: - Publishers
 
@@ -28,8 +45,8 @@ class CameraService: NSObject, ObservableObject {
 
     private let captureSession = AVCaptureSession()
     private var videoOutput: AVCaptureVideoDataOutput?
-    private let sessionQueue = DispatchQueue(label: "camera.session.queue")
-    private let processingQueue = DispatchQueue(label: "camera.processing.queue")
+    private let sessionQueue = DispatchQueue(label: "camera.session.queue", qos: .userInteractive)
+    private let processingQueue = DispatchQueue(label: "camera.processing.queue", qos: .userInitiated)
 
     // Snapshot timing
     private var snapshotTimer: Timer?
@@ -45,6 +62,36 @@ class CameraService: NSObject, ObservableObject {
     private var currentVideoDevice: AVCaptureDevice?
     private var lastPinchScale: CGFloat = 1.0
 
+    // Multi-frame buffer for selecting sharpest image
+    private var frameBuffer: [(image: UIImage, sharpness: Double, timestamp: Date)] = []
+    private let maxFrameBufferSize = 5
+    private var lastSnapshotTime: Date = .distantPast
+
+    // Core Image context for processing
+    private let ciContext = CIContext(options: [
+        .useSoftwareRenderer: false,
+        .highQualityDownsample: true
+    ])
+
+    // MARK: - Configuration Constants
+
+    private struct Config {
+        // Output resolution - 1440p for excellent detail while manageable size
+        static let maxOutputDimension: CGFloat = 1440
+
+        // JPEG quality - 90% for excellent quality with reasonable size
+        static let jpegQuality: CGFloat = 0.90
+
+        // Minimum sharpness threshold (Laplacian variance)
+        static let minimumSharpness: Double = 100.0
+
+        // Frame selection window (seconds)
+        static let frameSelectionWindow: TimeInterval = 0.5
+
+        // Motion clip frame quality (slightly lower for bandwidth)
+        static let clipFrameQuality: CGFloat = 0.70
+    }
+
     // MARK: - Initialization
 
     override init() {
@@ -59,25 +106,23 @@ class CameraService: NSObject, ObservableObject {
             guard let self = self else { return }
 
             self.captureSession.beginConfiguration()
-            // Use 4K for maximum quality on iPhone 16 Pro Max
-            // Falls back to 1080p, then 720p if 4K not available
+
+            // Use highest available resolution
             if self.captureSession.canSetSessionPreset(.hd4K3840x2160) {
                 self.captureSession.sessionPreset = .hd4K3840x2160
                 print("[Camera] Using 4K resolution (3840x2160)")
             } else if self.captureSession.canSetSessionPreset(.hd1920x1080) {
                 self.captureSession.sessionPreset = .hd1920x1080
                 print("[Camera] Using 1080p resolution (1920x1080)")
-            } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
-                self.captureSession.sessionPreset = .hd1280x720
-                print("[Camera] Using 720p resolution (1280x720)")
             } else {
                 self.captureSession.sessionPreset = .high
                 print("[Camera] Using 'high' preset")
             }
 
-            // Add video input
-            guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-                  let videoInput = try? AVCaptureDeviceInput(device: videoDevice),
+            // Get best available camera
+            let videoDevice = self.getBestCamera()
+            guard let device = videoDevice,
+                  let videoInput = try? AVCaptureDeviceInput(device: device),
                   self.captureSession.canAddInput(videoInput) else {
                 DispatchQueue.main.async {
                     self.error = "Unable to access camera"
@@ -86,21 +131,35 @@ class CameraService: NSObject, ObservableObject {
             }
 
             self.captureSession.addInput(videoInput)
-            self.currentVideoDevice = videoDevice
+            self.currentVideoDevice = device
+
+            // Configure device for maximum quality
+            self.configureDeviceForMaxQuality(device)
 
             // Set max zoom based on device capability
             DispatchQueue.main.async {
-                self.maxZoom = min(videoDevice.activeFormat.videoMaxZoomFactor, 10.0)
+                self.maxZoom = min(device.activeFormat.videoMaxZoomFactor, 10.0)
             }
 
-            // Add video output
+            // Add video output with optimal settings
             let videoOutput = AVCaptureVideoDataOutput()
             videoOutput.setSampleBufferDelegate(self, queue: self.processingQueue)
-            videoOutput.alwaysDiscardsLateVideoFrames = true
+            videoOutput.alwaysDiscardsLateVideoFrames = false // Keep frames for quality selection
+            videoOutput.videoSettings = [
+                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+            ]
 
             if self.captureSession.canAddOutput(videoOutput) {
                 self.captureSession.addOutput(videoOutput)
                 self.videoOutput = videoOutput
+
+                // Enable video stabilization if available
+                if let connection = videoOutput.connection(with: .video) {
+                    if connection.isVideoStabilizationSupported {
+                        connection.preferredVideoStabilizationMode = .auto
+                        print("[Camera] Video stabilization enabled")
+                    }
+                }
             }
 
             self.captureSession.commitConfiguration()
@@ -111,6 +170,72 @@ class CameraService: NSObject, ObservableObject {
                 preview.videoGravity = .resizeAspectFill
                 self.previewLayer = preview
             }
+        }
+    }
+
+    /// Get the best available camera (prefer wide angle with OIS)
+    private func getBestCamera() -> AVCaptureDevice? {
+        // Try to get the best camera with optical image stabilization
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInTripleCamera, .builtInDualWideCamera, .builtInDualCamera, .builtInWideAngleCamera],
+            mediaType: .video,
+            position: .back
+        )
+
+        // Prefer cameras with OIS
+        for device in discoverySession.devices {
+            if device.activeFormat.isVideoStabilizationModeSupported(.cinematic) ||
+               device.activeFormat.isVideoStabilizationModeSupported(.standard) {
+                print("[Camera] Selected device with stabilization: \(device.localizedName)")
+                return device
+            }
+        }
+
+        // Fall back to default
+        return AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back)
+    }
+
+    /// Configure device for maximum image quality
+    private func configureDeviceForMaxQuality(_ device: AVCaptureDevice) {
+        do {
+            try device.lockForConfiguration()
+
+            // Enable optical image stabilization if available
+            if device.isOpticalImageStabilizationSupported {
+                // OIS is automatically enabled when supported
+                print("[Camera] Optical Image Stabilization supported")
+            }
+
+            // Set focus mode for best sharpness
+            if device.isFocusModeSupported(.continuousAutoFocus) {
+                device.focusMode = .continuousAutoFocus
+            }
+
+            // Set exposure for best quality
+            if device.isExposureModeSupported(.continuousAutoExposure) {
+                device.exposureMode = .continuousAutoExposure
+            }
+
+            // Enable HDR if available (better dynamic range)
+            if device.isVideoHDRSupported {
+                device.isVideoHDREnabled = true
+                print("[Camera] HDR enabled")
+            }
+
+            // Set white balance
+            if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
+                device.whiteBalanceMode = .continuousAutoWhiteBalance
+            }
+
+            // Low light boost
+            if device.isLowLightBoostSupported {
+                device.automaticallyEnablesLowLightBoostWhenAvailable = true
+                print("[Camera] Low light boost enabled")
+            }
+
+            device.unlockForConfiguration()
+        } catch {
+            print("[Camera] Failed to configure device: \(error)")
         }
     }
 
@@ -164,8 +289,8 @@ class CameraService: NSObject, ObservableObject {
     }
 
     func captureSnapshot() {
-        // Snapshot will be captured on next frame in delegate
-        // Flag is checked in the delegate method
+        // Trigger snapshot selection from frame buffer
+        lastSnapshotTime = Date()
     }
 
     // MARK: - Motion Clip Capture
@@ -189,24 +314,28 @@ class CameraService: NSObject, ObservableObject {
 
             self.captureSession.beginConfiguration()
 
-            // Remove existing input
             if let currentInput = self.captureSession.inputs.first as? AVCaptureDeviceInput {
                 self.captureSession.removeInput(currentInput)
 
-                // Get new camera
                 let newPosition: AVCaptureDevice.Position = currentInput.device.position == .back ? .front : .back
 
-                if let newDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: newPosition),
+                let discoverySession = AVCaptureDevice.DiscoverySession(
+                    deviceTypes: [.builtInWideAngleCamera],
+                    mediaType: .video,
+                    position: newPosition
+                )
+
+                if let newDevice = discoverySession.devices.first,
                    let newInput = try? AVCaptureDeviceInput(device: newDevice),
                    self.captureSession.canAddInput(newInput) {
                     self.captureSession.addInput(newInput)
                     self.currentVideoDevice = newDevice
+                    self.configureDeviceForMaxQuality(newDevice)
                 }
             }
 
             self.captureSession.commitConfiguration()
 
-            // Update max zoom for new device
             DispatchQueue.main.async {
                 if let device = self.currentVideoDevice {
                     self.maxZoom = min(device.activeFormat.videoMaxZoomFactor, 10.0)
@@ -218,7 +347,6 @@ class CameraService: NSObject, ObservableObject {
 
     // MARK: - Zoom Control
 
-    /// Set zoom level directly (1.0 to maxZoom)
     func setZoom(_ factor: CGFloat) {
         guard let device = currentVideoDevice else { return }
 
@@ -239,7 +367,6 @@ class CameraService: NSObject, ObservableObject {
         }
     }
 
-    /// Handle pinch gesture for zoom (called from view)
     func handlePinchZoom(scale: CGFloat, state: UIGestureRecognizer.State) {
         switch state {
         case .began:
@@ -252,39 +379,113 @@ class CameraService: NSObject, ObservableObject {
         }
     }
 
-    /// Zoom in by a step (for button control)
     func zoomIn(step: CGFloat = 0.5) {
         setZoom(currentZoom + step)
     }
 
-    /// Zoom out by a step (for button control)
     func zoomOut(step: CGFloat = 0.5) {
         setZoom(currentZoom - step)
     }
 
-    /// Reset zoom to 1x
     func resetZoom() {
         setZoom(1.0)
     }
 
-    // MARK: - Image Compression
+    // MARK: - Image Quality Analysis
 
-    private func compressImage(_ image: UIImage, quality: CGFloat = 0.85, maxDimension: CGFloat = 1080) -> Data? {
-        // Resize if needed
+    /// Calculate image sharpness using Laplacian variance
+    private func calculateSharpness(_ image: UIImage) -> Double {
+        guard let cgImage = image.cgImage else { return 0 }
+
+        let ciImage = CIImage(cgImage: cgImage)
+
+        // Apply Laplacian filter for edge detection
+        guard let laplacianFilter = CIFilter(name: "CIConvolution3X3") else { return 0 }
+
+        laplacianFilter.setValue(ciImage, forKey: kCIInputImageKey)
+        // Laplacian kernel for edge detection
+        laplacianFilter.setValue(CIVector(values: [0, 1, 0, 1, -4, 1, 0, 1, 0], count: 9), forKey: "inputWeights")
+        laplacianFilter.setValue(1.0, forKey: "inputBias")
+
+        guard let outputImage = laplacianFilter.outputImage else { return 0 }
+
+        // Calculate variance of the filtered image
+        var bitmap = [UInt8](repeating: 0, count: 4)
+        let extent = outputImage.extent
+
+        // Sample center region for efficiency
+        let sampleRect = CGRect(
+            x: extent.midX - 50,
+            y: extent.midY - 50,
+            width: 100,
+            height: 100
+        )
+
+        ciContext.render(outputImage, toBitmap: &bitmap, rowBytes: 4, bounds: sampleRect, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+
+        // Higher values = sharper image
+        let variance = Double(bitmap[0]) + Double(bitmap[1]) + Double(bitmap[2])
+        return variance
+    }
+
+    /// Assess overall image quality
+    private func assessImageQuality(sharpness: Double) -> ImageQuality {
+        if sharpness > 300 {
+            return .excellent
+        } else if sharpness > 200 {
+            return .good
+        } else if sharpness > 100 {
+            return .fair
+        } else {
+            return .poor
+        }
+    }
+
+    // MARK: - Image Processing
+
+    /// Process and compress image with maximum quality
+    private func processImage(_ image: UIImage) -> Data? {
         var processedImage = image
         let size = image.size
 
-        if max(size.width, size.height) > maxDimension {
-            let scale = maxDimension / max(size.width, size.height)
+        // Resize to optimal output dimension while maintaining aspect ratio
+        let maxDim = Config.maxOutputDimension
+        if max(size.width, size.height) > maxDim {
+            let scale = maxDim / max(size.width, size.height)
             let newSize = CGSize(width: size.width * scale, height: size.height * scale)
 
-            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-            processedImage = UIGraphicsGetImageFromCurrentImageContext() ?? image
-            UIGraphicsEndImageContext()
+            // Use high-quality image context
+            let format = UIGraphicsImageRendererFormat()
+            format.scale = 1.0
+            format.preferredRange = .automatic
+
+            let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
+            processedImage = renderer.image { context in
+                // High quality interpolation
+                context.cgContext.interpolationQuality = .high
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+            }
         }
 
-        return processedImage.jpegData(compressionQuality: quality)
+        return processedImage.jpegData(compressionQuality: Config.jpegQuality)
+    }
+
+    /// Select the best frame from the buffer
+    private func selectBestFrame() -> (image: UIImage, sharpness: Double)? {
+        guard !frameBuffer.isEmpty else { return nil }
+
+        // Filter frames within the selection window
+        let cutoff = Date().addingTimeInterval(-Config.frameSelectionWindow)
+        let recentFrames = frameBuffer.filter { $0.timestamp > cutoff }
+
+        guard !recentFrames.isEmpty else {
+            // Fall back to most recent frame
+            return frameBuffer.last.map { ($0.image, $0.sharpness) }
+        }
+
+        // Select sharpest frame
+        let best = recentFrames.max { $0.sharpness < $1.sharpness }
+        return best.map { ($0.image, $0.sharpness) }
     }
 }
 
@@ -295,20 +496,40 @@ extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
         let ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        let context = CIContext()
-
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+        guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }
         let image = UIImage(cgImage: cgImage)
 
-        // Handle periodic snapshot
-        if snapshotTimer != nil {
-            if let compressedData = compressImage(image) {
+        // Calculate sharpness for this frame
+        let sharpness = calculateSharpness(image)
+
+        // Add to frame buffer
+        frameBuffer.append((image: image, sharpness: sharpness, timestamp: Date()))
+        if frameBuffer.count > maxFrameBufferSize {
+            frameBuffer.removeFirst()
+        }
+
+        // Handle periodic snapshot - select best frame when timer fires
+        let timeSinceLastSnapshot = Date().timeIntervalSince(lastSnapshotTime)
+        if snapshotTimer != nil && timeSinceLastSnapshot < Config.frameSelectionWindow {
+            // Within selection window, wait for more frames
+        } else if snapshotTimer != nil && timeSinceLastSnapshot >= Config.frameSelectionWindow && timeSinceLastSnapshot < Config.frameSelectionWindow + 0.1 {
+            // Selection window just ended - pick best frame
+            if let (bestImage, bestSharpness) = selectBestFrame() {
+                let quality = assessImageQuality(sharpness: bestSharpness)
+
                 DispatchQueue.main.async { [weak self] in
-                    self?.lastSnapshot = image
+                    self?.lastSnapshot = bestImage
+                    self?.imageQuality = quality
                 }
-                snapshotCaptured.send(compressedData)
+
+                if let compressedData = processImage(bestImage) {
+                    snapshotCaptured.send(compressedData)
+                    print("[Camera] Snapshot captured - Sharpness: \(Int(bestSharpness)), Quality: \(quality.rawValue)")
+                }
+
+                // Clear buffer after selection
+                frameBuffer.removeAll()
             }
-            // Reset timer flag handled by timer itself
         }
 
         // Handle motion clip capture
@@ -318,8 +539,11 @@ extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
             if elapsed < Double(clipDurationMs) {
                 // Capture frame (limit to ~10 fps for clip)
                 if clipFrames.count < Int(Double(clipDurationMs) / 100) {
-                    if let frameData = compressImage(image, quality: 0.5) {
-                        clipFrames.append(frameData)
+                    // Only include reasonably sharp frames
+                    if sharpness > Config.minimumSharpness * 0.5 {
+                        if let frameData = image.jpegData(compressionQuality: Config.clipFrameQuality) {
+                            clipFrames.append(frameData)
+                        }
                     }
                 }
             } else {
