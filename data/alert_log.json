@@ -9,7 +9,12 @@
       "type": "daily_summary",
       "timestamp": "2026-01-11T19:19:16.781Z",
       "message": "📊 Daily Summary - 60 views, 0 generations"
+    },
+    {
+      "type": "daily_summary",
+      "timestamp": "2026-01-12T19:00:03.556Z",
+      "message": "📊 Daily Summary - 60 views, 0 generations"
     }
   ],
-  "lastDailySummary": "2026-01-11"
+  "lastDailySummary": "2026-01-12"
 }

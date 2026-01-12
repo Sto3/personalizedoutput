@@ -67,6 +67,21 @@ function isVipEmail(email: string | undefined): boolean {
   return VIP_EMAILS.includes(email.toLowerCase());
 }
 
+// Promo codes for friends/testers (case-insensitive, multi-use)
+const PROMO_CODES: Record<string, { name: string; allProducts: boolean; productIds?: string[] }> = {
+  'monbiblestudy': { name: 'Monday Bible Study', allProducts: true },
+};
+
+function validatePromoCode(code: string | undefined): { valid: boolean; name: string } | null {
+  if (!code) return null;
+  const normalized = code.trim().toLowerCase();
+  const promo = PROMO_CODES[normalized];
+  if (promo) {
+    return { valid: true, name: promo.name };
+  }
+  return null;
+}
+
 // ============================================================
 // CREATE CHECKOUT SESSION
 // ============================================================
@@ -133,6 +148,37 @@ router.post('/create', async (req: Request, res: Response) => {
       } else if (looksLikeGiftCode(email)) {
         // Invalid or wrong product gift code
         return res.status(400).json({ error: 'Invalid or expired gift code, or code is for a different product' });
+      }
+    }
+
+    // Promo code bypass - check if email field contains a promo code
+    const promoCheck = validatePromoCode(email);
+    if (promoCheck?.valid) {
+      console.log(`[Checkout] Promo code bypass: ${email} (${promoCheck.name}) - ${product.name}`);
+
+      // Create order directly (free access)
+      const { order, error: orderError } = await createOrder({
+        productType: productId,
+        source: 'website',
+        email: `promo_${email?.toLowerCase()}_${Date.now()}@promo.local`,
+        inputData: {
+          stripeSessionId: `promo_${Date.now()}`,
+          amountPaid: 0,
+          promoCode: email,
+          promoName: promoCheck.name,
+          originalPrice: product.price,
+        },
+      });
+
+      if (order && !orderError) {
+        // Return success URL directly (bypass Stripe checkout page)
+        const successUrl = `${SITE_URL}/purchase/success?session_id=promo_${order.id}`;
+        return res.json({
+          sessionId: `promo_${order.id}`,
+          url: successUrl,
+          promo: true,
+          promoName: promoCheck.name
+        });
       }
     }
 
@@ -449,6 +495,30 @@ router.get('/session/:sessionId', async (req: Request, res: Response) => {
         amountTotal: 0,
         currency: 'usd',
         giftRedemption: true
+      });
+    }
+
+    // Handle promo code sessions (format: promo_<orderId>)
+    if (sessionId.startsWith('promo_')) {
+      const orderId = sessionId.replace('promo_', '');
+      const order = await getOrder(orderId);
+
+      if (!order) {
+        return res.status(404).json({ error: 'Promo order not found' });
+      }
+
+      const product = PRODUCTS[order.product_type as ProductType];
+      const promoName = order.input_data?.promoName as string | undefined;
+
+      return res.json({
+        status: 'paid',
+        productId: order.product_type,
+        productName: product?.name || 'Unknown Product',
+        productSlug: product?.slug,
+        amountTotal: 0,
+        currency: 'usd',
+        promo: true,
+        promoName
       });
     }
 

@@ -22,27 +22,28 @@ const VOICE_IDS: Record<VoiceGender, string> = {
 /**
  * Voice configurations for MAXIMUM human-like quality
  *
- * CRITICAL: These settings are based on the Santa/Emma voice that was
- * indistinguishable from a human. Key insights:
+ * CRITICAL: These settings EXACTLY match the Santa/Emma voice that was
+ * indistinguishable from a human. DO NOT CHANGE unless testing proves better.
  *
- * 1. Use eleven_monolingual_v1 (NOT multilingual_v2) for English
- * 2. High stability (0.90) = smooth, natural pacing
- * 3. High similarity (0.90) = consistent, clear voice
- * 4. Very low style (0.10) = calm, human delivery (NOT animated/robotic)
- * 5. Speaker boost = clarity and presence
+ * Santa voice settings that worked perfectly:
+ * - stability: 0.92 (very high = slow, deliberate, natural pacing)
+ * - similarity_boost: 0.95 (very high = deep, consistent voice)
+ * - style: 0.08 (very LOW = calm, NO animation, most human-like)
+ * - use_speaker_boost: true
+ * - model: eleven_monolingual_v1 (NOT multilingual)
  */
 const VOICE_CONFIGS: Record<VoiceGender, Omit<VoiceConfig, 'voiceId'>> = {
   male: {
     gender: 'male',
-    stability: 0.90,         // Maximum natural pacing (Santa uses 0.92)
-    similarityBoost: 0.90,   // Maximum voice clarity (Santa uses 0.95)
-    style: 0.10              // Minimum = most human-like (Santa uses 0.08)
+    stability: 0.92,         // EXACT Santa setting - natural pacing
+    similarityBoost: 0.95,   // EXACT Santa setting - voice clarity
+    style: 0.08              // EXACT Santa setting - calm, human delivery
   },
   female: {
     gender: 'female',
-    stability: 0.90,         // Maximum natural pacing
-    similarityBoost: 0.90,   // Maximum voice clarity
-    style: 0.10              // Minimum = most human-like, NOT animated
+    stability: 0.92,         // EXACT Santa setting - natural pacing
+    similarityBoost: 0.95,   // EXACT Santa setting - voice clarity
+    style: 0.08              // EXACT Santa setting - calm, human delivery
   }
 };
 
@@ -167,8 +168,9 @@ async function streamSpeech(
   if (!session) return;
 
   try {
+    // Use streaming endpoint with latency optimization for fastest response
     const response = await axios.post(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
+      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?optimize_streaming_latency=4`,
       {
         text,
         model_id: VOICE_MODEL,  // Monolingual v1 = most human-like for English

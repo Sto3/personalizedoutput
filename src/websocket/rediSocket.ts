@@ -304,10 +304,10 @@ async function initializeSessionServices(
     // Start frame aggregation loop
     startFrameAggregationLoop(sessionId, mode);
 
-    // Send initial greeting after a brief delay (let audio setup complete)
+    // Send initial greeting quickly (1 second delay for audio setup)
     setTimeout(async () => {
       await sendInitialGreeting(sessionId, mode);
-    }, 2000);
+    }, 1000);
 
   } catch (error) {
     console.error(`[Redi WebSocket] Failed to initialize services for ${sessionId}:`, error);
@@ -316,6 +316,7 @@ async function initializeSessionServices(
 
 /**
  * Send initial greeting when session starts
+ * Keep it SHORT - just "I'm ready" - task agnostic, confident
  */
 async function sendInitialGreeting(sessionId: string, mode: RediMode): Promise<void> {
   const ctx = contexts.get(sessionId);
@@ -324,17 +325,8 @@ async function sendInitialGreeting(sessionId: string, mode: RediMode): Promise<v
   // Check if we haven't already spoken (safety check)
   if (ctx.lastSpokeAt > 0) return;
 
-  const greetings: Record<RediMode, string> = {
-    studying: "Hi! I'm Redi. I can see your workspace and I'm here to help. Just let me know if you need anything, or I'll offer suggestions when I notice something useful.",
-    sports: "Hey! I'm Redi, your training assistant. I can see you and I'll give you feedback on your form and technique. Let's get started!",
-    music: "Hi there! I'm Redi. I can see and hear you practice. I'll offer tips on technique and timing as you play.",
-    meeting: "Hello! I'm Redi. I'm here to help during your meeting. I'll stay quiet unless you need me or ask a question.",
-    assembly: "Hey! I'm Redi. I can see what you're working on. I'll help with assembly steps and point out anything that looks off.",
-    monitoring: "Hi! I'm Redi. I'll keep an eye on things and let you know if I notice anything important."
-  };
-
-  const greeting = greetings[mode];
-  if (!greeting) return;
+  // Simple, short, task-agnostic greeting - Redi is ready for anything
+  const greeting = "I'm ready.";
 
   try {
     await speakResponse(sessionId, greeting);
@@ -668,11 +660,48 @@ Be concise (2-3 sentences max).`;
 }
 
 /**
+ * Clean text for speech - remove markdown, asterisks, and other formatting
+ */
+function cleanTextForSpeech(text: string): string {
+  let cleaned = text;
+
+  // Remove markdown formatting
+  cleaned = cleaned.replace(/\*\*/g, '');           // Bold **text**
+  cleaned = cleaned.replace(/\*/g, '');             // Italic *text*
+  cleaned = cleaned.replace(/__/g, '');             // Bold __text__
+  cleaned = cleaned.replace(/_/g, ' ');             // Italic _text_
+  cleaned = cleaned.replace(/~~(.*?)~~/g, '$1');    // Strikethrough
+  cleaned = cleaned.replace(/`([^`]+)`/g, '$1');    // Inline code
+  cleaned = cleaned.replace(/```[\s\S]*?```/g, ''); // Code blocks
+  cleaned = cleaned.replace(/#{1,6}\s*/g, '');      // Headers
+  cleaned = cleaned.replace(/>\s*/g, '');           // Blockquotes
+  cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'); // Links
+  cleaned = cleaned.replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1'); // Images
+
+  // Remove bullet points and list markers
+  cleaned = cleaned.replace(/^[\s]*[-*+]\s+/gm, '');
+  cleaned = cleaned.replace(/^[\s]*\d+\.\s+/gm, '');
+
+  // Clean up multiple spaces and newlines
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  cleaned = cleaned.trim();
+
+  return cleaned;
+}
+
+/**
  * Speak a response and broadcast to appropriate devices
  */
 async function speakResponse(sessionId: string, text: string): Promise<void> {
   const ctx = contexts.get(sessionId);
   if (!ctx) return;
+
+  // Clean text for speech - remove markdown and formatting
+  const cleanedText = cleanTextForSpeech(text);
+  if (!cleanedText) {
+    console.log(`[Redi] Skipping speak - no content after cleaning`);
+    return;
+  }
 
   // Acquire speaking lock - prevents concurrent/repeated responses
   if (!markSpeakingStart(ctx)) {
@@ -682,7 +711,7 @@ async function speakResponse(sessionId: string, text: string): Promise<void> {
 
   try {
     // Track AI response for history
-    recordAIResponse(sessionId, text);
+    recordAIResponse(sessionId, cleanedText);
 
     // Broadcast text response to all devices
     broadcastToSession(sessionId, {
@@ -690,14 +719,14 @@ async function speakResponse(sessionId: string, text: string): Promise<void> {
       sessionId,
       timestamp: Date.now(),
       payload: {
-        text,
+        text: cleanedText,
         isStreaming: false,
         isFinal: true
       }
     });
 
     // Generate complete audio (non-streaming for better quality and no stuttering)
-    const audioBuffer = await speak(sessionId, text);
+    const audioBuffer = await speak(sessionId, cleanedText);
 
     if (audioBuffer) {
       // Send complete audio at once - prevents breaking up on inconsistent networks
@@ -715,7 +744,7 @@ async function speakResponse(sessionId: string, text: string): Promise<void> {
     }
   } finally {
     // Release lock and mark that we spoke
-    markSpoke(ctx, text);
+    markSpoke(ctx, cleanedText);
   }
 }
 
