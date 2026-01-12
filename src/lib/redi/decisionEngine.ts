@@ -114,7 +114,8 @@ export function shouldSpeak(ctx: DecisionContext): SpeakDecision {
   }
 
   // 4. Don't speak too frequently
-  const minGap = mapRange(ctx.sensitivity, 0, 1, 30000, 5000); // 30s → 5s based on sensitivity
+  // More responsive: Passive=20s, Balanced=10s, Active=5s
+  const minGap = mapRange(ctx.sensitivity, 0, 1, 20000, 5000);
   const timeSinceSpoke = Date.now() - ctx.lastSpokeAt;
 
   if (timeSinceSpoke < minGap) {

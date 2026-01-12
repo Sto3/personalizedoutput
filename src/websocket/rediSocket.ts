@@ -92,6 +92,10 @@ const contexts = new Map<string, DecisionContext>();
 const insightIntervals = new Map<string, NodeJS.Timeout>();
 const silenceCheckIntervals = new Map<string, NodeJS.Timeout>();
 
+// Host reconnection grace period tracking
+const hostDisconnectTimers = new Map<string, NodeJS.Timeout>();
+const HOST_RECONNECT_GRACE_MS = 30000; // 30 seconds to reconnect
+
 // Frame aggregation buffer: sessionId -> array of recent frames from all devices
 const frameBuffers = new Map<string, { deviceId: string; image: string; timestamp: number }[]>();
 const FRAME_BUFFER_MAX = 10;
@@ -159,6 +163,14 @@ async function handleConnection(ws: WebSocket, req: IncomingMessage): Promise<vo
 
   const isHostDevice = isHost(session.id, deviceId);
   console.log(`[Redi WebSocket] Device ${deviceId} connected to session ${session.id} (host: ${isHostDevice})`);
+
+  // Cancel any pending host disconnect timer (host reconnected!)
+  const pendingTimer = hostDisconnectTimers.get(session.id);
+  if (pendingTimer) {
+    console.log(`[Redi WebSocket] Host reconnected to ${session.id}, canceling disconnect timer`);
+    clearTimeout(pendingTimer);
+    hostDisconnectTimers.delete(session.id);
+  }
 
   // Get or create session connections map
   let connections = sessionConnections.get(session.id);
@@ -292,8 +304,43 @@ async function initializeSessionServices(
     // Start frame aggregation loop
     startFrameAggregationLoop(sessionId, mode);
 
+    // Send initial greeting after a brief delay (let audio setup complete)
+    setTimeout(async () => {
+      await sendInitialGreeting(sessionId, mode);
+    }, 2000);
+
   } catch (error) {
     console.error(`[Redi WebSocket] Failed to initialize services for ${sessionId}:`, error);
+  }
+}
+
+/**
+ * Send initial greeting when session starts
+ */
+async function sendInitialGreeting(sessionId: string, mode: RediMode): Promise<void> {
+  const ctx = contexts.get(sessionId);
+  if (!ctx) return;
+
+  // Check if we haven't already spoken (safety check)
+  if (ctx.lastSpokeAt > 0) return;
+
+  const greetings: Record<RediMode, string> = {
+    studying: "Hi! I'm Redi. I can see your workspace and I'm here to help. Just let me know if you need anything, or I'll offer suggestions when I notice something useful.",
+    sports: "Hey! I'm Redi, your training assistant. I can see you and I'll give you feedback on your form and technique. Let's get started!",
+    music: "Hi there! I'm Redi. I can see and hear you practice. I'll offer tips on technique and timing as you play.",
+    meeting: "Hello! I'm Redi. I'm here to help during your meeting. I'll stay quiet unless you need me or ask a question.",
+    assembly: "Hey! I'm Redi. I can see what you're working on. I'll help with assembly steps and point out anything that looks off.",
+    monitoring: "Hi! I'm Redi. I'll keep an eye on things and let you know if I notice anything important."
+  };
+
+  const greeting = greetings[mode];
+  if (!greeting) return;
+
+  try {
+    await speakResponse(sessionId, greeting);
+    console.log(`[Redi WebSocket] Sent initial greeting for ${sessionId}`);
+  } catch (error) {
+    console.error(`[Redi WebSocket] Failed to send greeting for ${sessionId}:`, error);
   }
 }
 
@@ -796,9 +843,28 @@ function handleDeviceDisconnect(sessionId: string, deviceId: string): void {
     connections.delete(deviceId);
   }
 
-  // If host disconnected, end the session
+  // If host disconnected, start grace period instead of ending immediately
   if (isHost(sessionId, deviceId)) {
-    handleSessionEnd(sessionId);
+    console.log(`[Redi WebSocket] Host disconnected from ${sessionId}, starting ${HOST_RECONNECT_GRACE_MS}ms grace period`);
+
+    // Clear any existing timer
+    const existingTimer = hostDisconnectTimers.get(sessionId);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+
+    // Start grace period timer
+    const timer = setTimeout(() => {
+      // Check if host reconnected
+      const currentConnections = sessionConnections.get(sessionId);
+      if (!currentConnections || currentConnections.size === 0) {
+        console.log(`[Redi WebSocket] Host didn't reconnect to ${sessionId}, ending session`);
+        handleSessionEnd(sessionId);
+      }
+      hostDisconnectTimers.delete(sessionId);
+    }, HOST_RECONNECT_GRACE_MS);
+
+    hostDisconnectTimers.set(sessionId, timer);
     return;
   }
 
