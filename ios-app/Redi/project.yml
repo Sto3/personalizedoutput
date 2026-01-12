@@ -15,6 +15,8 @@ targets:
       - ViewModels
       - Services
       - Assets.xcassets
+      - path: StoreKitConfiguration.storekit
+        buildPhase: none
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.personalizedoutput.Redi
       INFOPLIST_FILE: Info.plist
@@ -31,3 +33,5 @@ schemes:
     build:
       targets:
         Redi: all
+    run:
+      storeKitConfiguration: StoreKitConfiguration.storekit

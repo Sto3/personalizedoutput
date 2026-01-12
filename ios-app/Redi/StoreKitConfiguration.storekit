@@ -1,0 +1,200 @@
+{
+  "identifier" : "Redi StoreKit Configuration",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+    {
+      "displayPrice" : "9.00",
+      "familyShareable" : false,
+      "internalID" : "try_session",
+      "localizations" : [
+        {
+          "description" : "Try Redi for 15 minutes",
+          "displayName" : "Try Redi (15 min)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.personalizedoutput.redi.try",
+      "referenceName" : "Try Redi",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.00",
+      "familyShareable" : false,
+      "internalID" : "extend5",
+      "localizations" : [
+        {
+          "description" : "Add 5 minutes to your session",
+          "displayName" : "+5 Minutes",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.personalizedoutput.redi.extend5",
+      "referenceName" : "Extend 5 min",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "7.00",
+      "familyShareable" : false,
+      "internalID" : "extend10",
+      "localizations" : [
+        {
+          "description" : "Add 10 minutes to your session",
+          "displayName" : "+10 Minutes",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.personalizedoutput.redi.extend10min",
+      "referenceName" : "Extend 10 min",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "10.00",
+      "familyShareable" : false,
+      "internalID" : "extend15",
+      "localizations" : [
+        {
+          "description" : "Add 15 minutes to your session",
+          "displayName" : "+15 Minutes",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.personalizedoutput.redi.extend15min",
+      "referenceName" : "Extend 15 min",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "10.00",
+      "familyShareable" : false,
+      "internalID" : "overage",
+      "localizations" : [
+        {
+          "description" : "Extra 15 minutes for subscribers",
+          "displayName" : "Extra Time (15 min)",
+          "locale" : "en_US"
+        }
+      ],
+      "productID" : "com.personalizedoutput.redi.overage15min",
+      "referenceName" : "Overage 15 min",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : [
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Load Products"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Purchase"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Verification"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Store Sync"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Subscription Status"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "App Transaction"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Manage Subscriptions Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Refund Request Sheet"
+      },
+      {
+        "current" : null,
+        "enabled" : false,
+        "name" : "Offer Code Redeem Sheet"
+      }
+    ]
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "redi_subscriptions",
+      "localizations" : [
+
+      ],
+      "name" : "Redi Subscriptions",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "59.00",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "120 minutes per month",
+              "displayName" : "Monthly (120 min)",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.personalizedoutput.redi.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Monthly Subscription",
+          "subscriptionGroupID" : "redi_subscriptions",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "99.00",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "unlimited",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited minutes",
+              "displayName" : "Unlimited",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.personalizedoutput.redi.unlimited",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Unlimited Subscription",
+          "subscriptionGroupID" : "redi_subscriptions",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
