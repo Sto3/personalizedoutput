@@ -8,6 +8,7 @@
 import Foundation
 import Speech
 import AVFoundation
+import UIKit
 
 @MainActor
 class WakeWordService: ObservableObject {
@@ -48,7 +49,11 @@ class WakeWordService: ObservableObject {
         }
 
         // Request microphone authorization
-        let micStatus = await AVAudioApplication.requestRecordPermission()
+        let micStatus = await withCheckedContinuation { continuation in
+            AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                continuation.resume(returning: granted)
+            }
+        }
 
         guard micStatus else {
             error = "Microphone access not authorized"

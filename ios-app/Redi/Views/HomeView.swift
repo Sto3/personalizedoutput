@@ -491,12 +491,12 @@ struct HomeView: View {
         .disabled(viewModel.isLoading)
     }
 
-    // MARK: - Start Button (One-Time)
+    // MARK: - Start Button (Try Redi - 15 min)
 
     private var startButton: some View {
         Button {
             Task {
-                await viewModel.purchaseSession()
+                await viewModel.purchaseTrySession()
             }
         } label: {
             HStack {
@@ -504,9 +504,9 @@ struct HomeView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Text("Start \(viewModel.config.durationMinutes) Min Session")
+                    Text("Try Redi - 15 Min")
                         .font(.headline)
-                    Text(viewModel.priceDisplay(for: viewModel.config.durationMinutes))
+                    Text(viewModel.trySessionPriceDisplay())
                         .font(.headline)
                         .opacity(0.8)
                 }

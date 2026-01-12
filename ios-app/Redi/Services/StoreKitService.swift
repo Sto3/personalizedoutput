@@ -208,10 +208,11 @@ class StoreKitService: ObservableObject {
     // MARK: - Transaction Listener
 
     private func listenForTransactions() -> Task<Void, Error> {
-        return Task.detached {
+        return Task.detached { [weak self] in
             for await result in Transaction.updates {
+                guard let self = self else { return }
                 do {
-                    let transaction = try self.checkVerified(result)
+                    let transaction = try await self.checkVerified(result)
 
                     // Validate with server
                     let validated = await self.validateWithServer(transaction: transaction)
@@ -266,12 +267,6 @@ class StoreKitService: ObservableObject {
     // MARK: - Server Validation
 
     private func validateWithServer(transaction: Transaction) async -> Bool {
-        // Get the JWS representation for server validation
-        guard let jwsRepresentation = transaction.jwsRepresentation else {
-            print("[StoreKit] No JWS representation available")
-            return true  // Fall back to trusting Apple's verification
-        }
-
         let baseURL = ProcessInfo.processInfo.environment["API_BASE_URL"] ?? "https://personalizedoutput.com"
         guard let url = URL(string: "\(baseURL)/api/redi/validate-receipt") else {
             print("[StoreKit] Invalid validation URL")
@@ -283,10 +278,9 @@ class StoreKitService: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
-            "receiptData": jwsRepresentation,
             "productId": transaction.productID,
             "transactionId": String(transaction.id),
-            "originalTransactionId": transaction.originalID != nil ? String(transaction.originalID) : String(transaction.id),
+            "originalTransactionId": String(transaction.originalID),
             "userId": UserDefaults.standard.string(forKey: "redi_user_id") ?? UUID().uuidString,
             "deviceId": UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
         ]
@@ -397,7 +391,7 @@ extension Product {
         RediProduct(rawValue: id)
     }
 
-    var sessionDuration: Int {
-        rediProduct?.sessionDuration ?? 30
+    var minutesProvided: Int {
+        rediProduct?.minutesProvided ?? 15
     }
 }

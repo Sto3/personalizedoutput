@@ -31,24 +31,13 @@ class HomeViewModel: ObservableObject {
 
     // MARK: - Actions
 
-    /// Purchase a one-time session using StoreKit
-    func purchaseSession() async {
+    /// Purchase "Try Redi" (15 min) using StoreKit
+    func purchaseTrySession() async {
         isLoading = true
         error = nil
         purchaseSuccess = false
 
-        // Get the appropriate product based on duration
-        let rediProduct: RediProduct
-        switch config.durationMinutes {
-        case 20:
-            rediProduct = .session20
-        case 60:
-            rediProduct = .session60
-        default:
-            rediProduct = .session30
-        }
-
-        guard let product = storeKit.product(for: rediProduct) else {
+        guard let product = storeKit.product(for: .trySession) else {
             error = "Product not available. Please try again."
             isLoading = false
             return
@@ -81,10 +70,9 @@ class HomeViewModel: ObservableObject {
 
         let rediProduct: RediProduct
         switch tier {
-        case .starter:
-            rediProduct = .starter
-        case .regular:
-            rediProduct = .regular
+        case .starter, .regular:
+            // Map old tiers to monthly
+            rediProduct = .monthly
         case .unlimited:
             rediProduct = .unlimited
         }
@@ -209,38 +197,20 @@ class HomeViewModel: ObservableObject {
         isLoading = false
     }
 
-    /// Get price display for a product
-    func priceDisplay(for duration: Int) -> String {
-        let rediProduct: RediProduct
-        switch duration {
-        case 20:
-            rediProduct = .session20
-        case 60:
-            rediProduct = .session60
-        default:
-            rediProduct = .session30
-        }
-
-        if let product = storeKit.product(for: rediProduct) {
+    /// Get price display for Try Redi
+    func trySessionPriceDisplay() -> String {
+        if let product = storeKit.product(for: .trySession) {
             return product.displayPrice
         }
-
-        // Fallback to hardcoded prices if products haven't loaded
-        switch duration {
-        case 20: return "$14.00"
-        case 60: return "$49.00"
-        default: return "$26.00"
-        }
+        return "$9.00"
     }
 
     /// Get subscription price display
     func subscriptionPriceDisplay(for tier: SubscriptionTier) -> String {
         let rediProduct: RediProduct
         switch tier {
-        case .starter:
-            rediProduct = .starter
-        case .regular:
-            rediProduct = .regular
+        case .starter, .regular:
+            rediProduct = .monthly
         case .unlimited:
             rediProduct = .unlimited
         }
@@ -251,10 +221,25 @@ class HomeViewModel: ObservableObject {
 
         // Fallback to hardcoded prices
         switch tier {
-        case .starter: return "$72.00"
-        case .regular: return "$110.00"
-        case .unlimited: return "$149.00"
+        case .starter, .regular: return "$59.00"
+        case .unlimited: return "$99.00"
         }
+    }
+
+    /// Get monthly subscription price
+    func monthlyPriceDisplay() -> String {
+        if let product = storeKit.product(for: .monthly) {
+            return product.displayPrice
+        }
+        return "$59.00"
+    }
+
+    /// Get unlimited subscription price
+    func unlimitedPriceDisplay() -> String {
+        if let product = storeKit.product(for: .unlimited) {
+            return product.displayPrice
+        }
+        return "$99.00"
     }
 }
 
