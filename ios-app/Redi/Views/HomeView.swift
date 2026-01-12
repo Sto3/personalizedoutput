@@ -16,6 +16,8 @@ struct HomeView: View {
     @State private var isJoining = false
     @State private var showSubscriptions = false
     @State private var showingSubscriptionSheet = false
+    @State private var showingCodeEntry = false
+    @State private var testCode = ""
 
     // Admin bypass: tap logo 5 times quickly
     @State private var logoTapCount = 0
@@ -46,6 +48,9 @@ struct HomeView: View {
 
                     // Try Redi button (for new users)
                     tryRediButton
+
+                    // Have a code? button
+                    haveCodeButton
 
                     // Subscriptions toggle
                     subscriptionsSection
@@ -103,6 +108,10 @@ struct HomeView: View {
                     )
                     .onTapGesture {
                         handleLogoTap()
+                    }
+                    .onLongPressGesture(minimumDuration: 2) {
+                        // Long press for 2 seconds = admin bypass
+                        showingAdminBypass = true
                     }
 
                 Spacer()
@@ -162,23 +171,70 @@ struct HomeView: View {
     }
 
     private func startFreeSession() {
-        // Create a free test session directly
-        let testSession = RediSession(
-            id: "test-\(UUID().uuidString.prefix(8))",
-            mode: viewModel.config.mode,
-            sensitivity: viewModel.config.sensitivity,
-            voiceGender: viewModel.config.voiceGender,
-            durationMinutes: viewModel.config.durationMinutes,
-            expiresAt: Date().addingTimeInterval(Double(viewModel.config.durationMinutes * 60)),
-            status: .active,
-            websocketUrl: "/ws/redi?sessionId=test",
-            joinCode: generateJoinCode(),
-            isHost: true,
-            participantCount: 1,
-            maxParticipants: 5,
-            audioOutputMode: .hostOnly
-        )
-        appState.currentSession = testSession
+        Task {
+            // Call backend with test mode to create a real session
+            do {
+                let session = try await createTestSession()
+                await MainActor.run {
+                    appState.currentSession = session
+                }
+            } catch {
+                print("[Admin Bypass] Failed to create test session: \(error)")
+                // Fallback to local session if backend fails
+                let testSession = RediSession(
+                    id: "test-\(UUID().uuidString.prefix(8))",
+                    mode: viewModel.config.mode,
+                    sensitivity: viewModel.config.sensitivity,
+                    voiceGender: viewModel.config.voiceGender,
+                    durationMinutes: 15,
+                    expiresAt: Date().addingTimeInterval(15 * 60),
+                    status: .active,
+                    websocketUrl: "wss://personalizedoutput.com/ws/redi?sessionId=test-\(UUID().uuidString.prefix(8))",
+                    joinCode: generateJoinCode(),
+                    isHost: true,
+                    participantCount: 1,
+                    maxParticipants: 5,
+                    audioOutputMode: .hostOnly
+                )
+                await MainActor.run {
+                    appState.currentSession = testSession
+                }
+            }
+        }
+    }
+
+    private func createTestSession() async throws -> RediSession {
+        let baseURL = "https://personalizedoutput.com"
+        let url = URL(string: "\(baseURL)/api/redi/session/test")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        let userId = UserDefaults.standard.string(forKey: "redi_user_id") ?? UUID().uuidString
+        UserDefaults.standard.set(userId, forKey: "redi_user_id")
+
+        let body: [String: Any] = [
+            "userId": userId,
+            "deviceId": deviceId,
+            "mode": viewModel.config.mode.rawValue,
+            "voiceGender": viewModel.config.voiceGender.rawValue,
+            "sensitivity": viewModel.config.sensitivity,
+            "testMode": true
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(RediSession.self, from: data)
     }
 
     private func generateJoinCode() -> String {
@@ -390,6 +446,134 @@ struct HomeView: View {
             .cornerRadius(12)
         }
         .disabled(viewModel.isLoading)
+    }
+
+    // MARK: - Have a Code Button
+
+    private var haveCodeButton: some View {
+        Button(action: { showingCodeEntry = true }) {
+            Text("Have a code?")
+                .font(.subheadline)
+                .foregroundColor(.cyan)
+        }
+        .sheet(isPresented: $showingCodeEntry) {
+            codeEntrySheet
+        }
+    }
+
+    private var codeEntrySheet: some View {
+        NavigationView {
+            VStack(spacing: 24) {
+                VStack(spacing: 8) {
+                    Image(systemName: "ticket.fill")
+                        .font(.system(size: 48))
+                        .foregroundColor(.cyan)
+
+                    Text("Enter Code")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Enter your promotional or test code")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+                }
+                .padding(.top, 40)
+
+                TextField("CODE", text: $testCode)
+                    .font(.system(size: 24, weight: .bold, design: .monospaced))
+                    .multilineTextAlignment(.center)
+                    .textInputAutocapitalization(.characters)
+                    .autocorrectionDisabled()
+                    .padding()
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+                    .onChange(of: testCode) { newValue in
+                        testCode = newValue.uppercased()
+                    }
+
+                Spacer()
+
+                Button(action: { redeemCode() }) {
+                    HStack {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                        } else {
+                            Text("Redeem Code")
+                                .font(.headline)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(testCode.count >= 4 ? Color.cyan : Color.gray)
+                    .foregroundColor(.white)
+                    .cornerRadius(12)
+                }
+                .disabled(testCode.count < 4 || viewModel.isLoading)
+                .padding()
+            }
+            .background(Color.black.ignoresSafeArea())
+            .navigationBarItems(
+                trailing: Button("Cancel") {
+                    showingCodeEntry = false
+                    testCode = ""
+                }
+                .foregroundColor(.cyan)
+            )
+        }
+        .preferredColorScheme(.dark)
+    }
+
+    private func redeemCode() {
+        Task {
+            do {
+                let session = try await redeemTestCode(testCode)
+                await MainActor.run {
+                    showingCodeEntry = false
+                    testCode = ""
+                    appState.currentSession = session
+                }
+            } catch {
+                await MainActor.run {
+                    viewModel.error = "Invalid code. Please try again."
+                }
+            }
+        }
+    }
+
+    private func redeemTestCode(_ code: String) async throws -> RediSession {
+        let baseURL = "https://personalizedoutput.com"
+        let url = URL(string: "\(baseURL)/api/redi/session/test")!
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+
+        let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        let userId = UserDefaults.standard.string(forKey: "redi_user_id") ?? UUID().uuidString
+        UserDefaults.standard.set(userId, forKey: "redi_user_id")
+
+        let body: [String: Any] = [
+            "code": code,
+            "userId": userId,
+            "deviceId": deviceId,
+            "mode": viewModel.config.mode.rawValue,
+            "voiceGender": viewModel.config.voiceGender.rawValue,
+            "sensitivity": viewModel.config.sensitivity
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(RediSession.self, from: data)
     }
 
     // MARK: - Subscriptions Section

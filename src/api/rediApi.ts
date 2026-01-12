@@ -610,6 +610,84 @@ router.post('/session/apple', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/redi/session/test
+ * Create a test session with a special code (for development/testing)
+ * Code: REDITEST or custom code from environment variable
+ */
+router.post('/session/test', async (req: Request, res: Response) => {
+  const {
+    code,
+    userId,
+    deviceId,
+    mode: rediMode,
+    voiceGender,
+    sensitivity,
+    testMode  // Alternative: just pass testMode: true (for iOS bypass)
+  } = req.body;
+
+  // Accept either a code or testMode flag (in development)
+  const validCodes = ['REDITEST', 'TESTMODE', process.env.REDI_TEST_CODE].filter(Boolean);
+  const isValidCode = code && validCodes.includes(code.toUpperCase());
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+
+  if (!isValidCode && !(testMode && isDevelopment)) {
+    res.status(403).json({ error: 'Invalid test code' });
+    return;
+  }
+
+  const actualUserId = userId || deviceId || `test-${uuidv4().slice(0, 8)}`;
+  const actualDeviceId = deviceId || uuidv4();
+
+  try {
+    // Grant 15 minutes for test session
+    addMinutes(actualUserId, 15, 'Test session code');
+
+    // Create session config
+    const config: SessionConfig = {
+      mode: (rediMode as RediMode) || 'studying',
+      sensitivity: sensitivity || 0.5,
+      voiceGender: (voiceGender as VoiceGender) || 'female',
+      durationMinutes: 20 as 20 | 30 | 60  // Will be capped by actual minutes
+    };
+
+    // Create session
+    const session = createSession(
+      config,
+      actualDeviceId,
+      `test_${Date.now()}`,
+      actualUserId
+    );
+
+    // Start tracking for history
+    startSessionTracking(session.id, actualUserId, config.mode, 15, actualDeviceId);
+
+    console.log(`[Redi API] TEST session created: ${session.id} for user ${actualUserId}`);
+
+    res.json({
+      id: session.id,
+      sessionId: session.id,
+      joinCode: session.joinCode,
+      mode: session.mode,
+      sensitivity: session.sensitivity,
+      voiceGender: session.voiceGender,
+      durationMinutes: 15,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+      status: session.status,
+      audioOutputMode: session.audioOutputMode,
+      maxParticipants: session.maxParticipants,
+      participantCount: 1,
+      isHost: true,
+      websocketUrl: `/ws/redi?sessionId=${session.id}&deviceId=${actualDeviceId}`,
+      testMode: true
+    });
+
+  } catch (error) {
+    console.error('[Redi API] Test session creation error:', error);
+    res.status(500).json({ error: 'Failed to create test session' });
+  }
+});
+
+/**
  * POST /api/redi/session/extend
  * Extend an active session by purchasing more time
  */
