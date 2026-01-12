@@ -140,7 +140,7 @@ export const PURCHASES: Record<string, PurchaseConfig> = {
   },
   extend10: {
     id: 'extend10',
-    productId: 'com.personalizedoutput.redi.extend10',
+    productId: 'com.personalizedoutput.redi.extend10min',
     type: 'extension',
     minutes: 10,
     price: 700,                // $7.00
@@ -148,7 +148,7 @@ export const PURCHASES: Record<string, PurchaseConfig> = {
   },
   extend15: {
     id: 'extend15',
-    productId: 'com.personalizedoutput.redi.extend15',
+    productId: 'com.personalizedoutput.redi.extend15min',
     type: 'extension',
     minutes: 15,
     price: 1000,               // $10.00
@@ -158,7 +158,7 @@ export const PURCHASES: Record<string, PurchaseConfig> = {
   // Overage (for subscribers who ran out)
   overage: {
     id: 'overage',
-    productId: 'com.personalizedoutput.redi.overage',
+    productId: 'com.personalizedoutput.redi.overage15min',
     type: 'overage',
     minutes: 15,
     price: 1000,               // $10.00
@@ -170,9 +170,9 @@ export const PURCHASES: Record<string, PurchaseConfig> = {
 export const APPLE_PRODUCTS: Record<string, PurchaseConfig> = {
   'com.personalizedoutput.redi.try': PURCHASES.try,
   'com.personalizedoutput.redi.extend5': PURCHASES.extend5,
-  'com.personalizedoutput.redi.extend10': PURCHASES.extend10,
-  'com.personalizedoutput.redi.extend15': PURCHASES.extend15,
-  'com.personalizedoutput.redi.overage': PURCHASES.overage
+  'com.personalizedoutput.redi.extend10min': PURCHASES.extend10,
+  'com.personalizedoutput.redi.extend15min': PURCHASES.extend15,
+  'com.personalizedoutput.redi.overage15min': PURCHASES.overage
 };
 
 export const APPLE_SUBSCRIPTION_TIERS: Record<string, RediSubscriptionTier> = {

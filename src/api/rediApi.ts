@@ -155,8 +155,8 @@ router.get('/config', (req: Request, res: Response) => {
     // Extensions (for adding time during sessions)
     extensions: [
       { id: 'extend5', price: 4, minutes: 5, label: '+5 min', productId: 'com.personalizedoutput.redi.extend5' },
-      { id: 'extend10', price: 7, minutes: 10, label: '+10 min', productId: 'com.personalizedoutput.redi.extend10' },
-      { id: 'extend15', price: 10, minutes: 15, label: '+15 min', productId: 'com.personalizedoutput.redi.extend15' }
+      { id: 'extend10', price: 7, minutes: 10, label: '+10 min', productId: 'com.personalizedoutput.redi.extend10min' },
+      { id: 'extend15', price: 10, minutes: 15, label: '+15 min', productId: 'com.personalizedoutput.redi.extend15min' }
     ],
 
     // Overage (for subscribers who ran out of minutes)
@@ -164,7 +164,7 @@ router.get('/config', (req: Request, res: Response) => {
       price: 10,
       minutes: 15,
       label: 'Extra Time (15 min)',
-      productId: 'com.personalizedoutput.redi.overage'
+      productId: 'com.personalizedoutput.redi.overage15min'
     }
   };
 

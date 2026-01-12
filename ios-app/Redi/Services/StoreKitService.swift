@@ -19,11 +19,11 @@ enum RediProduct: String, CaseIterable {
 
     // Time extensions (consumables)
     case extend5 = "com.personalizedoutput.redi.extend5"    // $4 for 5 min
-    case extend10 = "com.personalizedoutput.redi.extend10"  // $7 for 10 min
-    case extend15 = "com.personalizedoutput.redi.extend15"  // $10 for 15 min
+    case extend10 = "com.personalizedoutput.redi.extend10min"  // $7 for 10 min
+    case extend15 = "com.personalizedoutput.redi.extend15min"  // $10 for 15 min
 
     // Overage (for subscribers who ran out of minutes)
-    case overage = "com.personalizedoutput.redi.overage"    // $10 for 15 min
+    case overage = "com.personalizedoutput.redi.overage15min"    // $10 for 15 min
 
     var isSubscription: Bool {
         switch self {
