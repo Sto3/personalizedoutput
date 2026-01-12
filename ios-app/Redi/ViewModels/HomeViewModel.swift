@@ -2,12 +2,15 @@
  * HomeViewModel.swift
  *
  * Manages state and logic for the home/configuration screen.
+ * Uses StoreKit 2 for In-App Purchases (Apple requirement for iOS).
  */
 
 import Foundation
 import Combine
 import UIKit
+import StoreKit
 
+@MainActor
 class HomeViewModel: ObservableObject {
     // MARK: - Published Properties
 
@@ -15,6 +18,7 @@ class HomeViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var error: String?
     @Published var userSubscription: UserSubscription?
+    @Published var purchaseSuccess: Bool = false
 
     // MARK: - Private Properties
 
@@ -22,26 +26,112 @@ class HomeViewModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
 
+    // StoreKit service for In-App Purchases
+    private let storeKit = StoreKitService.shared
+
     // MARK: - Actions
 
-    func startCheckout() {
+    /// Purchase a one-time session using StoreKit
+    func purchaseSession() async {
         isLoading = true
         error = nil
+        purchaseSuccess = false
 
-        apiService.createCheckout(config: config)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
-                self?.isLoading = false
-                if case .failure(let error) = completion {
-                    self?.error = error.localizedDescription
-                }
-            } receiveValue: { checkoutURL in
-                // Open checkout URL in Safari/WebView
-                if let url = URL(string: checkoutURL) {
-                    UIApplication.shared.open(url)
-                }
+        // Get the appropriate product based on duration
+        let rediProduct: RediProduct
+        switch config.durationMinutes {
+        case 20:
+            rediProduct = .session20
+        case 60:
+            rediProduct = .session60
+        default:
+            rediProduct = .session30
+        }
+
+        guard let product = storeKit.product(for: rediProduct) else {
+            error = "Product not available. Please try again."
+            isLoading = false
+            return
+        }
+
+        do {
+            let transaction = try await storeKit.purchase(product)
+
+            if let transaction = transaction {
+                // Purchase successful - create session on backend
+                await createSessionFromPurchase(
+                    transactionId: String(transaction.id),
+                    productId: transaction.productID
+                )
+            } else {
+                // User cancelled or pending
+                isLoading = false
             }
-            .store(in: &cancellables)
+        } catch {
+            self.error = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    /// Purchase a subscription using StoreKit
+    func purchaseSubscription(tier: SubscriptionTier) async {
+        isLoading = true
+        error = nil
+        purchaseSuccess = false
+
+        let rediProduct: RediProduct
+        switch tier {
+        case .starter:
+            rediProduct = .starter
+        case .regular:
+            rediProduct = .regular
+        case .unlimited:
+            rediProduct = .unlimited
+        }
+
+        guard let product = storeKit.product(for: rediProduct) else {
+            error = "Subscription not available. Please try again."
+            isLoading = false
+            return
+        }
+
+        do {
+            let transaction = try await storeKit.purchase(product)
+
+            if transaction != nil {
+                // Subscription successful - refresh status
+                await loadSubscriptionStatus()
+                purchaseSuccess = true
+            }
+            isLoading = false
+        } catch {
+            self.error = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    /// Create a session on the backend after successful Apple purchase
+    private func createSessionFromPurchase(transactionId: String, productId: String) async {
+        let userId = UserDefaults.standard.string(forKey: "redi_user_id") ?? UUID().uuidString
+        UserDefaults.standard.set(userId, forKey: "redi_user_id")
+
+        do {
+            let session = try await apiService.createSessionFromApplePurchase(
+                transactionId: transactionId,
+                productId: productId,
+                userId: userId,
+                deviceId: deviceId,
+                config: config
+            )
+
+            // Navigate to session
+            NotificationCenter.default.post(name: .rediSessionStarted, object: session)
+            purchaseSuccess = true
+            isLoading = false
+        } catch {
+            self.error = "Failed to start session: \(error.localizedDescription)"
+            isLoading = false
+        }
     }
 
     func joinSession(code: String, completion: @escaping (Result<RediSession, Error>) -> Void) {
@@ -62,66 +152,109 @@ class HomeViewModel: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func loadSubscriptionStatus() {
-        // Load subscription status from UserDefaults or API
-        // For now, check if we have a stored userId
+    func loadSubscriptionStatus() async {
+        // Check StoreKit for active subscriptions
+        await storeKit.updatePurchasedProducts()
+
+        // Also check server for subscription balance
         guard let userId = UserDefaults.standard.string(forKey: "redi_user_id") else {
             userSubscription = nil
             return
         }
 
-        apiService.getSubscriptionBalance(userId: userId)
-            .receive(on: DispatchQueue.main)
-            .sink { _ in } receiveValue: { [weak self] subscription in
-                self?.userSubscription = subscription
-            }
-            .store(in: &cancellables)
+        do {
+            userSubscription = try await apiService.getSubscriptionBalanceAsync(userId: userId)
+        } catch {
+            print("[HomeViewModel] Failed to load subscription status: \(error)")
+        }
     }
 
-    func startSubscription(tier: SubscriptionTier) {
-        isLoading = true
-        error = nil
+    /// Start a session using subscription balance
+    func startSubscriptionSession() async {
+        guard storeKit.hasActiveSubscription else {
+            error = "No active subscription found"
+            return
+        }
 
-        let userId = UserDefaults.standard.string(forKey: "redi_user_id") ?? UUID().uuidString
-        UserDefaults.standard.set(userId, forKey: "redi_user_id")
-
-        apiService.createSubscriptionCheckout(tier: tier, userId: userId)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
-                self?.isLoading = false
-                if case .failure(let error) = completion {
-                    self?.error = error.localizedDescription
-                }
-            } receiveValue: { checkoutURL in
-                if let url = URL(string: checkoutURL) {
-                    UIApplication.shared.open(url)
-                }
-            }
-            .store(in: &cancellables)
-    }
-
-    func startSubscriptionSession() {
         guard let userId = UserDefaults.standard.string(forKey: "redi_user_id") else {
-            error = "No subscription found"
+            error = "Please sign in to use your subscription"
             return
         }
 
         isLoading = true
         error = nil
 
-        apiService.startSubscriptionSession(userId: userId, config: config, deviceId: deviceId)
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] completion in
-                self?.isLoading = false
-                if case .failure(let error) = completion {
-                    self?.error = error.localizedDescription
-                }
-            } receiveValue: { [weak self] session in
-                // Navigate to session - this would be handled by AppState in the actual app
-                NotificationCenter.default.post(name: .rediSessionStarted, object: session)
-                self?.loadSubscriptionStatus() // Refresh balance
-            }
-            .store(in: &cancellables)
+        do {
+            let session = try await apiService.startSubscriptionSessionAsync(
+                userId: userId,
+                config: config,
+                deviceId: deviceId
+            )
+
+            // Navigate to session
+            NotificationCenter.default.post(name: .rediSessionStarted, object: session)
+            await loadSubscriptionStatus() // Refresh balance
+            isLoading = false
+        } catch {
+            self.error = error.localizedDescription
+            isLoading = false
+        }
+    }
+
+    /// Restore previous purchases
+    func restorePurchases() async {
+        isLoading = true
+        await storeKit.restorePurchases()
+        await loadSubscriptionStatus()
+        isLoading = false
+    }
+
+    /// Get price display for a product
+    func priceDisplay(for duration: Int) -> String {
+        let rediProduct: RediProduct
+        switch duration {
+        case 20:
+            rediProduct = .session20
+        case 60:
+            rediProduct = .session60
+        default:
+            rediProduct = .session30
+        }
+
+        if let product = storeKit.product(for: rediProduct) {
+            return product.displayPrice
+        }
+
+        // Fallback to hardcoded prices if products haven't loaded
+        switch duration {
+        case 20: return "$14.00"
+        case 60: return "$49.00"
+        default: return "$26.00"
+        }
+    }
+
+    /// Get subscription price display
+    func subscriptionPriceDisplay(for tier: SubscriptionTier) -> String {
+        let rediProduct: RediProduct
+        switch tier {
+        case .starter:
+            rediProduct = .starter
+        case .regular:
+            rediProduct = .regular
+        case .unlimited:
+            rediProduct = .unlimited
+        }
+
+        if let product = storeKit.product(for: rediProduct) {
+            return product.displayPrice
+        }
+
+        // Fallback to hardcoded prices
+        switch tier {
+        case .starter: return "$72.00"
+        case .regular: return "$110.00"
+        case .unlimited: return "$149.00"
+        }
     }
 }
 
@@ -136,72 +269,96 @@ extension Notification.Name {
 class APIService {
     private let baseURL = "https://personalizedoutput.com"
 
-    func createCheckout(config: SessionConfig) -> AnyPublisher<String, Error> {
-        let url = URL(string: "\(baseURL)/api/redi/checkout")!
+    // MARK: - Apple In-App Purchase Session Creation
+
+    /// Create a session from an Apple In-App Purchase
+    func createSessionFromApplePurchase(
+        transactionId: String,
+        productId: String,
+        userId: String,
+        deviceId: String,
+        config: SessionConfig
+    ) async throws -> RediSession {
+        let url = URL(string: "\(baseURL)/api/redi/session/apple")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
         let body: [String: Any] = [
-            "duration": config.durationMinutes,
+            "transactionId": transactionId,
+            "productId": productId,
+            "userId": userId,
+            "deviceId": deviceId,
             "mode": config.mode.rawValue,
             "voiceGender": config.voiceGender.rawValue,
             "sensitivity": config.sensitivity
         ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    throw URLError(.badServerResponse)
-                }
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
 
-                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                guard let checkoutURL = json?["checkoutUrl"] as? String else {
-                    throw URLError(.cannotParseResponse)
-                }
-
-                return checkoutURL
-            }
-            .eraseToAnyPublisher()
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(RediSession.self, from: data)
     }
 
-    func createSession(checkoutSessionId: String) -> AnyPublisher<RediSession, Error> {
-        let url = URL(string: "\(baseURL)/api/redi/session")!
+    // MARK: - Subscription Management (Async)
+
+    func getSubscriptionBalanceAsync(userId: String) async throws -> UserSubscription {
+        let url = URL(string: "\(baseURL)/api/redi/subscription/balance?userId=\(userId)")!
+
+        let (data, response) = try await URLSession.shared.data(from: url)
+
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(UserSubscription.self, from: data)
+    }
+
+    func startSubscriptionSessionAsync(
+        userId: String,
+        config: SessionConfig,
+        deviceId: String
+    ) async throws -> RediSession {
+        let url = URL(string: "\(baseURL)/api/redi/session/start")!
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body = ["checkoutSessionId": checkoutSessionId]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        let body: [String: Any] = [
+            "userId": userId,
+            "deviceId": deviceId,
+            "duration": config.durationMinutes,
+            "mode": config.mode.rawValue,
+            "voiceGender": config.voiceGender.rawValue,
+            "sensitivity": config.sensitivity
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    throw URLError(.badServerResponse)
-                }
+        let (data, response) = try await URLSession.shared.data(for: request)
 
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                return try decoder.decode(RediSession.self, from: data)
-            }
-            .eraseToAnyPublisher()
+        guard let httpResponse = response as? HTTPURLResponse,
+              httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(RediSession.self, from: data)
     }
 
-    func getConfig() -> AnyPublisher<AppConfig, Error> {
-        let url = URL(string: "\(baseURL)/api/redi/config")!
-
-        return URLSession.shared.dataTaskPublisher(for: url)
-            .tryMap { data, _ in
-                try JSONDecoder().decode(AppConfig.self, from: data)
-            }
-            .eraseToAnyPublisher()
-    }
+    // MARK: - Session Join
 
     func joinSession(joinCode: String, deviceId: String) -> AnyPublisher<RediSession, Error> {
         let url = URL(string: "\(baseURL)/api/redi/session/join")!
@@ -230,80 +387,14 @@ class APIService {
             .eraseToAnyPublisher()
     }
 
-    func getSubscriptionBalance(userId: String) -> AnyPublisher<UserSubscription, Error> {
-        let url = URL(string: "\(baseURL)/api/redi/subscription/balance?userId=\(userId)")!
+    // MARK: - Config
+
+    func getConfig() -> AnyPublisher<AppConfig, Error> {
+        let url = URL(string: "\(baseURL)/api/redi/config")!
 
         return URLSession.shared.dataTaskPublisher(for: url)
-            .tryMap { data, response in
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    throw URLError(.badServerResponse)
-                }
-
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                return try decoder.decode(UserSubscription.self, from: data)
-            }
-            .eraseToAnyPublisher()
-    }
-
-    func createSubscriptionCheckout(tier: SubscriptionTier, userId: String) -> AnyPublisher<String, Error> {
-        let url = URL(string: "\(baseURL)/api/redi/subscribe")!
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body: [String: Any] = [
-            "tier": tier.rawValue,
-            "userId": userId
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    throw URLError(.badServerResponse)
-                }
-
-                let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-                guard let checkoutURL = json?["checkoutUrl"] as? String else {
-                    throw URLError(.cannotParseResponse)
-                }
-
-                return checkoutURL
-            }
-            .eraseToAnyPublisher()
-    }
-
-    func startSubscriptionSession(userId: String, config: SessionConfig, deviceId: String) -> AnyPublisher<RediSession, Error> {
-        let url = URL(string: "\(baseURL)/api/redi/session/start")!
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-
-        let body: [String: Any] = [
-            "userId": userId,
-            "deviceId": deviceId,
-            "duration": config.durationMinutes,
-            "mode": config.mode.rawValue,
-            "voiceGender": config.voiceGender.rawValue,
-            "sensitivity": config.sensitivity
-        ]
-        request.httpBody = try? JSONSerialization.data(withJSONObject: body)
-
-        return URLSession.shared.dataTaskPublisher(for: request)
-            .tryMap { data, response in
-                guard let httpResponse = response as? HTTPURLResponse,
-                      httpResponse.statusCode == 200 else {
-                    throw URLError(.badServerResponse)
-                }
-
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                return try decoder.decode(RediSession.self, from: data)
+            .tryMap { data, _ in
+                try JSONDecoder().decode(AppConfig.self, from: data)
             }
             .eraseToAnyPublisher()
     }

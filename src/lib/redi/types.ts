@@ -47,6 +47,7 @@ export interface SessionConfig {
   sensitivity: number;
   voiceGender: VoiceGender;
   durationMinutes: 20 | 30 | 60;
+  voiceOnly?: boolean;  // Audio-only mode without camera
 }
 
 // Decision engine types

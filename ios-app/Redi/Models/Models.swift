@@ -227,15 +227,32 @@ struct SessionConfig: Codable {
     var sensitivity: Double
     var voiceGender: VoiceGender
     var durationMinutes: Int
+    var voiceOnly: Bool  // Audio-only mode without camera
 
     static var `default`: SessionConfig {
         SessionConfig(
             mode: .studying,
             sensitivity: 0.5,
             voiceGender: .female,
-            durationMinutes: 30
+            durationMinutes: 30,
+            voiceOnly: false
         )
     }
+}
+
+// MARK: - Minute Balance
+
+struct MinuteBalance: Codable {
+    let hasSubscription: Bool
+    let tierId: String?
+    let tierName: String?
+    let status: String?
+    let minutesRemaining: Int
+    let minutesUsedThisPeriod: Int
+    let isUnlimited: Bool
+    let periodEnd: Date?
+    let canStartSession: Bool
+    let minutesRemainingDisplay: String?
 }
 
 struct AppConfig: Codable {

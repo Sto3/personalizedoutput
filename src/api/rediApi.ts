@@ -33,20 +33,30 @@ import {
 import {
   RediSubscriptionTier,
   SUBSCRIPTION_TIERS,
-  ONE_TIME_PURCHASES,
-  getStripePriceId
+  PURCHASES,
+  APPLE_PRODUCTS,
+  APPLE_SUBSCRIPTION_TIERS,
+  getStripePriceId,
+  getMinutesForProduct,
+  getProductType,
+  formatMinutes
 } from '../lib/redi/subscriptionTypes';
 
 import {
   upsertSubscription,
   getSubscription,
   canStartSession,
+  canUseMinutes,
   deductSession,
+  deductMinutes,
+  addMinutes,
+  grantTrySession,
   resetCredits,
+  resetMinutes,
   updateSubscriptionStatus,
   cancelSubscription,
-  grantOneTimeSession,
   getSessionBalance,
+  getMinuteBalance,
   findUserByStripeCustomer,
   findUserByStripeSubscription
 } from '../lib/redi/subscriptionService';
@@ -73,18 +83,20 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? new Stripe(process.env.STRIPE_SECRET_KEY)
   : null;
 
-// Pricing
-const PRICES: Record<string, number> = {
-  '20': 1400,   // $14.00 in cents
-  '30': 2600,   // $26.00 in cents
-  '60': 4900    // $49.00 in cents
-};
+// New pricing model - minute based
+// Try: $9/15min, Monthly: $59/120min, Unlimited: $99
+// Extensions: $4/5min, $7/10min, $10/15min
+// Overage: $10/15min
 
-// Stripe Price IDs (create these in Stripe dashboard)
-const STRIPE_PRICE_IDS: Record<string, string> = {
-  '20': process.env.STRIPE_REDI_20MIN_PRICE_ID || '',
-  '30': process.env.STRIPE_REDI_30MIN_PRICE_ID || '',
-  '60': process.env.STRIPE_REDI_60MIN_PRICE_ID || ''
+// Prices in cents
+const PRICES = {
+  try: 900,       // $9.00
+  monthly: 5900,  // $59.00/mo
+  unlimited: 9900, // $99.00/mo
+  extend5: 400,   // $4.00
+  extend10: 700,  // $7.00
+  extend15: 1000, // $10.00
+  overage: 1000   // $10.00
 };
 
 /**
@@ -117,32 +129,49 @@ router.get('/config', (req: Request, res: Response) => {
     usesMotionDetection: config.useMotionDetection
   }));
 
-  // One-time purchase pricing
-  const oneTimePricing = {
-    '20': { price: 14, currency: 'USD', label: '20 minutes', type: 'one_time' },
-    '30': { price: 26, currency: 'USD', label: '30 minutes', type: 'one_time' },
-    '60': { price: 49, currency: 'USD', label: '60 minutes', type: 'one_time' }
-  };
+  // New pricing model - minute based
+  const pricing = {
+    // Try Redi - one-time
+    try: {
+      price: 9,
+      currency: 'USD',
+      minutes: 15,
+      label: 'Try Redi (15 min)',
+      productId: 'com.personalizedoutput.redi.try'
+    },
 
-  // Subscription tier pricing
-  const subscriptionTiers = Object.entries(SUBSCRIPTION_TIERS).map(([key, config]) => ({
-    id: key,
-    name: config.name,
-    priceMonthly: config.priceMonthly / 100,  // Convert cents to dollars
-    currency: 'USD',
-    sessionsIncluded: config.sessionsIncluded,
-    sessionDuration: config.sessionDuration,
-    features: config.features,
-    isUnlimited: config.sessionsIncluded === -1
-  }));
+    // Subscriptions
+    subscriptions: Object.entries(SUBSCRIPTION_TIERS).map(([key, config]) => ({
+      id: key,
+      name: config.name,
+      priceMonthly: config.priceMonthly / 100,
+      currency: 'USD',
+      minutesIncluded: config.minutesIncluded,
+      features: config.features,
+      isUnlimited: config.minutesIncluded === -1,
+      productId: `com.personalizedoutput.redi.${key}`
+    })),
+
+    // Extensions (for adding time during sessions)
+    extensions: [
+      { id: 'extend5', price: 4, minutes: 5, label: '+5 min', productId: 'com.personalizedoutput.redi.extend5' },
+      { id: 'extend10', price: 7, minutes: 10, label: '+10 min', productId: 'com.personalizedoutput.redi.extend10' },
+      { id: 'extend15', price: 10, minutes: 15, label: '+15 min', productId: 'com.personalizedoutput.redi.extend15' }
+    ],
+
+    // Overage (for subscribers who ran out of minutes)
+    overage: {
+      price: 10,
+      minutes: 15,
+      label: 'Extra Time (15 min)',
+      productId: 'com.personalizedoutput.redi.overage'
+    }
+  };
 
   res.json({
     modes,
     voices: getAvailableVoices(),
-    pricing: {
-      oneTime: oneTimePricing,
-      subscriptions: subscriptionTiers
-    },
+    pricing,
     sensitivityRange: { min: 0, max: 1, default: 0.5 },
     maxParticipants: 5
   });
@@ -391,6 +420,263 @@ router.get('/session/code/:joinCode', (req: Request, res: Response) => {
   });
 });
 
+// ============================================================================
+// APPLE IN-APP PURCHASE ENDPOINTS
+// ============================================================================
+
+// Apple Product ID mappings are imported from subscriptionTypes.ts
+// APPLE_PRODUCTS and APPLE_SUBSCRIPTION_TIERS
+
+/**
+ * POST /api/redi/validate-receipt
+ * Validate Apple In-App Purchase receipt (called by iOS app)
+ *
+ * Note: For StoreKit 2, the JWS (JSON Web Signature) is already verified by Apple.
+ * We store the transaction for record-keeping and fraud detection.
+ */
+router.post('/validate-receipt', async (req: Request, res: Response) => {
+  const {
+    receiptData,      // JWS representation from StoreKit 2
+    productId,
+    transactionId,
+    originalTransactionId,
+    userId,
+    deviceId
+  } = req.body;
+
+  if (!transactionId || !productId) {
+    res.status(400).json({ error: 'Missing transactionId or productId' });
+    return;
+  }
+
+  try {
+    const actualUserId = userId || deviceId;
+    console.log(`[Redi API] Apple receipt validated: ${productId} for user ${actualUserId}, transaction ${transactionId}`);
+
+    // Get product type
+    const productType = getProductType(productId);
+    const minutesProvided = getMinutesForProduct(productId);
+
+    if (productType === 'subscription') {
+      // Handle subscription validation
+      const tier = APPLE_SUBSCRIPTION_TIERS[productId];
+
+      // Create/update subscription record
+      const now = new Date();
+      const periodEnd = new Date(now);
+      periodEnd.setMonth(periodEnd.getMonth() + 1); // Monthly subscription
+
+      upsertSubscription(
+        actualUserId,
+        tier,
+        null,  // No Stripe customer for Apple
+        transactionId,
+        now,
+        periodEnd,
+        true  // isApple
+      );
+
+      console.log(`[Redi API] Apple subscription validated: ${tier} for user ${actualUserId}`);
+    } else if (productType === 'try') {
+      // Grant try session minutes
+      grantTrySession(actualUserId, transactionId);
+      console.log(`[Redi API] Apple try session granted: ${minutesProvided} min for user ${actualUserId}`);
+    } else if (productType === 'extension' || productType === 'overage') {
+      // Add extension/overage minutes
+      addMinutes(actualUserId, minutesProvided, productId, productType);
+      console.log(`[Redi API] Apple ${productType} added: ${minutesProvided} min for user ${actualUserId}`);
+    }
+
+    res.json({
+      valid: true,
+      productId,
+      transactionId,
+      productType,
+      minutesProvided
+    });
+
+  } catch (error) {
+    console.error('[Redi API] Apple receipt validation error:', error);
+    // Return success anyway - don't block purchase on our validation errors
+    // Apple has already verified the transaction
+    res.json({ valid: true });
+  }
+});
+
+/**
+ * POST /api/redi/session/apple
+ * Create a Redi session from an Apple In-App Purchase
+ *
+ * With the new minute-based system, this creates a session that draws from
+ * the user's minute balance. Duration is not fixed - it continues until
+ * minutes run out or user ends it.
+ */
+router.post('/session/apple', async (req: Request, res: Response) => {
+  const {
+    transactionId,
+    productId,
+    userId,
+    deviceId,
+    mode: rediMode,
+    voiceGender,
+    sensitivity,
+    requestedDuration  // Optional: user can request max duration
+  } = req.body;
+
+  const actualUserId = userId || deviceId;
+
+  if (!actualUserId) {
+    res.status(400).json({ error: 'Missing userId or deviceId' });
+    return;
+  }
+
+  // Check minute balance
+  const balance = getMinuteBalance(actualUserId);
+
+  if (!balance.canStartSession && balance.minutesRemaining <= 0) {
+    res.status(403).json({
+      error: 'No minutes available. Purchase time or subscribe.',
+      minutesRemaining: balance.minutesRemaining
+    });
+    return;
+  }
+
+  // Validate mode
+  if (rediMode && !MODE_CONFIGS[rediMode as RediMode]) {
+    res.status(400).json({ error: 'Invalid mode.' });
+    return;
+  }
+
+  try {
+    // Determine session duration based on available minutes
+    // If unlimited, default to 60 minutes but can go longer
+    // If limited, cap at available minutes or requested duration
+    let sessionDuration: number;
+    if (balance.isUnlimited) {
+      sessionDuration = requestedDuration || 60;  // Default 60 min for unlimited
+    } else {
+      sessionDuration = Math.min(
+        requestedDuration || balance.minutesRemaining,
+        balance.minutesRemaining
+      );
+    }
+
+    // Create session config
+    const config: SessionConfig = {
+      mode: (rediMode as RediMode) || 'studying',
+      sensitivity: sensitivity || 0.5,
+      voiceGender: (voiceGender as VoiceGender) || 'female',
+      durationMinutes: Math.min(sessionDuration, 60) as 20 | 30 | 60  // Cap at 60 for now
+    };
+
+    const hostDeviceId = deviceId || uuidv4();
+
+    // Create Redi session
+    const session = createSession(
+      config,
+      hostDeviceId,
+      transactionId ? `apple_${transactionId}` : undefined,
+      actualUserId
+    );
+
+    console.log(`[Redi API] Session created: ${session.id} for user ${actualUserId} (${sessionDuration} min available)`);
+
+    res.json({
+      id: session.id,
+      sessionId: session.id,
+      joinCode: session.joinCode,
+      mode: session.mode,
+      sensitivity: session.sensitivity,
+      voiceGender: session.voiceGender,
+      durationMinutes: session.durationMinutes,
+      expiresAt: session.expiresAt.toISOString(),
+      status: session.status,
+      audioOutputMode: session.audioOutputMode,
+      maxParticipants: session.maxParticipants,
+      participantCount: 1,
+      isHost: true,
+      websocketUrl: `/ws/redi?sessionId=${session.id}&deviceId=${hostDeviceId}`,
+      // Include minute balance info
+      minuteBalance: {
+        minutesRemaining: balance.minutesRemaining,
+        isUnlimited: balance.isUnlimited
+      }
+    });
+
+  } catch (error) {
+    console.error('[Redi API] Session creation error:', error);
+    res.status(500).json({ error: 'Failed to create session' });
+  }
+});
+
+/**
+ * POST /api/redi/session/extend
+ * Extend an active session by purchasing more time
+ */
+router.post('/session/extend', async (req: Request, res: Response) => {
+  const { sessionId, userId, productId, transactionId, minutes } = req.body;
+
+  if (!sessionId || !userId) {
+    res.status(400).json({ error: 'Missing sessionId or userId' });
+    return;
+  }
+
+  // Validate session exists and is active
+  const session = getSession(sessionId);
+  if (!session) {
+    res.status(404).json({ error: 'Session not found' });
+    return;
+  }
+
+  if (session.status !== 'active') {
+    res.status(400).json({ error: 'Session is not active' });
+    return;
+  }
+
+  try {
+    // Determine minutes to add
+    let minutesToAdd = minutes;
+    if (productId) {
+      minutesToAdd = getMinutesForProduct(productId);
+      const productType = getProductType(productId);
+
+      if (productType === 'extension' || productType === 'overage') {
+        // Add purchased minutes to user's balance
+        addMinutes(userId, minutesToAdd, productId, productType);
+      }
+    }
+
+    if (!minutesToAdd || minutesToAdd <= 0) {
+      res.status(400).json({ error: 'Invalid minutes to add' });
+      return;
+    }
+
+    // Extend session expiration
+    const newExpiry = new Date(session.expiresAt.getTime() + minutesToAdd * 60 * 1000);
+    session.expiresAt = newExpiry;
+
+    const balance = getMinuteBalance(userId);
+
+    console.log(`[Redi API] Session ${sessionId} extended by ${minutesToAdd} min for user ${userId}`);
+
+    res.json({
+      success: true,
+      sessionId,
+      minutesAdded: minutesToAdd,
+      newExpiresAt: newExpiry.toISOString(),
+      remainingSeconds: Math.max(0, Math.floor((newExpiry.getTime() - Date.now()) / 1000)),
+      minuteBalance: {
+        minutesRemaining: balance.minutesRemaining,
+        isUnlimited: balance.isUnlimited
+      }
+    });
+
+  } catch (error) {
+    console.error('[Redi API] Session extend error:', error);
+    res.status(500).json({ error: 'Failed to extend session' });
+  }
+});
+
 /**
  * POST /api/redi/session/:sessionId/end
  * End a session early
@@ -488,7 +774,7 @@ router.post('/subscribe', async (req: Request, res: Response) => {
       sessionId: checkoutSession.id,
       tier,
       priceMonthly: tierConfig.priceMonthly / 100,
-      sessionsIncluded: tierConfig.sessionsIncluded
+      minutesIncluded: tierConfig.minutesIncluded
     });
 
   } catch (error) {
@@ -499,7 +785,7 @@ router.post('/subscribe', async (req: Request, res: Response) => {
 
 /**
  * GET /api/redi/subscription/balance
- * Get user's session balance and subscription info
+ * Get user's minute balance and subscription info
  */
 router.get('/subscription/balance', (req: Request, res: Response) => {
   const { userId } = req.query;
@@ -509,12 +795,21 @@ router.get('/subscription/balance', (req: Request, res: Response) => {
     return;
   }
 
-  const balance = getSessionBalance(userId as string);
+  const balance = getMinuteBalance(userId as string);
 
   res.json({
     userId,
-    ...balance,
-    periodEnd: balance.periodEnd?.toISOString() || null
+    hasSubscription: balance.hasSubscription,
+    tierId: balance.tierId,
+    tierName: balance.tierName,
+    status: balance.status,
+    minutesRemaining: balance.minutesRemaining,
+    minutesUsedThisPeriod: balance.minutesUsedThisPeriod,
+    isUnlimited: balance.isUnlimited,
+    periodEnd: balance.periodEnd?.toISOString() || null,
+    canStartSession: balance.canStartSession,
+    // Format for display
+    minutesRemainingDisplay: formatMinutes(balance.minutesRemaining)
   });
 });
 

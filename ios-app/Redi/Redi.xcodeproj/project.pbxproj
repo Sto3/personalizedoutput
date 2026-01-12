@@ -8,9 +8,11 @@
 
 /* Begin PBXBuildFile section */
 		02C31AED37CCB58BF6AD1EE2 /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */; };
+		082690F2D9C74568BCA66AD6 /* SessionExtensionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */; };
 		39287B4F803973145E3EE010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97D9CC5312EFE7EC3589A208 /* Assets.xcassets */; };
 		42F4B1A4BF3CDC673F2B6D61 /* SessionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DFA597214E78B4FF52CEC3 /* SessionViewModel.swift */; };
 		48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F172479862AD94B0F25637 /* MotionService.swift */; };
+		4A5CC964788FBFBC3147BA44 /* WakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */; };
 		5DC70DA35688C05D2825B276 /* RediApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89FED5AD019E3A6E33F5A1E3 /* RediApp.swift */; };
 		68D158F67F06953BC0A05A34 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA8A2494A90C7565782AB51B /* OnboardingView.swift */; };
 		7EF88080B323380BFA82F74F /* WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C9C0A0F441E508F2A48580E /* WebSocketService.swift */; };
@@ -19,6 +21,7 @@
 		A66634CF8EC7740D40897F19 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914EA6EA78E0805AC7676CEA /* SessionView.swift */; };
 		BA0B1E2C9D418685240D4414 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE5395098EB5DED9990A4C0 /* HomeView.swift */; };
 		DED19773F5CEE6421A1D38AC /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C63A793466E4E7AAF9988A /* HistoryView.swift */; };
+		ED2BF773D000DBF150F17712 /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */; };
 		ED79ACF21932FDCFD407078B /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150F0DC41592737940795313 /* AudioService.swift */; };
 /* End PBXBuildFile section */
 
@@ -32,7 +35,10 @@
 		8CE5395098EB5DED9990A4C0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		914EA6EA78E0805AC7676CEA /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		97D9CC5312EFE7EC3589A208 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExtensionOverlay.swift; sourceTree = "<group>"; };
 		A4F172479862AD94B0F25637 /* MotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionService.swift; sourceTree = "<group>"; };
+		B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
+		BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
 		DA8A2494A90C7565782AB51B /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		DD078B8E09E9F023A212E581 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
@@ -54,6 +60,7 @@
 				74C63A793466E4E7AAF9988A /* HistoryView.swift */,
 				8CE5395098EB5DED9990A4C0 /* HomeView.swift */,
 				DA8A2494A90C7565782AB51B /* OnboardingView.swift */,
+				998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */,
 				914EA6EA78E0805AC7676CEA /* SessionView.swift */,
 			);
 			path = Views;
@@ -65,6 +72,8 @@
 				150F0DC41592737940795313 /* AudioService.swift */,
 				EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */,
 				A4F172479862AD94B0F25637 /* MotionService.swift */,
+				BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */,
+				B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */,
 				8C9C0A0F441E508F2A48580E /* WebSocketService.swift */,
 			);
 			path = Services;
@@ -188,8 +197,11 @@
 				48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */,
 				68D158F67F06953BC0A05A34 /* OnboardingView.swift in Sources */,
 				5DC70DA35688C05D2825B276 /* RediApp.swift in Sources */,
+				082690F2D9C74568BCA66AD6 /* SessionExtensionOverlay.swift in Sources */,
 				A66634CF8EC7740D40897F19 /* SessionView.swift in Sources */,
 				42F4B1A4BF3CDC673F2B6D61 /* SessionViewModel.swift in Sources */,
+				ED2BF773D000DBF150F17712 /* StoreKitService.swift in Sources */,
+				4A5CC964788FBFBC3147BA44 /* WakeWordService.swift in Sources */,
 				7EF88080B323380BFA82F74F /* WebSocketService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

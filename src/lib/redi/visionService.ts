@@ -49,7 +49,7 @@ Be concise and focused on what's relevant to helping the user.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 300,
       messages: [{
         role: 'user',
@@ -142,7 +142,7 @@ Be encouraging but honest. Focus on ONE key improvement at a time.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-sonnet-4-5-20250929',
       max_tokens: 400,
       messages: [{
         role: 'user',

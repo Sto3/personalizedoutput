@@ -1,0 +1,15 @@
+{
+  "alerts": [
+    {
+      "type": "daily_summary",
+      "timestamp": "2026-01-10T19:05:15.579Z",
+      "message": "📊 Daily Summary - 60 views, 0 generations"
+    },
+    {
+      "type": "daily_summary",
+      "timestamp": "2026-01-11T19:19:16.781Z",
+      "message": "📊 Daily Summary - 60 views, 0 generations"
+    }
+  ],
+  "lastDailySummary": "2026-01-11"
+}

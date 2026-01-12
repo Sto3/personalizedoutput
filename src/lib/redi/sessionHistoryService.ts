@@ -312,7 +312,7 @@ Total AI responses: ${session.aiResponses.length}
 Write a brief, helpful summary like: "Practiced piano scales with focus on hand positioning. Improved finger independence on the right hand."`;
 
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-20250514',
+    model: 'claude-sonnet-4-5-20250929',
     max_tokens: 100,
     messages: [{ role: 'user', content: prompt }]
   });

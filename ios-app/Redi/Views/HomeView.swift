@@ -87,8 +87,8 @@ struct HomeView: View {
         } message: {
             Text(viewModel.error ?? "Unknown error")
         }
-        .onAppear {
-            viewModel.loadSubscriptionStatus()
+        .task {
+            await viewModel.loadSubscriptionStatus()
         }
     }
 
@@ -319,9 +319,11 @@ struct HomeView: View {
                 Spacer()
 
                 if subscription.canStartSession {
-                    Button(action: {
-                        viewModel.startSubscriptionSession()
-                    }) {
+                    Button {
+                        Task {
+                            await viewModel.startSubscriptionSession()
+                        }
+                    } label: {
                         Text("Quick Start")
                             .font(.subheadline)
                             .fontWeight(.semibold)
@@ -457,9 +459,11 @@ struct HomeView: View {
     // MARK: - Subscribe Button
 
     private var subscribeButton: some View {
-        Button(action: {
-            viewModel.startSubscription(tier: selectedTier)
-        }) {
+        Button {
+            Task {
+                await viewModel.purchaseSubscription(tier: selectedTier)
+            }
+        } label: {
             HStack {
                 if viewModel.isLoading {
                     ProgressView()
@@ -467,7 +471,7 @@ struct HomeView: View {
                 } else {
                     Text("Subscribe to \(selectedTier.displayName)")
                         .font(.headline)
-                    Text("$\(selectedTier.priceMonthly)/mo")
+                    Text(viewModel.subscriptionPriceDisplay(for: selectedTier))
                         .font(.headline)
                         .opacity(0.8)
                 }
@@ -490,18 +494,11 @@ struct HomeView: View {
     // MARK: - Start Button (One-Time)
 
     private var startButton: some View {
-        let priceForDuration: Int = {
-            switch viewModel.config.durationMinutes {
-            case 20: return 14
-            case 30: return 26
-            case 60: return 49
-            default: return 26
+        Button {
+            Task {
+                await viewModel.purchaseSession()
             }
-        }()
-
-        return Button(action: {
-            viewModel.startCheckout()
-        }) {
+        } label: {
             HStack {
                 if viewModel.isLoading {
                     ProgressView()
@@ -509,7 +506,7 @@ struct HomeView: View {
                 } else {
                     Text("Start \(viewModel.config.durationMinutes) Min Session")
                         .font(.headline)
-                    Text("$\(priceForDuration)")
+                    Text(viewModel.priceDisplay(for: viewModel.config.durationMinutes))
                         .font(.headline)
                         .opacity(0.8)
                 }
