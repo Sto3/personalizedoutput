@@ -160,12 +160,20 @@ export async function generateInsight(
   mode: RediMode,
   transcriptBuffer: string[],
   visualContext: string,
-  sensitivity: number
+  sensitivity: number,
+  recentResponses?: string[],
+  transcriptCountAtLastSpoke?: number
 ): Promise<{ insight: string; confidence: number } | null> {
   const modeConfig = MODE_CONFIGS[mode];
   const recentTranscript = transcriptBuffer.slice(-10).join('\n');
 
   if (!recentTranscript && !visualContext) {
+    return null;
+  }
+
+  // Don't generate if no new transcript content since last spoke
+  if (transcriptCountAtLastSpoke !== undefined &&
+      transcriptBuffer.length <= transcriptCountAtLastSpoke) {
     return null;
   }
 
@@ -233,6 +241,25 @@ Should you say something? If yes, what would you say naturally?`;
       confidence -= 0.1;
     }
 
+    // Check for similarity with recent responses to prevent repetition
+    if (recentResponses && recentResponses.length > 0) {
+      const textLower = text.toLowerCase();
+      for (const recent of recentResponses) {
+        const recentLower = recent.toLowerCase();
+        // Simple similarity check - if 60%+ of words match, reject
+        const textWords = textLower.split(/\s+/).filter(w => w.length > 3);
+        const recentWords = recentLower.split(/\s+/).filter(w => w.length > 3);
+        if (textWords.length > 0) {
+          const matchCount = textWords.filter(w => recentWords.includes(w)).length;
+          const similarity = matchCount / textWords.length;
+          if (similarity > 0.6) {
+            console.log('[Redi Decision] Rejecting similar insight - too repetitive');
+            return null;
+          }
+        }
+      }
+    }
+
     return {
       insight: text,
       confidence: Math.min(1, Math.max(0, confidence))
@@ -298,7 +325,9 @@ export function createInitialContext(sessionId: string, mode: RediMode, sensitiv
     visualContext: '',
     pendingInsight: null,
     insightConfidence: 0,
-    mode
+    mode,
+    recentResponses: [],
+    transcriptCountAtLastSpoke: 0
   };
 }
 
@@ -339,8 +368,18 @@ export function updatePendingInsight(ctx: DecisionContext, insight: string | nul
 /**
  * Mark that Redi just spoke
  */
-export function markSpoke(ctx: DecisionContext): void {
+export function markSpoke(ctx: DecisionContext, spokenText?: string): void {
   ctx.lastSpokeAt = Date.now();
+  ctx.transcriptCountAtLastSpoke = ctx.transcriptBuffer.length;
+
+  // Track recent responses to avoid repetition (keep last 5)
+  if (spokenText) {
+    ctx.recentResponses.push(spokenText);
+    if (ctx.recentResponses.length > 5) {
+      ctx.recentResponses.shift();
+    }
+  }
+
   ctx.pendingInsight = null;
   ctx.insightConfidence = 0;
 }

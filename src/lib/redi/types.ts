@@ -61,6 +61,9 @@ export interface DecisionContext {
   pendingInsight: string | null;
   insightConfidence: number;
   mode: RediMode;
+  // Anti-repetition tracking
+  recentResponses: string[];         // Last 5 responses to avoid repeating
+  transcriptCountAtLastSpoke: number; // Transcript count when we last spoke
 }
 
 export interface SpeakDecision {

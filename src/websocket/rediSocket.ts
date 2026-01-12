@@ -659,8 +659,8 @@ async function speakResponse(sessionId: string, text: string): Promise<void> {
     });
   }
 
-  // Mark that we spoke
-  markSpoke(ctx);
+  // Mark that we spoke and track this response to avoid repetition
+  markSpoke(ctx, text);
 }
 
 /**
@@ -719,7 +719,9 @@ function startInsightLoop(sessionId: string): void {
       session.mode,
       ctx.transcriptBuffer,
       ctx.visualContext,
-      ctx.sensitivity
+      ctx.sensitivity,
+      ctx.recentResponses,
+      ctx.transcriptCountAtLastSpoke
     );
 
     if (insight) {
