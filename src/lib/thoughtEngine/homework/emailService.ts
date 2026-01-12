@@ -164,7 +164,7 @@ const EMAIL_TEMPLATES = {
     `
   }),
 
-  remakeStarted: (order: HomeworkOrder, originalOrderId: string) => ({
+  remakeStarted: (order: HomeworkOrder) => ({
     subject: `Remaking ${order.intake.childName}'s Lesson`,
     html: `
 <!DOCTYPE html>

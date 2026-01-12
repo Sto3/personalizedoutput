@@ -408,8 +408,10 @@ async function generateParentSummary(
 
     doc
       .fillColor(COLORS.text)
+      .font('Helvetica-Bold')
       .fontSize(FONTS.body)
-      .text('Not quite right?', 70, doc.y - 65, { bold: true })
+      .text('Not quite right?', 70, doc.y - 65)
+      .font('Helvetica')
       .fontSize(FONTS.small)
       .text('If this lesson didn\'t click for your child, you can request one free remake.', 70)
       .text('Just visit personalizedoutput.com/homework-rescue/remake', 70)
