@@ -64,6 +64,8 @@ export interface DecisionContext {
   // Anti-repetition tracking
   recentResponses: string[];         // Last 5 responses to avoid repeating
   transcriptCountAtLastSpoke: number; // Transcript count when we last spoke
+  visualContextAtLastSpoke: string;  // Visual context hash when we last spoke
+  isSpeaking: boolean;               // Lock to prevent concurrent speaks
 }
 
 export interface SpeakDecision {

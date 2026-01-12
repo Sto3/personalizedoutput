@@ -31,28 +31,88 @@ class WebSocketService: NSObject, ObservableObject {
     private var pingTimer: Timer?
     private let baseURL: String
     private var sessionId: String?
+    private var deviceId: String?
+    private var cancellables = Set<AnyCancellable>()
+
+    // Reconnection state
+    private var shouldReconnect: Bool = false
+    private var reconnectAttempts: Int = 0
+    private var maxReconnectAttempts: Int = 10
+    private var reconnectTimer: Timer?
 
     // MARK: - Initialization
 
     init(baseURL: String = "wss://personalizedoutput.com") {
         self.baseURL = baseURL
         super.init()
+        setupAppLifecycleObservers()
+    }
+
+    deinit {
+        removeAppLifecycleObservers()
+    }
+
+    // MARK: - App Lifecycle
+
+    private func setupAppLifecycleObservers() {
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidEnterBackground),
+            name: UIApplication.didEnterBackgroundNotification,
+            object: nil
+        )
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
+            object: nil
+        )
+    }
+
+    private func removeAppLifecycleObservers() {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func appDidEnterBackground() {
+        print("[WebSocket] App entering background")
+        // Keep connection alive briefly for quick returns
+    }
+
+    @objc private func appWillEnterForeground() {
+        print("[WebSocket] App entering foreground")
+        // Reconnect if we were connected but lost connection
+        if shouldReconnect && !isConnected {
+            reconnect()
+        }
     }
 
     // MARK: - Connection Management
 
     func connect(sessionId: String, deviceId: String? = nil) {
         self.sessionId = sessionId
+        self.shouldReconnect = true
+        self.reconnectAttempts = 0
 
         // Get device ID - use provided or fall back to device identifier
         let actualDeviceId = deviceId ?? UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+        self.deviceId = actualDeviceId
 
-        guard let url = URL(string: "\(baseURL)/ws/redi?sessionId=\(sessionId)&deviceId=\(actualDeviceId)") else {
+        performConnect()
+    }
+
+    private func performConnect() {
+        guard let sessionId = sessionId, let deviceId = deviceId else { return }
+
+        guard let url = URL(string: "\(baseURL)/ws/redi?sessionId=\(sessionId)&deviceId=\(deviceId)") else {
             error = "Invalid WebSocket URL"
             return
         }
 
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 30
+        config.timeoutIntervalForResource = 300
+
+        let session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
         webSocketTask = session.webSocketTask(with: url)
         webSocketTask?.resume()
 
@@ -62,12 +122,35 @@ class WebSocketService: NSObject, ObservableObject {
         print("[WebSocket] Connecting to \(url)")
     }
 
+    func reconnect() {
+        guard shouldReconnect, reconnectAttempts < maxReconnectAttempts else {
+            print("[WebSocket] Max reconnect attempts reached or reconnection disabled")
+            return
+        }
+
+        reconnectAttempts += 1
+        let delay = min(pow(2.0, Double(reconnectAttempts)), 30.0) // Exponential backoff, max 30s
+
+        print("[WebSocket] Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+
+        reconnectTimer?.invalidate()
+        reconnectTimer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in
+            self?.performConnect()
+        }
+    }
+
     func disconnect() {
+        shouldReconnect = false
+        reconnectTimer?.invalidate()
+        reconnectTimer = nil
         pingTimer?.invalidate()
         pingTimer = nil
         webSocketTask?.cancel(with: .goingAway, reason: nil)
         webSocketTask = nil
-        isConnected = false
+
+        DispatchQueue.main.async {
+            self.isConnected = false
+        }
         print("[WebSocket] Disconnected")
     }
 
@@ -275,16 +358,40 @@ class WebSocketService: NSObject, ObservableObject {
 
 extension WebSocketService: URLSessionWebSocketDelegate {
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didOpenWithProtocol protocol: String?) {
-        print("[WebSocket] Connected")
+        print("[WebSocket] Connected successfully")
         DispatchQueue.main.async {
             self.isConnected = true
+            self.reconnectAttempts = 0 // Reset on successful connection
+            self.error = nil
         }
     }
 
     func urlSession(_ session: URLSession, webSocketTask: URLSessionWebSocketTask, didCloseWith closeCode: URLSessionWebSocketTask.CloseCode, reason: Data?) {
-        print("[WebSocket] Closed with code: \(closeCode)")
+        let reasonString = reason.flatMap { String(data: $0, encoding: .utf8) } ?? "unknown"
+        print("[WebSocket] Closed with code: \(closeCode), reason: \(reasonString)")
+
         DispatchQueue.main.async {
             self.isConnected = false
+
+            // Auto-reconnect unless it was a clean close or explicit disconnect
+            if self.shouldReconnect && closeCode != .normalClosure && closeCode != .goingAway {
+                self.reconnect()
+            }
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
+        if let error = error {
+            print("[WebSocket] Connection error: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                self.isConnected = false
+                self.error = error.localizedDescription
+
+                // Auto-reconnect on error
+                if self.shouldReconnect {
+                    self.reconnect()
+                }
+            }
         }
     }
 }

@@ -162,8 +162,15 @@ export async function generateInsight(
   visualContext: string,
   sensitivity: number,
   recentResponses?: string[],
-  transcriptCountAtLastSpoke?: number
+  transcriptCountAtLastSpoke?: number,
+  visualContextAtLastSpoke?: string,
+  isSpeaking?: boolean
 ): Promise<{ insight: string; confidence: number } | null> {
+  // Don't generate if currently speaking
+  if (isSpeaking) {
+    return null;
+  }
+
   const modeConfig = MODE_CONFIGS[mode];
   const recentTranscript = transcriptBuffer.slice(-10).join('\n');
 
@@ -171,9 +178,15 @@ export async function generateInsight(
     return null;
   }
 
-  // Don't generate if no new transcript content since last spoke
-  if (transcriptCountAtLastSpoke !== undefined &&
-      transcriptBuffer.length <= transcriptCountAtLastSpoke) {
+  // Check if there's new content since last spoke
+  const hasNewTranscript = transcriptCountAtLastSpoke === undefined ||
+                           transcriptBuffer.length > transcriptCountAtLastSpoke;
+  const hasNewVisual = visualContextAtLastSpoke === undefined ||
+                       visualContext !== visualContextAtLastSpoke;
+
+  // Don't generate if nothing new to say about
+  if (!hasNewTranscript && !hasNewVisual) {
+    console.log('[Redi Decision] Skipping insight - no new content since last spoke');
     return null;
   }
 
@@ -327,7 +340,9 @@ export function createInitialContext(sessionId: string, mode: RediMode, sensitiv
     insightConfidence: 0,
     mode,
     recentResponses: [],
-    transcriptCountAtLastSpoke: 0
+    transcriptCountAtLastSpoke: 0,
+    visualContextAtLastSpoke: '',
+    isSpeaking: false
   };
 }
 
@@ -366,11 +381,25 @@ export function updatePendingInsight(ctx: DecisionContext, insight: string | nul
 }
 
 /**
- * Mark that Redi just spoke
+ * Mark that Redi is about to speak (acquire lock)
+ */
+export function markSpeakingStart(ctx: DecisionContext): boolean {
+  if (ctx.isSpeaking) {
+    return false; // Already speaking, don't interrupt
+  }
+  ctx.isSpeaking = true;
+  ctx.pendingInsight = null; // Clear immediately to prevent re-trigger
+  ctx.insightConfidence = 0;
+  return true;
+}
+
+/**
+ * Mark that Redi finished speaking (release lock)
  */
 export function markSpoke(ctx: DecisionContext, spokenText?: string): void {
   ctx.lastSpokeAt = Date.now();
   ctx.transcriptCountAtLastSpoke = ctx.transcriptBuffer.length;
+  ctx.visualContextAtLastSpoke = ctx.visualContext; // Track visual context too
 
   // Track recent responses to avoid repetition (keep last 5)
   if (spokenText) {
@@ -382,4 +411,5 @@ export function markSpoke(ctx: DecisionContext, spokenText?: string): void {
 
   ctx.pendingInsight = null;
   ctx.insightConfidence = 0;
+  ctx.isSpeaking = false; // Release lock
 }

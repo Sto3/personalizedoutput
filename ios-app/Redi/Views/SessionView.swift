@@ -20,8 +20,8 @@ struct SessionView: View {
 
     var body: some View {
         ZStack {
-            // Camera Preview (full screen background)
-            CameraPreviewView(previewLayer: viewModel.cameraService.previewLayer)
+            // Camera Preview (full screen background) with pinch-to-zoom
+            CameraPreviewView(previewLayer: viewModel.cameraService.previewLayer, cameraService: viewModel.cameraService)
                 .ignoresSafeArea()
 
             // Overlay content
@@ -623,15 +623,37 @@ struct SessionView: View {
 
 struct CameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer?
+    let cameraService: CameraService
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(cameraService: cameraService)
+    }
 
     func makeUIView(context: Context) -> CameraPreviewUIView {
         let view = CameraPreviewUIView()
         view.backgroundColor = .black
+
+        // Add pinch gesture for zoom
+        let pinchGesture = UIPinchGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePinch(_:)))
+        view.addGestureRecognizer(pinchGesture)
+
         return view
     }
 
     func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
         uiView.previewLayer = previewLayer
+    }
+
+    class Coordinator: NSObject {
+        let cameraService: CameraService
+
+        init(cameraService: CameraService) {
+            self.cameraService = cameraService
+        }
+
+        @objc func handlePinch(_ gesture: UIPinchGestureRecognizer) {
+            cameraService.handlePinchZoom(scale: gesture.scale, state: gesture.state)
+        }
     }
 }
 
