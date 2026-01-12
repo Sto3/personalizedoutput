@@ -641,8 +641,23 @@ async function speakResponse(sessionId: string, text: string): Promise<void> {
     }
   });
 
-  // Generate and stream voice (audio routing handled by broadcastAudio)
-  await speak(sessionId, text, { stream: true });
+  // Generate complete audio (non-streaming for better quality and no stuttering)
+  const audioBuffer = await speak(sessionId, text);
+
+  if (audioBuffer) {
+    // Send complete audio at once - prevents breaking up on inconsistent networks
+    broadcastAudio(sessionId, {
+      type: 'voice_audio',
+      sessionId,
+      timestamp: Date.now(),
+      payload: {
+        audio: audioBuffer.toString('base64'),
+        format: 'mp3',
+        isStreaming: false,
+        isFinal: true
+      }
+    });
+  }
 
   // Mark that we spoke
   markSpoke(ctx);

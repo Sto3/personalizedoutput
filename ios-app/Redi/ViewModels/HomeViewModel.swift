@@ -281,16 +281,29 @@ class APIService {
         ]
         request.httpBody = try JSONSerialization.data(withJSONObject: body)
 
+        print("[HomeViewModel] Sending session/apple request with productId: \(productId)")
+
         let (data, response) = try await URLSession.shared.data(for: request)
 
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        guard let httpResponse = response as? HTTPURLResponse else {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(RediSession.self, from: data)
+        // Log raw response for debugging
+        if let rawJson = String(data: data, encoding: .utf8) {
+            print("[HomeViewModel] Server response (\(httpResponse.statusCode)): \(rawJson)")
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            throw URLError(.badServerResponse)
+        }
+
+        do {
+            return try JSONDecoder.rediDecoder.decode(RediSession.self, from: data)
+        } catch {
+            print("[HomeViewModel] Decode error: \(error)")
+            throw error
+        }
     }
 
     // MARK: - Subscription Management (Async)
@@ -305,9 +318,7 @@ class APIService {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(UserSubscription.self, from: data)
+        return try JSONDecoder.rediDecoder.decode(UserSubscription.self, from: data)
     }
 
     func startSubscriptionSessionAsync(
@@ -338,9 +349,7 @@ class APIService {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(RediSession.self, from: data)
+        return try JSONDecoder.rediDecoder.decode(RediSession.self, from: data)
     }
 
     // MARK: - Session Join
@@ -365,9 +374,7 @@ class APIService {
                     throw URLError(.badServerResponse)
                 }
 
-                let decoder = JSONDecoder()
-                decoder.dateDecodingStrategy = .iso8601
-                return try decoder.decode(RediSession.self, from: data)
+                return try JSONDecoder.rediDecoder.decode(RediSession.self, from: data)
             }
             .eraseToAnyPublisher()
     }

@@ -118,7 +118,7 @@ async function generateSpeech(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
     {
       text,
-      model_id: 'eleven_turbo_v2_5',
+      model_id: 'eleven_multilingual_v2',  // Highest quality model
       voice_settings: {
         stability: config.stability,
         similarity_boost: config.similarityBoost,
@@ -157,7 +157,7 @@ async function streamSpeech(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`,
       {
         text,
-        model_id: 'eleven_turbo_v2_5',
+        model_id: 'eleven_multilingual_v2',  // Highest quality model
         voice_settings: {
           stability: config.stability,
           similarity_boost: config.similarityBoost,

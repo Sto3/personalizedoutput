@@ -6,6 +6,7 @@
 
 import Foundation
 import Combine
+import UIKit
 
 class WebSocketService: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -40,10 +41,13 @@ class WebSocketService: NSObject, ObservableObject {
 
     // MARK: - Connection Management
 
-    func connect(sessionId: String) {
+    func connect(sessionId: String, deviceId: String? = nil) {
         self.sessionId = sessionId
 
-        guard let url = URL(string: "\(baseURL)/ws/redi?sessionId=\(sessionId)") else {
+        // Get device ID - use provided or fall back to device identifier
+        let actualDeviceId = deviceId ?? UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+
+        guard let url = URL(string: "\(baseURL)/ws/redi?sessionId=\(sessionId)&deviceId=\(actualDeviceId)") else {
             error = "Invalid WebSocket URL"
             return
         }

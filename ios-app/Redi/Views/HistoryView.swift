@@ -285,14 +285,12 @@ class HistoryViewModel: ObservableObject {
 
         do {
             let (data, _) = try await URLSession.shared.data(from: url)
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
 
             struct Response: Codable {
                 let history: [SessionHistoryEntry]
             }
 
-            let response = try decoder.decode(Response.self, from: data)
+            let response = try JSONDecoder.rediDecoder.decode(Response.self, from: data)
             return response.history
         } catch {
             print("[History] Failed to fetch history: \(error)")

@@ -53,7 +53,15 @@ class CameraService: NSObject, ObservableObject {
             guard let self = self else { return }
 
             self.captureSession.beginConfiguration()
-            self.captureSession.sessionPreset = .medium
+            // Use 1080p HD for excellent quality on iPhone 16 Pro Max
+            // Options: .hd4K3840x2160 (4K), .hd1920x1080 (1080p), .hd1280x720 (720p)
+            if self.captureSession.canSetSessionPreset(.hd1920x1080) {
+                self.captureSession.sessionPreset = .hd1920x1080
+            } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
+                self.captureSession.sessionPreset = .hd1280x720
+            } else {
+                self.captureSession.sessionPreset = .high
+            }
 
             // Add video input
             guard let videoDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),

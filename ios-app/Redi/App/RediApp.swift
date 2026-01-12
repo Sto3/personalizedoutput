@@ -28,8 +28,27 @@ class AppState: ObservableObject {
         }
     }
 
+    private var sessionObserver: NSObjectProtocol?
+
     init() {
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
+
+        // Listen for session started notifications
+        sessionObserver = NotificationCenter.default.addObserver(
+            forName: .rediSessionStarted,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            if let session = notification.object as? RediSession {
+                self?.currentSession = session
+            }
+        }
+    }
+
+    deinit {
+        if let observer = sessionObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
 }
 

@@ -29,10 +29,7 @@ struct SessionView: View {
                 // Top bar
                 topBar
 
-                // Join code display (host only)
-                if viewModel.session.isHost, let joinCode = viewModel.session.joinCode {
-                    joinCodeDisplay(code: joinCode)
-                }
+                // Join code moved to top bar - no longer takes vertical space here
 
                 Spacer()
 
@@ -92,17 +89,13 @@ struct SessionView: View {
 
             Spacer()
 
-            // Participant count (if multi-phone)
-            if viewModel.session.participantCount > 1 || viewModel.session.isHost {
+            // Invite Others / Participant count (compact, in top bar)
+            if viewModel.session.isHost, let joinCode = viewModel.session.joinCode {
                 Button(action: {
-                    if viewModel.session.isHost {
-                        withAnimation {
-                            viewModel.showingAudioSettings.toggle()
-                        }
-                    }
+                    showingInviteSheet = true
                 }) {
                     HStack(spacing: 4) {
-                        Image(systemName: "person.2.fill")
+                        Image(systemName: "person.badge.plus")
                         Text("\(viewModel.session.participantCount)/\(viewModel.session.maxParticipants)")
                             .font(.caption)
                     }
@@ -111,7 +104,20 @@ struct SessionView: View {
                     .background(Color.cyan.opacity(0.3))
                     .cornerRadius(20)
                 }
-                .disabled(!viewModel.session.isHost)
+                .sheet(isPresented: $showingInviteSheet) {
+                    inviteSheet(code: joinCode)
+                }
+            } else if viewModel.session.participantCount > 1 {
+                // Non-host with multiple participants
+                HStack(spacing: 4) {
+                    Image(systemName: "person.2.fill")
+                    Text("\(viewModel.session.participantCount)/\(viewModel.session.maxParticipants)")
+                        .font(.caption)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.cyan.opacity(0.3))
+                .cornerRadius(20)
             }
 
             // Mode indicator
@@ -136,14 +142,15 @@ struct SessionView: View {
                     .foregroundColor(.white.opacity(0.7))
             }
 
-            // End button
+            // End button - larger tap target
             Button(action: {
                 viewModel.showingEndAlert = true
             }) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.red.opacity(0.8))
+                    .font(.system(size: 28))
+                    .foregroundColor(.red.opacity(0.9))
             }
+            .frame(width: 44, height: 44)
         }
         .foregroundColor(.white)
     }
@@ -551,15 +558,19 @@ struct SessionView: View {
                     .cornerRadius(25)
             }
 
-            // Pause/Resume
+            // Pause/Resume - pauses Redi's listening and responding
             Button(action: {
                 viewModel.togglePause()
             }) {
-                Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
-                    .font(.title2)
-                    .frame(width: 50, height: 50)
-                    .background(viewModel.isPaused ? Color.green.opacity(0.8) : Color.white.opacity(0.2))
-                    .cornerRadius(25)
+                VStack(spacing: 2) {
+                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                        .font(.title2)
+                    Text(viewModel.isPaused ? "Resume" : "Pause")
+                        .font(.system(size: 9))
+                }
+                .frame(width: 50, height: 50)
+                .background(viewModel.isPaused ? Color.green.opacity(0.8) : Color.white.opacity(0.2))
+                .cornerRadius(25)
             }
         }
         .foregroundColor(.white)

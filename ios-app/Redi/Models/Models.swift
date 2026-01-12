@@ -474,3 +474,29 @@ struct SessionStats: Codable {
         case averageSessionLength = "average_session_length"
     }
 }
+
+// MARK: - JSONDecoder Extension for ISO8601 with Fractional Seconds
+
+extension JSONDecoder {
+    /// Returns a JSONDecoder configured to handle ISO8601 dates with or without milliseconds
+    static var rediDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        let formatterWithFractionalSeconds = ISO8601DateFormatter()
+        formatterWithFractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        let formatterWithoutFractionalSeconds = ISO8601DateFormatter()
+        formatterWithoutFractionalSeconds.formatOptions = [.withInternetDateTime]
+
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            if let date = formatterWithFractionalSeconds.date(from: dateString) {
+                return date
+            }
+            if let date = formatterWithoutFractionalSeconds.date(from: dateString) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date: \(dateString)")
+        }
+        return decoder
+    }
+}

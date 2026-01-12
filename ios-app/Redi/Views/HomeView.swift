@@ -232,9 +232,7 @@ struct HomeView: View {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(RediSession.self, from: data)
+        return try JSONDecoder.rediDecoder.decode(RediSession.self, from: data)
     }
 
     private func generateJoinCode() -> String {
@@ -571,9 +569,7 @@ struct HomeView: View {
             throw URLError(.badServerResponse)
         }
 
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(RediSession.self, from: data)
+        return try JSONDecoder.rediDecoder.decode(RediSession.self, from: data)
     }
 
     // MARK: - Subscriptions Section

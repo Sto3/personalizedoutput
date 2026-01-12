@@ -42,7 +42,15 @@ class AudioService: NSObject, ObservableObject {
 
     private func setupAudioSession() {
         do {
-            try audioSession.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+            // Use spokenAudio mode for highest quality voice playback
+            // Options: defaultToSpeaker for loudspeaker, allowBluetooth for headphones
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .spokenAudio,
+                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
+            )
+            // Set preferred sample rate for high quality
+            try audioSession.setPreferredSampleRate(44100)
             try audioSession.setActive(true)
         } catch {
             self.error = "Failed to setup audio session: \(error.localizedDescription)"
