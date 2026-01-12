@@ -200,11 +200,9 @@ class CameraService: NSObject, ObservableObject {
         do {
             try device.lockForConfiguration()
 
-            // Enable optical image stabilization if available
-            if device.isOpticalImageStabilizationSupported {
-                // OIS is automatically enabled when supported
-                print("[Camera] Optical Image Stabilization supported")
-            }
+            // Note: Optical Image Stabilization (OIS) is hardware-based and
+            // automatically enabled when available. Video stabilization is
+            // handled separately on the AVCaptureConnection.
 
             // Set focus mode for best sharpness
             if device.isFocusModeSupported(.continuousAutoFocus) {
@@ -216,11 +214,10 @@ class CameraService: NSObject, ObservableObject {
                 device.exposureMode = .continuousAutoExposure
             }
 
-            // Enable HDR if available (better dynamic range)
-            if device.isVideoHDRSupported {
-                device.isVideoHDREnabled = true
-                print("[Camera] HDR enabled")
-            }
+            // Enable automatic HDR (better dynamic range)
+            // Let the system decide when to use HDR
+            device.automaticallyAdjustsVideoHDREnabled = true
+            print("[Camera] Auto HDR enabled")
 
             // Set white balance
             if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
