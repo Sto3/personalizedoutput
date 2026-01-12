@@ -14,8 +14,7 @@ struct HomeView: View {
     @State private var joinCode = ""
     @State private var joinError: String?
     @State private var isJoining = false
-    @State private var purchaseType: PurchaseType = .oneTime
-    @State private var selectedTier: SubscriptionTier = .regular
+    @State private var showSubscriptions = false
     @State private var showingSubscriptionSheet = false
 
     // Admin bypass: tap logo 5 times quickly
@@ -45,17 +44,11 @@ struct HomeView: View {
                     // Sensitivity Slider
                     sensitivitySection
 
-                    // Purchase Type Selector
-                    purchaseTypeSelector
+                    // Try Redi button (for new users)
+                    tryRediButton
 
-                    // Pricing based on purchase type
-                    if purchaseType == .oneTime {
-                        durationSection
-                        startButton
-                    } else {
-                        subscriptionTiersSection
-                        subscribeButton
-                    }
+                    // Subscriptions toggle
+                    subscriptionsSection
 
                     // Join Session Button
                     joinSessionButton
@@ -306,13 +299,13 @@ struct HomeView: View {
                     }
 
                     if subscription.isUnlimited {
-                        Text("Unlimited sessions")
+                        Text("Unlimited minutes")
                             .font(.caption)
                             .foregroundColor(.cyan)
                     } else {
-                        Text("\(subscription.sessionsRemaining) sessions remaining")
+                        Text("\(subscription.sessionsRemaining) min remaining")
                             .font(.caption)
-                            .foregroundColor(subscription.sessionsRemaining <= 1 ? .orange : .cyan)
+                            .foregroundColor(subscription.sessionsRemaining <= 15 ? .orange : .cyan)
                     }
                 }
 
@@ -336,12 +329,12 @@ struct HomeView: View {
                 }
             }
 
-            // Low sessions warning
-            if !subscription.isUnlimited && subscription.sessionsRemaining <= 1 {
+            // Low minutes warning
+            if !subscription.isUnlimited && subscription.sessionsRemaining <= 15 {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
-                    Text("Running low on sessions. Consider upgrading!")
+                    Text("Running low on minutes!")
                         .font(.caption)
                         .foregroundColor(.orange)
                     Spacer()
@@ -358,142 +351,9 @@ struct HomeView: View {
         .cornerRadius(12)
     }
 
-    // MARK: - Purchase Type Selector
+    // MARK: - Try Redi Button
 
-    private var purchaseTypeSelector: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Purchase Option")
-                .font(.headline)
-                .foregroundColor(.white)
-
-            HStack(spacing: 0) {
-                Button(action: { purchaseType = .oneTime }) {
-                    Text("One-Time")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(purchaseType == .oneTime ? Color.cyan : Color.clear)
-                        .foregroundColor(purchaseType == .oneTime ? .black : .white)
-                }
-
-                Button(action: { purchaseType = .subscription }) {
-                    VStack(spacing: 2) {
-                        Text("Subscribe")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
-                        Text("Save up to 40%")
-                            .font(.caption2)
-                            .opacity(0.8)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(purchaseType == .subscription ? Color.purple : Color.clear)
-                    .foregroundColor(purchaseType == .subscription ? .white : .white)
-                }
-            }
-            .background(Color.white.opacity(0.1))
-            .cornerRadius(8)
-        }
-    }
-
-    // MARK: - Duration Selection (One-Time)
-
-    private var durationSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Session Length")
-                .font(.headline)
-                .foregroundColor(.white)
-
-            HStack(spacing: 8) {
-                DurationCard(
-                    minutes: 20,
-                    price: 14,
-                    isSelected: viewModel.config.durationMinutes == 20
-                ) {
-                    viewModel.config.durationMinutes = 20
-                }
-
-                DurationCard(
-                    minutes: 30,
-                    price: 26,
-                    isSelected: viewModel.config.durationMinutes == 30
-                ) {
-                    viewModel.config.durationMinutes = 30
-                }
-
-                DurationCard(
-                    minutes: 60,
-                    price: 49,
-                    isSelected: viewModel.config.durationMinutes == 60,
-                    isFeatured: true
-                ) {
-                    viewModel.config.durationMinutes = 60
-                }
-            }
-        }
-    }
-
-    // MARK: - Subscription Tiers Section
-
-    private var subscriptionTiersSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Choose Your Plan")
-                .font(.headline)
-                .foregroundColor(.white)
-
-            VStack(spacing: 12) {
-                ForEach(SubscriptionTier.allCases, id: \.self) { tier in
-                    SubscriptionTierCard(
-                        tier: tier,
-                        isSelected: selectedTier == tier,
-                        isRecommended: tier == .regular
-                    ) {
-                        selectedTier = tier
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Subscribe Button
-
-    private var subscribeButton: some View {
-        Button {
-            Task {
-                await viewModel.purchaseSubscription(tier: selectedTier)
-            }
-        } label: {
-            HStack {
-                if viewModel.isLoading {
-                    ProgressView()
-                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                } else {
-                    Text("Subscribe to \(selectedTier.displayName)")
-                        .font(.headline)
-                    Text(viewModel.subscriptionPriceDisplay(for: selectedTier))
-                        .font(.headline)
-                        .opacity(0.8)
-                }
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(
-                LinearGradient(
-                    colors: [Color.purple, Color.pink],
-                    startPoint: .leading,
-                    endPoint: .trailing
-                )
-            )
-            .foregroundColor(.white)
-            .cornerRadius(12)
-        }
-        .disabled(viewModel.isLoading)
-    }
-
-    // MARK: - Start Button (Try Redi - 15 min)
-
-    private var startButton: some View {
+    private var tryRediButton: some View {
         Button {
             Task {
                 await viewModel.purchaseTrySession()
@@ -504,11 +364,17 @@ struct HomeView: View {
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
-                    Text("Try Redi - 15 Min")
-                        .font(.headline)
+                    VStack(spacing: 4) {
+                        Text("Try Redi")
+                            .font(.headline)
+                        Text("15 minutes")
+                            .font(.caption)
+                            .opacity(0.8)
+                    }
+                    Spacer()
                     Text(viewModel.trySessionPriceDisplay())
-                        .font(.headline)
-                        .opacity(0.8)
+                        .font(.title2)
+                        .fontWeight(.bold)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -522,6 +388,122 @@ struct HomeView: View {
             )
             .foregroundColor(.white)
             .cornerRadius(12)
+        }
+        .disabled(viewModel.isLoading)
+    }
+
+    // MARK: - Subscriptions Section
+
+    private var subscriptionsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Button(action: { withAnimation { showSubscriptions.toggle() } }) {
+                HStack {
+                    Text("Subscriptions")
+                        .font(.headline)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text("Save with monthly plans")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                    Image(systemName: showSubscriptions ? "chevron.up" : "chevron.down")
+                        .foregroundColor(.gray)
+                }
+            }
+
+            if showSubscriptions {
+                VStack(spacing: 12) {
+                    // Monthly Plan
+                    subscriptionCard(
+                        title: "Monthly",
+                        price: viewModel.monthlyPriceDisplay(),
+                        description: "120 minutes per month",
+                        features: ["Roll over unused time", "All modes included"],
+                        action: {
+                            Task { await viewModel.purchaseSubscription(tier: .regular) }
+                        }
+                    )
+
+                    // Unlimited Plan
+                    subscriptionCard(
+                        title: "Unlimited",
+                        price: viewModel.unlimitedPriceDisplay(),
+                        description: "Unlimited minutes",
+                        features: ["No limits", "Priority support"],
+                        isFeatured: true,
+                        action: {
+                            Task { await viewModel.purchaseSubscription(tier: .unlimited) }
+                        }
+                    )
+                }
+            }
+        }
+        .padding()
+        .background(Color.white.opacity(0.05))
+        .cornerRadius(12)
+    }
+
+    private func subscriptionCard(
+        title: String,
+        price: String,
+        description: String,
+        features: [String],
+        isFeatured: Bool = false,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text(title)
+                                .font(.headline)
+                                .foregroundColor(.white)
+                            if isFeatured {
+                                Text("Best Value")
+                                    .font(.caption2)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.purple)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                            }
+                        }
+                        Text(description)
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                    }
+                    Spacer()
+                    VStack(alignment: .trailing) {
+                        Text(price)
+                            .font(.title3)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        Text("/month")
+                            .font(.caption2)
+                            .foregroundColor(.gray)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    ForEach(features, id: \.self) { feature in
+                        HStack(spacing: 4) {
+                            Image(systemName: "checkmark")
+                                .font(.caption2)
+                                .foregroundColor(.cyan)
+                            Text(feature)
+                                .font(.caption2)
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+            }
+            .padding()
+            .background(isFeatured ? Color.purple.opacity(0.2) : Color.white.opacity(0.05))
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(isFeatured ? Color.purple : Color.gray.opacity(0.3), lineWidth: 1)
+            )
+            .cornerRadius(10)
         }
         .disabled(viewModel.isLoading)
     }
@@ -716,123 +698,6 @@ struct VoiceCard: View {
     }
 }
 
-struct DurationCard: View {
-    let minutes: Int
-    let price: Int
-    let isSelected: Bool
-    var isFeatured: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                if isFeatured {
-                    Text("Best Value")
-                        .font(.caption2)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                        .background(Color.purple)
-                        .cornerRadius(4)
-                }
-
-                Text("\(minutes) min")
-                    .font(.headline)
-
-                Text("$\(price)")
-                    .font(.title)
-                    .fontWeight(.bold)
-            }
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(isSelected ? Color.cyan.opacity(0.2) : Color.white.opacity(0.05))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.cyan : Color.clear, lineWidth: 2)
-            )
-            .cornerRadius(12)
-            .foregroundColor(isSelected ? .cyan : .white)
-        }
-    }
-}
-
-struct SubscriptionTierCard: View {
-    let tier: SubscriptionTier
-    let isSelected: Bool
-    var isRecommended: Bool = false
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Text(tier.displayName)
-                                .font(.headline)
-                                .foregroundColor(.white)
-
-                            if isRecommended {
-                                Text("Recommended")
-                                    .font(.caption2)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 2)
-                                    .background(Color.purple)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(4)
-                            }
-                        }
-
-                        Text(tier.isUnlimited ? "Unlimited sessions" : "\(tier.sessionsIncluded) sessions/month")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-
-                    Spacer()
-
-                    VStack(alignment: .trailing) {
-                        Text("$\(tier.priceMonthly)")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                            .foregroundColor(isSelected ? .purple : .white)
-                        Text("/month")
-                            .font(.caption)
-                            .foregroundColor(.gray)
-                    }
-                }
-
-                // Features list
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(tier.features.prefix(3), id: \.self) { feature in
-                        HStack(spacing: 6) {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.caption)
-                                .foregroundColor(.purple)
-                            Text(feature)
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-                    }
-                }
-
-                // Per-session cost callout
-                if !tier.isUnlimited {
-                    let perSession = tier.priceMonthly / tier.sessionsIncluded
-                    Text("Only $\(perSession)/session")
-                        .font(.caption)
-                        .foregroundColor(.cyan)
-                        .padding(.top, 4)
-                }
-            }
-            .padding()
-            .background(isSelected ? Color.purple.opacity(0.2) : Color.white.opacity(0.05))
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(isSelected ? Color.purple : Color.clear, lineWidth: 2)
-            )
-            .cornerRadius(12)
-        }
-    }
-}
 
 // MARK: - Preview
 
