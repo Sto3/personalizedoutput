@@ -419,7 +419,7 @@ struct HomeView: View {
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
                     VStack(spacing: 4) {
-                        Text("Try Redi")
+                        Text("Get Started with Redi")
                             .font(.headline)
                         Text("15 minutes")
                             .font(.caption)

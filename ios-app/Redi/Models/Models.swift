@@ -234,7 +234,7 @@ struct SessionConfig: Codable {
             mode: .studying,
             sensitivity: 0.5,
             voiceGender: .female,
-            durationMinutes: 30,
+            durationMinutes: 15,
             voiceOnly: false
         )
     }

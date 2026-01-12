@@ -142,15 +142,18 @@ struct SessionView: View {
                     .foregroundColor(.white.opacity(0.7))
             }
 
-            // End button - larger tap target
+            // End button - text for clarity
             Button(action: {
                 viewModel.showingEndAlert = true
             }) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.system(size: 28))
-                    .foregroundColor(.red.opacity(0.9))
+                Text("End")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.red.opacity(0.9))
+                    .cornerRadius(20)
             }
-            .frame(width: 44, height: 44)
         }
         .foregroundColor(.white)
     }
@@ -459,121 +462,109 @@ struct SessionView: View {
     }
 
     // MARK: - Response Area
+    // Captions are hidden for cleaner UI - audio-only experience
+    // Can be re-enabled via Settings in future update
 
     private var responseArea: some View {
-        VStack(spacing: 12) {
-            // Transcript (what user is saying)
-            if let transcript = viewModel.currentTranscript, !transcript.isEmpty {
-                HStack {
-                    Image(systemName: "person.wave.2.fill")
-                        .foregroundColor(.gray)
-                    Text(transcript)
-                        .font(.callout)
-                        .foregroundColor(.white.opacity(0.8))
-                    Spacer()
-                }
-                .padding()
-                .background(Color.black.opacity(0.6))
-                .cornerRadius(12)
-            }
-
-            // AI Response (what Redi is saying)
-            if let response = viewModel.currentAIResponse, !response.isEmpty {
-                HStack {
-                    Image(systemName: "sparkles")
-                        .foregroundColor(.cyan)
-                    Text(response)
-                        .font(.body)
-                        .fontWeight(.medium)
-                        .foregroundColor(.white)
-                    Spacer()
-                }
-                .padding()
-                .background(
-                    LinearGradient(
-                        colors: [Color.cyan.opacity(0.3), Color.purple.opacity(0.3)],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .cornerRadius(12)
-            }
-
-            // Visual analysis (what Redi sees)
-            if let visual = viewModel.currentVisualContext, !visual.isEmpty {
-                HStack {
-                    Image(systemName: "eye.fill")
-                        .foregroundColor(.purple.opacity(0.8))
-                    Text(visual)
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.6))
-                    Spacer()
-                }
-                .padding(.horizontal)
-            }
-        }
-        .frame(maxHeight: 200)
+        // Empty view - Redi speaks, user listens
+        // No text overlays cluttering the camera view
+        EmptyView()
     }
 
     // MARK: - Bottom Controls
 
     private var bottomControls: some View {
-        HStack(spacing: 20) {
-            // Mute toggle
-            Button(action: {
-                viewModel.toggleMute()
-            }) {
-                Image(systemName: viewModel.isMuted ? "mic.slash.fill" : "mic.fill")
-                    .font(.title2)
-                    .frame(width: 50, height: 50)
-                    .background(viewModel.isMuted ? Color.red.opacity(0.8) : Color.white.opacity(0.2))
-                    .cornerRadius(25)
-            }
-
-            // Sensitivity button
-            Button(action: {
-                withAnimation {
-                    viewModel.showingSensitivitySlider.toggle()
+        VStack(spacing: 12) {
+            // Zoom controls
+            HStack(spacing: 8) {
+                Button(action: {
+                    viewModel.cameraService.zoomOut()
+                }) {
+                    Image(systemName: "minus.magnifyingglass")
+                        .font(.title3)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(18)
                 }
-            }) {
-                VStack(spacing: 2) {
-                    Image(systemName: "slider.horizontal.3")
-                    Text(viewModel.sensitivityLabel)
-                        .font(.caption2)
+
+                Text(String(format: "%.1fx", viewModel.cameraService.currentZoom))
+                    .font(.system(.caption, design: .monospaced))
+                    .frame(width: 44)
+
+                Button(action: {
+                    viewModel.cameraService.zoomIn()
+                }) {
+                    Image(systemName: "plus.magnifyingglass")
+                        .font(.title3)
+                        .frame(width: 36, height: 36)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(18)
                 }
-                .font(.title3)
-                .frame(width: 60, height: 50)
-                .background(Color.white.opacity(0.2))
-                .cornerRadius(12)
             }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.black.opacity(0.5))
+            .cornerRadius(20)
 
-            // Camera switch
-            Button(action: {
-                viewModel.switchCamera()
-            }) {
-                Image(systemName: "camera.rotate.fill")
-                    .font(.title2)
-                    .frame(width: 50, height: 50)
-                    .background(Color.white.opacity(0.2))
-                    .cornerRadius(25)
-            }
-
-            // Pause/Resume - pauses Redi's listening and responding
-            Button(action: {
-                viewModel.togglePause()
-            }) {
-                VStack(spacing: 2) {
-                    Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+            // Main controls row
+            HStack(spacing: 20) {
+                // Mute toggle
+                Button(action: {
+                    viewModel.toggleMute()
+                }) {
+                    Image(systemName: viewModel.isMuted ? "mic.slash.fill" : "mic.fill")
                         .font(.title2)
-                    Text(viewModel.isPaused ? "Resume" : "Pause")
-                        .font(.system(size: 9))
+                        .frame(width: 50, height: 50)
+                        .background(viewModel.isMuted ? Color.red.opacity(0.8) : Color.white.opacity(0.2))
+                        .cornerRadius(25)
                 }
-                .frame(width: 50, height: 50)
-                .background(viewModel.isPaused ? Color.green.opacity(0.8) : Color.white.opacity(0.2))
-                .cornerRadius(25)
+
+                // Sensitivity button
+                Button(action: {
+                    withAnimation {
+                        viewModel.showingSensitivitySlider.toggle()
+                    }
+                }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: "slider.horizontal.3")
+                        Text(viewModel.sensitivityLabel)
+                            .font(.caption2)
+                    }
+                    .font(.title3)
+                    .frame(width: 60, height: 50)
+                    .background(Color.white.opacity(0.2))
+                    .cornerRadius(12)
+                }
+
+                // Camera switch
+                Button(action: {
+                    viewModel.switchCamera()
+                }) {
+                    Image(systemName: "camera.rotate.fill")
+                        .font(.title2)
+                        .frame(width: 50, height: 50)
+                        .background(Color.white.opacity(0.2))
+                        .cornerRadius(25)
+                }
+
+                // Pause/Resume - pauses Redi's listening and responding
+                Button(action: {
+                    viewModel.togglePause()
+                }) {
+                    VStack(spacing: 2) {
+                        Image(systemName: viewModel.isPaused ? "play.fill" : "pause.fill")
+                            .font(.title2)
+                        Text(viewModel.isPaused ? "Resume" : "Pause")
+                            .font(.system(size: 9))
+                    }
+                    .frame(width: 50, height: 50)
+                    .background(viewModel.isPaused ? Color.green.opacity(0.8) : Color.white.opacity(0.2))
+                    .cornerRadius(25)
+                }
             }
+            .foregroundColor(.white)
         }
-        .foregroundColor(.white)
         .padding(.bottom, 20)
     }
 

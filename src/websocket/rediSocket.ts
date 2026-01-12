@@ -245,7 +245,7 @@ async function initializeSessionServices(
   voiceGender: 'male' | 'female',
   userId?: string,
   deviceId?: string,
-  durationMinutes: number = 30
+  durationMinutes: number = 15
 ): Promise<void> {
   // Initialize decision context
   const context = createInitialContext(sessionId, mode, sensitivity);

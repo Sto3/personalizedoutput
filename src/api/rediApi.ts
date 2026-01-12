@@ -281,7 +281,7 @@ router.post('/session', async (req: Request, res: Response) => {
       mode: (metadata.mode as RediMode) || 'studying',
       sensitivity: parseFloat(metadata.sensitivity || '0.5'),
       voiceGender: (metadata.voiceGender as VoiceGender) || 'female',
-      durationMinutes: parseInt(metadata.duration || '30') as 20 | 30 | 60
+      durationMinutes: parseInt(metadata.duration || '15') as 15 | 20 | 30 | 60
     };
 
     // Use deviceId from request or from checkout metadata
@@ -976,7 +976,7 @@ router.post('/session/start', async (req: Request, res: Response) => {
     mode: (mode as RediMode) || 'studying',
     sensitivity: sensitivity || 0.5,
     voiceGender: (voiceGender as VoiceGender) || 'female',
-    durationMinutes: 30  // Subscription sessions are 30 min
+    durationMinutes: 15  // Default 15 minute sessions
   };
 
   const hostDeviceId = deviceId || uuidv4();

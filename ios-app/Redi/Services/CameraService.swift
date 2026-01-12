@@ -16,6 +16,8 @@ class CameraService: NSObject, ObservableObject {
     @Published var previewLayer: AVCaptureVideoPreviewLayer?
     @Published var lastSnapshot: UIImage?
     @Published var error: String?
+    @Published var currentZoom: CGFloat = 1.0
+    @Published var maxZoom: CGFloat = 5.0
 
     // MARK: - Publishers
 
@@ -39,6 +41,10 @@ class CameraService: NSObject, ObservableObject {
     private var clipStartTime: Date?
     private var clipDurationMs: Int = 3000
 
+    // Zoom tracking
+    private var currentVideoDevice: AVCaptureDevice?
+    private var lastPinchScale: CGFloat = 1.0
+
     // MARK: - Initialization
 
     override init() {
@@ -53,14 +59,20 @@ class CameraService: NSObject, ObservableObject {
             guard let self = self else { return }
 
             self.captureSession.beginConfiguration()
-            // Use 1080p HD for excellent quality on iPhone 16 Pro Max
-            // Options: .hd4K3840x2160 (4K), .hd1920x1080 (1080p), .hd1280x720 (720p)
-            if self.captureSession.canSetSessionPreset(.hd1920x1080) {
+            // Use 4K for maximum quality on iPhone 16 Pro Max
+            // Falls back to 1080p, then 720p if 4K not available
+            if self.captureSession.canSetSessionPreset(.hd4K3840x2160) {
+                self.captureSession.sessionPreset = .hd4K3840x2160
+                print("[Camera] Using 4K resolution (3840x2160)")
+            } else if self.captureSession.canSetSessionPreset(.hd1920x1080) {
                 self.captureSession.sessionPreset = .hd1920x1080
+                print("[Camera] Using 1080p resolution (1920x1080)")
             } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
                 self.captureSession.sessionPreset = .hd1280x720
+                print("[Camera] Using 720p resolution (1280x720)")
             } else {
                 self.captureSession.sessionPreset = .high
+                print("[Camera] Using 'high' preset")
             }
 
             // Add video input
@@ -74,6 +86,12 @@ class CameraService: NSObject, ObservableObject {
             }
 
             self.captureSession.addInput(videoInput)
+            self.currentVideoDevice = videoDevice
+
+            // Set max zoom based on device capability
+            DispatchQueue.main.async {
+                self.maxZoom = min(videoDevice.activeFormat.videoMaxZoomFactor, 10.0)
+            }
 
             // Add video output
             let videoOutput = AVCaptureVideoDataOutput()
@@ -182,16 +200,76 @@ class CameraService: NSObject, ObservableObject {
                    let newInput = try? AVCaptureDeviceInput(device: newDevice),
                    self.captureSession.canAddInput(newInput) {
                     self.captureSession.addInput(newInput)
+                    self.currentVideoDevice = newDevice
                 }
             }
 
             self.captureSession.commitConfiguration()
+
+            // Update max zoom for new device
+            DispatchQueue.main.async {
+                if let device = self.currentVideoDevice {
+                    self.maxZoom = min(device.activeFormat.videoMaxZoomFactor, 10.0)
+                    self.currentZoom = 1.0
+                }
+            }
         }
+    }
+
+    // MARK: - Zoom Control
+
+    /// Set zoom level directly (1.0 to maxZoom)
+    func setZoom(_ factor: CGFloat) {
+        guard let device = currentVideoDevice else { return }
+
+        let clampedFactor = max(1.0, min(factor, maxZoom))
+
+        sessionQueue.async { [weak self] in
+            do {
+                try device.lockForConfiguration()
+                device.videoZoomFactor = clampedFactor
+                device.unlockForConfiguration()
+
+                DispatchQueue.main.async {
+                    self?.currentZoom = clampedFactor
+                }
+            } catch {
+                print("[Camera] Failed to set zoom: \(error)")
+            }
+        }
+    }
+
+    /// Handle pinch gesture for zoom (called from view)
+    func handlePinchZoom(scale: CGFloat, state: UIGestureRecognizer.State) {
+        switch state {
+        case .began:
+            lastPinchScale = currentZoom
+        case .changed:
+            let newZoom = lastPinchScale * scale
+            setZoom(newZoom)
+        default:
+            break
+        }
+    }
+
+    /// Zoom in by a step (for button control)
+    func zoomIn(step: CGFloat = 0.5) {
+        setZoom(currentZoom + step)
+    }
+
+    /// Zoom out by a step (for button control)
+    func zoomOut(step: CGFloat = 0.5) {
+        setZoom(currentZoom - step)
+    }
+
+    /// Reset zoom to 1x
+    func resetZoom() {
+        setZoom(1.0)
     }
 
     // MARK: - Image Compression
 
-    private func compressImage(_ image: UIImage, quality: CGFloat = 0.6, maxDimension: CGFloat = 720) -> Data? {
+    private func compressImage(_ image: UIImage, quality: CGFloat = 0.85, maxDimension: CGFloat = 1080) -> Data? {
         // Resize if needed
         var processedImage = image
         let size = image.size

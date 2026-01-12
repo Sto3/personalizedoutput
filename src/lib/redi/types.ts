@@ -23,7 +23,7 @@ export interface RediSession {
   mode: RediMode;
   sensitivity: number;          // 0.0 (passive) to 1.0 (active)
   voiceGender: VoiceGender;
-  durationMinutes: 20 | 30 | 60;
+  durationMinutes: 15 | 20 | 30 | 60;
   startedAt: Date;
   expiresAt: Date;
   status: 'active' | 'paused' | 'expired' | 'ended';
@@ -46,7 +46,7 @@ export interface SessionConfig {
   mode: RediMode;
   sensitivity: number;
   voiceGender: VoiceGender;
-  durationMinutes: 20 | 30 | 60;
+  durationMinutes: 15 | 20 | 30 | 60;
   voiceOnly?: boolean;  // Audio-only mode without camera
 }
 

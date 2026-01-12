@@ -19,19 +19,20 @@ const VOICE_IDS: Record<VoiceGender, string> = {
   female: process.env.ELEVENLABS_REDI_FEMALE_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'   // Sarah
 };
 
-// Voice configurations for natural conversation
+// Voice configurations for natural, human-like conversation
+// Settings optimized based on Santa voice that sounded indistinguishable from human
 const VOICE_CONFIGS: Record<VoiceGender, Omit<VoiceConfig, 'voiceId'>> = {
   male: {
     gender: 'male',
-    stability: 0.5,
-    similarityBoost: 0.75,
-    style: 0.3
+    stability: 0.85,         // High stability = smooth, natural delivery (was 0.5)
+    similarityBoost: 0.82,   // High similarity = consistent voice (was 0.75)
+    style: 0.15              // Low style = calm, natural tone (was 0.3)
   },
   female: {
     gender: 'female',
-    stability: 0.5,
-    similarityBoost: 0.75,
-    style: 0.3
+    stability: 0.85,         // High stability = smooth, natural delivery (was 0.5)
+    similarityBoost: 0.82,   // High similarity = consistent voice (was 0.75)
+    style: 0.15              // Low style = calm, natural tone (was 0.3)
   }
 };
 

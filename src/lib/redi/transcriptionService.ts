@@ -63,7 +63,10 @@ export async function startTranscription(sessionId: string): Promise<EventEmitte
       vad_events: true,
       encoding: 'linear16',
       sample_rate: 16000,
-      channels: 1
+      channels: 1,
+      // Custom vocabulary to recognize "Redi" (the AI assistant name)
+      // instead of transcribing as "ready"
+      keywords: ['Redi:5', 'Hey Redi:5']
     });
 
     session.connection = connection;
