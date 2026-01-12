@@ -530,8 +530,26 @@ router.post('/session/apple', async (req: Request, res: Response) => {
     return;
   }
 
-  // Check minute balance
-  const balance = getMinuteBalance(actualUserId);
+  // Check minute balance first
+  let balance = getMinuteBalance(actualUserId);
+
+  // If no minutes and we have a productId, try to grant minutes as fallback
+  // This handles cases where /validate-receipt call failed or was slow
+  if (balance.minutesRemaining <= 0 && productId && transactionId) {
+    const productType = getProductType(productId);
+    const minutesProvided = getMinutesForProduct(productId);
+
+    console.log(`[Redi API] No balance for user ${actualUserId}, attempting to grant from purchase: ${productId} (${productType})`);
+
+    if (productType === 'try') {
+      grantTrySession(actualUserId, transactionId);
+    } else if (productType === 'extension' || productType === 'overage') {
+      addMinutes(actualUserId, minutesProvided, productId, productType);
+    }
+
+    // Re-check balance after granting
+    balance = getMinuteBalance(actualUserId);
+  }
 
   if (!balance.canStartSession && balance.minutesRemaining <= 0) {
     res.status(403).json({
