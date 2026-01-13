@@ -243,13 +243,26 @@ struct HomeView: View {
     // MARK: - Mode Selection
 
     private var modeSelectionSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("What are you doing?")
-                .font(.headline)
-                .foregroundColor(.white)
+        VStack(spacing: 20) {
+            // Primary action - "Use Redi for Anything" button
+            useRediForAnythingButton
 
+            // Divider with text
+            HStack {
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(height: 1)
+                Text("Or choose a focus")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+                Rectangle()
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(height: 1)
+            }
+
+            // Specialized mode selection (excludes general)
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-                ForEach(RediMode.allCases, id: \.self) { mode in
+                ForEach(RediMode.allCases.filter { $0.isSpecializedMode }, id: \.self) { mode in
                     ModeCard(
                         mode: mode,
                         isSelected: viewModel.config.mode == mode
@@ -258,6 +271,69 @@ struct HomeView: View {
                     }
                 }
             }
+        }
+    }
+
+    // MARK: - Use Redi for Anything Button
+
+    private var useRediForAnythingButton: some View {
+        Button {
+            viewModel.config.mode = .general
+            Task {
+                await startAutonomousSession()
+            }
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: "sparkles")
+                    .font(.title2)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Use Redi for Anything")
+                        .font(.headline)
+                    Text("AI detects what you're doing")
+                        .font(.caption)
+                        .opacity(0.8)
+                }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .opacity(0.6)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+            .background(
+                LinearGradient(
+                    colors: [Color.cyan.opacity(0.8), Color.purple.opacity(0.8)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .foregroundColor(.white)
+            .cornerRadius(16)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.cyan, Color.purple],
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        ),
+                        lineWidth: 2
+                    )
+            )
+        }
+        .disabled(viewModel.isLoading)
+    }
+
+    private func startAutonomousSession() async {
+        // Check if user has subscription first
+        if let subscription = viewModel.userSubscription, subscription.canStartSession {
+            await viewModel.startSubscriptionSession()
+        } else {
+            // Use try session flow
+            await viewModel.purchaseTrySession()
         }
     }
 

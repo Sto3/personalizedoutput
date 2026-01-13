@@ -120,16 +120,8 @@ struct SessionView: View {
                 .cornerRadius(20)
             }
 
-            // Mode indicator
-            HStack(spacing: 4) {
-                Image(systemName: viewModel.session.mode.icon)
-                Text(viewModel.session.mode.displayName)
-                    .font(.caption)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.black.opacity(0.6))
-            .cornerRadius(20)
+            // Mode indicator - enhanced for autonomous mode
+            modeIndicator
 
             Spacer()
 
@@ -156,6 +148,82 @@ struct SessionView: View {
             }
         }
         .foregroundColor(.white)
+    }
+
+    // MARK: - Mode Indicator
+
+    private var modeIndicator: some View {
+        Group {
+            if viewModel.isAutonomousMode {
+                // Autonomous mode - show detected mode with confidence
+                HStack(spacing: 4) {
+                    // Sparkles icon for autonomous
+                    Image(systemName: "sparkles")
+                        .font(.caption2)
+                        .foregroundColor(.purple)
+
+                    // Detected mode icon
+                    Image(systemName: viewModel.detectedMode.icon)
+                        .font(.caption)
+
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text(viewModel.detectedMode.displayName)
+                            .font(.caption2)
+                            .lineLimit(1)
+
+                        if let activity = viewModel.detectedActivity {
+                            Text(activity)
+                                .font(.system(size: 8))
+                                .foregroundColor(.cyan)
+                                .lineLimit(1)
+                        }
+                    }
+
+                    // Confidence indicator
+                    if viewModel.modeConfidence > 0 {
+                        Circle()
+                            .fill(confidenceColor)
+                            .frame(width: 6, height: 6)
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    LinearGradient(
+                        colors: [Color.cyan.opacity(0.3), Color.purple.opacity(0.3)],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color.purple.opacity(0.5), lineWidth: 1)
+                )
+                .cornerRadius(16)
+                .animation(.easeInOut(duration: 0.3), value: viewModel.detectedMode)
+            } else {
+                // Fixed mode - simple indicator
+                HStack(spacing: 4) {
+                    Image(systemName: viewModel.session.mode.icon)
+                    Text(viewModel.session.mode.displayName)
+                        .font(.caption)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.6))
+                .cornerRadius(20)
+            }
+        }
+    }
+
+    private var confidenceColor: Color {
+        if viewModel.modeConfidence > 0.8 {
+            return .green
+        } else if viewModel.modeConfidence > 0.5 {
+            return .yellow
+        } else {
+            return .orange
+        }
     }
 
     // MARK: - Help Sheet
