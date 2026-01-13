@@ -204,6 +204,124 @@ class WebSocketService: NSObject, ObservableObject {
         disconnect()
     }
 
+    // MARK: - Military-Grade Perception
+
+    /// Send structured perception data (pose, objects, movement)
+    func sendPerception(_ packet: PerceptionPacket) {
+        var payload: [String: Any] = [
+            "sessionId": packet.sessionId,
+            "deviceId": packet.deviceId,
+            "timestamp": packet.timestamp,
+            "deviceOrientation": packet.deviceOrientation,
+            "lightLevel": packet.lightLevel
+        ]
+
+        // Add pose data if available
+        if let pose = packet.pose {
+            var poseDict: [String: Any] = [
+                "confidence": pose.confidence,
+                "timestamp": pose.timestamp
+            ]
+
+            // Add joint positions
+            var jointsDict: [String: [String: CGFloat]] = [:]
+            if let p = pose.leftShoulder { jointsDict["leftShoulder"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.rightShoulder { jointsDict["rightShoulder"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.leftElbow { jointsDict["leftElbow"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.rightElbow { jointsDict["rightElbow"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.leftWrist { jointsDict["leftWrist"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.rightWrist { jointsDict["rightWrist"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.neck { jointsDict["neck"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.spine { jointsDict["spine"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.hips { jointsDict["hips"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.leftKnee { jointsDict["leftKnee"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.rightKnee { jointsDict["rightKnee"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.leftAnkle { jointsDict["leftAnkle"] = ["x": p.x, "y": p.y, "z": p.z] }
+            if let p = pose.rightAnkle { jointsDict["rightAnkle"] = ["x": p.x, "y": p.y, "z": p.z] }
+            poseDict["joints"] = jointsDict
+
+            // Add angles
+            var anglesDict: [String: Float] = [:]
+            if let a = pose.angles.leftElbow { anglesDict["leftElbow"] = a }
+            if let a = pose.angles.rightElbow { anglesDict["rightElbow"] = a }
+            if let a = pose.angles.leftKnee { anglesDict["leftKnee"] = a }
+            if let a = pose.angles.rightKnee { anglesDict["rightKnee"] = a }
+            if let a = pose.angles.spineAngle { anglesDict["spine"] = a }
+            if let a = pose.angles.shoulderTilt { anglesDict["shoulderTilt"] = a }
+            poseDict["angles"] = anglesDict
+
+            payload["pose"] = poseDict
+        }
+
+        // Add detected objects
+        if !packet.objects.isEmpty {
+            payload["objects"] = packet.objects.map { obj in
+                [
+                    "label": obj.label,
+                    "confidence": obj.confidence,
+                    "category": obj.category,
+                    "boundingBox": [
+                        "x": obj.boundingBox.origin.x,
+                        "y": obj.boundingBox.origin.y,
+                        "width": obj.boundingBox.width,
+                        "height": obj.boundingBox.height
+                    ]
+                ] as [String: Any]
+            }
+        }
+
+        // Add detected texts
+        if !packet.texts.isEmpty {
+            payload["texts"] = packet.texts.map { text in
+                [
+                    "text": text.text,
+                    "confidence": text.confidence,
+                    "boundingBox": [
+                        "x": text.boundingBox.origin.x,
+                        "y": text.boundingBox.origin.y,
+                        "width": text.boundingBox.width,
+                        "height": text.boundingBox.height
+                    ]
+                ] as [String: Any]
+            }
+        }
+
+        // Add movement data if available
+        if let movement = packet.movement {
+            payload["movement"] = [
+                "phase": movement.phase.rawValue,
+                "velocity": movement.velocity,
+                "direction": movement.direction,
+                "isRepetitive": movement.isRepetitive,
+                "repCount": movement.repCount as Any,
+                "tempo": movement.tempo as Any
+            ]
+        }
+
+        // Add transcript if available
+        if let transcript = packet.transcript {
+            payload["transcript"] = transcript
+            payload["transcriptIsFinal"] = packet.transcriptIsFinal
+        }
+
+        // Add fallback frame if ML failed
+        if let fallback = packet.fallbackFrame {
+            payload["fallbackFrame"] = fallback
+        }
+
+        sendMessage(type: .perception, payload: payload)
+    }
+
+    /// Notify backend that user started speaking (for interruption handling)
+    func notifyUserSpeaking() {
+        sendMessage(type: .userSpeaking, payload: nil)
+    }
+
+    /// Notify backend that user stopped speaking
+    func notifyUserStopped() {
+        sendMessage(type: .userStopped, payload: nil)
+    }
+
     // MARK: - Private Methods
 
     private func sendMessage(type: WSMessageType, payload: [String: Any]?) {

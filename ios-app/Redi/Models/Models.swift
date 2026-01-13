@@ -309,6 +309,10 @@ enum WSMessageType: String, Codable {
     case participantLeft = "participant_left"
     case participantList = "participant_list"
     case audioOutputModeChanged = "audio_output_mode_changed"
+    // Military-grade perception messages
+    case perception = "perception"
+    case userSpeaking = "user_speaking"
+    case userStopped = "user_stopped"
 }
 
 // MARK: - Transcript
