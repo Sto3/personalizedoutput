@@ -52,7 +52,10 @@ import {
   updateVisualContext,
   updatePendingInsight,
   markSpoke,
-  markSpeakingStart
+  markSpeakingStart,
+  onUserInterruption,
+  shouldIgnoreResponse,
+  isContextFresh
 } from '../lib/redi/decisionEngine';
 
 import {
@@ -441,6 +444,19 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
   const ctx = contexts.get(sessionId);
   if (!ctx || !chunk.text.trim()) return;
 
+  // INTERRUPTION DETECTION: If user speaks while Redi is speaking, cancel Redi
+  if (ctx.isSpeaking) {
+    console.log(`[Redi WebSocket] User interrupted Redi - canceling response`);
+    onUserInterruption(ctx);
+    // TODO: Stop TTS playback on iOS side via message
+    broadcastToSession(sessionId, {
+      type: 'ai_response',
+      sessionId,
+      timestamp: Date.now(),
+      payload: { text: '', isStreaming: false, isFinal: true, interrupted: true }
+    });
+  }
+
   // Update context
   updateTranscript(ctx, chunk.text);
 
@@ -452,16 +468,22 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
     payload: chunk
   });
 
-  // Check if this is a question requiring immediate response
-  if (chunk.isFinal && chunk.text.trim().endsWith('?')) {
+  // Check if this is a PROMPTED response (user asked Redi something)
+  // Triggers: question mark, or user said "Redi" / "hey Redi" / "okay Redi"
+  const text = chunk.text.trim();
+  const isQuestion = text.endsWith('?');
+  const isDirectAddress = /\b(hey |ok |okay )?redi\b/i.test(text);
+
+  if (chunk.isFinal && (isQuestion || isDirectAddress)) {
     // Track user question for history
-    recordUserQuestion(sessionId, chunk.text);
+    recordUserQuestion(sessionId, text);
 
     const session = getSession(sessionId);
     if (session) {
+      // PROMPTED response - allows up to 30 words
       const response = await generateQuestionResponse(
         session.mode,
-        chunk.text,
+        text,
         ctx.transcriptBuffer,
         ctx.visualContext
       );
@@ -695,6 +717,18 @@ function cleanTextForSpeech(text: string): string {
 async function speakResponse(sessionId: string, text: string): Promise<void> {
   const ctx = contexts.get(sessionId);
   if (!ctx) return;
+
+  // Check if user interrupted - ignore stale responses
+  if (shouldIgnoreResponse(ctx)) {
+    console.log(`[Redi] Skipping speak - user interrupted, ignoring stale response`);
+    return;
+  }
+
+  // Check context freshness - don't respond to stale context
+  if (!isContextFresh(ctx)) {
+    console.log(`[Redi] Skipping speak - context is stale (>2sec old)`);
+    return;
+  }
 
   // Clean text for speech - remove markdown and formatting
   const cleanedText = cleanTextForSpeech(text);

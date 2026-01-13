@@ -14,36 +14,37 @@ import { trackCost } from './sessionManager';
 const COST_PER_1000_CHARS = 0.30;
 
 // Voice IDs for Redi
+// Female: Rachel - ElevenLabs' most natural conversational voice
+// Male: Josh - natural, conversational male voice (more human than Adam for conversation)
 const VOICE_IDS: Record<VoiceGender, string> = {
-  male: process.env.ELEVENLABS_REDI_MALE_VOICE_ID || 'pNInz6obpgDQGcFmaJgB',      // Adam
-  female: process.env.ELEVENLABS_REDI_FEMALE_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'   // Sarah
+  male: process.env.ELEVENLABS_REDI_MALE_VOICE_ID || 'TxGEqnHWrfWFTfGW9XjX',      // Josh (conversational)
+  female: process.env.ELEVENLABS_REDI_FEMALE_VOICE_ID || '21m00Tcm4TlvDq8ikWAM'   // Rachel (conversational)
 };
 
 /**
  * Voice configurations for MAXIMUM human-like quality
  *
- * CRITICAL: These settings EXACTLY match the Santa/Emma voice that was
- * indistinguishable from a human. DO NOT CHANGE unless testing proves better.
+ * Both voices use CONVERSATIONAL settings:
+ * - Lower stability (0.45) = more natural variation, less robotic
+ * - Lower similarity (0.70) = less "perfect", more human imperfection
+ * - Higher style (0.30) = more expressive, warmer tone
  *
- * Santa voice settings that worked perfectly:
- * - stability: 0.92 (very high = slow, deliberate, natural pacing)
- * - similarity_boost: 0.95 (very high = deep, consistent voice)
- * - style: 0.08 (very LOW = calm, NO animation, most human-like)
- * - use_speaker_boost: true
- * - model: eleven_monolingual_v1 (NOT multilingual)
+ * These settings make voices sound like real people talking,
+ * not AI narrating. Combined with iOS audio processing (warmth + reverb),
+ * the result should feel "in the room" not "in the computer".
  */
 const VOICE_CONFIGS: Record<VoiceGender, Omit<VoiceConfig, 'voiceId'>> = {
   male: {
     gender: 'male',
-    stability: 0.92,         // EXACT Santa setting - natural pacing
-    similarityBoost: 0.95,   // EXACT Santa setting - voice clarity
-    style: 0.08              // EXACT Santa setting - calm, human delivery
+    stability: 0.45,         // Natural variation
+    similarityBoost: 0.70,   // Human imperfection
+    style: 0.30              // Expressive, warm
   },
   female: {
     gender: 'female',
-    stability: 0.92,         // EXACT Santa setting - natural pacing
-    similarityBoost: 0.95,   // EXACT Santa setting - voice clarity
-    style: 0.08              // EXACT Santa setting - calm, human delivery
+    stability: 0.45,         // Natural variation
+    similarityBoost: 0.70,   // Human imperfection
+    style: 0.30              // Expressive, warm
   }
 };
 

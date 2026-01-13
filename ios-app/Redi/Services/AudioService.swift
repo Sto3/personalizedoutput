@@ -31,11 +31,25 @@ class AudioService: NSObject, ObservableObject {
     private let sampleRate: Double = 16000
     private let channels: AVAudioChannelCount = 1
 
+    // Playback engine with audio processing
+    private var playbackEngine: AVAudioEngine?
+    private var playerNode: AVAudioPlayerNode?
+    private var eqNode: AVAudioUnitEQ?
+    private var reverbNode: AVAudioUnitReverb?
+
+    // Audio processing settings - makes voice feel "in the room"
+    private let enableAudioProcessing = true
+    private let warmthBoostDB: Float = 3.0        // Subtle low-mid boost
+    private let reverbWetDryMix: Float = 8.0      // Very subtle room presence (0-100)
+
     // MARK: - Initialization
 
     override init() {
         super.init()
         setupAudioSession()
+        if enableAudioProcessing {
+            setupPlaybackEngine()
+        }
     }
 
     // MARK: - Setup
@@ -54,6 +68,65 @@ class AudioService: NSObject, ObservableObject {
             try audioSession.setActive(true)
         } catch {
             self.error = "Failed to setup audio session: \(error.localizedDescription)"
+        }
+    }
+
+    /// Setup audio processing engine for warm, natural voice playback
+    private func setupPlaybackEngine() {
+        playbackEngine = AVAudioEngine()
+        playerNode = AVAudioPlayerNode()
+
+        guard let engine = playbackEngine, let player = playerNode else { return }
+
+        // Create EQ for warmth (boost low-mids around 250Hz)
+        eqNode = AVAudioUnitEQ(numberOfBands: 2)
+        if let eq = eqNode {
+            // Band 0: Warmth boost at 250Hz
+            let warmthBand = eq.bands[0]
+            warmthBand.filterType = .parametric
+            warmthBand.frequency = 250
+            warmthBand.bandwidth = 1.5
+            warmthBand.gain = warmthBoostDB
+            warmthBand.bypass = false
+
+            // Band 1: Presence boost at 3kHz (clarity)
+            let presenceBand = eq.bands[1]
+            presenceBand.filterType = .parametric
+            presenceBand.frequency = 3000
+            presenceBand.bandwidth = 1.0
+            presenceBand.gain = 1.5
+            presenceBand.bypass = false
+        }
+
+        // Create reverb for subtle room presence
+        reverbNode = AVAudioUnitReverb()
+        if let reverb = reverbNode {
+            reverb.loadFactoryPreset(.smallRoom)
+            reverb.wetDryMix = reverbWetDryMix  // Very subtle
+        }
+
+        // Attach nodes
+        engine.attach(player)
+        if let eq = eqNode { engine.attach(eq) }
+        if let reverb = reverbNode { engine.attach(reverb) }
+
+        // Connect: player -> EQ -> reverb -> output
+        let format = engine.outputNode.inputFormat(forBus: 0)
+        if let eq = eqNode, let reverb = reverbNode {
+            engine.connect(player, to: eq, format: format)
+            engine.connect(eq, to: reverb, format: format)
+            engine.connect(reverb, to: engine.mainMixerNode, format: format)
+        } else {
+            engine.connect(player, to: engine.mainMixerNode, format: format)
+        }
+
+        do {
+            try engine.start()
+            print("[Audio] Playback engine with processing started")
+        } catch {
+            print("[Audio] Failed to start playback engine: \(error)")
+            // Fall back to simple playback
+            playbackEngine = nil
         }
     }
 
@@ -156,6 +229,53 @@ class AudioService: NSObject, ObservableObject {
 
         let data = audioQueue.removeFirst()
 
+        // Try processed playback first, fall back to simple if needed
+        if enableAudioProcessing, let engine = playbackEngine, let player = playerNode {
+            playWithProcessing(data: data, engine: engine, player: player)
+        } else {
+            playSimple(data: data)
+        }
+    }
+
+    /// Play with audio processing (EQ + reverb for warmth)
+    private func playWithProcessing(data: Data, engine: AVAudioEngine, player: AVAudioPlayerNode) {
+        do {
+            // Convert MP3 data to PCM buffer
+            guard let audioFile = try? AVAudioFile(forReading: createTempFile(from: data)) else {
+                print("[Audio] Failed to create audio file, falling back to simple playback")
+                playSimple(data: data)
+                return
+            }
+
+            let format = audioFile.processingFormat
+            let frameCount = UInt32(audioFile.length)
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+                playSimple(data: data)
+                return
+            }
+
+            try audioFile.read(into: buffer)
+
+            // Schedule and play with processing
+            player.scheduleBuffer(buffer) { [weak self] in
+                DispatchQueue.main.async {
+                    self?.playNextInQueue()
+                }
+            }
+
+            if !player.isPlaying {
+                player.play()
+            }
+            isPlaying = true
+
+        } catch {
+            print("[Audio] Processed playback error: \(error), falling back to simple")
+            playSimple(data: data)
+        }
+    }
+
+    /// Simple playback without processing (fallback)
+    private func playSimple(data: Data) {
         do {
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.delegate = self
@@ -168,8 +288,17 @@ class AudioService: NSObject, ObservableObject {
         }
     }
 
+    /// Create temporary file from audio data for AVAudioFile
+    private func createTempFile(from data: Data) -> URL {
+        let tempDir = FileManager.default.temporaryDirectory
+        let tempFile = tempDir.appendingPathComponent(UUID().uuidString + ".mp3")
+        try? data.write(to: tempFile)
+        return tempFile
+    }
+
     func stopPlayback() {
         audioPlayer?.stop()
+        playerNode?.stop()
         audioQueue.removeAll()
         isPlaying = false
     }
@@ -179,6 +308,8 @@ class AudioService: NSObject, ObservableObject {
     func cleanup() {
         stopRecording()
         stopPlayback()
+        playbackEngine?.stop()
+        playbackEngine = nil
     }
 }
 

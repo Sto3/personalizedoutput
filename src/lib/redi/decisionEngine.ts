@@ -10,8 +10,13 @@ import {
   DecisionContext,
   SpeakDecision,
   RediMode,
-  MODE_CONFIGS
+  MODE_CONFIGS,
+  isContextFresh,
+  CONTEXT_MAX_AGE_MS
 } from './types';
+
+// Re-export for use by websocket
+export { isContextFresh, CONTEXT_MAX_AGE_MS };
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -191,27 +196,28 @@ export async function generateInsight(
     return null;
   }
 
-  const systemPrompt = `You are Redi, an AI assistant present with the user. Focus: ${modeConfig.systemPromptFocus}.
+  // COACH COURTSIDE PROMPT - Bark, don't explain
+  const systemPrompt = `You are Redi. You ONLY speak in fragments — 2-8 words MAX.
 
-CRITICAL RULES:
-1. ONE sentence max. Be brief.
-2. Be CONFIDENT. Never ask questions. Make statements.
-3. NEVER use markdown, asterisks, bullet points, or any formatting.
-4. Plain text only. Speak naturally as if talking aloud.
-5. If nothing useful to say, respond ONLY with: NO_INSIGHT
+NEVER:
+- Ask questions
+- Use complete sentences
+- Explain yourself
+- Say "I notice" or "It seems" or "It looks like"
+- Describe what you see in detail
+- Offer help ("I can help" "Let me know")
 
-Sensitivity: ${sensitivity.toFixed(1)} (0=passive, 1=active)
-${sensitivity < 0.3 ? 'Only speak for errors.' : sensitivity < 0.7 ? 'Offer brief help when useful.' : 'Be proactive.'}
+ONLY:
+- Direct observations: "Elbow dropping"
+- Quick corrections: "Wider grip"
+- Brief encouragement: "Good, again"
+- Simple alerts: "That's upside down"
+- Short acknowledgments: "Nice" "Got it" "Tostitos"
 
-Bad examples (NEVER do this):
-- "**Important:** You should..." (has asterisks)
-- "Would you like me to help?" (asking question)
-- "I can see that... Would you like..." (too long, asking)
+You are a coach courtside, not a lecturer. Bark, don't explain.
+If nothing worth saying: respond ONLY with NO_INSIGHT
 
-Good examples:
-- "Check line 42, there's a typo."
-- "Your form looks good, keep your back straight."
-- "That's the right approach."`;
+Focus: ${modeConfig.systemPromptFocus}`;
 
   const userPrompt = `What the user is saying:
 ${recentTranscript || '(silence)'}
@@ -235,6 +241,32 @@ Should you say something? If yes, what would you say naturally?`;
     const text = content.text.trim();
 
     if (text === 'NO_INSIGHT' || text.includes('NO_INSIGHT')) {
+      return null;
+    }
+
+    // ENFORCE 8-word maximum for UNPROMPTED insights (coach barks, doesn't lecture)
+    // Note: Prompted responses (questions) use generateQuestionResponse which has different limits
+    const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
+    if (wordCount > 8) {
+      console.log(`[Redi Decision] REJECTED unprompted - too long (${wordCount} words): "${text.substring(0, 50)}..."`);
+      return null;
+    }
+
+    // ENFORCE no questions in unprompted insights
+    if (text.includes('?')) {
+      console.log(`[Redi Decision] REJECTED - contains question: "${text.substring(0, 50)}..."`);
+      return null;
+    }
+
+    // ENFORCE no help offers - these sound robotic
+    if (/i can help|let me know|i'm here to help|how can i/i.test(text)) {
+      console.log(`[Redi Decision] REJECTED - contains help offer: "${text.substring(0, 50)}..."`);
+      return null;
+    }
+
+    // ENFORCE no wordy phrases in unprompted insights
+    if (/i notice|it seems|it looks like|it appears|i can see|i see that/i.test(text)) {
+      console.log(`[Redi Decision] REJECTED - wordy phrase: "${text.substring(0, 50)}..."`);
       return null;
     }
 
@@ -286,7 +318,8 @@ Should you say something? If yes, what would you say naturally?`;
 }
 
 /**
- * Generate a response to a direct question
+ * Generate a response to a direct question (PROMPTED response)
+ * Allows up to 30 words since user asked for input
  */
 export async function generateQuestionResponse(
   mode: RediMode,
@@ -297,33 +330,50 @@ export async function generateQuestionResponse(
   const modeConfig = MODE_CONFIGS[mode];
   const context = transcriptBuffer.slice(-5).join('\n');
 
-  const systemPrompt = `You are Redi, an AI presence helping with ${modeConfig.systemPromptFocus}.
+  // PROMPTED responses can be longer (up to 30 words) but still concise
+  const systemPrompt = `You are Redi. The user asked you a question - give a helpful, direct answer.
 
-The user just asked you a direct question. Answer it helpfully and concisely.
-Keep your response natural and conversational (2-4 sentences max).
-If you can see something relevant in the visual context, reference it specifically.`;
+RULES:
+- MAX 30 words. Be substantive but don't ramble.
+- Answer the actual question asked.
+- Use contractions (that's, it's, you're) - sound natural.
+- If you can see something relevant, reference it.
+- NO filler like "Great question!" or "I'd be happy to help"
+- NO questions back unless absolutely necessary.
 
-  const userPrompt = `Recent context:
-${context}
+Focus: ${modeConfig.systemPromptFocus}`;
 
-Visual context:
-${visualContext || '(no visual)'}
-
-User's question: ${question}`;
+  const userPrompt = `Context: ${context || '(none)'}
+Visual: ${visualContext || '(none)'}
+Question: ${question}`;
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 200,
+      max_tokens: 150,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }]
     });
 
     const content = response.content[0];
-    return content.type === 'text' ? content.text.trim() : "I'm not sure about that.";
+    let text = content.type === 'text' ? content.text.trim() : "I'm not sure about that.";
+
+    // ENFORCE 30-word max for prompted responses
+    const words = text.split(/\s+/).filter(w => w.length > 0);
+    if (words.length > 30) {
+      console.log(`[Redi Decision] Truncating prompted response from ${words.length} to 30 words`);
+      text = words.slice(0, 30).join(' ');
+      // Try to end at a sentence boundary
+      const lastPeriod = text.lastIndexOf('.');
+      if (lastPeriod > text.length * 0.6) {
+        text = text.substring(0, lastPeriod + 1);
+      }
+    }
+
+    return text;
   } catch (error) {
     console.error('[Redi Decision] Error generating question response:', error);
-    return "Sorry, I had trouble processing that. Could you ask again?";
+    return "Sorry, couldn't process that.";
   }
 }
 
@@ -331,10 +381,11 @@ User's question: ${question}`;
  * Create initial context for a new session
  */
 export function createInitialContext(sessionId: string, mode: RediMode, sensitivity: number): DecisionContext {
+  const now = Date.now();
   return {
     sessionId,
     sensitivity,
-    lastSpokeAt: Date.now(),
+    lastSpokeAt: now,
     silenceDuration: 0,
     transcriptBuffer: [],
     visualContext: '',
@@ -344,7 +395,12 @@ export function createInitialContext(sessionId: string, mode: RediMode, sensitiv
     recentResponses: [],
     transcriptCountAtLastSpoke: 0,
     visualContextAtLastSpoke: '',
-    isSpeaking: false
+    isSpeaking: false,
+    // Context freshness
+    lastTranscriptAt: now,
+    lastVisualAt: now,
+    // Interruption handling
+    ignoreResponsesUntil: 0
   };
 }
 
@@ -358,6 +414,7 @@ export function updateTranscript(ctx: DecisionContext, text: string): void {
     ctx.transcriptBuffer.shift();
   }
   ctx.silenceDuration = 0;
+  ctx.lastTranscriptAt = Date.now(); // Track freshness
 }
 
 /**
@@ -372,6 +429,7 @@ export function updateSilence(ctx: DecisionContext, durationMs: number): void {
  */
 export function updateVisualContext(ctx: DecisionContext, analysis: string): void {
   ctx.visualContext = analysis;
+  ctx.lastVisualAt = Date.now(); // Track freshness
 }
 
 /**
@@ -414,4 +472,26 @@ export function markSpoke(ctx: DecisionContext, spokenText?: string): void {
   ctx.pendingInsight = null;
   ctx.insightConfidence = 0;
   ctx.isSpeaking = false; // Release lock
+}
+
+/**
+ * Handle user interruption - cancel pending responses
+ * Call this when user starts speaking while Redi is speaking or processing
+ */
+export function onUserInterruption(ctx: DecisionContext): void {
+  // Ignore any responses that arrive in the next 500ms
+  ctx.ignoreResponsesUntil = Date.now() + 500;
+  // Clear pending insight
+  ctx.pendingInsight = null;
+  ctx.insightConfidence = 0;
+  // Reset speaking state
+  ctx.isSpeaking = false;
+  console.log(`[Redi Decision] User interrupted - ignoring responses until ${ctx.ignoreResponsesUntil}`);
+}
+
+/**
+ * Check if we should ignore a response (user interrupted)
+ */
+export function shouldIgnoreResponse(ctx: DecisionContext): boolean {
+  return Date.now() < ctx.ignoreResponsesUntil;
 }

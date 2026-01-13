@@ -66,6 +66,22 @@ export interface DecisionContext {
   transcriptCountAtLastSpoke: number; // Transcript count when we last spoke
   visualContextAtLastSpoke: string;  // Visual context hash when we last spoke
   isSpeaking: boolean;               // Lock to prevent concurrent speaks
+  // Context freshness tracking (for stale context rejection)
+  lastTranscriptAt: number;          // When we last received transcript
+  lastVisualAt: number;              // When we last received visual
+  // Interruption handling
+  ignoreResponsesUntil: number;      // Ignore responses before this timestamp
+}
+
+// Context freshness check - reject stale context
+export const CONTEXT_MAX_AGE_MS = 2000; // 2 seconds max
+
+export function isContextFresh(ctx: DecisionContext): boolean {
+  const now = Date.now();
+  const transcriptFresh = (now - ctx.lastTranscriptAt) < CONTEXT_MAX_AGE_MS;
+  const visualFresh = (now - ctx.lastVisualAt) < CONTEXT_MAX_AGE_MS;
+  // At least one must be fresh
+  return transcriptFresh || visualFresh;
 }
 
 export interface SpeakDecision {
