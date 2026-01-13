@@ -370,17 +370,19 @@ class PerceptionService: NSObject, ObservableObject {
             sceneService.processFrame(pixelBuffer)
         }
 
+        // Create handler before async to avoid CVPixelBuffer sendability issues
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+
         processingQueue.async { [weak self] in
             guard let self = self, self.isRunning else { return }
 
             // Run mode-specific perception
-            self.runModeSpecificPerception(pixelBuffer)
+            self.runModeSpecificPerception(handler)
         }
     }
 
     /// Run perception optimized for the current mode
-    private func runModeSpecificPerception(_ pixelBuffer: CVPixelBuffer) {
-        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+    private func runModeSpecificPerception(_ handler: VNImageRequestHandler) {
 
         do {
             var requests: [VNRequest] = []

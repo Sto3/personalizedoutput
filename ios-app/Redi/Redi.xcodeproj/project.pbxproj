@@ -9,7 +9,9 @@
 /* Begin PBXBuildFile section */
 		02C31AED37CCB58BF6AD1EE2 /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */; };
 		082690F2D9C74568BCA66AD6 /* SessionExtensionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */; };
+		223406C2FD912DDB6018B1F1 /* SceneUnderstandingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F76A72D1B020F9C4758B067 /* SceneUnderstandingService.swift */; };
 		39287B4F803973145E3EE010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97D9CC5312EFE7EC3589A208 /* Assets.xcassets */; };
+		3A0C91300C54AEC7AE37592D /* PerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC474247BC1D787F92786F35 /* PerceptionService.swift */; };
 		42F4B1A4BF3CDC673F2B6D61 /* SessionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DFA597214E78B4FF52CEC3 /* SessionViewModel.swift */; };
 		48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F172479862AD94B0F25637 /* MotionService.swift */; };
 		4A5CC964788FBFBC3147BA44 /* WakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */; };
@@ -29,6 +31,7 @@
 		11FC2B0A07423D27282940F2 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		150F0DC41592737940795313 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
 		67DFA597214E78B4FF52CEC3 /* SessionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionViewModel.swift; sourceTree = "<group>"; };
+		6F76A72D1B020F9C4758B067 /* SceneUnderstandingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneUnderstandingService.swift; sourceTree = "<group>"; };
 		74C63A793466E4E7AAF9988A /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		89FED5AD019E3A6E33F5A1E3 /* RediApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediApp.swift; sourceTree = "<group>"; };
 		8C9C0A0F441E508F2A48580E /* WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketService.swift; sourceTree = "<group>"; };
@@ -41,6 +44,7 @@
 		B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
 		BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
 		DA8A2494A90C7565782AB51B /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		DC474247BC1D787F92786F35 /* PerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerceptionService.swift; sourceTree = "<group>"; };
 		DD078B8E09E9F023A212E581 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
 		F2EB01869FCA9D8F2292C998 /* Redi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Redi.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -73,6 +77,8 @@
 				150F0DC41592737940795313 /* AudioService.swift */,
 				EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */,
 				A4F172479862AD94B0F25637 /* MotionService.swift */,
+				DC474247BC1D787F92786F35 /* PerceptionService.swift */,
+				6F76A72D1B020F9C4758B067 /* SceneUnderstandingService.swift */,
 				BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */,
 				B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */,
 				8C9C0A0F441E508F2A48580E /* WebSocketService.swift */,
@@ -147,7 +153,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1600;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					2089FBB653F9A4D76FBF6411 = {
 						ProvisioningStyle = Automatic;
@@ -196,7 +202,9 @@
 				929C224DD38B492B7C9D0330 /* Models.swift in Sources */,
 				48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */,
 				68D158F67F06953BC0A05A34 /* OnboardingView.swift in Sources */,
+				3A0C91300C54AEC7AE37592D /* PerceptionService.swift in Sources */,
 				5DC70DA35688C05D2825B276 /* RediApp.swift in Sources */,
+				223406C2FD912DDB6018B1F1 /* SceneUnderstandingService.swift in Sources */,
 				082690F2D9C74568BCA66AD6 /* SessionExtensionOverlay.swift in Sources */,
 				A66634CF8EC7740D40897F19 /* SessionView.swift in Sources */,
 				42F4B1A4BF3CDC673F2B6D61 /* SessionViewModel.swift in Sources */,
@@ -246,7 +254,6 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -310,7 +317,6 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;

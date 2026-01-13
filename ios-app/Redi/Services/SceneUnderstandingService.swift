@@ -14,6 +14,7 @@
  */
 
 import Foundation
+import UIKit
 import Vision
 import AVFoundation
 import CoreML
@@ -215,10 +216,11 @@ class SceneUnderstandingService: NSObject, ObservableObject {
     func processFrame(_ pixelBuffer: CVPixelBuffer) {
         guard isAnalyzing else { return }
 
+        // Create handler on current thread before async to avoid sendability issues
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+
         processingQueue.async { [weak self] in
             guard let self = self else { return }
-
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
 
             do {
                 if let classifyRequest = self.classifyImageRequest {
