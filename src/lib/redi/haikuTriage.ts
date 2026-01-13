@@ -162,7 +162,7 @@ function checkSilenceConditions(input: TriageInput): {
   // No meaningful context to respond to
   const hasTranscript = input.packet.transcript && input.packet.transcript.trim().length > 0;
   const hasPose = input.packet.pose && input.packet.pose.confidence > 0.5;
-  const hasObjects = input.packet.objects.length > 0;
+  const hasObjects = input.packet.objects && input.packet.objects.length > 0;
 
   if (!hasTranscript && !hasPose && !hasObjects) {
     return {
@@ -333,7 +333,7 @@ function buildCompactContext(input: TriageInput): string {
   }
 
   // Objects (top 3)
-  if (input.packet.objects.length > 0) {
+  if (input.packet.objects && input.packet.objects.length > 0) {
     const topObjects = input.packet.objects
       .filter(o => o.confidence > 0.7)
       .slice(0, 3)
