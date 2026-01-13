@@ -622,17 +622,50 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
   const ctx = contexts.get(sessionId);
   if (!ctx || !chunk.text.trim()) return;
 
-  // INTERRUPTION DETECTION: If user speaks while Redi is speaking, cancel Redi
+  // INTERRUPTION DETECTION: If user speaks while Redi is speaking, handle gracefully
   if (ctx.isSpeaking) {
-    console.log(`[Redi WebSocket] User interrupted Redi - canceling response`);
+    console.log(`[Redi WebSocket] User interrupted Redi - graceful transition`);
     onUserInterruption(ctx);
-    // TODO: Stop TTS playback on iOS side via message
+
+    // Stop current speech on iOS
     broadcastToSession(sessionId, {
       type: 'ai_response',
       sessionId,
       timestamp: Date.now(),
       payload: { text: '', isStreaming: false, isFinal: true, interrupted: true }
     });
+
+    // GRACEFUL TRANSITION: Brief polite acknowledgment before yielding
+    const session = getSession(sessionId);
+    if (session) {
+      const deferrals = [
+        "Go ahead.",
+        "Sorry, you first.",
+        "Oh, go ahead.",
+        "Sure, what's up?"
+      ];
+      const deferral = deferrals[Math.floor(Math.random() * deferrals.length)];
+
+      // Send graceful deferral (short, polite, conversational)
+      try {
+        const audioBuffer = await speak(sessionId, deferral, { stream: false });
+        if (audioBuffer) {
+          broadcastToSession(sessionId, {
+            type: 'voice_audio',
+            sessionId,
+            timestamp: Date.now(),
+            payload: {
+              audio: audioBuffer.toString('base64'),
+              format: 'mp3',
+              isStreaming: false
+            }
+          });
+          console.log(`[Redi WebSocket] Sent graceful deferral: "${deferral}"`);
+        }
+      } catch (e) {
+        console.log(`[Redi WebSocket] Deferral audio failed, continuing silently`);
+      }
+    }
   }
 
   // Update context

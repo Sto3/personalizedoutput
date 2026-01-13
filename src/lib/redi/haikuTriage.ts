@@ -148,10 +148,15 @@ function checkSilenceConditions(input: TriageInput): {
   confidence: number;
   reason?: string;
 } {
-  // Haven't spoken in a while AND nothing happening = stay silent
   const minGap = mapSensitivityToGap(input.sensitivity);
 
+  // Debug: Log every 50th check to avoid spam
+  const debugLog = Math.random() < 0.02; // 2% of calls
+
   if (input.timeSinceLastSpoke < minGap) {
+    if (debugLog) {
+      console.log(`[Haiku Triage] Silent: too_soon (${input.timeSinceLastSpoke}ms < ${minGap}ms gap)`);
+    }
     return {
       shouldBeSilent: true,
       confidence: 0.9,
@@ -159,17 +164,25 @@ function checkSilenceConditions(input: TriageInput): {
     };
   }
 
-  // No meaningful context to respond to
+  // Check for meaningful context to respond to
   const hasTranscript = input.packet.transcript && input.packet.transcript.trim().length > 0;
   const hasPose = input.packet.pose && input.packet.pose.confidence > 0.5;
   const hasObjects = input.packet.objects && input.packet.objects.length > 0;
 
   if (!hasTranscript && !hasPose && !hasObjects) {
+    if (debugLog) {
+      console.log(`[Haiku Triage] Silent: no_context (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects})`);
+    }
     return {
       shouldBeSilent: true,
       confidence: 0.8,
       reason: 'no_context'
     };
+  }
+
+  // We have context - let Haiku decide
+  if (debugLog) {
+    console.log(`[Haiku Triage] Has context - calling Haiku (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects})`);
   }
 
   return {
@@ -354,11 +367,12 @@ function buildCompactContext(input: TriageInput): string {
 
 /**
  * Map sensitivity to minimum gap between responses
+ * IMPORTANT: For conversational feel, gaps must be SHORT
  */
 function mapSensitivityToGap(sensitivity: number): number {
-  // sensitivity 0 (passive) = 20 seconds
-  // sensitivity 1 (active) = 5 seconds
-  return Math.round(20000 - (sensitivity * 15000));
+  // sensitivity 0 (passive) = 3 seconds (was 20 - way too long!)
+  // sensitivity 1 (active) = 0.5 seconds (ready to respond immediately)
+  return Math.round(3000 - (sensitivity * 2500));
 }
 
 /**
