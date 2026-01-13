@@ -395,6 +395,24 @@ export function updateSensitivity(sessionId: string, sensitivity: number): void 
 }
 
 /**
+ * Update mode for a session (for autonomous mode detection)
+ */
+export function updateMode(sessionId: string, newMode: RediMode): void {
+  const state = sessionStates.get(sessionId);
+  if (state) {
+    const oldMode = state.mode;
+    state.mode = newMode;
+
+    // Also update sensitivity to mode default
+    const modeConfig = MODE_CONFIGS[newMode];
+    state.sensitivity = modeConfig.defaultSensitivity;
+
+    console.log(`[Orchestrator] Mode changed from ${oldMode} to ${newMode} for ${sessionId}`);
+    console.log(`[Orchestrator] Sensitivity adjusted to ${state.sensitivity} (mode default)`);
+  }
+}
+
+/**
  * Notify that user started speaking (for interruption handling)
  */
 export function onUserSpeaking(sessionId: string): void {
@@ -498,6 +516,7 @@ export default {
   processPerception,
   handleDirectQuestion,
   updateSensitivity,
+  updateMode,
   onUserSpeaking,
   onUserStopped,
   onRediSpeaking,

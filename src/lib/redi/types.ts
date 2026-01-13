@@ -6,6 +6,8 @@
 
 // Session types
 export type RediMode =
+  | 'general'       // Autonomous - works for anything
+  | 'cooking'       // Cooking & Kitchen
   | 'studying'      // Studying & Learning
   | 'meeting'       // Meeting & Presentation
   | 'sports'        // Sports & Movement
@@ -141,7 +143,13 @@ export type WSMessageType =
   | 'participant_joined'
   | 'participant_left'
   | 'participant_list'
-  | 'audio_output_mode_changed';
+  | 'audio_output_mode_changed'
+  // Military-grade perception messages
+  | 'perception'
+  | 'user_speaking'
+  | 'user_stopped'
+  // Autonomous mode detection
+  | 'mode_change';
 
 export interface WSMessage {
   type: WSMessageType;
@@ -216,6 +224,18 @@ export const MODE_CONFIGS: Record<RediMode, {
   defaultSensitivity: number;
   systemPromptFocus: string;
 }> = {
+  general: {
+    snapshotIntervalMs: 5000,
+    useMotionDetection: true,
+    defaultSensitivity: 0.5,
+    systemPromptFocus: 'understanding the scene, being helpful with whatever the user is doing, and providing relevant observations and assistance based on the detected context'
+  },
+  cooking: {
+    snapshotIntervalMs: 5000,
+    useMotionDetection: true,
+    defaultSensitivity: 0.6,
+    systemPromptFocus: 'cooking technique, ingredient identification, timing, temperature guidance, recipe steps, and food safety'
+  },
   studying: {
     snapshotIntervalMs: 8000,
     useMotionDetection: false,

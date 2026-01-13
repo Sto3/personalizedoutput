@@ -141,6 +141,12 @@ struct PerceptionPacket: Codable {
 
     // Fallback frame if ML fails (low-res)
     var fallbackFrame: String?
+
+    // Mode-aware fields
+    var currentMode: String           // Current operating mode
+    var isAutonomousMode: Bool        // Whether mode was auto-detected
+    var modeConfidence: Float         // Confidence in current mode (0-1)
+    var detectedContext: String?      // What we think user is doing
 }
 
 // MARK: - Perception Service
@@ -154,11 +160,33 @@ class PerceptionService: NSObject, ObservableObject {
     @Published var repCount: Int = 0
     @Published var movementPhase: MovementPhase = .rest
 
+    // MARK: - Mode-Aware Properties
+
+    /// Current operating mode (can change during session if autonomous)
+    @Published var currentMode: RediMode = .general
+
+    /// Confidence in the current mode (from scene understanding)
+    @Published var modeConfidence: Float = 0.0
+
+    /// Whether we're in autonomous mode detection mode
+    @Published var isAutonomousMode: Bool = false
+
+    /// Context hypothesis from scene understanding
+    @Published var contextHypothesis: ContextHypothesis?
+
     // MARK: - Publishers
 
     let perceptionCaptured = PassthroughSubject<PerceptionPacket, Never>()
     let repCompleted = PassthroughSubject<Int, Never>()
     let formAlert = PassthroughSubject<String, Never>()
+
+    /// Emitted when mode changes (for autonomous mode)
+    let modeChanged = PassthroughSubject<RediMode, Never>()
+
+    // MARK: - Scene Understanding
+
+    private let sceneService = SceneUnderstandingService()
+    private var sceneBindings = Set<AnyCancellable>()
 
     // MARK: - Private Properties
 
@@ -188,6 +216,49 @@ class PerceptionService: NSObject, ObservableObject {
     override init() {
         super.init()
         setupVisionRequests()
+        setupSceneBindings()
+    }
+
+    private func setupSceneBindings() {
+        // When scene understanding completes initial analysis
+        sceneService.contextHypothesisReady
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] hypothesis in
+                guard let self = self, self.isAutonomousMode else { return }
+                self.contextHypothesis = hypothesis
+                self.updateMode(hypothesis.suggestedMode, confidence: hypothesis.confidence)
+            }
+            .store(in: &sceneBindings)
+
+        // When mode change is recommended during continuous monitoring
+        sceneService.modeChangeRecommended
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newMode in
+                guard let self = self, self.isAutonomousMode else { return }
+                self.updateMode(newMode, confidence: self.sceneService.modeConfidence)
+            }
+            .store(in: &sceneBindings)
+
+        // Context updates
+        sceneService.contextUpdated
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] hypothesis in
+                guard let self = self, self.isAutonomousMode else { return }
+                self.contextHypothesis = hypothesis
+                self.sceneService.evaluateModeSwitch(newHypothesis: hypothesis)
+            }
+            .store(in: &sceneBindings)
+    }
+
+    private func updateMode(_ newMode: RediMode, confidence: Float) {
+        guard newMode != currentMode else { return }
+
+        let oldMode = currentMode
+        currentMode = newMode
+        modeConfidence = confidence
+        modeChanged.send(newMode)
+
+        print("[Perception] Mode changed: \(oldMode) → \(newMode) (confidence: \(Int(confidence * 100))%)")
     }
 
     private func setupVisionRequests() {
@@ -216,12 +287,36 @@ class PerceptionService: NSObject, ObservableObject {
 
     // MARK: - Session Management
 
-    func start(sessionId: String, deviceId: String, intervalMs: Int = 500) {
+    /// Start perception service
+    /// - Parameters:
+    ///   - sessionId: The session ID
+    ///   - deviceId: The device ID
+    ///   - mode: The initial mode (use .general for autonomous)
+    ///   - autonomous: If true, mode will be detected and can change during session
+    ///   - intervalMs: Capture interval in milliseconds
+    func start(
+        sessionId: String,
+        deviceId: String,
+        mode: RediMode = .general,
+        autonomous: Bool = false,
+        intervalMs: Int = 500
+    ) {
         self.sessionId = sessionId
         self.deviceId = deviceId
         self.captureIntervalMs = intervalMs
+        self.currentMode = mode
+        self.isAutonomousMode = autonomous
 
         isRunning = true
+
+        // Start scene understanding if autonomous
+        if autonomous {
+            sceneService.startInitialAnalysis()
+            print("[Perception] Autonomous mode enabled - scene analysis started")
+        } else {
+            sceneService.setFixedMode(mode)
+            modeConfidence = 1.0  // Fixed mode = 100% confidence
+        }
 
         // Start capture timer
         DispatchQueue.main.async { [weak self] in
@@ -235,42 +330,126 @@ class PerceptionService: NSObject, ObservableObject {
             }
         }
 
-        print("[Perception] Started for session \(sessionId)")
+        print("[Perception] Started for session \(sessionId) in mode \(mode) (autonomous: \(autonomous))")
     }
 
     func stop() {
         captureTimer?.invalidate()
         captureTimer = nil
+        sceneService.stop()
         isRunning = false
 
         print("[Perception] Stopped")
+    }
+
+    /// Force a mode change (e.g., user manually selects a mode)
+    func setMode(_ mode: RediMode) {
+        isAutonomousMode = false
+        currentMode = mode
+        modeConfidence = 1.0
+        sceneService.setFixedMode(mode)
+        modeChanged.send(mode)
+
+        print("[Perception] Mode manually set to: \(mode)")
+    }
+
+    /// Switch back to autonomous mode detection
+    func enableAutonomousMode() {
+        isAutonomousMode = true
+        sceneService.resumeAutonomousDetection()
+
+        print("[Perception] Autonomous mode re-enabled")
     }
 
     // MARK: - Frame Processing
 
     /// Process a camera frame through all vision requests
     func processFrame(_ pixelBuffer: CVPixelBuffer) {
+        // Feed to scene understanding (for autonomous mode detection)
+        if isAutonomousMode {
+            sceneService.processFrame(pixelBuffer)
+        }
+
         processingQueue.async { [weak self] in
             guard let self = self, self.isRunning else { return }
 
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
+            // Run mode-specific perception
+            self.runModeSpecificPerception(pixelBuffer)
+        }
+    }
 
-            do {
-                // Run all requests
-                var requests: [VNRequest] = []
+    /// Run perception optimized for the current mode
+    private func runModeSpecificPerception(_ pixelBuffer: CVPixelBuffer) {
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
 
-                if let poseRequest = self.bodyPoseRequest {
+        do {
+            var requests: [VNRequest] = []
+
+            switch currentMode {
+            case .sports:
+                // Full body pose detection with angles and rep counting
+                if let poseRequest = bodyPoseRequest {
                     requests.append(poseRequest)
                 }
-                if let textRequest = self.textRecognitionRequest {
-                    requests.append(textRequest)
+
+            case .cooking:
+                // Object detection + hand tracking
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)  // For hand positions
+                }
+                // TODO: Add food/kitchen object detection
+
+            case .music:
+                // Hand tracking + rhythm detection
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)  // For hand/arm positions
                 }
 
-                try handler.perform(requests)
+            case .studying:
+                // Text recognition + posture
+                if let textRequest = textRecognitionRequest {
+                    requests.append(textRequest)
+                }
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)  // For posture monitoring
+                }
 
-            } catch {
-                print("[Perception] Frame processing error: \(error)")
+            case .assembly:
+                // Object detection + hand tracking
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)
+                }
+                // TODO: Add tool/part detection
+
+            case .monitoring:
+                // Motion detection + safety monitoring
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)
+                }
+
+            case .meeting:
+                // Face tracking + text recognition (slides)
+                if let textRequest = textRecognitionRequest {
+                    requests.append(textRequest)
+                }
+                // TODO: Add face detection
+
+            case .general:
+                // Balanced - run everything
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)
+                }
+                if let textRequest = textRecognitionRequest {
+                    requests.append(textRequest)
+                }
             }
+
+            if !requests.isEmpty {
+                try handler.perform(requests)
+            }
+
+        } catch {
+            print("[Perception] Frame processing error: \(error)")
         }
     }
 
@@ -491,19 +670,54 @@ class PerceptionService: NSObject, ObservableObject {
         return Float(abs(angle * 180 / .pi))
     }
 
-    // MARK: - Form Alerts
+    // MARK: - Form Alerts (Mode-Aware)
 
     private func checkFormAlerts(_ pose: PoseData) {
         let angles = pose.angles
 
-        // Spine rounding alert
-        if let spine = angles.spineAngle, spine > 25 {
-            DispatchQueue.main.async { [weak self] in
-                self?.formAlert.send("spine_rounding")
+        switch currentMode {
+        case .sports:
+            // Sports-specific form alerts
+            if let spine = angles.spineAngle, spine > 25 {
+                sendFormAlert("spine_rounding")
             }
-        }
+            if let shoulderTilt = angles.shoulderTilt, abs(shoulderTilt) > 15 {
+                sendFormAlert("shoulder_imbalance")
+            }
 
-        // Could add more alerts here
+        case .studying:
+            // Posture alerts for studying
+            if let spine = angles.spineAngle, spine > 30 {
+                sendFormAlert("posture_slump")
+            }
+
+        case .music:
+            // Posture for instrument playing
+            if let shoulderTilt = angles.shoulderTilt, abs(shoulderTilt) > 20 {
+                sendFormAlert("shoulder_tension")
+            }
+
+        case .assembly:
+            // Ergonomic alerts
+            if let spine = angles.spineAngle, spine > 35 {
+                sendFormAlert("bend_knees")
+            }
+
+        case .monitoring:
+            // Movement alerts (e.g., baby rolled over)
+            // These would be more complex - detecting unexpected movement
+            break
+
+        case .cooking, .meeting, .general:
+            // No specific form alerts for these modes
+            break
+        }
+    }
+
+    private func sendFormAlert(_ alert: String) {
+        DispatchQueue.main.async { [weak self] in
+            self?.formAlert.send(alert)
+        }
     }
 
     // MARK: - Perception Packet Generation
@@ -515,7 +729,7 @@ class PerceptionService: NSObject, ObservableObject {
     }
 
     private func generateAndSendPacket(transcript: String? = nil, transcriptIsFinal: Bool = false) {
-        var packet = PerceptionPacket(
+        let packet = PerceptionPacket(
             sessionId: sessionId,
             deviceId: deviceId,
             timestamp: Date().timeIntervalSince1970 * 1000,
@@ -526,7 +740,13 @@ class PerceptionService: NSObject, ObservableObject {
             transcript: transcript,
             transcriptIsFinal: transcriptIsFinal,
             deviceOrientation: UIDevice.current.orientation.isLandscape ? "landscape" : "portrait",
-            lightLevel: "normal"
+            lightLevel: "normal",
+            fallbackFrame: nil,
+            // Mode-aware fields
+            currentMode: currentMode.rawValue,
+            isAutonomousMode: isAutonomousMode,
+            modeConfidence: modeConfidence,
+            detectedContext: contextHypothesis?.activity
         )
 
         perceptionCaptured.send(packet)

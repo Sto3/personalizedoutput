@@ -345,6 +345,7 @@ import {
   cleanupMilitaryGrade,
   processPerception,
   handleDirectQuestion,
+  updateMode as updateOrchestratorMode,
   onUserSpeaking,
   onUserStopped,
   onRediSpeaking,
@@ -376,6 +377,11 @@ async function handleMessage(sessionId: string, deviceId: string, message: WSMes
 
     case 'user_stopped':
       onUserStopped(sessionId);
+      break;
+
+    // Autonomous mode detection: mode change
+    case 'mode_change':
+      handleModeChange(sessionId, message.payload);
       break;
 
     case 'audio_chunk':
@@ -446,6 +452,30 @@ async function handleMessage(sessionId: string, deviceId: string, message: WSMes
 function handleAudioChunk(sessionId: string, message: WSAudioChunk): void {
   const audioBuffer = Buffer.from(message.payload.audio, 'base64');
   sendAudio(sessionId, audioBuffer);
+}
+
+/**
+ * Handle mode change from autonomous mode detection
+ * Updates the session's mode when the iOS client detects a new context
+ */
+function handleModeChange(sessionId: string, payload: any): void {
+  const newMode = payload?.mode as RediMode;
+  if (!newMode) {
+    console.warn(`[Redi WebSocket] Invalid mode_change payload for session ${sessionId}`);
+    return;
+  }
+
+  // Validate the mode is a valid RediMode
+  const validModes = ['general', 'cooking', 'studying', 'meeting', 'sports', 'music', 'assembly', 'monitoring'];
+  if (!validModes.includes(newMode)) {
+    console.warn(`[Redi WebSocket] Invalid mode "${newMode}" for session ${sessionId}`);
+    return;
+  }
+
+  // Update orchestrator state
+  updateOrchestratorMode(sessionId, newMode);
+
+  console.log(`[Redi WebSocket] Mode changed to "${newMode}" for session ${sessionId} (autonomous detection)`);
 }
 
 /**

@@ -309,6 +309,14 @@ class WebSocketService: NSObject, ObservableObject {
             payload["fallbackFrame"] = fallback
         }
 
+        // Add mode-aware fields
+        payload["currentMode"] = packet.currentMode
+        payload["isAutonomousMode"] = packet.isAutonomousMode
+        payload["modeConfidence"] = packet.modeConfidence
+        if let context = packet.detectedContext {
+            payload["detectedContext"] = context
+        }
+
         sendMessage(type: .perception, payload: payload)
     }
 
@@ -320,6 +328,16 @@ class WebSocketService: NSObject, ObservableObject {
     /// Notify backend that user stopped speaking
     func notifyUserStopped() {
         sendMessage(type: .userStopped, payload: nil)
+    }
+
+    /// Notify backend of mode change (for autonomous mode)
+    func sendModeChange(_ mode: RediMode) {
+        let payload: [String: Any] = [
+            "mode": mode.rawValue,
+            "timestamp": Int(Date().timeIntervalSince1970 * 1000)
+        ]
+        sendMessage(type: .modeChange, payload: payload)
+        print("[WebSocket] Sent mode change: \(mode)")
     }
 
     // MARK: - Private Methods

@@ -55,6 +55,8 @@ struct SessionParticipant: Codable, Identifiable {
 }
 
 enum RediMode: String, Codable, CaseIterable {
+    case general = "general"        // Autonomous - works for anything
+    case cooking = "cooking"        // Kitchen & food
     case studying = "studying"
     case meeting = "meeting"
     case sports = "sports"
@@ -64,6 +66,8 @@ enum RediMode: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
+        case .general: return "Use Redi for Anything"
+        case .cooking: return "Cooking & Kitchen"
         case .studying: return "Studying & Learning"
         case .meeting: return "Meeting & Presentation"
         case .sports: return "Sports & Movement"
@@ -75,6 +79,8 @@ enum RediMode: String, Codable, CaseIterable {
 
     var icon: String {
         switch self {
+        case .general: return "sparkles"
+        case .cooking: return "frying.pan.fill"
         case .studying: return "book.fill"
         case .meeting: return "person.3.fill"
         case .sports: return "figure.run"
@@ -86,13 +92,15 @@ enum RediMode: String, Codable, CaseIterable {
 
     var usesMotionDetection: Bool {
         switch self {
-        case .sports, .music, .assembly: return true
-        default: return false
+        case .general, .cooking, .sports, .music, .assembly, .monitoring: return true
+        case .studying, .meeting: return false
         }
     }
 
     var snapshotIntervalMs: Int {
         switch self {
+        case .general: return 5000
+        case .cooking: return 5000
         case .studying: return 8000
         case .meeting: return 10000
         case .sports: return 0  // Motion triggered only
@@ -100,6 +108,11 @@ enum RediMode: String, Codable, CaseIterable {
         case .assembly: return 5000
         case .monitoring: return 15000
         }
+    }
+
+    /// Whether this mode is a specialized focus (vs autonomous general)
+    var isSpecializedMode: Bool {
+        return self != .general
     }
 }
 
@@ -313,6 +326,8 @@ enum WSMessageType: String, Codable {
     case perception = "perception"
     case userSpeaking = "user_speaking"
     case userStopped = "user_stopped"
+    // Autonomous mode detection
+    case modeChange = "mode_change"
 }
 
 // MARK: - Transcript

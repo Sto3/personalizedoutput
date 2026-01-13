@@ -44,6 +44,20 @@ class SessionViewModel: ObservableObject {
     /// Current movement phase
     @Published var movementPhase: String = "rest"
 
+    // MARK: - Autonomous Mode Detection
+
+    /// Whether Redi is in autonomous mode (figuring out what user is doing)
+    @Published var isAutonomousMode: Bool = false
+
+    /// The currently detected/active mode (may differ from session.mode if autonomous)
+    @Published var detectedMode: RediMode = .general
+
+    /// Confidence in the detected mode (0-1)
+    @Published var modeConfidence: Float = 0.0
+
+    /// Human-readable description of what Redi thinks user is doing
+    @Published var detectedActivity: String?
+
     // MARK: - Private Properties
 
     private var cancellables = Set<AnyCancellable>()
@@ -201,6 +215,36 @@ class SessionViewModel: ObservableObject {
                 print("[Session] Form alert: \(alertType)")
             }
             .store(in: &cancellables)
+
+        // MARK: - Autonomous Mode Detection Bindings
+
+        // Mode changes from perception service
+        perceptionService.modeChanged
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] newMode in
+                guard let self = self, self.isAutonomousMode else { return }
+                self.detectedMode = newMode
+                // Notify backend of mode change
+                self.webSocketService.sendModeChange(newMode)
+                print("[Session] Mode changed to: \(newMode)")
+            }
+            .store(in: &cancellables)
+
+        // Mode confidence updates
+        perceptionService.$modeConfidence
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$modeConfidence)
+
+        // Detected mode updates
+        perceptionService.$currentMode
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$detectedMode)
+
+        // Context hypothesis updates (what user is doing)
+        perceptionService.$contextHypothesis
+            .receive(on: DispatchQueue.main)
+            .compactMap { $0?.activity }
+            .assign(to: &$detectedActivity)
     }
 
     // MARK: - Session Control
@@ -229,12 +273,25 @@ class SessionViewModel: ObservableObject {
         // Start military-grade perception if enabled
         if useMilitaryGrade {
             let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
+
+            // Determine if autonomous mode (user selected "Use Redi for Anything")
+            let autonomous = session.mode == .general
+            isAutonomousMode = autonomous
+            detectedMode = session.mode
+
             perceptionService.start(
                 sessionId: session.id,
                 deviceId: deviceId,
+                mode: session.mode,
+                autonomous: autonomous,
                 intervalMs: 500  // 2 FPS for perception
             )
-            print("[Session] Military-grade perception started")
+
+            if autonomous {
+                print("[Session] Military-grade perception started in AUTONOMOUS mode")
+            } else {
+                print("[Session] Military-grade perception started in \(session.mode) mode")
+            }
         }
     }
 
