@@ -330,42 +330,71 @@ export async function generateQuestionResponse(
   const modeConfig = MODE_CONFIGS[mode];
   const context = transcriptBuffer.slice(-5).join('\n');
 
-  // PROMPTED responses can be longer (up to 30 words) but still concise
-  const systemPrompt = `You are Redi. The user asked you a question - give a helpful, direct answer.
+  // PROMPTED responses - direct answers, NO questions back, NO filler
+  const systemPrompt = `You are Redi. Answer the user's question directly.
 
-RULES:
-- MAX 30 words. Be substantive but don't ramble.
-- Answer the actual question asked.
-- Use contractions (that's, it's, you're) - sound natural.
-- If you can see something relevant, reference it.
-- NO filler like "Great question!" or "I'd be happy to help"
-- NO questions back unless absolutely necessary.
+ABSOLUTE RULES:
+- MAX 25 words. Direct and concise.
+- NEVER ask a question back. NO question marks allowed.
+- NEVER say "How can I help" or "What would you like" - just answer.
+- NEVER introduce yourself unless specifically asked "who are you"
+- Use contractions naturally (that's, it's, you're).
+- If you can see something, mention it briefly.
+
+FORBIDDEN PHRASES (will be rejected):
+- "How can I help you"
+- "What would you like"
+- "What can I help"
+- "I'm here to help"
+- "Let me know if"
+- Any question ending with "?"
+
+Just answer. Be direct. Sound human.
 
 Focus: ${modeConfig.systemPromptFocus}`;
 
   const userPrompt = `Context: ${context || '(none)'}
 Visual: ${visualContext || '(none)'}
-Question: ${question}`;
+User said: ${question}`;
 
   try {
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 150,
+      max_tokens: 100,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }]
     });
 
     const content = response.content[0];
-    let text = content.type === 'text' ? content.text.trim() : "I'm not sure about that.";
+    let text = content.type === 'text' ? content.text.trim() : "Not sure about that.";
 
-    // ENFORCE 30-word max for prompted responses
+    // ENFORCE: Remove any questions that slipped through
+    if (text.includes('?')) {
+      // Try to remove just the question part
+      const parts = text.split(/[.!]/).filter(p => !p.includes('?'));
+      if (parts.length > 0) {
+        text = parts.join('. ').trim();
+        if (text && !text.endsWith('.')) text += '.';
+      } else {
+        console.log(`[Redi Decision] REJECTED prompted response - all questions: "${text}"`);
+        text = "Got it.";  // Safe fallback
+      }
+    }
+
+    // ENFORCE: Remove forbidden help-offer phrases
+    const helpPhrases = /how can i help|what would you like|what can i help|i'm here to help|let me know if|what do you need/gi;
+    if (helpPhrases.test(text)) {
+      console.log(`[Redi Decision] REJECTED prompted response - help phrase: "${text}"`);
+      text = "Got it.";  // Safe fallback
+    }
+
+    // ENFORCE 25-word max for prompted responses
     const words = text.split(/\s+/).filter(w => w.length > 0);
-    if (words.length > 30) {
-      console.log(`[Redi Decision] Truncating prompted response from ${words.length} to 30 words`);
-      text = words.slice(0, 30).join(' ');
-      // Try to end at a sentence boundary
+    if (words.length > 25) {
+      console.log(`[Redi Decision] Truncating prompted response from ${words.length} to 25 words`);
+      text = words.slice(0, 25).join(' ');
       const lastPeriod = text.lastIndexOf('.');
-      if (lastPeriod > text.length * 0.6) {
+      if (lastPeriod > text.length * 0.5) {
         text = text.substring(0, lastPeriod + 1);
       }
     }
@@ -373,7 +402,7 @@ Question: ${question}`;
     return text;
   } catch (error) {
     console.error('[Redi Decision] Error generating question response:', error);
-    return "Sorry, couldn't process that.";
+    return "Couldn't catch that.";
   }
 }
 

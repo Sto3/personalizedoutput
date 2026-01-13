@@ -38,7 +38,8 @@ class AudioService: NSObject, ObservableObject {
     private var reverbNode: AVAudioUnitReverb?
 
     // Audio processing settings - makes voice feel "in the room"
-    private let enableAudioProcessing = true
+    // TEMPORARILY DISABLED - may be causing audio issues
+    private let enableAudioProcessing = false
     private let warmthBoostDB: Float = 3.0        // Subtle low-mid boost
     private let reverbWetDryMix: Float = 8.0      // Very subtle room presence (0-100)
 
