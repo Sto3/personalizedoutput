@@ -339,6 +339,23 @@ async function sendInitialGreeting(sessionId: string, mode: RediMode): Promise<v
   }
 }
 
+// Import military-grade orchestrator
+import {
+  initMilitaryGrade,
+  cleanupMilitaryGrade,
+  processPerception,
+  handleDirectQuestion,
+  onUserSpeaking,
+  onUserStopped,
+  onRediSpeaking,
+  onRediFinished,
+  isMilitaryGradeEnabled
+} from '../lib/redi/militaryGradeOrchestrator';
+import { PerceptionPacket } from '../lib/redi/militaryGradeTypes';
+
+// Track which sessions use military-grade
+const militaryGradeSessions = new Set<string>();
+
 /**
  * Handle incoming WebSocket message from a device
  */
@@ -347,6 +364,20 @@ async function handleMessage(sessionId: string, deviceId: string, message: WSMes
   updateParticipantActivity(sessionId, deviceId);
 
   switch (message.type) {
+    // NEW: Military-grade perception packet
+    case 'perception':
+      await handlePerception(sessionId, deviceId, message.payload as PerceptionPacket);
+      break;
+
+    // NEW: User speaking status (for interruption handling)
+    case 'user_speaking':
+      onUserSpeaking(sessionId);
+      break;
+
+    case 'user_stopped':
+      onUserStopped(sessionId);
+      break;
+
     case 'audio_chunk':
       handleAudioChunk(sessionId, message as WSAudioChunk);
       break;
@@ -415,6 +446,79 @@ async function handleMessage(sessionId: string, deviceId: string, message: WSMes
 function handleAudioChunk(sessionId: string, message: WSAudioChunk): void {
   const audioBuffer = Buffer.from(message.payload.audio, 'base64');
   sendAudio(sessionId, audioBuffer);
+}
+
+/**
+ * Handle perception packet from military-grade iOS client
+ * This is the new structured data format (pose, objects, movement)
+ */
+async function handlePerception(sessionId: string, deviceId: string, packet: PerceptionPacket): Promise<void> {
+  const session = getSession(sessionId);
+  if (!session) return;
+
+  // Initialize military-grade if not already
+  if (!militaryGradeSessions.has(sessionId)) {
+    initMilitaryGrade(sessionId, session.mode, session.sensitivity);
+    militaryGradeSessions.add(sessionId);
+    console.log(`[Redi WebSocket] Military-grade enabled for session ${sessionId}`);
+  }
+
+  // Process through military-grade orchestrator
+  const result = await processPerception(sessionId, packet);
+
+  // If rep count updated, broadcast it
+  if (result.repCount !== undefined) {
+    broadcastToSession(sessionId, {
+      type: 'rep_count' as any,
+      sessionId,
+      timestamp: Date.now(),
+      payload: { count: result.repCount }
+    });
+  }
+
+  // If we have a response, speak it
+  if (result.response) {
+    // Mark Redi as speaking
+    onRediSpeaking(sessionId);
+
+    try {
+      // Broadcast text response
+      broadcastToSession(sessionId, {
+        type: 'ai_response',
+        sessionId,
+        timestamp: Date.now(),
+        payload: {
+          text: result.response,
+          source: result.source,
+          latencyMs: result.latencyMs,
+          isStreaming: false,
+          isFinal: true
+        }
+      });
+
+      // Generate and send audio
+      const audioBuffer = await speak(sessionId, result.response);
+
+      if (audioBuffer) {
+        broadcastAudio(sessionId, {
+          type: 'voice_audio',
+          sessionId,
+          timestamp: Date.now(),
+          payload: {
+            audio: audioBuffer.toString('base64'),
+            format: 'mp3',
+            isStreaming: false,
+            isFinal: true
+          }
+        });
+      }
+
+      console.log(`[Redi WebSocket] Military-grade response (${result.source}): "${result.response}" [${result.latencyMs}ms]`);
+
+    } finally {
+      onRediFinished(sessionId);
+    }
+  }
 }
 
 /**
@@ -977,6 +1081,13 @@ async function handleSessionEnd(sessionId: string): Promise<void> {
   stopTranscription(sessionId);
   closeVoiceService(sessionId);
   clearVisualContext(sessionId);
+
+  // Clean up military-grade if enabled
+  if (militaryGradeSessions.has(sessionId)) {
+    cleanupMilitaryGrade(sessionId);
+    militaryGradeSessions.delete(sessionId);
+    console.log(`[Redi WebSocket] Military-grade cleaned up for ${sessionId}`);
+  }
 
   // End session and get costs
   const result = endSession(sessionId);
