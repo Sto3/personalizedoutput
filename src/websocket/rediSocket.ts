@@ -99,6 +99,12 @@ const silenceCheckIntervals = new Map<string, NodeJS.Timeout>();
 const hostDisconnectTimers = new Map<string, NodeJS.Timeout>();
 const HOST_RECONNECT_GRACE_MS = 30000; // 30 seconds to reconnect
 
+// Track last processed transcripts per session (prevents duplicate processing)
+const lastProcessedTranscripts = new Map<string, string>();
+
+// Track frame aggregation intervals (CRITICAL: must be cleaned up on session end)
+const frameAggregationIntervals = new Map<string, NodeJS.Timeout>();
+
 // Frame aggregation buffer: sessionId -> array of recent frames from all devices
 const frameBuffers = new Map<string, { deviceId: string; image: string; timestamp: number }[]>();
 const FRAME_BUFFER_MAX = 10;
@@ -350,7 +356,8 @@ import {
   onUserStopped,
   onRediSpeaking,
   onRediFinished,
-  isMilitaryGradeEnabled
+  isMilitaryGradeEnabled,
+  updateSensitivity as updateOrchestratorSensitivity
 } from '../lib/redi/militaryGradeOrchestrator';
 import { PerceptionPacket } from '../lib/redi/militaryGradeTypes';
 
@@ -400,8 +407,11 @@ async function handleMessage(sessionId: string, deviceId: string, message: WSMes
       if (ctx) {
         const newSensitivity = message.payload?.sensitivity;
         if (typeof newSensitivity === 'number') {
-          ctx.sensitivity = Math.max(0, Math.min(1, newSensitivity));
-          updateSensitivity(sessionId, ctx.sensitivity);
+          const clampedSensitivity = Math.max(0, Math.min(1, newSensitivity));
+          ctx.sensitivity = clampedSensitivity;
+          updateSensitivity(sessionId, clampedSensitivity);  // Session manager
+          updateOrchestratorSensitivity(sessionId, clampedSensitivity);  // Military-grade orchestrator
+          console.log(`[Redi WebSocket] Sensitivity updated to ${clampedSensitivity} for ${sessionId}`);
         }
       }
       break;
@@ -506,13 +516,12 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     // 1. It's fresh (within 3 seconds)
     // 2. Packet doesn't already have a transcript
     // 3. We haven't already processed this exact transcript (prevents duplicates)
-    const lastProcessedKey = `${sessionId}_lastProcessedTranscript`;
-    const lastProcessed = (global as any)[lastProcessedKey];
+    const lastProcessed = lastProcessedTranscripts.get(sessionId);
 
     if (transcriptAge < 3000 && !packet.transcript && recentTranscript !== lastProcessed) {
       packet.transcript = recentTranscript;
       packet.transcriptIsFinal = true;
-      (global as any)[lastProcessedKey] = recentTranscript; // Mark as processed
+      lastProcessedTranscripts.set(sessionId, recentTranscript); // Mark as processed
     }
   }
 
@@ -531,8 +540,11 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
 
   // If we have a response, speak it
   if (result.response) {
-    // Mark Redi as speaking
-    onRediSpeaking(sessionId);
+    // Mark Redi as speaking - update BOTH state stores for consistency
+    onRediSpeaking(sessionId);  // Pipeline state
+    if (ctx) {
+      markSpeakingStart(ctx);  // DecisionContext state (for interruption detection)
+    }
 
     try {
       // Broadcast text response
@@ -569,7 +581,11 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
       console.log(`[Redi WebSocket] Military-grade response (${result.source}): "${result.response}" [${result.latencyMs}ms]`);
 
     } finally {
-      onRediFinished(sessionId);
+      // Mark Redi finished speaking - update BOTH state stores
+      onRediFinished(sessionId);  // Pipeline state
+      if (ctx) {
+        markSpoke(ctx, result.response);  // DecisionContext state (releases lock)
+      }
     }
   }
 }
@@ -1111,12 +1127,18 @@ function startFrameAggregationLoop(sessionId: string, mode: RediMode): void {
   // Only run for modes that use periodic snapshots
   if (modeConfig.snapshotIntervalMs === 0) return;
 
+  // Clear any existing interval first
+  const existingInterval = frameAggregationIntervals.get(sessionId);
+  if (existingInterval) {
+    clearInterval(existingInterval);
+  }
+
   const interval = setInterval(() => {
     aggregateAndAnalyzeFrames(sessionId);
   }, Math.max(modeConfig.snapshotIntervalMs, FRAME_AGGREGATION_INTERVAL_MS));
 
-  // Store interval (reuse insight intervals map)
-  // In production, use a separate map
+  // CRITICAL: Store interval so it can be cleaned up on session end
+  frameAggregationIntervals.set(sessionId, interval);
 }
 
 /**
@@ -1196,6 +1218,16 @@ async function handleSessionEnd(sessionId: string): Promise<void> {
     clearInterval(silenceInterval);
     silenceCheckIntervals.delete(sessionId);
   }
+
+  // Clear frame aggregation interval (CRITICAL: prevents memory leak)
+  const frameInterval = frameAggregationIntervals.get(sessionId);
+  if (frameInterval) {
+    clearInterval(frameInterval);
+    frameAggregationIntervals.delete(sessionId);
+  }
+
+  // Clean up session-scoped state
+  lastProcessedTranscripts.delete(sessionId);
 
   // Stop services
   stopTranscription(sessionId);

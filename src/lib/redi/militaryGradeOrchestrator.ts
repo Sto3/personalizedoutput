@@ -503,8 +503,17 @@ export function updateMode(sessionId: string, newMode: RediMode): void {
     const modeConfig = MODE_CONFIGS[newMode];
     state.sensitivity = modeConfig.defaultSensitivity;
 
+    // CRITICAL: Reset rule engine state when mode changes
+    // Old mode's rules (e.g., sports rep counting) shouldn't fire for new mode (e.g., cooking)
+    cleanupRuleEngine(sessionId);
+    initRuleEngine(sessionId);
+
+    // Clear recent context - old mode's context isn't relevant to new mode
+    state.recentContext = [];
+
     console.log(`[Orchestrator] Mode changed from ${oldMode} to ${newMode} for ${sessionId}`);
     console.log(`[Orchestrator] Sensitivity adjusted to ${state.sensitivity} (mode default)`);
+    console.log(`[Orchestrator] Rule engine reset for new mode`);
   }
 }
 
