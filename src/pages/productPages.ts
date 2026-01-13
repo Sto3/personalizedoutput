@@ -436,11 +436,11 @@ export function renderProductPage(productId: ProductType): string {
           <div style="flex:1; height:1px; background:rgba(255,255,255,0.15);"></div>
         </div>
 
-        <!-- Gift Code Redemption Section -->
+        <!-- Gift/Promo Code Redemption Section -->
         <div id="giftCodeSection">
-          <label style="display:block; text-align:left; color:rgba(255,255,255,0.9); font-size:0.85rem; margin-bottom:6px; font-weight:500;">Redeem a Gift Code</label>
-          <input type="text" id="giftCodeInput" placeholder="GIFT-XXXX-XXXX" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; font-family:monospace; letter-spacing:1px; text-transform:uppercase; margin-bottom:10px;">
-          <button id="redeemBtn" style="width:100%; padding:12px; background:transparent; color:#E85A6B; border:1px solid #E85A6B; border-radius:50px; font-size:0.95rem; font-weight:500; cursor:pointer;">Redeem Gift</button>
+          <label style="display:block; text-align:left; color:rgba(255,255,255,0.9); font-size:0.85rem; margin-bottom:6px; font-weight:500;">Have a code?</label>
+          <input type="text" id="giftCodeInput" placeholder="Enter gift or promo code" style="width:100%; padding:14px 16px; border:1px solid rgba(255,255,255,0.2); border-radius:8px; background:rgba(0,0,0,0.3); color:#fff; font-size:1rem; letter-spacing:1px; margin-bottom:10px;">
+          <button id="redeemBtn" style="width:100%; padding:12px; background:transparent; color:#E85A6B; border:1px solid #E85A6B; border-radius:50px; font-size:0.95rem; font-weight:500; cursor:pointer;">Redeem Code</button>
         </div>
 
         <button id="modalCancel" style="width:100%; padding:10px; background:transparent; color:rgba(255,255,255,0.5); border:none; font-size:0.85rem; cursor:pointer; margin-top:16px;">Cancel</button>
@@ -535,10 +535,10 @@ export function renderProductPage(productId: ProductType): string {
       }
 
       async function redeemGiftCode() {
-        const code = giftCodeInput.value.trim().toUpperCase();
+        const code = giftCodeInput.value.trim();
 
-        // Validate gift code format
-        if (!code || !code.startsWith('GIFT-') || code.length < 14) {
+        // Validate code is not empty (backend handles format validation)
+        if (!code || code.length < 3) {
           giftCodeInput.style.borderColor = '#E85A6B';
           return;
         }
