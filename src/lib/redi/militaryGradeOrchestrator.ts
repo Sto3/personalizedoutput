@@ -315,7 +315,8 @@ export async function processPerception(
 // ============================================================================
 
 /**
- * Handle a direct question from user (bypasses triage, goes straight to Sonnet)
+ * Handle a direct question from user
+ * Routes to Haiku (fast) for simple questions, Sonnet for complex ones
  */
 export async function handleDirectQuestion(
   sessionId: string,
@@ -324,6 +325,7 @@ export async function handleDirectQuestion(
 ): Promise<{
   response: string;
   latencyMs: number;
+  source: 'haiku' | 'sonnet';
 }> {
   const startTime = Date.now();
   const state = sessionStates.get(sessionId);
@@ -331,52 +333,146 @@ export async function handleDirectQuestion(
   if (!state) {
     return {
       response: "I'm here.",
-      latencyMs: Date.now() - startTime
+      latencyMs: Date.now() - startTime,
+      source: 'haiku'
     };
   }
 
   // Update context timestamp
   updateContextTimestamp(sessionId);
 
-  // Go directly to Sonnet for questions
+  // Determine if question needs Sonnet (complex) or Haiku (simple)
+  const needsSonnet = isComplexQuestion(question);
+  const model = needsSonnet ? 'sonnet' : 'haiku';
+
+  console.log(`[Orchestrator] Question routing: ${model} (complex: ${needsSonnet})`);
+
   try {
-    const response = await generateQuestionResponse(
-      state.mode,
-      question,
-      state.recentContext,
-      visualContext
-    );
+    let response: string;
+
+    if (needsSonnet) {
+      // Complex question → Sonnet for deep reasoning
+      response = await generateQuestionResponse(
+        state.mode,
+        question,
+        state.recentContext,
+        visualContext
+      );
+      state.metrics.sonnetResponses++;
+    } else {
+      // Simple question → Haiku for fast response
+      response = await generateQuickQuestionResponse(
+        state.mode,
+        question,
+        state.recentContext,
+        visualContext
+      );
+      state.metrics.haikuResponses++;
+    }
 
     // Process through pipeline
     const pipelineResult = processResponse(
       sessionId,
       response,
-      'sonnet',
+      model,
       true  // Questions are prompted
     );
 
     if (pipelineResult.approved) {
-      state.metrics.sonnetResponses++;
       state.lastSpokeAt = Date.now();
 
       return {
         response: pipelineResult.response!,
-        latencyMs: Date.now() - startTime
+        latencyMs: Date.now() - startTime,
+        source: model
       };
     } else {
       // If pipeline rejected, use safe fallback
+      const fallbacks = ["I'm here.", "Listening.", "I hear you."];
       return {
-        response: "Got it.",
-        latencyMs: Date.now() - startTime
+        response: fallbacks[Math.floor(Math.random() * fallbacks.length)],
+        latencyMs: Date.now() - startTime,
+        source: model
       };
     }
   } catch (error) {
     console.error('[Orchestrator] Question handling error:', error);
     return {
-      response: "Got it.",
-      latencyMs: Date.now() - startTime
+      response: "I'm here.",
+      latencyMs: Date.now() - startTime,
+      source: 'haiku'
     };
   }
+}
+
+/**
+ * Determine if a question needs Sonnet (complex) or can use Haiku (simple)
+ */
+function isComplexQuestion(question: string): boolean {
+  const q = question.toLowerCase();
+
+  // Complex patterns that need Sonnet's reasoning
+  const complexPatterns = [
+    /explain/i,
+    /why (is|are|do|does|did|would|should)/i,
+    /how (do|does|can|could|would|should) (i|you|we)/i,
+    /what('s| is) (the|my) (problem|issue|mistake)/i,
+    /tell me (about|more|everything)/i,
+    /describe (in detail|everything|all)/i,
+    /analyze/i,
+    /compare/i,
+    /what (should|could|would) (i|we)/i,
+    /help me understand/i,
+  ];
+
+  for (const pattern of complexPatterns) {
+    if (pattern.test(q)) return true;
+  }
+
+  // Long questions (>10 words) likely need more reasoning
+  const wordCount = q.split(/\s+/).length;
+  if (wordCount > 10) return true;
+
+  // Default to Haiku (fast) for simple questions
+  return false;
+}
+
+/**
+ * Generate quick response using Haiku (for simple questions)
+ */
+async function generateQuickQuestionResponse(
+  mode: RediMode,
+  question: string,
+  recentContext: string[],
+  visualContext: string
+): Promise<string> {
+  const modeConfig = MODE_CONFIGS[mode];
+  const context = recentContext.slice(-3).join('\n');
+
+  const systemPrompt = `You are Redi, a helpful AI assistant. Answer briefly and directly.
+
+RULES:
+- MAX 15 words. Be concise.
+- NO questions back. NO "how can I help".
+- Just answer what was asked.
+- Use contractions naturally.
+
+Focus: ${modeConfig.systemPromptFocus}`;
+
+  const visualLine = visualContext ? `\nI see: ${visualContext}` : '';
+  const userPrompt = `${context}${visualLine}\nUser: ${question}`;
+
+  const anthropic = new (await import('@anthropic-ai/sdk')).default();
+
+  const response = await anthropic.messages.create({
+    model: 'claude-3-5-haiku-20241022',
+    max_tokens: 60,
+    system: systemPrompt,
+    messages: [{ role: 'user', content: userPrompt }]
+  });
+
+  const content = response.content[0];
+  return content.type === 'text' ? content.text.trim() : "I'm here.";
 }
 
 // ============================================================================

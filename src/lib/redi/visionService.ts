@@ -83,7 +83,7 @@ Be concise, confident, and focused on being helpful.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-3-5-haiku-20241022', // Fast vision analysis
       max_tokens: 300,
       messages: [{
         role: 'user',
@@ -183,7 +183,7 @@ Be encouraging and helpful. Focus on what you CAN observe about the movement.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-5-20250929',
+      model: 'claude-3-5-haiku-20241022', // Fast vision analysis
       max_tokens: 400,
       messages: [{
         role: 'user',

@@ -552,6 +552,50 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
 }
 
 /**
+ * Get fresh visual analysis from the most recent frame
+ * Used when user asks visual questions like "what do you see?"
+ */
+async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promise<string | null> {
+  const buffer = frameBuffers.get(sessionId);
+  if (!buffer || buffer.length === 0) {
+    console.log(`[Redi] No frames in buffer for fresh visual analysis`);
+    return null;
+  }
+
+  // Get the most recent frame
+  const recentFrame = buffer[buffer.length - 1];
+  const frameAge = Date.now() - recentFrame.timestamp;
+
+  // Only use if frame is less than 2 seconds old
+  if (frameAge > 2000) {
+    console.log(`[Redi] Most recent frame too old (${Math.round(frameAge/1000)}s), skipping`);
+    return null;
+  }
+
+  console.log(`[Redi] Analyzing fresh frame (${Math.round(frameAge)}ms old)`);
+
+  try {
+    const analysis = await analyzeSnapshot(
+      sessionId,
+      recentFrame.image,
+      mode,
+      '' // No transcript context needed
+    );
+
+    // Also update the cached context
+    const ctx = contexts.get(sessionId);
+    if (ctx) {
+      updateVisualContext(ctx, analysis.description);
+    }
+
+    return analysis.description;
+  } catch (error) {
+    console.error(`[Redi] Fresh visual analysis failed:`, error);
+    return null;
+  }
+}
+
+/**
  * Handle snapshot from a device - add to aggregation buffer
  */
 function handleSnapshot(sessionId: string, deviceId: string, message: WSSnapshot): void {
@@ -614,25 +658,34 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
 
     const session = getSession(sessionId);
     if (session) {
-      // Check if visual context is fresh (within last 3 seconds)
-      // Stale visual context causes hallucinations about old camera content
-      const VISUAL_FRESHNESS_MS = 3000;
-      const visualAge = Date.now() - ctx.lastVisualAt;
-      const freshVisualContext = visualAge < VISUAL_FRESHNESS_MS ? ctx.visualContext : '';
+      let visualContext = '';
 
-      if (visualAge >= VISUAL_FRESHNESS_MS && ctx.visualContext) {
-        console.log(`[Redi] Visual context stale (${Math.round(visualAge/1000)}s old), not including in response`);
+      // Check if this is a visual question - needs fresh frame analysis
+      const isVisualQuestion = /what (do you |can you )?see|look(ing)? at|in front|show(ing)?|camera|visible|watching/i.test(text);
+
+      if (isVisualQuestion) {
+        // Get fresh visual analysis from most recent frame
+        const freshVisual = await getFreshVisualAnalysis(sessionId, session.mode);
+        if (freshVisual) {
+          visualContext = freshVisual;
+          console.log(`[Redi] Fresh visual analysis for visual question`);
+        }
+      } else {
+        // Non-visual question - use cached context if fresh enough
+        const VISUAL_FRESHNESS_MS = 3000;
+        const visualAge = Date.now() - ctx.lastVisualAt;
+        if (visualAge < VISUAL_FRESHNESS_MS) {
+          visualContext = ctx.visualContext;
+        } else if (ctx.visualContext) {
+          console.log(`[Redi] Visual context stale (${Math.round(visualAge/1000)}s old), not including`);
+        }
       }
 
-      // PROMPTED response - allows up to 30 words
-      const response = await generateQuestionResponse(
-        session.mode,
-        text,
-        ctx.transcriptBuffer,
-        freshVisualContext
-      );
+      // Use military-grade orchestrator for questions (proper Layer 2/3 routing)
+      const result = await handleDirectQuestion(sessionId, text, visualContext);
 
-      await speakResponse(sessionId, response);
+      console.log(`[Redi] Question answered in ${result.latencyMs}ms (${result.source})`);
+      await speakResponse(sessionId, result.response);
     }
   }
 }
