@@ -493,6 +493,29 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     console.log(`[Redi WebSocket] Military-grade enabled for session ${sessionId}`);
   }
 
+  // CRITICAL: Bridge transcript from DecisionContext to perception packet
+  // iOS sends perception packets separately from audio, so we need to inject
+  // the recent transcript for triage to have context to work with
+  const ctx = contexts.get(sessionId);
+  if (ctx && ctx.transcriptBuffer.length > 0) {
+    // Get most recent transcript if it's fresh (within last 3 seconds)
+    const recentTranscript = ctx.transcriptBuffer[ctx.transcriptBuffer.length - 1];
+    const transcriptAge = Date.now() - ctx.lastTranscriptAt;
+
+    // Only inject transcript if:
+    // 1. It's fresh (within 3 seconds)
+    // 2. Packet doesn't already have a transcript
+    // 3. We haven't already processed this exact transcript (prevents duplicates)
+    const lastProcessedKey = `${sessionId}_lastProcessedTranscript`;
+    const lastProcessed = (global as any)[lastProcessedKey];
+
+    if (transcriptAge < 3000 && !packet.transcript && recentTranscript !== lastProcessed) {
+      packet.transcript = recentTranscript;
+      packet.transcriptIsFinal = true;
+      (global as any)[lastProcessedKey] = recentTranscript; // Mark as processed
+    }
+  }
+
   // Process through military-grade orchestrator
   const result = await processPerception(sessionId, packet);
 
@@ -622,12 +645,12 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
   const ctx = contexts.get(sessionId);
   if (!ctx || !chunk.text.trim()) return;
 
-  // INTERRUPTION DETECTION: If user speaks while Redi is speaking, handle gracefully
+  // INTERRUPTION DETECTION: If user speaks while Redi is speaking, stop immediately
   if (ctx.isSpeaking) {
-    console.log(`[Redi WebSocket] User interrupted Redi - graceful transition`);
+    console.log(`[Redi WebSocket] User interrupted Redi - stopping immediately`);
     onUserInterruption(ctx);
 
-    // Stop current speech on iOS
+    // Stop current speech on iOS immediately (no deferral audio - just yield the floor)
     broadcastToSession(sessionId, {
       type: 'ai_response',
       sessionId,
@@ -635,37 +658,8 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
       payload: { text: '', isStreaming: false, isFinal: true, interrupted: true }
     });
 
-    // GRACEFUL TRANSITION: Brief polite acknowledgment before yielding
-    const session = getSession(sessionId);
-    if (session) {
-      const deferrals = [
-        "Go ahead.",
-        "Sorry, you first.",
-        "Oh, go ahead.",
-        "Sure, what's up?"
-      ];
-      const deferral = deferrals[Math.floor(Math.random() * deferrals.length)];
-
-      // Send graceful deferral (short, polite, conversational)
-      try {
-        const audioBuffer = await speak(sessionId, deferral, { stream: false });
-        if (audioBuffer) {
-          broadcastToSession(sessionId, {
-            type: 'voice_audio',
-            sessionId,
-            timestamp: Date.now(),
-            payload: {
-              audio: audioBuffer.toString('base64'),
-              format: 'mp3',
-              isStreaming: false
-            }
-          });
-          console.log(`[Redi WebSocket] Sent graceful deferral: "${deferral}"`);
-        }
-      } catch (e) {
-        console.log(`[Redi WebSocket] Deferral audio failed, continuing silently`);
-      }
-    }
+    // Don't generate deferral audio - it adds latency and feels unnatural
+    // Just go silent and listen to what the user is saying
   }
 
   // Update context
