@@ -116,6 +116,11 @@ import {
 } from './lib/viralReadiness';
 
 const app = express();
+
+// Trust proxy - required for Render.com (and other reverse proxies)
+// Fixes express-rate-limit X-Forwarded-For header validation
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 3000;
 const isProduction = process.env.NODE_ENV === 'production';
 
