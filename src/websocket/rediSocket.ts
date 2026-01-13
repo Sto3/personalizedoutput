@@ -614,12 +614,22 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
 
     const session = getSession(sessionId);
     if (session) {
+      // Check if visual context is fresh (within last 3 seconds)
+      // Stale visual context causes hallucinations about old camera content
+      const VISUAL_FRESHNESS_MS = 3000;
+      const visualAge = Date.now() - ctx.lastVisualAt;
+      const freshVisualContext = visualAge < VISUAL_FRESHNESS_MS ? ctx.visualContext : '';
+
+      if (visualAge >= VISUAL_FRESHNESS_MS && ctx.visualContext) {
+        console.log(`[Redi] Visual context stale (${Math.round(visualAge/1000)}s old), not including in response`);
+      }
+
       // PROMPTED response - allows up to 30 words
       const response = await generateQuestionResponse(
         session.mode,
         text,
         ctx.transcriptBuffer,
-        ctx.visualContext
+        freshVisualContext
       );
 
       await speakResponse(sessionId, response);

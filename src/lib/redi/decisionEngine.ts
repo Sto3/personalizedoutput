@@ -402,7 +402,9 @@ User said: ${question}`;
     const helpPhrases = /how can i help|what would you like|what can i help|i'm here to help|let me know if|what do you need|ready to help|whenever you need|here for you|need any help|need help with|what's up|what is up|what can i do for you|anything else|anything you need/gi;
     if (helpPhrases.test(text)) {
       console.log(`[Redi Decision] REJECTED prompted response - help phrase: "${text}"`);
-      text = "Got it.";  // Safe fallback
+      // Natural fallbacks instead of robotic "Got it"
+      const fallbacks = ["I'm here.", "Listening.", "I hear you.", "Ready."];
+      text = fallbacks[Math.floor(Math.random() * fallbacks.length)];
     }
 
     // ENFORCE: Remove "I don't see" and similar visual negation phrases
