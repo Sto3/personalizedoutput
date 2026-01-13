@@ -455,3 +455,43 @@ git push origin main
 - ELEVENLABS_SANTA_VOICE_ID
 
 **DO NOT FORGET:** Local changes don't go live until you push!
+
+---
+
+## REDI - Real-Time AI Assistant
+
+### CRITICAL: Read After Every Compact
+
+When working on Redi (the real-time AI assistant), **immediately read `REDI_ARCHITECTURE.md`** which contains:
+- Data flow maps
+- State store documentation (6+ stores that must stay in sync)
+- Engineering rules learned from hard debugging
+- Common bugs and their fixes
+
+### Quick Reference - Redi Architecture Rules
+
+These rules exist because bugs in these areas took HOURS to diagnose:
+
+1. **Every `Map<sessionId, X>` needs cleanup in `handleSessionEnd()`**
+2. **State changes must propagate to ALL stores** (DecisionContext, OrchestratorState, PipelineState, etc.)
+3. **Speaking state (`isSpeaking`) must update BOTH DecisionContext AND PipelineState**
+4. **Mode changes must reset rule engine state**
+5. **Bridge data at system boundaries** (transcript → perception packet injection)
+6. **Never use global scope for session state** - use proper Maps
+
+### Key Redi Files
+
+| File | Purpose |
+|------|---------|
+| `src/websocket/rediSocket.ts` | WebSocket handling, message routing |
+| `src/lib/redi/militaryGradeOrchestrator.ts` | Main AI processing pipeline |
+| `src/lib/redi/decisionEngine.ts` | Legacy decisions, context |
+| `src/lib/redi/haikuTriage.ts` | Fast AI responses |
+| `ios-app/Redi/` | iOS Swift application |
+
+### Before Modifying Redi Code
+
+1. Read `REDI_ARCHITECTURE.md`
+2. Check if state exists in multiple stores
+3. Add cleanup for any new Maps/intervals
+4. Test integration across components
