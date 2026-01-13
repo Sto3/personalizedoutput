@@ -36,6 +36,14 @@ const QUESTION_PATTERNS = [
 
 // Error/mistake patterns (mode-specific)
 const ERROR_PATTERNS: Record<RediMode, RegExp[]> = {
+  general: [
+    /that's not right|incorrect|wrong|mistake/i,
+    /i don't understand|confused|help/i
+  ],
+  cooking: [
+    /burnt|burning|too hot|overcooked|undercooked/i,
+    /wrong ingredient|how long|what temperature/i
+  ],
   studying: [
     /that's not right|incorrect|wrong|mistake/i,
     /i don't understand|confused|lost/i

@@ -1229,6 +1229,8 @@ router.get('/history/stats', async (req: Request, res: Response) => {
  */
 function getModeDisplayName(mode: RediMode): string {
   const names: Record<RediMode, string> = {
+    general: 'Use Redi for Anything',
+    cooking: 'Cooking & Kitchen',
     studying: 'Studying & Learning',
     meeting: 'Meeting & Presentation',
     sports: 'Sports & Movement',
