@@ -567,16 +567,18 @@ router.post('/session/apple', async (req: Request, res: Response) => {
 
   try {
     // Determine session duration based on available minutes
-    // If unlimited, default to 60 minutes but can go longer
-    // If limited, cap at available minutes or requested duration
+    // Default to 15 minutes (Try Redi duration) unless user requests more
+    // Cap at available balance if not unlimited
+    const DEFAULT_SESSION_MINUTES = 15;
     let sessionDuration: number;
+
     if (balance.isUnlimited) {
-      sessionDuration = requestedDuration || 60;  // Default 60 min for unlimited
+      // Unlimited subscribers: use requested or default to 30 min
+      sessionDuration = requestedDuration || 30;
     } else {
-      sessionDuration = Math.min(
-        requestedDuration || balance.minutesRemaining,
-        balance.minutesRemaining
-      );
+      // Limited minutes: use requested duration, default to 15, cap at balance
+      const requested = requestedDuration || DEFAULT_SESSION_MINUTES;
+      sessionDuration = Math.min(requested, balance.minutesRemaining);
     }
 
     // Create session config
@@ -584,7 +586,7 @@ router.post('/session/apple', async (req: Request, res: Response) => {
       mode: (rediMode as RediMode) || 'studying',
       sensitivity: sensitivity || 0.5,
       voiceGender: (voiceGender as VoiceGender) || 'female',
-      durationMinutes: Math.min(sessionDuration, 60) as 20 | 30 | 60  // Cap at 60 for now
+      durationMinutes: Math.min(sessionDuration, 60) as 15 | 20 | 30 | 60
     };
 
     const hostDeviceId = deviceId || uuidv4();

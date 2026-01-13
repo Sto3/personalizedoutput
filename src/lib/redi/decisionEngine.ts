@@ -219,11 +219,14 @@ If nothing worth saying: respond ONLY with NO_INSIGHT
 
 Focus: ${modeConfig.systemPromptFocus}`;
 
-  const userPrompt = `What the user is saying:
-${recentTranscript || '(silence)'}
+  // Only include visual section if we have visual context
+  // NEVER mention "no visual" - just omit the section entirely
+  const visualSection = visualContext
+    ? `\n\nWhat you see:\n${visualContext}`
+    : '';
 
-What you see:
-${visualContext || '(no visual context)'}
+  const userPrompt = `What the user is saying:
+${recentTranscript || '(silence)'}${visualSection}
 
 Should you say something? If yes, what would you say naturally?`;
 
@@ -338,8 +341,9 @@ ABSOLUTE RULES:
 - NEVER ask a question back. NO question marks allowed.
 - NEVER say "How can I help" or "What would you like" - just answer.
 - NEVER introduce yourself unless specifically asked "who are you"
+- NEVER say "I don't see" or "there's no" - describe what IS visible instead.
 - Use contractions naturally (that's, it's, you're).
-- If you can see something, mention it briefly.
+- If asked about something you can't identify, describe what you CAN see.
 
 FORBIDDEN PHRASES (will be rejected):
 - "How can I help you"
@@ -347,14 +351,19 @@ FORBIDDEN PHRASES (will be rejected):
 - "What can I help"
 - "I'm here to help"
 - "Let me know if"
+- "I don't see"
+- "no visual input"
+- "no image"
 - Any question ending with "?"
 
 Just answer. Be direct. Sound human.
 
 Focus: ${modeConfig.systemPromptFocus}`;
 
-  const userPrompt = `Context: ${context || '(none)'}
-Visual: ${visualContext || '(none)'}
+  // Only include visual context if we have it - don't mention absence
+  const visualLine = visualContext ? `\nVisual: ${visualContext}` : '';
+
+  const userPrompt = `Context: ${context || '(none)'}${visualLine}
 User said: ${question}`;
 
   try {
@@ -368,25 +377,37 @@ User said: ${question}`;
     const content = response.content[0];
     let text = content.type === 'text' ? content.text.trim() : "Not sure about that.";
 
-    // ENFORCE: Remove any questions that slipped through
+    // ENFORCE: Remove ANY questions - strict no-questions policy
     if (text.includes('?')) {
-      // Try to remove just the question part
-      const parts = text.split(/[.!]/).filter(p => !p.includes('?'));
-      if (parts.length > 0) {
-        text = parts.join('. ').trim();
-        if (text && !text.endsWith('.')) text += '.';
+      // Remove sentences containing ? and rebuild
+      const sentences = text.split(/(?<=[.!?])\s*/);
+      const cleaned = sentences.filter(s => !s.includes('?'));
+      if (cleaned.length > 0) {
+        text = cleaned.join(' ').trim();
       } else {
         console.log(`[Redi Decision] REJECTED prompted response - all questions: "${text}"`);
         text = "Got it.";  // Safe fallback
       }
     }
 
-    // ENFORCE: Remove forbidden help-offer phrases
-    const helpPhrases = /how can i help|what would you like|what can i help|i'm here to help|let me know if|what do you need/gi;
+    // ENFORCE: Remove forbidden help-offer phrases (expanded list)
+    const helpPhrases = /how can i help|what would you like|what can i help|i'm here to help|let me know if|what do you need|ready to help|whenever you need|here for you|need any help|need help with|what's up|what is up|what can i do for you|anything else|anything you need/gi;
     if (helpPhrases.test(text)) {
       console.log(`[Redi Decision] REJECTED prompted response - help phrase: "${text}"`);
       text = "Got it.";  // Safe fallback
     }
+
+    // ENFORCE: Remove "I don't see" and similar visual negation phrases
+    const visualNegation = /i don't see|i can't see|there's no|there is no|no visual|no image|not visible|can't find|cannot see/gi;
+    if (visualNegation.test(text)) {
+      console.log(`[Redi Decision] REJECTED prompted response - visual negation: "${text}"`);
+      text = "Let me describe what I can see.";  // Redirect rather than negate
+    }
+
+    // ENFORCE: Remove intro phrases that sound robotic
+    const introPhrases = /^(yep,?\s*|yeah,?\s*|hey,?\s*|hi,?\s*|hello,?\s*)/i;
+    text = text.replace(introPhrases, '').trim();
+    if (!text) text = "Got it.";
 
     // ENFORCE 25-word max for prompted responses
     const words = text.split(/\s+/).filter(w => w.length > 0);
