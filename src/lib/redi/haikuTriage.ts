@@ -201,15 +201,21 @@ function assessComplexity(input: TriageInput): {
 } {
   const transcript = input.packet.transcript || '';
 
-  // Check for complex question patterns
+  // Check for complex question patterns - route to Sonnet for detailed answers
   const complexPatterns = [
     /why\s+(is|are|do|does|did|should|would|can|could)/i,
     /how\s+(does|do|can|should|would)\s+.+\s+work/i,
+    /how\s+(do|can|to)\s+(i|you)\s+/i,         // "how do I", "how can I", "how to"
+    /walk\s+me\s+through/i,                     // "walk me through"
+    /step\s+by\s+step/i,                        // "step by step"
+    /tell\s+me\s+how\s+to/i,                    // "tell me how to"
+    /show\s+me\s+how/i,                         // "show me how"
     /explain\s+(how|why|what)/i,
     /what('s| is)\s+the\s+(difference|best|right|correct)/i,
     /compare|versus|vs\.|better\s+than/i,
     /should\s+i\s+.+\s+or\s+/i,
-    /help\s+me\s+understand/i
+    /help\s+me\s+understand/i,
+    /can\s+you\s+(help|tell|show|explain)/i    // "can you help/tell/show/explain"
   ];
 
   for (const pattern of complexPatterns) {
@@ -257,12 +263,15 @@ async function generateQuickResponse(input: TriageInput): Promise<string | null>
   // Build compact context
   const context = buildCompactContext(input);
 
-  const systemPrompt = `You are Redi, a real-time AI assistant. Respond in 2-8 words MAX.
+  const systemPrompt = `You are Redi, a helpful real-time AI assistant. Keep responses concise (5-15 words).
 
 RULES:
-- Be brief like a coach: "Good form" "Watch your back" "Nice"
-- NO questions - statements only
-- NO "I see" "I notice" - just say it
+- ANSWER questions directly - don't redirect or avoid
+- If you see something relevant to the question, USE that context in your answer
+- Be helpful and specific, not vague motivational phrases
+- NO "I hear you" "keep going" "momentum" - actually help
+- If user asks "what do you see" - describe what's visible
+- If user asks "how to" do something - give the first step clearly
 - If nothing worth saying: respond with SILENT
 
 Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
@@ -272,7 +281,7 @@ Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
   try {
     const response = await anthropic.messages.create({
       model: HAIKU_MODEL,
-      max_tokens: 50,
+      max_tokens: 75,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }]
     });
@@ -287,9 +296,9 @@ Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
       return null;
     }
 
-    // Validate response
+    // Validate response - allow up to 15 words for helpful answers
     const wordCount = text.split(/\s+/).length;
-    if (wordCount > 8) {
+    if (wordCount > 15) {
       console.log(`[Haiku Triage] Response too long (${wordCount} words), rejecting`);
       return null;
     }
@@ -354,6 +363,18 @@ function buildCompactContext(input: TriageInput): string {
 
     if (topObjects.length > 0) {
       parts.push(`Objects: ${topObjects.join(', ')}`);
+    }
+  }
+
+  // Text on screen (OCR) - critical for understanding what user is looking at
+  if (input.packet.texts && input.packet.texts.length > 0) {
+    const visibleTexts = input.packet.texts
+      .filter(t => t.confidence > 0.7)
+      .slice(0, 3)
+      .map(t => t.text.substring(0, 40));
+
+    if (visibleTexts.length > 0) {
+      parts.push(`Screen shows: ${visibleTexts.join('; ')}`);
     }
   }
 

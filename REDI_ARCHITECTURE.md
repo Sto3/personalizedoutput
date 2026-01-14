@@ -259,5 +259,49 @@ Before implementing ANY new Redi feature, answer these questions:
 
 ---
 
-**Last Updated**: January 2026 (Post architectural audit)
+## VIDEO REVIEW WORKFLOW
+
+When testing Redi, use this workflow to share recordings with Claude Code:
+
+### How It Works
+1. **User records screen** with microphone commentary explaining what's happening
+2. **User sends video file path** to Claude Code
+3. **Claude Code runs Whisper** to transcribe audio (includes user commentary AND Redi's responses)
+4. **Claude Code extracts frames** (1 every 3 seconds) to see what Redi was seeing
+5. **Claude Code analyzes** transcript + frames to diagnose issues
+
+### Script Location
+```bash
+# Process a screen recording
+bash /Users/matthewriley/Storytowrite/scripts/process-screen-recording.sh /path/to/video.mp4
+
+# Output:
+# - /tmp/video-review/audio.txt (transcript)
+# - /tmp/video-review/frame_*.png (frames every 3 seconds)
+```
+
+### Whisper Installation
+```bash
+# Whisper is installed at:
+~/.local/bin/whisper
+
+# Or run via pipx
+pipx run openai-whisper
+```
+
+### What to Record
+- Start screen recording with microphone on
+- Talk to Redi, NOT to Claude Code (so transcript is clean)
+- At the END, add commentary about what went wrong
+- Send the video file path
+
+### What Claude Code Looks For
+- Transcript timing: when user spoke vs when Redi responded
+- Response quality: did Redi answer the question?
+- Visual context: did Redi see what was on screen?
+- Timing issues: too slow, too fast, interrupted?
+
+---
+
+**Last Updated**: January 2026 (Post architectural audit + video workflow)
 **Maintainer**: Claude Code sessions

@@ -42,6 +42,65 @@ import {
 import { generateQuestionResponse } from './decisionEngine';
 
 // ============================================================================
+// HELPER: Build visual context from perception packet
+// ============================================================================
+
+/**
+ * Build a concise visual context string from perception packet
+ * This is passed to Sonnet so it knows what Redi can see
+ */
+function buildVisualContext(packet: PerceptionPacket): string {
+  const parts: string[] = [];
+
+  // Objects detected
+  if (packet.objects && packet.objects.length > 0) {
+    const objects = packet.objects
+      .filter(o => o.confidence > 0.6)
+      .slice(0, 5)
+      .map(o => o.label);
+    if (objects.length > 0) {
+      parts.push(`Objects: ${objects.join(', ')}`);
+    }
+  }
+
+  // Text detected (OCR)
+  if (packet.texts && packet.texts.length > 0) {
+    const texts = packet.texts
+      .filter(t => t.confidence > 0.7)
+      .slice(0, 3)
+      .map(t => t.text.substring(0, 50));
+    if (texts.length > 0) {
+      parts.push(`Text visible: ${texts.join('; ')}`);
+    }
+  }
+
+  // Pose information
+  if (packet.pose && packet.pose.confidence > 0.5) {
+    const pose = packet.pose;
+    const poseParts: string[] = [];
+    if (pose.bodyPosition) poseParts.push(pose.bodyPosition);
+    if (pose.angles.spineAngle !== undefined) {
+      poseParts.push(`spine ${Math.round(pose.angles.spineAngle)}°`);
+    }
+    if (poseParts.length > 0) {
+      parts.push(`Person: ${poseParts.join(', ')}`);
+    }
+  }
+
+  // Movement
+  if (packet.movement && packet.movement.phase !== 'rest' && packet.movement.phase !== 'unknown') {
+    parts.push(`Movement: ${packet.movement.phase}`);
+  }
+
+  // Device context
+  if (packet.lightLevel && packet.lightLevel !== 'normal') {
+    parts.push(`Light: ${packet.lightLevel}`);
+  }
+
+  return parts.join('. ') || '';
+}
+
+// ============================================================================
 // SESSION STATE
 // ============================================================================
 
@@ -265,11 +324,14 @@ export async function processPerception(
     const question = packet.transcript || triageResult.reasoningPrompt || '';
 
     try {
+      // Build visual context from what Redi can see
+      const visualContext = buildVisualContext(packet);
+
       const sonnetResponse = await generateQuestionResponse(
         state.mode,
         question,
         state.recentContext,
-        '' // Visual context would come from packet
+        visualContext
       );
 
       const sonnetLatency = Date.now() - sonnetStartTime;
