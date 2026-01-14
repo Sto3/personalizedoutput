@@ -136,6 +136,9 @@ interface RecentPerceptionData {
   audioContext?: string;           // Dominant sound / audio events
   motionContext?: string;          // User activity state
   lightLevel?: string;             // Ambient light conditions
+  // MILITARY-GRADE: Apple Vision scene classifications (1000+ categories, FREE)
+  // These identify things YOLOv8 cannot: conference photos, documents, artwork, etc.
+  sceneClassifications?: string[]; // Top 5 Apple Vision classifications
 }
 const recentPerceptionData = new Map<string, RecentPerceptionData>();
 
@@ -561,6 +564,9 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
   const session = getSession(sessionId);
   if (!session) return;
 
+  // Get decision context for this session
+  const ctx = contexts.get(sessionId);
+
   // Initialize military-grade if not already
   if (!militaryGradeSessions.has(sessionId)) {
     initMilitaryGrade(sessionId, session.mode, session.sensitivity);
@@ -642,6 +648,10 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     if (ms.suddenMovement) motionContext = (motionContext || '') + ' (sudden movement detected)';
   }
 
+  // MILITARY-GRADE: Extract Apple Vision scene classifications
+  // These are FREE and identify things YOLOv8 cannot (1000+ categories)
+  const sceneClassifications = (packet as any).sceneClassifications as string[] | undefined;
+
   const perceptionData: RecentPerceptionData = {
     timestamp: Date.now(),
     objects: groundedDetections.map(d => d.label),  // Use grounded objects (higher confidence)
@@ -650,37 +660,40 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     sceneConfidence,  // Store confidence for later use
     audioContext,
     motionContext,
-    lightLevel: packet.lightLevel
+    lightLevel: packet.lightLevel,
+    sceneClassifications  // Apple Vision classifications (1000+ categories)
   };
   recentPerceptionData.set(sessionId, perceptionData);
 
-  // MILITARY-GRADE: Periodic Claude Vision analysis for UNIVERSAL identification
-  // iOS ML (YOLOv8) only recognizes ~80 object classes
-  // Claude Vision can identify ANYTHING: conference photos, documents, artwork, screens, etc.
-  // This runs every 5 seconds regardless of what iOS detected
+  // Log what iOS detected for debugging
+  if (sceneClassifications && sceneClassifications.length > 0) {
+    console.log(`[Redi] Apple Vision: ${sceneClassifications.slice(0, 3).join(', ')}`);
+  }
+
+  // SMART HYBRID: iOS always watching, Claude Vision for deep understanding
+  //
+  // iOS (FREE, instant): Detects WHAT is in the scene (categories, objects, text)
+  // Claude Vision (costly, slow): Describes and UNDERSTANDS what it sees
+  //
+  // Strategy:
+  // 1. iOS runs continuously - we always know something about the scene
+  // 2. Claude Vision called when:
+  //    a) User asks a visual question ("what do you see?")
+  //    b) iOS detects significant scene change AND we have budget
+  //    c) iOS detected nothing useful (fallback)
+  //
+  // Budget: ~60 calls per 15-min session ($0.90), leaving healthy margin
+
   const hasFrame = !!extPacket.fallbackFrame;
-  const ctx = contexts.get(sessionId);
-  const iosDetectedNothing = groundedDetections.length === 0 && rawTexts.length === 0;
+  const hasSceneClassifications = sceneClassifications && sceneClassifications.length > 0;
+  const iosDetectedNothing = groundedDetections.length === 0 && rawTexts.length === 0 && !hasSceneClassifications;
 
-  if (hasFrame && ctx) {
-    const serverAnalysisAge = Date.now() - ctx.lastVisualAt;
-
-    // Analyze more frequently (3s) when iOS ML detected nothing, otherwise every 5s
-    const analysisInterval = iosDetectedNothing ? 3000 : 5000;
-
-    if (serverAnalysisAge > analysisInterval) {
-      const reason = iosDetectedNothing ? 'iOS ML empty' : 'periodic refresh';
-      console.log(`[Redi] Claude Vision analysis (${reason}) - last was ${Math.round(serverAnalysisAge/1000)}s ago`);
-
-      // Async - don't block perception processing
-      analyzeSnapshot(sessionId, extPacket.fallbackFrame, session.mode, '')
-        .then(analysis => {
-          updateVisualContext(ctx, analysis.description);
-          updateServerVisualContext(sessionId, analysis.description);
-          console.log(`[Redi] Claude Vision: "${analysis.description.substring(0, 100)}..."`);
-        })
-        .catch(err => console.error('[Redi] Claude Vision analysis failed:', err));
-    }
+  // Frame is stored in frameBuffers for on-demand analysis
+  if (hasFrame && iosDetectedNothing) {
+    console.log(`[Redi] iOS ML completely empty - frame stored for Claude Vision on next question`);
+  } else if (hasSceneClassifications) {
+    // iOS detected something - log it for debugging
+    console.log(`[Redi] iOS scene: ${sceneClassifications!.slice(0, 2).join(', ')}`);
   }
 
   // CRITICAL: Bridge transcript from DecisionContext to perception packet
@@ -823,11 +836,12 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
 
     let analysis;
 
-    // Use grounded analysis if we have fresh iOS detections
+    // Use enriched analysis if we have fresh iOS detections (context, not constraints!)
     if (iosPerception && iosAge < 3000) {
       const hasObjects = iosPerception.objects && iosPerception.objects.length > 0;
       const hasTexts = iosPerception.texts && iosPerception.texts.length > 0;
-      console.log(`[Redi] Using GROUNDED analysis (${Math.round(iosAge)}ms old) - objects: ${hasObjects ? iosPerception.objects.join(', ') : 'NONE'}, texts: ${hasTexts ? iosPerception.texts.join(', ') : 'NONE'}`);
+      const hasSceneClass = iosPerception.sceneClassifications && iosPerception.sceneClassifications.length > 0;
+      console.log(`[Redi] Using ENRICHED analysis (${Math.round(iosAge)}ms old) - scene: ${hasSceneClass ? iosPerception.sceneClassifications!.slice(0, 2).join(', ') : 'NONE'}, objects: ${hasObjects ? iosPerception.objects.join(', ') : 'NONE'}`);
       analysis = await analyzeSnapshotWithGrounding(
         sessionId,
         recentFrame.image,
@@ -835,7 +849,8 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
         {
           objects: iosPerception.objects,
           texts: iosPerception.texts,
-          poseDetected: !!iosPerception.poseDescription
+          poseDetected: !!iosPerception.poseDescription,
+          sceneClassifications: iosPerception.sceneClassifications  // Pass scene classifications for context
         },
         '' // No transcript context needed
       );
@@ -954,9 +969,13 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
           visualContext = freshVisual;
           console.log(`[Redi] Fresh server analysis for deep visual question`);
         }
-      } else if (iosAge < 1000 && (iosPerception!.objects.length > 0 || iosPerception!.texts.length > 0)) {
+      } else if (iosAge < 1000 && (iosPerception!.objects.length > 0 || iosPerception!.texts.length > 0 || (iosPerception!.sceneClassifications && iosPerception!.sceneClassifications.length > 0))) {
         // iOS perception data is fresh (<1s) and has content - USE IT
         const parts: string[] = [];
+        // MILITARY-GRADE: Include Apple Vision scene classifications (1000+ categories, FREE)
+        if (iosPerception!.sceneClassifications && iosPerception!.sceneClassifications.length > 0) {
+          parts.push(`Scene: ${iosPerception!.sceneClassifications.slice(0, 3).join(', ')}`);
+        }
         if (iosPerception!.objects.length > 0) {
           parts.push(`Objects: ${iosPerception!.objects.join(', ')}`);
         }
@@ -975,6 +994,10 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
       } else if (iosAge < 3000 && iosPerception) {
         // iOS data is moderately fresh - better than nothing
         const parts: string[] = [];
+        // Include scene classifications even in fallback (they're FREE and valuable)
+        if (iosPerception.sceneClassifications && iosPerception.sceneClassifications.length > 0) {
+          parts.push(`Scene: ${iosPerception.sceneClassifications.slice(0, 3).join(', ')}`);
+        }
         if (iosPerception.objects.length > 0) {
           parts.push(`Objects: ${iosPerception.objects.join(', ')}`);
         }
@@ -1074,7 +1097,7 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
 
     let analysis;
     if (hasGrounding) {
-      // Use grounded analysis to prevent hallucination
+      // Use enriched analysis with iOS context (not constraining, providing context!)
       analysis = await analyzeSnapshotWithGrounding(
         sessionId,
         frame.image,
@@ -1082,7 +1105,8 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
         {
           objects: iosPerception!.objects,
           texts: iosPerception!.texts,
-          poseDetected: !!iosPerception!.poseDescription
+          poseDetected: !!iosPerception!.poseDescription,
+          sceneClassifications: iosPerception!.sceneClassifications  // Scene context from Apple Vision
         },
         ctx.transcriptBuffer.slice(-3).join(' ')
       );

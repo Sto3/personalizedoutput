@@ -74,13 +74,18 @@ BAD: "I see an End button and a recording timer" (describing UI, not scene)
 Be helpful but accurate. If unsure, be vague rather than wrong.`;
 
 /**
- * iOS detection hints for grounding cloud vision
- * When provided, the cloud model should ONLY describe objects iOS confirmed exist
+ * iOS detection hints for ENRICHING cloud vision (not constraining!)
+ *
+ * PARADIGM SHIFT: iOS provides CONTEXT, not constraints
+ * - Claude Vision is the EXPERT (millions of objects, deep understanding)
+ * - iOS provides real-time confirmation (80 YOLOv8 classes + 1000 scene categories)
+ * - iOS detections BOOST confidence, they don't LIMIT what Claude can see
  */
 interface iOSDetectionHints {
-  objects?: string[];      // Objects detected by iOS Core ML
-  texts?: string[];        // Text detected by iOS Vision OCR
-  poseDetected?: boolean;  // Whether a human pose was detected
+  objects?: string[];           // Objects detected by iOS YOLOv8 (80 classes)
+  texts?: string[];             // Text detected by iOS Vision OCR
+  poseDetected?: boolean;       // Whether a human pose was detected
+  sceneClassifications?: string[];  // Apple Vision scene classifications (1000+ categories)
 }
 
 /**
@@ -191,42 +196,47 @@ export async function analyzeSnapshotWithGrounding(
 ): Promise<VisualAnalysis> {
   const modeConfig = MODE_CONFIGS[mode];
 
-  // Build grounding context from iOS detections
-  const groundingContext = buildGroundingContext(iosHints);
+  // Build enrichment context from iOS detections (ADDITIVE, not restrictive!)
+  const enrichmentContext = buildGroundingContext(iosHints);
   const hasAnyDetections = (iosHints.objects && iosHints.objects.length > 0) ||
                            (iosHints.texts && iosHints.texts.length > 0) ||
-                           iosHints.poseDetected;
+                           iosHints.poseDetected ||
+                           (iosHints.sceneClassifications && iosHints.sceneClassifications.length > 0);
 
   let groundedPrompt: string;
 
-  if (groundingContext && hasAnyDetections) {
-    // We have iOS detections - use them as ground truth
+  if (enrichmentContext && hasAnyDetections) {
+    // We have iOS detections - use them to ENRICH your analysis (not constrain it!)
     groundedPrompt = `
-GROUNDING FROM ON-DEVICE DETECTION:
-${groundingContext}
+REAL-TIME CONTEXT FROM ON-DEVICE SENSORS:
+${enrichmentContext}
 
-Based on the image and these CONFIRMED detections from on-device ML:
-- Describe what you see, prioritizing the confirmed objects
-- You may add details about confirmed objects (color, position, state)
-- Only mention NEW objects if you are 95%+ confident they exist
-- Do NOT invent objects that aren't in the confirmed list unless absolutely certain
+You are the EXPERT visual analyzer. The above detections are from iOS's limited ML models:
+- YOLOv8 knows only 80 object classes (may miss many things)
+- Scene classifications are Apple's 1000-category system (helpful context)
+- These detections CONFIRM things exist, but YOU can see MORE
+
+YOUR TASK:
+1. Describe EVERYTHING you see clearly (you are not limited to iOS detections)
+2. iOS detections boost your confidence - if iOS also saw it, you can be more certain
+3. Identify specific objects (brands, types, details) when visible in the image
+4. Read any text/labels you can see
+5. Be specific and helpful - this is a visual assistance product
 
 You're helping with: ${modeConfig.systemPromptFocus}
 `;
   } else {
-    // NO iOS detections - be ULTRA conservative to prevent hallucination
+    // NO iOS detections - but YOU are still the expert
     groundedPrompt = `
-WARNING: On-device ML did NOT detect any specific objects in this frame.
-This means the scene may be unclear, or objects are not easily identifiable.
+NOTE: On-device ML did not provide object detections for this frame.
+This is normal - iOS's YOLOv8 only knows 80 object classes.
 
-BE ULTRA CONSERVATIVE:
-- Only describe what you can see with 95%+ certainty
-- Use GENERIC terms: "a box", "some items", "an object" - NOT brand names
-- If you see text on something, read it exactly - don't guess the brand
-- DO NOT guess what type of product/item something is unless you can read the label
-- If uncertain, describe colors and shapes only: "a blue and white rectangular box"
-
-FORBIDDEN: Guessing brand names, product types, or specific items you're not certain about.
+YOU ARE THE EXPERT:
+1. Describe what you see clearly and specifically
+2. Identify objects, read text/labels, note details
+3. Be confident in your analysis - you have full visual understanding
+4. If something is genuinely unclear, describe what you CAN see
+5. This is a visual assistance product - be helpful and specific
 
 You're helping with: ${modeConfig.systemPromptFocus}
 `
@@ -300,65 +310,52 @@ You're helping with: ${modeConfig.systemPromptFocus}
 }
 
 /**
- * Build grounding context from iOS detections
+ * Build enrichment context from iOS detections
+ * This provides CONTEXT to Claude Vision, not constraints
  */
 function buildGroundingContext(hints: iOSDetectionHints): string {
   const parts: string[] = [];
 
+  // Scene classifications from Apple Vision (1000+ categories - very valuable!)
+  if (hints.sceneClassifications && hints.sceneClassifications.length > 0) {
+    parts.push(`Scene type: ${hints.sceneClassifications.slice(0, 3).join(', ')}`);
+  }
+
+  // Objects from YOLOv8 (only 80 classes, so limited)
   if (hints.objects && hints.objects.length > 0) {
-    parts.push(`Objects detected by on-device ML: ${hints.objects.join(', ')}`);
+    parts.push(`Objects confirmed by iOS: ${hints.objects.join(', ')}`);
   }
 
+  // Text from iOS Vision OCR
   if (hints.texts && hints.texts.length > 0) {
-    parts.push(`Text detected by on-device OCR: "${hints.texts.join('", "')}"`);
+    parts.push(`Text detected: "${hints.texts.join('", "')}"`);
   }
 
+  // Pose detection
   if (hints.poseDetected) {
-    parts.push('A person/human pose was detected in the frame');
+    parts.push('Person detected in frame');
   }
 
   return parts.join('\n');
 }
 
 /**
- * Validate cloud response against iOS ground truth
- * Removes or flags potential hallucinations
+ * Log when Claude's analysis might differ from iOS detections
+ * (For debugging only - we NO LONGER modify Claude's response)
+ *
+ * Claude Vision is the EXPERT. iOS detections are limited (80 YOLOv8 classes).
+ * If Claude sees something iOS didn't, that's expected and valuable.
  */
 function validateAgainstGroundTruth(response: string, hints: iOSDetectionHints): string {
-  // For now, just log potential discrepancies
-  // In future, could actually filter out hallucinated objects
+  // Log for debugging but DON'T modify the response
+  // Claude Vision is the expert - trust its analysis
   const iosObjects = hints.objects || [];
 
   if (iosObjects.length === 0) {
-    return response;
+    console.log(`[Redi Vision] Claude analyzed scene without iOS object detections (this is fine - YOLOv8 only knows 80 classes)`);
   }
 
-  // Check for brand name hallucinations (common failure mode)
-  const suspiciousBrands = [
-    'crest', 'oral-b', 'colgate', 'microsoft', 'apple', 'samsung',
-    'nike', 'adidas', 'coca-cola', 'pepsi', 'starbucks'
-  ];
-
-  const lowerResponse = response.toLowerCase();
-  for (const brand of suspiciousBrands) {
-    if (lowerResponse.includes(brand)) {
-      // Check if iOS detected something that could be this brand
-      const couldBeBrand = iosObjects.some(obj =>
-        obj.toLowerCase().includes('box') ||
-        obj.toLowerCase().includes('bottle') ||
-        obj.toLowerCase().includes('container') ||
-        obj.toLowerCase().includes('package')
-      );
-
-      if (!couldBeBrand) {
-        console.warn(`[Redi Vision] Potential hallucination: mentioned "${brand}" but iOS didn't detect relevant container`);
-        // Remove the brand mention and use generic term
-        const brandRegex = new RegExp(`\\b${brand}\\b`, 'gi');
-        response = response.replace(brandRegex, 'a');
-      }
-    }
-  }
-
+  // Just return the response unmodified - Claude is the expert
   return response;
 }
 

@@ -60,6 +60,10 @@ class SceneUnderstandingService: NSObject, ObservableObject {
     @Published var suggestedMode: RediMode = .general
     @Published var modeConfidence: Float = 0.0
 
+    /// MILITARY-GRADE: Raw scene classifications from Apple Vision (1000+ categories)
+    /// These are FREE and identify things YOLOv8 cannot see
+    @Published var recentClassifications: [String] = []
+
     // MARK: - Publishers
 
     /// Emitted when initial analysis completes (first 3-5 seconds)
@@ -70,6 +74,9 @@ class SceneUnderstandingService: NSObject, ObservableObject {
 
     /// Emitted when mode should change
     let modeChangeRecommended = PassthroughSubject<RediMode, Never>()
+
+    /// Emitted with raw Apple Vision classifications (top 5)
+    let classificationsUpdated = PassthroughSubject<[String], Never>()
 
     // MARK: - Private Properties
 
@@ -273,6 +280,19 @@ class SceneUnderstandingService: NSObject, ObservableObject {
         for observation in relevant.prefix(10) {
             let label = observation.identifier.lowercased()
             objectBuffer.append(label)
+        }
+
+        // MILITARY-GRADE: Publish raw classifications for backend use
+        // These are FREE and identify things YOLOv8 cannot (1000+ categories)
+        let topClassifications = relevant.prefix(5).map { obs in
+            // Format: "label (confidence%)"
+            let confidence = Int(obs.confidence * 100)
+            return "\(obs.identifier) (\(confidence)%)"
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.recentClassifications = Array(topClassifications)
+            self?.classificationsUpdated.send(Array(topClassifications))
         }
     }
 

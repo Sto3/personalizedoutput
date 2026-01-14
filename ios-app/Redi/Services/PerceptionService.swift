@@ -158,6 +158,10 @@ struct PerceptionPacket: Codable {
     var modeConfidence: Float         // Confidence in current mode (0-1)
     var detectedContext: String?      // What we think user is doing
 
+    // MILITARY-GRADE: Apple scene classifications (1000+ categories)
+    // This is FREE and identifies things YOLOv8 cannot (conference photos, documents, etc.)
+    var sceneClassifications: [String]?    // Top 5 Apple Vision classifications
+
     // Overall confidence for ensemble grounding
     var overallConfidence: Float?     // Combined confidence from all sensors
 }
@@ -232,6 +236,10 @@ class PerceptionService: NSObject, ObservableObject {
 
     private let sceneService = SceneUnderstandingService()
     private var sceneBindings = Set<AnyCancellable>()
+
+    /// MILITARY-GRADE: Apple Vision scene classifications (1000+ categories)
+    /// These are FREE and identify things YOLOv8 cannot see
+    var sceneClassifications: [String] = []
 
     // MARK: - Object Detection (YOLOv8)
 
@@ -321,6 +329,15 @@ class PerceptionService: NSObject, ObservableObject {
                 guard let self = self, self.isAutonomousMode else { return }
                 self.contextHypothesis = hypothesis
                 self.sceneService.evaluateModeSwitch(newHypothesis: hypothesis)
+            }
+            .store(in: &sceneBindings)
+
+        // MILITARY-GRADE: Get raw Apple Vision classifications (1000+ categories)
+        // These are FREE and identify things YOLOv8 cannot see
+        sceneService.classificationsUpdated
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] classifications in
+                self?.sceneClassifications = classifications
             }
             .store(in: &sceneBindings)
     }
@@ -892,6 +909,8 @@ class PerceptionService: NSObject, ObservableObject {
             isAutonomousMode: isAutonomousMode,
             modeConfidence: modeConfidence,
             detectedContext: contextHypothesis?.activity,
+            // MILITARY-GRADE: Apple Vision classifications (1000+ categories, FREE)
+            sceneClassifications: sceneClassifications.isEmpty ? nil : sceneClassifications,
             // Overall confidence
             overallConfidence: overallConfidence
         )
