@@ -304,6 +304,14 @@ class AudioService: NSObject, ObservableObject {
         isPlaying = false
     }
 
+    // MARK: - Audio Format Access
+
+    /// Get the audio format used for recording (for audio classification)
+    func getAudioFormat() -> AVAudioFormat? {
+        // Return the format used for capture (16kHz mono)
+        return AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: channels, interleaved: false)
+    }
+
     // MARK: - Cleanup
 
     func cleanup() {

@@ -27,6 +27,8 @@ class CameraService: NSObject, ObservableObject {
     @Published var currentZoom: CGFloat = 1.0
     @Published var maxZoom: CGFloat = 5.0
     @Published var imageQuality: ImageQuality = .unknown
+    @Published var lightLevel: LightLevel = .normal
+    @Published var brightnessValue: Float = 0.0
 
     enum ImageQuality: String {
         case excellent = "Excellent"
@@ -34,6 +36,24 @@ class CameraService: NSObject, ObservableObject {
         case fair = "Fair"
         case poor = "Poor"
         case unknown = "Unknown"
+    }
+
+    /// Ambient light level classification
+    enum LightLevel: String, Codable {
+        case bright = "bright"      // Well-lit environment
+        case normal = "normal"      // Standard indoor lighting
+        case dim = "dim"            // Low light, may affect vision quality
+        case dark = "dark"          // Very low light, vision significantly degraded
+
+        /// Confidence modifier for vision based on light level
+        var visionConfidenceModifier: Float {
+            switch self {
+            case .bright: return 1.0
+            case .normal: return 1.0
+            case .dim: return 0.7
+            case .dark: return 0.4
+            }
+        }
     }
 
     // MARK: - Publishers
@@ -484,6 +504,56 @@ class CameraService: NSObject, ObservableObject {
         let best = recentFrames.max { $0.sharpness < $1.sharpness }
         return best.map { ($0.image, $0.sharpness) }
     }
+
+    // MARK: - Ambient Light Detection
+
+    /// Detect ambient light level from camera frame metadata
+    private func detectLightLevel(from sampleBuffer: CMSampleBuffer) {
+        // Get EXIF metadata from the sample buffer
+        guard let metadata = CMCopyDictionaryOfAttachments(
+            allocator: nil,
+            target: sampleBuffer,
+            attachmentMode: kCMAttachmentMode_ShouldPropagate
+        ) as? [String: Any] else { return }
+
+        // Try to get brightness from EXIF data
+        var brightness: Float = 0.0
+
+        if let exifData = metadata[kCGImagePropertyExifDictionary as String] as? [String: Any],
+           let brightnessVal = exifData[kCGImagePropertyExifBrightnessValue as String] as? NSNumber {
+            brightness = brightnessVal.floatValue
+        }
+
+        // Classify light level based on brightness value
+        // Brightness value ranges: negative = dark, 0-5 = normal, 5+ = bright
+        let level: LightLevel
+        if brightness < -1.0 {
+            level = .dark
+        } else if brightness < 1.0 {
+            level = .dim
+        } else if brightness < 6.0 {
+            level = .normal
+        } else {
+            level = .bright
+        }
+
+        // Update on main thread (throttle to reduce updates)
+        if level != lightLevel {
+            DispatchQueue.main.async { [weak self] in
+                self?.lightLevel = level
+                self?.brightnessValue = brightness
+            }
+        }
+    }
+
+    /// Get light level info for perception packet
+    func getLightLevelInfo() -> [String: Any] {
+        return [
+            "level": lightLevel.rawValue,
+            "brightness": brightnessValue,
+            "visionConfidenceModifier": lightLevel.visionConfidenceModifier
+        ]
+    }
 }
 
 // MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
@@ -491,6 +561,9 @@ class CameraService: NSObject, ObservableObject {
 extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        // Detect ambient light level from frame metadata
+        detectLightLevel(from: sampleBuffer)
 
         let ciImage = CIImage(cvPixelBuffer: imageBuffer)
         guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }

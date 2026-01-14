@@ -1,12 +1,44 @@
 /**
  * MotionService.swift
  *
- * Detects significant movement using Core Motion framework.
- * Triggers video clip capture when movement is detected.
+ * IMU Sensor Fusion for Redi
+ *
+ * Uses CoreMotion to understand user's physical state:
+ * - Detects significant movement for video clip capture
+ * - Stationary vs walking vs exercising classification
+ * - Phone orientation (upright, flat, angled)
+ * - Sudden movements (potential falls)
+ *
+ * This context helps Redi adapt responses and detect activities
+ * even when vision is limited.
  */
 
 import CoreMotion
 import Combine
+import Foundation
+
+// MARK: - Motion State Model
+
+/// Comprehensive motion state for perception
+struct MotionState: Codable {
+    let isStationary: Bool
+    let isWalking: Bool
+    let isExercising: Bool
+    let phoneOrientation: String  // "upright", "flat", "angled", "face_down", "landscape"
+    let suddenMovement: Bool      // Potential fall or jerk
+    let activityLevel: Float      // 0.0 (still) to 1.0 (intense)
+    let timestamp: TimeInterval
+
+    static let stationary = MotionState(
+        isStationary: true,
+        isWalking: false,
+        isExercising: false,
+        phoneOrientation: "unknown",
+        suddenMovement: false,
+        activityLevel: 0.0,
+        timestamp: Date().timeIntervalSince1970 * 1000
+    )
+}
 
 class MotionService: ObservableObject {
     // MARK: - Published Properties
@@ -15,13 +47,21 @@ class MotionService: ObservableObject {
     @Published var currentAcceleration: Double = 0
     @Published var motionDetected: Bool = false
 
+    // New: Comprehensive motion state
+    @Published var currentState: MotionState = .stationary
+    @Published var phoneOrientation: String = "unknown"
+
     // MARK: - Publishers
 
     let significantMotionDetected = PassthroughSubject<Void, Never>()
+    let motionStateUpdated = PassthroughSubject<MotionState, Never>()
+    let suddenMovementDetected = PassthroughSubject<Void, Never>()
+    let activityChanged = PassthroughSubject<String, Never>()
 
     // MARK: - Private Properties
 
     private let motionManager = CMMotionManager()
+    private let activityManager = CMMotionActivityManager()
     private var motionThreshold: Double = 0.3
     private var cooldownTimer: Timer?
     private var isInCooldown: Bool = false
@@ -30,6 +70,15 @@ class MotionService: ObservableObject {
     // Acceleration history for smoothing
     private var accelerationHistory: [Double] = []
     private let historySize = 10
+
+    // Activity classification thresholds
+    private let stationaryThreshold: Double = 0.05
+    private let walkingThreshold: Double = 0.1
+    private let exercisingThreshold: Double = 0.5
+    private let suddenMovementThreshold: Double = 2.0
+
+    // Activity tracking
+    private var previousActivity: String = "unknown"
 
     // MARK: - Initialization
 
@@ -83,6 +132,7 @@ class MotionService: ObservableObject {
 
     private func processMotion(_ motion: CMDeviceMotion) {
         let userAcceleration = motion.userAcceleration
+        let gravity = motion.gravity
 
         // Calculate magnitude of user acceleration (ignoring gravity)
         let magnitude = sqrt(
@@ -101,16 +151,73 @@ class MotionService: ObservableObject {
         let smoothedAcceleration = accelerationHistory.reduce(0, +) / Double(accelerationHistory.count)
         currentAcceleration = smoothedAcceleration
 
-        // Check for significant motion
+        // Check for significant motion (original behavior)
         let isSignificant = smoothedAcceleration > motionThreshold
+
+        // Enhanced: Classify phone orientation from gravity
+        let orientation = classifyOrientation(gravity)
+
+        // Enhanced: Detect sudden movements (potential fall)
+        let suddenMovement = magnitude > suddenMovementThreshold
+
+        // Enhanced: Classify activity level
+        let isStationary = smoothedAcceleration < stationaryThreshold
+        let isWalking = smoothedAcceleration >= walkingThreshold && smoothedAcceleration < exercisingThreshold
+        let isExercising = smoothedAcceleration >= exercisingThreshold
+        let activityLevel = min(Float(smoothedAcceleration / exercisingThreshold), 1.0)
+
+        // Create comprehensive motion state
+        let state = MotionState(
+            isStationary: isStationary,
+            isWalking: isWalking,
+            isExercising: isExercising,
+            phoneOrientation: orientation,
+            suddenMovement: suddenMovement,
+            activityLevel: activityLevel,
+            timestamp: Date().timeIntervalSince1970 * 1000
+        )
 
         DispatchQueue.main.async {
             self.motionDetected = isSignificant
+            self.currentState = state
+            self.phoneOrientation = orientation
         }
 
-        // Trigger if significant and not in cooldown
+        // Send state update
+        motionStateUpdated.send(state)
+
+        // Emit sudden movement event
+        if suddenMovement {
+            suddenMovementDetected.send()
+        }
+
+        // Emit activity change
+        let currentActivity = isExercising ? "exercising" : (isWalking ? "walking" : "stationary")
+        if currentActivity != previousActivity {
+            previousActivity = currentActivity
+            activityChanged.send(currentActivity)
+        }
+
+        // Trigger video clip if significant and not in cooldown (original behavior)
         if isSignificant && !isInCooldown {
             triggerMotionEvent()
+        }
+    }
+
+    /// Classify phone orientation from gravity vector
+    private func classifyOrientation(_ gravity: CMAcceleration) -> String {
+        // gravity.z close to -1 means phone is flat, face up
+        // gravity.z close to 1 means phone is flat, face down
+        // gravity.y close to -1 means phone is upright (portrait)
+
+        if abs(gravity.z) > 0.9 {
+            return gravity.z < 0 ? "flat" : "face_down"
+        } else if abs(gravity.y) > 0.7 {
+            return "upright"
+        } else if abs(gravity.x) > 0.7 {
+            return "landscape"
+        } else {
+            return "angled"
         }
     }
 
@@ -163,5 +270,29 @@ extension MotionService {
         motionThreshold = preset.threshold
         cooldownDuration = preset.cooldown
         print("[Motion] Applied preset: threshold=\(preset.threshold), cooldown=\(preset.cooldown)s")
+    }
+}
+
+// MARK: - Motion State Utilities
+
+extension MotionService {
+    /// Get a summary suitable for the perception packet
+    func getMotionSummary() -> [String: Any] {
+        return [
+            "isStationary": currentState.isStationary,
+            "isWalking": currentState.isWalking,
+            "isExercising": currentState.isExercising,
+            "phoneOrientation": currentState.phoneOrientation,
+            "activityLevel": currentState.activityLevel,
+            "suddenMovement": currentState.suddenMovement
+        ]
+    }
+
+    /// Suggest a mode based on motion patterns
+    func getSuggestedMode() -> RediMode? {
+        if currentState.isExercising {
+            return .sports
+        }
+        return nil
     }
 }

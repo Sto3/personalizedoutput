@@ -42,6 +42,65 @@ import {
 import { generateQuestionResponse } from './decisionEngine';
 
 // ============================================================================
+// UNCERTAINTY COMMUNICATION
+// ============================================================================
+
+/**
+ * Add hedging language based on scene confidence
+ * Low confidence = more hedging ("It looks like...", "I think...")
+ * High confidence = direct statements
+ */
+function addUncertaintyHedge(response: string, confidence: number): string {
+  // High confidence (>0.7) - direct statement
+  if (confidence > 0.7) {
+    return response;
+  }
+
+  // Medium confidence (0.4-0.7) - light hedging
+  if (confidence > 0.4) {
+    const hedges = [
+      'It looks like ',
+      'I think ',
+      'Seems like ',
+    ];
+    const hedge = hedges[Math.floor(Math.random() * hedges.length)];
+
+    // Only hedge statements, not questions or commands
+    if (!response.endsWith('?') && !response.endsWith('!')) {
+      // Make first letter lowercase if hedging
+      const lowerResponse = response.charAt(0).toLowerCase() + response.slice(1);
+      return hedge + lowerResponse;
+    }
+    return response;
+  }
+
+  // Low confidence (<0.4) - stronger hedging
+  const strongHedges = [
+    "I'm not sure, but it looks like ",
+    "Hard to tell, but I think ",
+    "From what I can see, ",
+  ];
+  const hedge = strongHedges[Math.floor(Math.random() * strongHedges.length)];
+
+  if (!response.endsWith('?') && !response.endsWith('!')) {
+    const lowerResponse = response.charAt(0).toLowerCase() + response.slice(1);
+    return hedge + lowerResponse;
+  }
+  return response;
+}
+
+/**
+ * Check if confidence is too low to speak (prevents hallucination)
+ */
+function shouldSupressLowConfidence(confidence: number, isPrompted: boolean): boolean {
+  // Never suppress prompted responses (user asked a question)
+  if (isPrompted) return false;
+
+  // Suppress unprompted visual observations when confidence is very low
+  return confidence < 0.25;
+}
+
+// ============================================================================
 // HELPER: Build visual context from perception packet
 // ============================================================================
 
@@ -51,6 +110,7 @@ import { generateQuestionResponse } from './decisionEngine';
  */
 function buildVisualContext(packet: PerceptionPacket): string {
   const parts: string[] = [];
+  const extPacket = packet as any;  // For new optional fields
 
   // Objects detected
   if (packet.objects && packet.objects.length > 0) {
@@ -92,9 +152,42 @@ function buildVisualContext(packet: PerceptionPacket): string {
     parts.push(`Movement: ${packet.movement.phase}`);
   }
 
-  // Device context
+  // NEW: Audio context (environmental sounds)
+  if (extPacket.dominantSound) {
+    parts.push(`Sounds: ${extPacket.dominantSound}`);
+  } else if (extPacket.audioEvents && extPacket.audioEvents.length > 0) {
+    const sounds = extPacket.audioEvents
+      .filter((e: any) => e.confidence > 0.6)
+      .slice(0, 3)
+      .map((e: any) => e.label);
+    if (sounds.length > 0) {
+      parts.push(`Sounds: ${sounds.join(', ')}`);
+    }
+  }
+
+  // NEW: Motion state (user activity)
+  if (extPacket.motionState) {
+    const ms = extPacket.motionState;
+    if (ms.isExercising) {
+      parts.push('User activity: exercising');
+    } else if (ms.isWalking) {
+      parts.push('User activity: walking');
+    }
+    // Don't add stationary - that's the default
+  }
+
+  // Device context - light level
   if (packet.lightLevel && packet.lightLevel !== 'normal') {
     parts.push(`Light: ${packet.lightLevel}`);
+    // Add warning for low-light if confidence is affected
+    if (extPacket.lightConfidenceModifier && extPacket.lightConfidenceModifier < 0.7) {
+      parts.push('(vision limited)');
+    }
+  }
+
+  // NEW: Overall confidence (helps AI know how reliable its data is)
+  if (extPacket.overallConfidence !== undefined && extPacket.overallConfidence < 0.5) {
+    parts.push(`(low visual confidence: ${Math.round(extPacket.overallConfidence * 100)}%)`);
   }
 
   return parts.join('. ') || '';
@@ -305,10 +398,29 @@ export async function processPerception(
   }
 
   if (triageResult.decision === 'QUICK_RESPONSE' && triageResult.response) {
+    // Check scene confidence from packet (ensemble grounding result)
+    const extPacket = packet as any;
+    const sceneConfidence = extPacket.overallConfidence ?? 0.8;  // Default high if not provided
+
+    // Suppress low-confidence unprompted visual observations
+    if (shouldSupressLowConfidence(sceneConfidence, false)) {
+      console.log(`[Orchestrator] Suppressing low-confidence response (${Math.round(sceneConfidence * 100)}%)`);
+      state.metrics.silentDecisions++;
+      return {
+        response: null,
+        source: 'silent',
+        latencyMs: Date.now() - startTime,
+        repCount: repUpdate.isNewRep ? repUpdate.repCount : undefined
+      };
+    }
+
+    // Apply uncertainty hedging based on confidence
+    const hedgedResponse = addUncertaintyHedge(triageResult.response, sceneConfidence);
+
     // Process through pipeline
     const pipelineResult = processResponse(
       sessionId,
-      triageResult.response,
+      hedgedResponse,
       'haiku',
       false  // Haiku responses are unprompted quick observations
     );

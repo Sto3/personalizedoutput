@@ -26,8 +26,8 @@ const CONFIG = {
   maxContextAgeMsPrompted: 5000,    // User questions: 5s (they're waiting)
 
   // Length limits
-  maxWordsUnprompted: 8,
-  maxWordsPrompted: 25,
+  maxWordsUnprompted: 20,  // Increased from 8 - was too aggressive
+  maxWordsPrompted: 40,   // Increased from 25 - allow fuller answers
 
   // Rate limiting - ONLY for unprompted interjections
   // User questions bypass rate limit (conversation flow)

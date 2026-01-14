@@ -255,29 +255,23 @@ Should you say something? If yes, what would you say naturally?`;
       return null;
     }
 
-    // ENFORCE 8-word maximum for UNPROMPTED insights (coach barks, doesn't lecture)
+    // ENFORCE 20-word maximum for UNPROMPTED insights (concise but not crippled)
     // Note: Prompted responses (questions) use generateQuestionResponse which has different limits
     const wordCount = text.split(/\s+/).filter(w => w.length > 0).length;
-    if (wordCount > 8) {
+    if (wordCount > 20) {
       console.log(`[Redi Decision] REJECTED unprompted - too long (${wordCount} words): "${text.substring(0, 50)}..."`);
       return null;
     }
 
-    // ENFORCE no questions in unprompted insights
-    if (text.includes('?')) {
-      console.log(`[Redi Decision] REJECTED - contains question: "${text.substring(0, 50)}..."`);
-      return null;
-    }
-
     // ENFORCE no help offers - these sound robotic
-    if (/i can help|let me know|i'm here to help|how can i/i.test(text)) {
+    if (/i can help|let me know|i'm here to help|how can i assist/i.test(text)) {
       console.log(`[Redi Decision] REJECTED - contains help offer: "${text.substring(0, 50)}..."`);
       return null;
     }
 
-    // ENFORCE no wordy phrases in unprompted insights
-    if (/i notice|it seems|it looks like|it appears|i can see|i see that/i.test(text)) {
-      console.log(`[Redi Decision] REJECTED - wordy phrase: "${text.substring(0, 50)}..."`);
+    // ENFORCE no overly wordy/hedging phrases (but allow "I see" - that's natural!)
+    if (/it seems like perhaps|it would appear that|i notice that you might/i.test(text)) {
+      console.log(`[Redi Decision] REJECTED - overly wordy phrase: "${text.substring(0, 50)}..."`);
       return null;
     }
 

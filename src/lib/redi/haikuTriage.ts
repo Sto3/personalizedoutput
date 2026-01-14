@@ -296,14 +296,17 @@ Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
       return null;
     }
 
-    // Validate response - allow up to 15 words for helpful answers
+    // Validate response - allow up to 25 words for helpful answers
     const wordCount = text.split(/\s+/).length;
-    if (wordCount > 15) {
+    if (wordCount > 25) {
       console.log(`[Haiku Triage] Response too long (${wordCount} words), rejecting`);
       return null;
     }
 
-    if (text.includes('?')) {
+    // Only reject questions for unprompted observations (clarifying questions can be okay)
+    // But most unprompted responses shouldn't be questions
+    if (text.includes('?') && !text.toLowerCase().includes('right') && !text.toLowerCase().includes('yeah')) {
+      // Allow rhetorical confirmations like "Looking good, right?" or "Nice form, yeah?"
       console.log('[Haiku Triage] Response contains question, rejecting');
       return null;
     }

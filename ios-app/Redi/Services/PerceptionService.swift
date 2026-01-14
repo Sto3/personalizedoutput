@@ -128,16 +128,26 @@ struct PerceptionPacket: Codable {
     let deviceId: String
     let timestamp: TimeInterval
 
+    // Vision data
     var pose: PoseData?
     var objects: [DetectedObject]
     var texts: [DetectedText]
     var movement: MovementData?
 
+    // Audio data
     var transcript: String?
     var transcriptIsFinal: Bool
+    var audioEvents: [AudioEventData]?      // Environmental sounds detected
+    var dominantSound: String?              // Most prominent sound
+    var speechDetected: Bool?               // Whether speech is heard
 
+    // Motion data (IMU)
+    var motionState: MotionStateData?       // Phone orientation, activity level
+
+    // Environment data
     var deviceOrientation: String
     var lightLevel: String
+    var lightConfidenceModifier: Float?     // How much to trust vision in current lighting
 
     // Fallback frame if ML fails (low-res)
     var fallbackFrame: String?
@@ -147,6 +157,26 @@ struct PerceptionPacket: Codable {
     var isAutonomousMode: Bool        // Whether mode was auto-detected
     var modeConfidence: Float         // Confidence in current mode (0-1)
     var detectedContext: String?      // What we think user is doing
+
+    // Overall confidence for ensemble grounding
+    var overallConfidence: Float?     // Combined confidence from all sensors
+}
+
+/// Audio event data for perception packet
+struct AudioEventData: Codable {
+    let label: String
+    let confidence: Float
+    let category: String
+}
+
+/// Motion state data for perception packet
+struct MotionStateData: Codable {
+    let isStationary: Bool
+    let isWalking: Bool
+    let isExercising: Bool
+    let phoneOrientation: String
+    let activityLevel: Float
+    let suddenMovement: Bool
 }
 
 // MARK: - Perception Service
@@ -174,6 +204,20 @@ class PerceptionService: NSObject, ObservableObject {
     /// Context hypothesis from scene understanding
     @Published var contextHypothesis: ContextHypothesis?
 
+    // MARK: - External Sensor Data (set by SessionViewModel)
+
+    /// Audio events from AudioClassificationService
+    var audioEvents: [AudioEventData] = []
+    var dominantSound: String?
+    var speechDetected: Bool = false
+
+    /// Motion state from MotionService
+    var motionState: MotionStateData?
+
+    /// Light level from CameraService
+    var lightLevel: String = "normal"
+    var lightConfidenceModifier: Float = 1.0
+
     // MARK: - Publishers
 
     let perceptionCaptured = PassthroughSubject<PerceptionPacket, Never>()
@@ -187,6 +231,11 @@ class PerceptionService: NSObject, ObservableObject {
 
     private let sceneService = SceneUnderstandingService()
     private var sceneBindings = Set<AnyCancellable>()
+
+    // MARK: - Object Detection (YOLOv8)
+
+    private let objectDetectionService = ObjectDetectionService()
+    private var objectBindings = Set<AnyCancellable>()
 
     // MARK: - Private Properties
 
@@ -217,6 +266,26 @@ class PerceptionService: NSObject, ObservableObject {
         super.init()
         setupVisionRequests()
         setupSceneBindings()
+        setupObjectDetectionBindings()
+    }
+
+    private func setupObjectDetectionBindings() {
+        // When YOLO detects objects, update our detectedObjects array
+        objectDetectionService.objectsDetected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] objects in
+                self?.detectedObjects = objects
+            }
+            .store(in: &objectBindings)
+
+        // Log when model is loaded
+        objectDetectionService.$isModelLoaded
+            .filter { $0 }
+            .first()
+            .sink { _ in
+                print("[Perception] YOLOv8 object detection ready")
+            }
+            .store(in: &objectBindings)
     }
 
     private func setupSceneBindings() {
@@ -369,6 +438,9 @@ class PerceptionService: NSObject, ObservableObject {
         if isAutonomousMode {
             sceneService.processFrame(pixelBuffer)
         }
+
+        // Run YOLOv8 object detection (async, updates detectedObjects via binding)
+        objectDetectionService.detectObjects(in: pixelBuffer)
 
         // Create handler before async to avoid CVPixelBuffer sendability issues
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
@@ -729,27 +801,67 @@ class PerceptionService: NSObject, ObservableObject {
     }
 
     private func generateAndSendPacket(transcript: String? = nil, transcriptIsFinal: Bool = false) {
+        // Calculate overall confidence based on available sensors
+        let overallConfidence = calculateOverallConfidence()
+
         let packet = PerceptionPacket(
             sessionId: sessionId,
             deviceId: deviceId,
             timestamp: Date().timeIntervalSince1970 * 1000,
+            // Vision data
             pose: currentPose,
             objects: detectedObjects,
             texts: [],
             movement: movementTracker.currentMovement,
+            // Audio data
             transcript: transcript,
             transcriptIsFinal: transcriptIsFinal,
+            audioEvents: audioEvents.isEmpty ? nil : audioEvents,
+            dominantSound: dominantSound,
+            speechDetected: speechDetected,
+            // Motion data
+            motionState: motionState,
+            // Environment data
             deviceOrientation: UIDevice.current.orientation.isLandscape ? "landscape" : "portrait",
-            lightLevel: "normal",
+            lightLevel: lightLevel,
+            lightConfidenceModifier: lightConfidenceModifier,
             fallbackFrame: nil,
             // Mode-aware fields
             currentMode: currentMode.rawValue,
             isAutonomousMode: isAutonomousMode,
             modeConfidence: modeConfidence,
-            detectedContext: contextHypothesis?.activity
+            detectedContext: contextHypothesis?.activity,
+            // Overall confidence
+            overallConfidence: overallConfidence
         )
 
         perceptionCaptured.send(packet)
+    }
+
+    /// Calculate overall confidence based on all available sensors
+    private func calculateOverallConfidence() -> Float {
+        var totalConfidence: Float = 0.0
+        var sensorCount: Float = 0.0
+
+        // Object detection confidence
+        if !detectedObjects.isEmpty {
+            let avgObjectConfidence = detectedObjects.reduce(0.0) { $0 + $1.confidence } / Float(detectedObjects.count)
+            totalConfidence += avgObjectConfidence
+            sensorCount += 1.0
+        }
+
+        // Pose confidence
+        if let pose = currentPose, pose.confidence > 0.3 {
+            totalConfidence += pose.confidence
+            sensorCount += 1.0
+        }
+
+        // Apply light level modifier
+        if sensorCount > 0 {
+            totalConfidence = (totalConfidence / sensorCount) * lightConfidenceModifier
+        }
+
+        return totalConfidence
     }
 
     /// Call this when transcript is received to include it in next packet

@@ -31,6 +31,7 @@ class SessionViewModel: ObservableObject {
     let audioService = AudioService()
     let motionService = MotionService()
     let perceptionService = PerceptionService()  // Military-grade perception
+    let audioClassificationService = AudioClassificationService()  // Environmental sound detection
     let webSocketService: WebSocketService
 
     // MARK: - Military-Grade Mode
@@ -246,6 +247,82 @@ class SessionViewModel: ObservableObject {
             .receive(on: DispatchQueue.main)
             .compactMap { $0?.activity }
             .assign(to: &$detectedActivity)
+
+        // MARK: - Audio Classification Bindings
+
+        // Feed audio events to perception service
+        audioClassificationService.audioEventsUpdated
+            .sink { [weak self] events in
+                guard let self = self else { return }
+                self.perceptionService.audioEvents = events.map {
+                    AudioEventData(label: $0.label, confidence: $0.confidence, category: $0.category)
+                }
+            }
+            .store(in: &cancellables)
+
+        audioClassificationService.$dominantSound
+            .assign(to: \.dominantSound, on: perceptionService)
+            .store(in: &cancellables)
+
+        audioClassificationService.$speechDetected
+            .assign(to: \.speechDetected, on: perceptionService)
+            .store(in: &cancellables)
+
+        // Log significant audio events for mode detection
+        audioClassificationService.significantSoundDetected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] event in
+                print("[Session] Audio event: \(event.label) (\(Int(event.confidence * 100))%)")
+                // Could use for mode detection hints
+                if let suggestedMode = self?.audioClassificationService.getSuggestedMode() {
+                    print("[Session] Audio suggests mode: \(suggestedMode)")
+                }
+            }
+            .store(in: &cancellables)
+
+        // MARK: - Enhanced Motion Bindings
+
+        // Feed motion state to perception service
+        motionService.motionStateUpdated
+            .sink { [weak self] state in
+                guard let self = self else { return }
+                self.perceptionService.motionState = MotionStateData(
+                    isStationary: state.isStationary,
+                    isWalking: state.isWalking,
+                    isExercising: state.isExercising,
+                    phoneOrientation: state.phoneOrientation,
+                    activityLevel: state.activityLevel,
+                    suddenMovement: state.suddenMovement
+                )
+            }
+            .store(in: &cancellables)
+
+        // Sudden movement alerts (potential falls)
+        motionService.suddenMovementDetected
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in
+                print("[Session] Sudden movement detected - potential safety concern")
+                // Could notify backend for safety monitoring
+            }
+            .store(in: &cancellables)
+
+        // Activity state changes
+        motionService.activityChanged
+            .receive(on: DispatchQueue.main)
+            .sink { activity in
+                print("[Session] Activity changed to: \(activity)")
+            }
+            .store(in: &cancellables)
+
+        // MARK: - Light Level Bindings
+
+        // Feed light level to perception service
+        cameraService.$lightLevel
+            .sink { [weak self] level in
+                self?.perceptionService.lightLevel = level.rawValue
+                self?.perceptionService.lightConfidenceModifier = level.visionConfidenceModifier
+            }
+            .store(in: &cancellables)
     }
 
     // MARK: - Session Control
@@ -323,6 +400,12 @@ class SessionViewModel: ObservableObject {
 
             DispatchQueue.main.async {
                 self?.audioService.startRecording()
+
+                // Start audio classification for environmental sound detection
+                if let format = self?.audioService.getAudioFormat() {
+                    self?.audioClassificationService.start(audioFormat: format)
+                    print("[Session] Audio classification started")
+                }
             }
         }
     }
@@ -336,6 +419,7 @@ class SessionViewModel: ObservableObject {
         cameraService.stop()
         audioService.cleanup()
         motionService.stopMonitoring()
+        audioClassificationService.stop()
 
         // Stop military-grade perception
         if useMilitaryGrade {

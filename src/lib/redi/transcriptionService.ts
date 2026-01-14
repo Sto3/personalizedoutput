@@ -12,6 +12,7 @@ import { createClient, LiveTranscriptionEvents, LiveClient } from '@deepgram/sdk
 import { EventEmitter } from 'events';
 import { TranscriptChunk } from './types';
 import { trackCost } from './sessionManager';
+import { getAudioDenoiser, AudioDenoiser } from './audioDenoiser';
 
 // Deepgram pricing: $0.0043 per minute (Nova-2)
 const COST_PER_MINUTE = 0.0043;
@@ -65,6 +66,8 @@ interface TranscriptionSession {
   audioMinutes: number;
   lastActivityAt: number;
   silenceStartAt: number | null;
+  denoiser: AudioDenoiser | null;
+  useDenoising: boolean;
 }
 
 const activeSessions = new Map<string, TranscriptionSession>();
@@ -82,9 +85,26 @@ function getDeepgramClient() {
 
 /**
  * Start a transcription session
+ * @param sessionId - Unique session identifier
+ * @param options - Optional configuration
  */
-export async function startTranscription(sessionId: string): Promise<EventEmitter> {
+export async function startTranscription(
+  sessionId: string,
+  options: { useDenoising?: boolean } = {}
+): Promise<EventEmitter> {
   const emitter = new EventEmitter();
+  const useDenoising = options.useDenoising ?? true; // Enable by default
+
+  // Initialize audio denoiser
+  let denoiser: AudioDenoiser | null = null;
+  if (useDenoising) {
+    try {
+      denoiser = await getAudioDenoiser();
+      console.log(`[Redi Transcription] Session ${sessionId} using RNNoise audio denoising`);
+    } catch (error) {
+      console.warn(`[Redi Transcription] RNNoise not available, proceeding without denoising`);
+    }
+  }
 
   const session: TranscriptionSession = {
     sessionId,
@@ -92,7 +112,9 @@ export async function startTranscription(sessionId: string): Promise<EventEmitte
     emitter,
     audioMinutes: 0,
     lastActivityAt: Date.now(),
-    silenceStartAt: null
+    silenceStartAt: null,
+    denoiser,
+    useDenoising
   };
 
   try {
@@ -187,6 +209,7 @@ export async function startTranscription(sessionId: string): Promise<EventEmitte
 
 /**
  * Send audio chunk to transcription
+ * Audio is automatically denoised using RNNoise if enabled
  */
 export function sendAudio(sessionId: string, audioBuffer: Buffer): void {
   const session = activeSessions.get(sessionId);
@@ -196,8 +219,14 @@ export function sendAudio(sessionId: string, audioBuffer: Buffer): void {
   }
 
   try {
+    // Apply RNNoise denoising if available
+    let processedBuffer = audioBuffer;
+    if (session.denoiser && session.useDenoising && session.denoiser.isReady()) {
+      processedBuffer = session.denoiser.processAudioBuffer(audioBuffer);
+    }
+
     // Send audio buffer - cast to any for WebSocket compatibility
-    (session.connection as any).send(audioBuffer);
+    (session.connection as any).send(processedBuffer);
   } catch (error) {
     console.error(`[Redi Transcription] Error sending audio for ${sessionId}:`, error);
   }

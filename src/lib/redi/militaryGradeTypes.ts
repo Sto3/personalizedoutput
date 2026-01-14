@@ -59,6 +59,9 @@ export interface PoseData {
   // Confidence scores
   confidence: number;        // 0-1, overall pose confidence
   timestamp: number;
+
+  // Human-readable body position description (e.g., "standing", "sitting", "squatting")
+  bodyPosition?: string;
 }
 
 export interface Point3D {
@@ -124,6 +127,38 @@ export type MovementPhase =
   | 'unknown';
 
 /**
+ * Audio event detected by Apple SoundAnalysis
+ * Used for environmental context (cooking sounds, gym equipment, music, etc.)
+ */
+export interface AudioEventData {
+  label: string;              // e.g., "music", "speech", "sizzling", "clanking"
+  confidence: number;         // 0-1
+  category: AudioCategory;
+}
+
+export type AudioCategory =
+  | 'cooking'                 // sizzling, chopping, timer, microwave
+  | 'gym'                     // clanking, grunting, music
+  | 'music'                   // instruments, singing
+  | 'baby'                    // crying, babbling
+  | 'speech'                  // conversation, singing
+  | 'environment'             // traffic, wind, birds
+  | 'other';
+
+/**
+ * Motion state from IMU sensors (accelerometer + gyroscope)
+ * Provides rich context about user's physical state
+ */
+export interface MotionStateData {
+  isStationary: boolean;       // Not moving
+  isWalking: boolean;          // Walking motion detected
+  isExercising: boolean;       // High activity level
+  phoneOrientation: 'flat' | 'portrait' | 'landscape' | 'face_up' | 'face_down';
+  activityLevel: number;       // 0-1, overall activity intensity
+  suddenMovement: boolean;     // Potential fall or drop
+}
+
+/**
  * Complete structured perception packet from iOS
  * This replaces raw frame data
  */
@@ -148,9 +183,35 @@ export interface PerceptionPacket {
   transcript: string | null;
   transcriptIsFinal: boolean;
 
+  // === NEW: Audio classification (Apple SoundAnalysis) ===
+  audioEvents?: AudioEventData[];    // Detected environmental sounds
+  dominantSound?: string;            // Most prominent sound
+  speechDetected?: boolean;          // User is speaking
+
+  // === NEW: IMU motion state ===
+  motionState?: MotionStateData;     // Phone motion and user activity
+
+  // === NEW: Enhanced light/confidence data ===
+  lightConfidenceModifier?: number;  // 0-1, how much to trust vision (low in dark)
+  overallConfidence?: number;        // 0-1, ensemble confidence across all sensors
+
+  // === NEW: LiDAR Depth (Phase 6) ===
+  depth?: {
+    centerDistance: number | null;       // Distance to center of frame (meters)
+    nearestObjectDistance: number | null; // Distance to nearest object (meters)
+    available: boolean;                   // Whether LiDAR is available on device
+    confidence: number;                   // 0-1, depth measurement confidence
+  };
+
   // Device context
   deviceOrientation: 'portrait' | 'landscape';
-  lightLevel: 'dark' | 'normal' | 'bright';
+  lightLevel: 'dark' | 'dim' | 'normal' | 'bright';  // Added 'dim' level
+
+  // Environment context (Phase 7 - unified packet)
+  environment?: {
+    noiseLevel?: 'quiet' | 'moderate' | 'loud';
+    inferredActivity?: string;  // "exercising", "cooking", "studying", etc.
+  };
 
   // Optional: raw frame for fallback (low-res, JPEG compressed)
   fallbackFrame?: string;     // Base64, only if ML fails

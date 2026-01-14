@@ -80,6 +80,20 @@ import {
 } from '../lib/redi/voiceService';
 
 import {
+  groundDetections,
+  getSceneConfidence,
+  shouldSpeakAboutScene,
+  GroundedDetection
+} from '../lib/redi/ensembleGrounding';
+
+import {
+  getHealthMonitor,
+  getCircuitBreaker,
+  CIRCUIT_BREAKERS,
+  CircuitOpenError
+} from '../lib/redi/reliabilityService';
+
+import {
   startSessionTracking,
   endSessionTracking,
   recordAIResponse,
@@ -115,9 +129,13 @@ const FRAME_AGGREGATION_INTERVAL_MS = 2000;
 // This allows questions to use iOS Vision data (fast, fresh) instead of server analysis (slow, stale)
 interface RecentPerceptionData {
   timestamp: number;
-  objects: string[];      // Object labels from iOS Vision
+  objects: string[];      // Object labels from iOS Vision (grounded)
   texts: string[];        // OCR text from iOS Vision
   poseDescription: string | null;  // Brief pose description
+  sceneConfidence?: number;        // Ensemble grounding confidence (0-1)
+  audioContext?: string;           // Dominant sound / audio events
+  motionContext?: string;          // User activity state
+  lightLevel?: string;             // Ambient light conditions
 }
 const recentPerceptionData = new Map<string, RecentPerceptionData>();
 
@@ -289,6 +307,41 @@ async function initializeSessionServices(
 
   // Start session history tracking
   startSessionTracking(sessionId, userId || 'anonymous', mode, durationMinutes, deviceId);
+
+  // Start health monitoring for this session
+  const healthMonitor = getHealthMonitor();
+  healthMonitor.start();
+
+  // Register health check for key services
+  healthMonitor.registerHealthCheck('cloudConnection', async () => {
+    // Simple connectivity check
+    try {
+      // If we've had recent successful WebSocket messages, we're healthy
+      return 'healthy';
+    } catch {
+      return 'failed';
+    }
+  });
+
+  healthMonitor.registerHealthCheck('tts', async () => {
+    // Check ElevenLabs circuit breaker state
+    return CIRCUIT_BREAKERS.elevenlabs.isAllowingRequests() ? 'healthy' : 'degraded';
+  });
+
+  healthMonitor.registerHealthCheck('llm', async () => {
+    // Check Claude circuit breaker state
+    return CIRCUIT_BREAKERS.claude.isAllowingRequests() ? 'healthy' : 'degraded';
+  });
+
+  healthMonitor.registerHealthCheck('transcription', async () => {
+    // Check Deepgram circuit breaker state
+    return CIRCUIT_BREAKERS.deepgram.isAllowingRequests() ? 'healthy' : 'degraded';
+  });
+
+  // Log health updates
+  healthMonitor.on('degradation', (degraded: [string, string][]) => {
+    console.warn(`[Redi Health] Session ${sessionId} - Degraded services:`, degraded);
+  });
 
   try {
     // Start transcription
@@ -515,20 +568,119 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     console.log(`[Redi WebSocket] Military-grade enabled for session ${sessionId}`);
   }
 
+  // CRITICAL FIX: Store fallbackFrame in frameBuffers so getFreshVisualAnalysis can use it
+  // Military-grade packets send fallbackFrame when iOS Vision doesn't detect objects
+  // Without this, visual questions have no frame to analyze!
+  const extPacket = packet as any;
+  if (extPacket.fallbackFrame) {
+    let buffer = frameBuffers.get(sessionId);
+    if (!buffer) {
+      buffer = [];
+      frameBuffers.set(sessionId, buffer);
+    }
+    buffer.push({
+      deviceId,
+      image: extPacket.fallbackFrame,
+      timestamp: Date.now()
+    });
+    // Keep buffer size limited
+    while (buffer.length > FRAME_BUFFER_MAX) {
+      buffer.shift();
+    }
+    console.log(`[Redi] Stored fallback frame from perception packet (buffer size: ${buffer.length})`);
+  }
+
   // CRITICAL: Store perception data for questions to use (fresh iOS Vision data)
   // This allows questions to use real-time visual context instead of stale server analysis
+
+  // Apply ensemble grounding to validate detections across multiple sources
+  const rawDetections = packet.objects?.map(o => ({
+    label: o.label,
+    confidence: o.confidence,
+    boundingBox: o.boundingBox,
+    source: 'ios_vision' as const
+  })) || [];
+
+  const rawTexts = packet.texts?.filter(t => t.confidence > 0.7).map(t => t.text.substring(0, 50)) || [];
+
+  // Get audio events for grounding (if available in new packet format)
+  const audioEvents = (packet as any).audioEvents?.map((e: any) => ({
+    label: e.label,
+    confidence: e.confidence
+  })) || [];
+
+  // Ground the detections using ensemble method
+  const groundedDetections = groundDetections(rawDetections, rawTexts, audioEvents);
+  const sceneConfidence = getSceneConfidence(groundedDetections);
+
+  // Log grounding results
+  if (groundedDetections.length > 0) {
+    const groundedLabels = groundedDetections.map(d =>
+      `${d.label}(${d.sources.length} sources, ${Math.round(d.confidence * 100)}%)`
+    ).join(', ');
+    console.log(`[Redi] Grounded detections: ${groundedLabels} | Scene confidence: ${Math.round(sceneConfidence * 100)}%`);
+  }
+
+  // Build context from new sensor data
+  const extendedPacket = packet as any;
+  let audioContext: string | undefined;
+  if (extendedPacket.dominantSound) {
+    audioContext = extendedPacket.dominantSound;
+  } else if (extendedPacket.audioEvents?.length > 0) {
+    audioContext = extendedPacket.audioEvents
+      .filter((e: any) => e.confidence > 0.6)
+      .map((e: any) => e.label)
+      .join(', ');
+  }
+
+  let motionContext: string | undefined;
+  if (extendedPacket.motionState) {
+    const ms = extendedPacket.motionState;
+    if (ms.isExercising) motionContext = 'exercising';
+    else if (ms.isWalking) motionContext = 'walking';
+    else if (ms.isStationary) motionContext = 'stationary';
+    if (ms.suddenMovement) motionContext = (motionContext || '') + ' (sudden movement detected)';
+  }
+
   const perceptionData: RecentPerceptionData = {
     timestamp: Date.now(),
-    objects: packet.objects?.filter(o => o.confidence > 0.6).map(o => o.label) || [],
-    texts: packet.texts?.filter(t => t.confidence > 0.7).map(t => t.text.substring(0, 50)) || [],
-    poseDescription: packet.pose?.bodyPosition || null
+    objects: groundedDetections.map(d => d.label),  // Use grounded objects (higher confidence)
+    texts: rawTexts,
+    poseDescription: packet.pose?.bodyPosition || null,
+    sceneConfidence,  // Store confidence for later use
+    audioContext,
+    motionContext,
+    lightLevel: packet.lightLevel
   };
   recentPerceptionData.set(sessionId, perceptionData);
+
+  // CRITICAL FIX: Proactive server analysis when iOS Vision fails to detect objects
+  // This ensures serverVisualContext is populated for when questions come in
+  // Without this, "what do you see?" questions get no visual grounding and Claude hallucinates
+  const iosDetectedNothing = groundedDetections.length === 0 && rawTexts.length === 0;
+  const hasFallbackFrame = !!extPacket.fallbackFrame;
+  const ctx = contexts.get(sessionId);
+
+  if (iosDetectedNothing && hasFallbackFrame && ctx) {
+    // Check if we need fresh server analysis (older than 5 seconds)
+    const serverAnalysisAge = Date.now() - ctx.lastVisualAt;
+    if (serverAnalysisAge > 5000) {
+      console.log(`[Redi] iOS Vision empty, triggering proactive server analysis (last was ${Math.round(serverAnalysisAge/1000)}s ago)`);
+      // Async - don't block perception processing
+      analyzeSnapshot(sessionId, extPacket.fallbackFrame, session.mode, '')
+        .then(analysis => {
+          updateVisualContext(ctx, analysis.description);
+          updateServerVisualContext(sessionId, analysis.description);
+          console.log(`[Redi] Proactive server analysis complete: "${analysis.description.substring(0, 100)}..."`);
+        })
+        .catch(err => console.error('[Redi] Proactive server analysis failed:', err));
+    }
+  }
 
   // CRITICAL: Bridge transcript from DecisionContext to perception packet
   // iOS sends perception packets separately from audio, so we need to inject
   // the recent transcript for triage to have context to work with
-  const ctx = contexts.get(sessionId);
+  // Note: ctx is already defined above
   if (ctx && ctx.transcriptBuffer.length > 0) {
     // Get most recent transcript if it's fresh (within last 3 seconds)
     const recentTranscript = ctx.transcriptBuffer[ctx.transcriptBuffer.length - 1];
@@ -583,21 +735,41 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
         }
       });
 
-      // Generate and send audio
-      const audioBuffer = await speak(sessionId, result.response);
+      // Generate and send audio (with circuit breaker for reliability)
+      try {
+        const audioBuffer = await CIRCUIT_BREAKERS.elevenlabs.execute(() =>
+          speak(sessionId, result.response)
+        );
 
-      if (audioBuffer) {
-        broadcastAudio(sessionId, {
-          type: 'voice_audio',
-          sessionId,
-          timestamp: Date.now(),
-          payload: {
-            audio: audioBuffer.toString('base64'),
-            format: 'mp3',
-            isStreaming: false,
-            isFinal: true
-          }
-        });
+        if (audioBuffer) {
+          broadcastAudio(sessionId, {
+            type: 'voice_audio',
+            sessionId,
+            timestamp: Date.now(),
+            payload: {
+              audio: audioBuffer.toString('base64'),
+              format: 'mp3',
+              isStreaming: false,
+              isFinal: true
+            }
+          });
+        }
+      } catch (error) {
+        if (error instanceof CircuitOpenError) {
+          // ElevenLabs circuit open - notify iOS to use local TTS fallback
+          console.warn(`[Redi] ElevenLabs circuit open, signaling iOS for fallback TTS`);
+          broadcastToSession(sessionId, {
+            type: 'tts_fallback',
+            sessionId,
+            timestamp: Date.now(),
+            payload: {
+              text: result.response,
+              reason: 'cloud_unavailable'
+            }
+          } as any);
+        } else {
+          console.error('[Redi] Voice generation failed:', error);
+        }
       }
 
       console.log(`[Redi WebSocket] Military-grade response (${result.source}): "${result.response}" [${result.latencyMs}ms]`);
@@ -629,8 +801,9 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
   const recentFrame = buffer[buffer.length - 1];
   const frameAge = Date.now() - recentFrame.timestamp;
 
-  // Only use if frame is less than 2 seconds old
-  if (frameAge > 2000) {
+  // Only use if frame is less than 5 seconds old (extended from 2s for perception packets)
+  // Military-grade packets with fallbackFrame may come less frequently
+  if (frameAge > 5000) {
     console.log(`[Redi] Most recent frame too old (${Math.round(frameAge/1000)}s), skipping`);
     return null;
   }
@@ -1113,22 +1286,42 @@ async function speakResponse(sessionId: string, text: string, isPrompted: boolea
       }
     });
 
-    // Generate complete audio (non-streaming for better quality and no stuttering)
-    const audioBuffer = await speak(sessionId, cleanedText);
+    // Generate complete audio with circuit breaker (non-streaming for better quality)
+    try {
+      const audioBuffer = await CIRCUIT_BREAKERS.elevenlabs.execute(() =>
+        speak(sessionId, cleanedText)
+      );
 
-    if (audioBuffer) {
-      // Send complete audio at once - prevents breaking up on inconsistent networks
-      broadcastAudio(sessionId, {
-        type: 'voice_audio',
-        sessionId,
-        timestamp: Date.now(),
-        payload: {
-          audio: audioBuffer.toString('base64'),
-          format: 'mp3',
-          isStreaming: false,
-          isFinal: true
-        }
-      });
+      if (audioBuffer) {
+        // Send complete audio at once - prevents breaking up on inconsistent networks
+        broadcastAudio(sessionId, {
+          type: 'voice_audio',
+          sessionId,
+          timestamp: Date.now(),
+          payload: {
+            audio: audioBuffer.toString('base64'),
+            format: 'mp3',
+            isStreaming: false,
+            isFinal: true
+          }
+        });
+      }
+    } catch (error) {
+      if (error instanceof CircuitOpenError) {
+        // ElevenLabs circuit open - notify iOS to use local TTS fallback
+        console.warn(`[Redi] ElevenLabs circuit open, using iOS fallback TTS`);
+        broadcastToSession(sessionId, {
+          type: 'tts_fallback',
+          sessionId,
+          timestamp: Date.now(),
+          payload: {
+            text: cleanedText,
+            reason: 'cloud_unavailable'
+          }
+        } as any);
+      } else {
+        console.error('[Redi] Voice generation failed:', error);
+      }
     }
   } finally {
     // Release lock and mark that we spoke

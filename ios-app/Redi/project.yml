@@ -10,13 +10,18 @@ targets:
     platform: iOS
     sources:
       - App
-      - Models
+      - path: Models
+        excludes:
+          - "*.mlpackage"
       - Views
       - ViewModels
       - Services
       - Assets.xcassets
       - path: StoreKitConfiguration.storekit
         buildPhase: none
+    resources:
+      - path: Models/yolov8n.mlpackage
+        buildPhase: resources
     settings:
       PRODUCT_BUNDLE_IDENTIFIER: com.personalizedoutput.Redi
       INFOPLIST_FILE: Info.plist
