@@ -67,6 +67,7 @@ import {
 
 import {
   analyzeSnapshot,
+  analyzeSnapshotWithGrounding,
   analyzeMotionClip,
   getVisualContext,
   clearVisualContext
@@ -614,6 +615,8 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
 /**
  * Get fresh visual analysis from the most recent frame
  * Used when user asks visual questions like "what do you see?"
+ *
+ * Uses GROUNDED analysis when iOS detections available to prevent hallucination
  */
 async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promise<string | null> {
   const buffer = frameBuffers.get(sessionId);
@@ -635,12 +638,36 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
   console.log(`[Redi] Analyzing fresh frame (${Math.round(frameAge)}ms old)`);
 
   try {
-    const analysis = await analyzeSnapshot(
-      sessionId,
-      recentFrame.image,
-      mode,
-      '' // No transcript context needed
-    );
+    // Get iOS detections for grounding (prevents hallucination)
+    const iosPerception = recentPerceptionData.get(sessionId);
+    const iosAge = iosPerception ? Date.now() - iosPerception.timestamp : Infinity;
+
+    let analysis;
+
+    // Use grounded analysis if we have fresh iOS detections
+    if (iosPerception && iosAge < 3000) {
+      console.log(`[Redi] Using GROUNDED analysis with iOS detections (${Math.round(iosAge)}ms old)`);
+      analysis = await analyzeSnapshotWithGrounding(
+        sessionId,
+        recentFrame.image,
+        mode,
+        {
+          objects: iosPerception.objects,
+          texts: iosPerception.texts,
+          poseDetected: !!iosPerception.poseDescription
+        },
+        '' // No transcript context needed
+      );
+    } else {
+      // Fallback to standard analysis (no grounding available)
+      console.log(`[Redi] Using standard analysis (no fresh iOS detections)`);
+      analysis = await analyzeSnapshot(
+        sessionId,
+        recentFrame.image,
+        mode,
+        '' // No transcript context needed
+      );
+    }
 
     // Also update the cached context
     const ctx = contexts.get(sessionId);
@@ -833,6 +860,7 @@ async function handleMotionClip(sessionId: string, deviceId: string, message: WS
 
 /**
  * Aggregate frames from multiple devices and analyze
+ * Uses GROUNDED analysis when iOS detections available to prevent hallucination
  */
 async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
   const buffer = frameBuffers.get(sessionId);
@@ -850,15 +878,38 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
     }
   }
 
+  // Get iOS detections for grounding (prevents hallucination)
+  const iosPerception = recentPerceptionData.get(sessionId);
+  const iosAge = iosPerception ? Date.now() - iosPerception.timestamp : Infinity;
+  const hasGrounding = iosPerception && iosAge < 5000; // 5s for background analysis
+
   // If only one device, do simple analysis
   if (deviceFrames.size === 1) {
     const [frame] = deviceFrames.values();
-    const analysis = await analyzeSnapshot(
-      sessionId,
-      frame.image,
-      session.mode,
-      ctx.transcriptBuffer.slice(-3).join(' ')
-    );
+
+    let analysis;
+    if (hasGrounding) {
+      // Use grounded analysis to prevent hallucination
+      analysis = await analyzeSnapshotWithGrounding(
+        sessionId,
+        frame.image,
+        session.mode,
+        {
+          objects: iosPerception!.objects,
+          texts: iosPerception!.texts,
+          poseDetected: !!iosPerception!.poseDescription
+        },
+        ctx.transcriptBuffer.slice(-3).join(' ')
+      );
+    } else {
+      // Standard analysis
+      analysis = await analyzeSnapshot(
+        sessionId,
+        frame.image,
+        session.mode,
+        ctx.transcriptBuffer.slice(-3).join(' ')
+      );
+    }
 
     // Track snapshot analysis for history
     recordVisualAnalysis(sessionId, analysis.description);

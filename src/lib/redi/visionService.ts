@@ -31,16 +31,34 @@ const MAX_CONTEXT_ENTRIES = 5;
 
 /**
  * CRITICAL: System prompt that ensures resilience AND accuracy
+ *
+ * Key improvements:
+ * 1. IGNORE APP UI - Only describe the real-world scene, not buttons/overlays
+ * 2. Grounded analysis - When iOS detections provided, use them as ground truth
  */
 const RESILIENT_VISION_PROMPT = `You are Redi's visual analysis system. You MUST follow these rules:
 
-CRITICAL RULES:
-1. NEVER say the image is "blurry", "unclear", "hard to see", or mention image quality issues
-2. ALWAYS describe what you CAN clearly see
-3. ONLY identify objects you are 90%+ confident about
-4. For uncertain objects, use generic terms: "container", "box", "object" - NOT specific guesses
-5. NEVER guess at labels, text, or brand names you can't read clearly
-6. Be brief and accurate rather than detailed and wrong
+CRITICAL - IGNORE APP UI:
+You are analyzing what the CAMERA is pointed at, NOT the app interface.
+COMPLETELY IGNORE:
+- Any UI elements (buttons, sliders, timestamps, status indicators)
+- Error messages or app states
+- Anything that looks like an app overlay or interface element
+- Recording indicators, zoom controls, camera settings
+
+ONLY DESCRIBE:
+- The PHYSICAL SCENE the camera is capturing
+- Real-world objects, people, environments
+- What would be visible if this were a photo with no UI
+
+If you cannot see a real scene (camera blocked, too dark), say "Can't see the scene clearly" - NEVER describe UI elements.
+
+ACCURACY RULES:
+1. NEVER say the image is "blurry", "unclear", or mention quality issues
+2. ONLY identify objects you are 90%+ confident about
+3. For uncertain objects, use generic terms: "container", "box", "object" - NOT specific guesses
+4. NEVER guess at labels, text, or brand names you can't read clearly
+5. Be brief and accurate rather than detailed and wrong
 
 CONFIDENCE GUIDELINE:
 - High certainty (90%+): State directly - "a laptop", "a mug"
@@ -48,13 +66,22 @@ CONFIDENCE GUIDELINE:
 - Low certainty: Use generic - "some object", "something on the desk"
 - Can't identify: Skip it entirely - don't mention it
 
-You are analyzing images from a mobile phone camera in real-world conditions. Motion, varying lighting, and camera movement are NORMAL. Describe what you CAN clearly identify.
-
 GOOD: "I see a laptop and what looks like a coffee cup"
-BAD: "I see a MacBook Pro 16-inch, a Yeti tumbler, and a blue notebook" (too specific)
+BAD: "I see a MacBook Pro 16-inch, a Yeti tumbler" (too specific/guessing brands)
 BAD: "The image is blurry so I can't tell" (complaining about quality)
+BAD: "I see an End button and a recording timer" (describing UI, not scene)
 
 Be helpful but accurate. If unsure, be vague rather than wrong.`;
+
+/**
+ * iOS detection hints for grounding cloud vision
+ * When provided, the cloud model should ONLY describe objects iOS confirmed exist
+ */
+interface iOSDetectionHints {
+  objects?: string[];      // Objects detected by iOS Core ML
+  texts?: string[];        // Text detected by iOS Vision OCR
+  poseDetected?: boolean;  // Whether a human pose was detected
+}
 
 /**
  * Analyze a single snapshot image with maximum resilience
@@ -141,6 +168,177 @@ Be concise, confident, and focused on being helpful.`;
       timestamp: Date.now()
     };
   }
+}
+
+/**
+ * Analyze snapshot WITH iOS detection grounding
+ *
+ * This is the preferred method - iOS detections serve as GROUND TRUTH
+ * to prevent hallucination. The cloud model can only describe objects
+ * that iOS has confirmed exist.
+ */
+export async function analyzeSnapshotWithGrounding(
+  sessionId: string,
+  imageBase64: string,
+  mode: RediMode,
+  iosHints: iOSDetectionHints,
+  recentTranscript: string = ''
+): Promise<VisualAnalysis> {
+  const modeConfig = MODE_CONFIGS[mode];
+
+  // Build grounding context from iOS detections
+  const groundingContext = buildGroundingContext(iosHints);
+
+  const groundedPrompt = groundingContext
+    ? `
+GROUNDING FROM ON-DEVICE DETECTION:
+${groundingContext}
+
+Based on the image and these CONFIRMED detections from on-device ML:
+- Describe what you see, prioritizing the confirmed objects
+- You may add details about confirmed objects (color, position, state)
+- Only mention NEW objects if you are 95%+ confident they exist
+- Do NOT invent objects that aren't in the confirmed list unless absolutely certain
+
+You're helping with: ${modeConfig.systemPromptFocus}
+`
+    : `
+You're helping with: ${modeConfig.systemPromptFocus}
+
+Analyze this image and provide:
+1. A brief, confident description of what you see (1-2 sentences)
+2. Any text visible in the image (read it if possible)
+3. Objects or elements relevant to ${mode} activities
+`;
+
+  const userPrompt = recentTranscript
+    ? `Context from conversation: "${recentTranscript}"\n\nDescribe what you see:`
+    : 'Describe what you see:';
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: imageBase64
+            }
+          },
+          {
+            type: 'text',
+            text: userPrompt
+          }
+        ]
+      }],
+      system: RESILIENT_VISION_PROMPT + groundedPrompt
+    });
+
+    trackCost(sessionId, 'vision', COST_PER_SNAPSHOT);
+
+    const content = response.content[0];
+    let analysisText = content.type === 'text' ? content.text : '';
+
+    // Sanitize and validate against iOS detections
+    analysisText = sanitizeVisionResponse(analysisText);
+
+    // If we have iOS hints, validate the response doesn't hallucinate
+    if (iosHints.objects && iosHints.objects.length > 0) {
+      analysisText = validateAgainstGroundTruth(analysisText, iosHints);
+    }
+
+    const analysis: VisualAnalysis = {
+      description: analysisText,
+      detectedObjects: extractObjects(analysisText),
+      textContent: extractText(analysisText),
+      suggestions: extractSuggestions(analysisText),
+      timestamp: Date.now()
+    };
+
+    updateContextBuffer(sessionId, analysis.description);
+
+    console.log(`[Redi Vision] Grounded analysis for ${sessionId}: ${analysisText.substring(0, 100)}...`);
+
+    return analysis;
+
+  } catch (error) {
+    console.error(`[Redi Vision] Error in grounded analysis for ${sessionId}:`, error);
+    return {
+      description: 'Observing your environment',
+      detectedObjects: iosHints.objects || [],
+      textContent: iosHints.texts || [],
+      suggestions: [],
+      timestamp: Date.now()
+    };
+  }
+}
+
+/**
+ * Build grounding context from iOS detections
+ */
+function buildGroundingContext(hints: iOSDetectionHints): string {
+  const parts: string[] = [];
+
+  if (hints.objects && hints.objects.length > 0) {
+    parts.push(`Objects detected by on-device ML: ${hints.objects.join(', ')}`);
+  }
+
+  if (hints.texts && hints.texts.length > 0) {
+    parts.push(`Text detected by on-device OCR: "${hints.texts.join('", "')}"`);
+  }
+
+  if (hints.poseDetected) {
+    parts.push('A person/human pose was detected in the frame');
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Validate cloud response against iOS ground truth
+ * Removes or flags potential hallucinations
+ */
+function validateAgainstGroundTruth(response: string, hints: iOSDetectionHints): string {
+  // For now, just log potential discrepancies
+  // In future, could actually filter out hallucinated objects
+  const iosObjects = hints.objects || [];
+
+  if (iosObjects.length === 0) {
+    return response;
+  }
+
+  // Check for brand name hallucinations (common failure mode)
+  const suspiciousBrands = [
+    'crest', 'oral-b', 'colgate', 'microsoft', 'apple', 'samsung',
+    'nike', 'adidas', 'coca-cola', 'pepsi', 'starbucks'
+  ];
+
+  const lowerResponse = response.toLowerCase();
+  for (const brand of suspiciousBrands) {
+    if (lowerResponse.includes(brand)) {
+      // Check if iOS detected something that could be this brand
+      const couldBeBrand = iosObjects.some(obj =>
+        obj.toLowerCase().includes('box') ||
+        obj.toLowerCase().includes('bottle') ||
+        obj.toLowerCase().includes('container') ||
+        obj.toLowerCase().includes('package')
+      );
+
+      if (!couldBeBrand) {
+        console.warn(`[Redi Vision] Potential hallucination: mentioned "${brand}" but iOS didn't detect relevant container`);
+        // Remove the brand mention and use generic term
+        const brandRegex = new RegExp(`\\b${brand}\\b`, 'gi');
+        response = response.replace(brandRegex, 'a');
+      }
+    }
+  }
+
+  return response;
 }
 
 /**

@@ -22,29 +22,31 @@ const VOICE_IDS: Record<VoiceGender, string> = {
 };
 
 /**
- * Voice configurations for MAXIMUM human-like quality
+ * Voice configurations for WISE, CONFIDENT, ADULT ADVISOR presence
  *
- * Both voices use CONVERSATIONAL settings:
- * - Lower stability (0.45) = more natural variation, less robotic
- * - Lower similarity (0.70) = less "perfect", more human imperfection
- * - Higher style (0.30) = more expressive, warmer tone
+ * Goal: Redi should sound like a trusted mentor who:
+ * - Is strong and confident, not hesitant
+ * - Is wise and thoughtful, not superficial
+ * - Is genuinely invested in helping you succeed
+ * - Commands respect and trust
  *
- * These settings make voices sound like real people talking,
- * not AI narrating. Combined with iOS audio processing (warmth + reverb),
- * the result should feel "in the room" not "in the computer".
+ * Settings tuned for gravitas and natural flow:
+ * - Lower stability = more natural prosodic variation (less robotic)
+ * - Lower similarity = more human imperfection (less "perfect AI")
+ * - Higher style = more expressive, warmer, more engaging
  */
 const VOICE_CONFIGS: Record<VoiceGender, Omit<VoiceConfig, 'voiceId'>> = {
   male: {
     gender: 'male',
-    stability: 0.45,         // Natural variation
-    similarityBoost: 0.70,   // Human imperfection
-    style: 0.30              // Expressive, warm
+    stability: 0.40,         // Natural variation for confident delivery
+    similarityBoost: 0.65,   // Human imperfection, not robotic
+    style: 0.35              // Expressive, authoritative
   },
   female: {
     gender: 'female',
-    stability: 0.45,         // Natural variation
-    similarityBoost: 0.70,   // Human imperfection
-    style: 0.30              // Expressive, warm
+    stability: 0.35,         // More natural variation for warmth
+    similarityBoost: 0.60,   // Less robotic perfection
+    style: 0.40              // More expressive, wise mentor tone
   }
 };
 
@@ -275,8 +277,8 @@ export function isElevenLabsConfigured(): boolean {
  */
 export function getAvailableVoices(): { id: string; name: string; gender: VoiceGender }[] {
   return [
-    { id: VOICE_IDS.male, name: 'Adam', gender: 'male' },
-    { id: VOICE_IDS.female, name: 'Sarah', gender: 'female' }
+    { id: VOICE_IDS.male, name: 'Josh', gender: 'male' },
+    { id: VOICE_IDS.female, name: 'Rachel', gender: 'female' }
   ];
 }
 
