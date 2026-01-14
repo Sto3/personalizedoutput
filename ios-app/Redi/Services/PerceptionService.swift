@@ -387,6 +387,12 @@ class PerceptionService: NSObject, ObservableObject {
         do {
             var requests: [VNRequest] = []
 
+            // ALWAYS run OCR in ALL modes - text on objects helps grounding and prevents hallucination
+            if let textRequest = textRecognitionRequest {
+                requests.append(textRequest)
+            }
+
+            // Mode-specific additions
             switch currentMode {
             case .sports:
                 // Full body pose detection with angles and rep counting
@@ -408,10 +414,7 @@ class PerceptionService: NSObject, ObservableObject {
                 }
 
             case .studying:
-                // Text recognition + posture
-                if let textRequest = textRecognitionRequest {
-                    requests.append(textRequest)
-                }
+                // Text recognition (already added above) + posture
                 if let poseRequest = bodyPoseRequest {
                     requests.append(poseRequest)  // For posture monitoring
                 }
@@ -430,19 +433,14 @@ class PerceptionService: NSObject, ObservableObject {
                 }
 
             case .meeting:
-                // Face tracking + text recognition (slides)
-                if let textRequest = textRecognitionRequest {
-                    requests.append(textRequest)
-                }
+                // Face tracking + text recognition (already added above)
                 // TODO: Add face detection
+                break
 
             case .general:
-                // Balanced - run everything
+                // Balanced - run pose (OCR already added above)
                 if let poseRequest = bodyPoseRequest {
                     requests.append(poseRequest)
-                }
-                if let textRequest = textRecognitionRequest {
-                    requests.append(textRequest)
                 }
             }
 

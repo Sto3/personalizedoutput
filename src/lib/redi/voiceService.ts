@@ -13,45 +13,46 @@ import { trackCost } from './sessionManager';
 // ElevenLabs pricing: ~$0.30 per 1000 characters
 const COST_PER_1000_CHARS = 0.30;
 
-// Voice IDs for Redi
-// Female: Rachel - ElevenLabs' most natural conversational voice
-// Male: Josh - natural, conversational male voice (more human than Adam for conversation)
+// Voice IDs for Redi - MATURE, WISE, CONFIDENT voices
+// Trying different voices for more gravitas:
+// - Bella (EXAVITQu4vr4xnSDxMaL) - warm, mature female
+// - Rachel (21m00Tcm4TlvDq8ikWAM) - natural female (backup)
+// - Adam (pNInz6obpgDQGcFmaJgB) - authoritative male
+// - Josh (TxGEqnHWrfWFTfGW9XjX) - conversational male (backup)
 const VOICE_IDS: Record<VoiceGender, string> = {
-  male: process.env.ELEVENLABS_REDI_MALE_VOICE_ID || 'TxGEqnHWrfWFTfGW9XjX',      // Josh (conversational)
-  female: process.env.ELEVENLABS_REDI_FEMALE_VOICE_ID || '21m00Tcm4TlvDq8ikWAM'   // Rachel (conversational)
+  male: process.env.ELEVENLABS_REDI_MALE_VOICE_ID || 'pNInz6obpgDQGcFmaJgB',      // Adam (authoritative)
+  female: process.env.ELEVENLABS_REDI_FEMALE_VOICE_ID || 'EXAVITQu4vr4xnSDxMaL'   // Bella (warm, mature)
 };
 
 /**
  * Voice configurations for WISE, CONFIDENT, ADULT ADVISOR presence
  *
- * Goal: Redi should sound like a trusted mentor who:
- * - Is strong and confident, not hesitant
- * - Is wise and thoughtful, not superficial
- * - Is genuinely invested in helping you succeed
- * - Commands respect and trust
+ * CRITICAL: Redi must NOT sound like a child or chatbot.
+ * She should sound like a trusted mentor with GRAVITAS.
  *
- * Settings tuned for gravitas and natural flow:
- * - Lower stability = more natural prosodic variation (less robotic)
- * - Lower similarity = more human imperfection (less "perfect AI")
- * - Higher style = more expressive, warmer, more engaging
+ * Settings tuned for maximum maturity and natural flow:
+ * - Very low stability (0.25-0.30) = rich prosodic variation, not robotic
+ * - Low similarity (0.50-0.55) = human imperfection, not "AI perfect"
+ * - High style (0.45-0.50) = expressive, engaging, warm
+ * - Speaker boost ON = adds presence and authority
  */
 const VOICE_CONFIGS: Record<VoiceGender, Omit<VoiceConfig, 'voiceId'>> = {
   male: {
     gender: 'male',
-    stability: 0.40,         // Natural variation for confident delivery
-    similarityBoost: 0.65,   // Human imperfection, not robotic
-    style: 0.35              // Expressive, authoritative
+    stability: 0.30,         // Very low = rich natural variation
+    similarityBoost: 0.55,   // Low = more human, less robotic
+    style: 0.45              // High = authoritative, engaging
   },
   female: {
     gender: 'female',
-    stability: 0.35,         // More natural variation for warmth
-    similarityBoost: 0.60,   // Less robotic perfection
-    style: 0.40              // More expressive, wise mentor tone
+    stability: 0.25,         // Very low = warm, natural flow
+    similarityBoost: 0.50,   // Low = human imperfection
+    style: 0.50              // High = expressive, wise mentor
   }
 };
 
-// Use monolingual model for best English quality (like Santa voice)
-const VOICE_MODEL = 'eleven_monolingual_v1';
+// Use multilingual v2 for better prosody control and more natural speech
+const VOICE_MODEL = 'eleven_multilingual_v2';
 
 interface SpeechSession {
   sessionId: string;
@@ -97,6 +98,11 @@ export async function speak(
 
   const voiceId = VOICE_IDS[session.voiceGender];
   const config = VOICE_CONFIGS[session.voiceGender];
+
+  // LOG voice settings for debugging
+  console.log(`[Redi Voice] Speaking with: voice=${session.voiceGender}, voiceId=${voiceId}, model=${VOICE_MODEL}`);
+  console.log(`[Redi Voice] Settings: stability=${config.stability}, similarity=${config.similarityBoost}, style=${config.style}`);
+  console.log(`[Redi Voice] Text (${text.length} chars): "${text.substring(0, 50)}${text.length > 50 ? '...' : ''}"`);
 
   // Track characters for cost calculation
   session.totalCharacters += text.length;
@@ -277,8 +283,8 @@ export function isElevenLabsConfigured(): boolean {
  */
 export function getAvailableVoices(): { id: string; name: string; gender: VoiceGender }[] {
   return [
-    { id: VOICE_IDS.male, name: 'Josh', gender: 'male' },
-    { id: VOICE_IDS.female, name: 'Rachel', gender: 'female' }
+    { id: VOICE_IDS.male, name: 'Adam', gender: 'male' },
+    { id: VOICE_IDS.female, name: 'Bella', gender: 'female' }
   ];
 }
 
