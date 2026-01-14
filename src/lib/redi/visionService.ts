@@ -20,9 +20,10 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY
 });
 
-// Vision pricing (approximate): $0.0025 per image analysis
-const COST_PER_SNAPSHOT = 0.0025;
-const COST_PER_CLIP_FRAME = 0.002;
+// Vision pricing (Sonnet is more expensive but MUCH more accurate)
+// Haiku was hallucinating objects (saying "Crest toothpaste" when it's Q-tips)
+const COST_PER_SNAPSHOT = 0.01;  // Sonnet pricing
+const COST_PER_CLIP_FRAME = 0.008;
 
 // Context buffer to maintain visual continuity
 const contextBuffers = new Map<string, string[]>();
@@ -83,7 +84,7 @@ Be concise, confident, and focused on being helpful.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022', // Fast vision analysis
+      model: 'claude-sonnet-4-20250514', // Accurate vision (Haiku was hallucinating)
       max_tokens: 300,
       messages: [{
         role: 'user',
@@ -183,7 +184,7 @@ Be encouraging and helpful. Focus on what you CAN observe about the movement.`;
 
   try {
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-haiku-20241022', // Fast vision analysis
+      model: 'claude-sonnet-4-20250514', // Accurate vision (Haiku was hallucinating)
       max_tokens: 400,
       messages: [{
         role: 'user',
