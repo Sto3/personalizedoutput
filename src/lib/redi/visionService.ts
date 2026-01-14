@@ -97,13 +97,18 @@ export async function analyzeSnapshot(
   const modeSpecificPrompt = `
 You're helping with: ${modeConfig.systemPromptFocus}
 
-Analyze this image and provide:
-1. A brief, confident description of what you see (1-2 sentences)
-2. Any text visible in the image (read it if possible)
-3. Objects or elements relevant to ${mode} activities
-4. One helpful observation or suggestion if appropriate
+BE CONSERVATIVE WITH OBJECT IDENTIFICATION:
+- If you see text/labels on objects, READ them exactly (e.g., "Q-tips" not "cotton swabs box")
+- If you CANNOT read text clearly, use GENERIC terms: "a box", "a container"
+- Do NOT guess brand names or product types you're not certain about
+- Describe colors and shapes when uncertain: "a blue and white box"
 
-Be concise, confident, and focused on being helpful.`;
+Analyze this image and provide:
+1. A brief description of what you see (1-2 sentences)
+2. Any text you can clearly read in the image
+3. Objects or elements relevant to ${mode} activities
+
+Be concise and accurate. When uncertain, be vague rather than wrong.`;
 
   const userPrompt = recentTranscript
     ? `Context from conversation: "${recentTranscript}"\n\nDescribe what you see:`
@@ -188,9 +193,15 @@ export async function analyzeSnapshotWithGrounding(
 
   // Build grounding context from iOS detections
   const groundingContext = buildGroundingContext(iosHints);
+  const hasAnyDetections = (iosHints.objects && iosHints.objects.length > 0) ||
+                           (iosHints.texts && iosHints.texts.length > 0) ||
+                           iosHints.poseDetected;
 
-  const groundedPrompt = groundingContext
-    ? `
+  let groundedPrompt: string;
+
+  if (groundingContext && hasAnyDetections) {
+    // We have iOS detections - use them as ground truth
+    groundedPrompt = `
 GROUNDING FROM ON-DEVICE DETECTION:
 ${groundingContext}
 
@@ -201,15 +212,25 @@ Based on the image and these CONFIRMED detections from on-device ML:
 - Do NOT invent objects that aren't in the confirmed list unless absolutely certain
 
 You're helping with: ${modeConfig.systemPromptFocus}
-`
-    : `
-You're helping with: ${modeConfig.systemPromptFocus}
-
-Analyze this image and provide:
-1. A brief, confident description of what you see (1-2 sentences)
-2. Any text visible in the image (read it if possible)
-3. Objects or elements relevant to ${mode} activities
 `;
+  } else {
+    // NO iOS detections - be ULTRA conservative to prevent hallucination
+    groundedPrompt = `
+WARNING: On-device ML did NOT detect any specific objects in this frame.
+This means the scene may be unclear, or objects are not easily identifiable.
+
+BE ULTRA CONSERVATIVE:
+- Only describe what you can see with 95%+ certainty
+- Use GENERIC terms: "a box", "some items", "an object" - NOT brand names
+- If you see text on something, read it exactly - don't guess the brand
+- DO NOT guess what type of product/item something is unless you can read the label
+- If uncertain, describe colors and shapes only: "a blue and white rectangular box"
+
+FORBIDDEN: Guessing brand names, product types, or specific items you're not certain about.
+
+You're helping with: ${modeConfig.systemPromptFocus}
+`
+  }
 
   const userPrompt = recentTranscript
     ? `Context from conversation: "${recentTranscript}"\n\nDescribe what you see:`

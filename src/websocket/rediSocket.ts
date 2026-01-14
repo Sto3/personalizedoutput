@@ -646,7 +646,9 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
 
     // Use grounded analysis if we have fresh iOS detections
     if (iosPerception && iosAge < 3000) {
-      console.log(`[Redi] Using GROUNDED analysis with iOS detections (${Math.round(iosAge)}ms old)`);
+      const hasObjects = iosPerception.objects && iosPerception.objects.length > 0;
+      const hasTexts = iosPerception.texts && iosPerception.texts.length > 0;
+      console.log(`[Redi] Using GROUNDED analysis (${Math.round(iosAge)}ms old) - objects: ${hasObjects ? iosPerception.objects.join(', ') : 'NONE'}, texts: ${hasTexts ? iosPerception.texts.join(', ') : 'NONE'}`);
       analysis = await analyzeSnapshotWithGrounding(
         sessionId,
         recentFrame.image,
