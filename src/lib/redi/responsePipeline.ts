@@ -62,9 +62,12 @@ const BANNED_PATTERNS = [
   /anything else/i,
   /anything you need/i,
 
-  // Visual negation
+  // Visual negation - COMPREHENSIVE (model keeps finding new ways to say this)
   /i don't see/i,
   /i can't see/i,
+  /i do not.*see/i,           // "I do not actually see"
+  /i'm not seeing/i,          // "I'm not seeing any screen"
+  /not seeing any/i,          // "not seeing any screen content"
   /there's no/i,
   /there is no/i,
   /no visual/i,
@@ -72,6 +75,10 @@ const BANNED_PATTERNS = [
   /not visible/i,
   /can't find/i,
   /cannot see/i,
+  /i apologize.*see/i,        // "I apologize, but I don't see"
+  /can only respond/i,        // "I can only respond to messages"
+  /no screen content/i,       // "no screen content"
+  /not.*to work with/i,       // "nothing to work with"
 
   // Wordy phrases
   /i notice that/i,

@@ -116,6 +116,25 @@ interface OrchestratorState {
 
 const sessionStates = new Map<string, OrchestratorState>();
 
+// Server-side visual context fallback (from Claude Vision analysis)
+// Used when iOS Vision doesn't detect anything but server analysis has results
+interface ServerVisualContext {
+  description: string;
+  timestamp: number;
+}
+const serverVisualContexts = new Map<string, ServerVisualContext>();
+
+/**
+ * Update server-side visual context (called from rediSocket after vision analysis)
+ * This is used as fallback when iOS Vision doesn't detect objects/text
+ */
+export function updateServerVisualContext(sessionId: string, description: string): void {
+  serverVisualContexts.set(sessionId, {
+    description,
+    timestamp: Date.now()
+  });
+}
+
 // ============================================================================
 // INITIALIZATION
 // ============================================================================
@@ -180,6 +199,7 @@ export function cleanupMilitaryGrade(sessionId: string): void {
   cleanupTriage(sessionId);
   cleanupPipeline(sessionId);
   sessionStates.delete(sessionId);
+  serverVisualContexts.delete(sessionId);  // CRITICAL: Prevent memory leak
 
   console.log(`[Orchestrator] Military-grade cleaned up for ${sessionId}`);
 }
@@ -325,7 +345,19 @@ export async function processPerception(
 
     try {
       // Build visual context from what Redi can see
-      const visualContext = buildVisualContext(packet);
+      // Priority: iOS Vision data (fresh) → Server Claude Vision (fallback)
+      let visualContext = buildVisualContext(packet);
+
+      // If iOS didn't detect anything, try server-side visual context
+      if (!visualContext) {
+        const serverCtx = serverVisualContexts.get(sessionId);
+        if (serverCtx && (Date.now() - serverCtx.timestamp) < 5000) {
+          visualContext = serverCtx.description;
+          console.log(`[Orchestrator] Using server visual context as fallback (${Math.round((Date.now() - serverCtx.timestamp)/1000)}s old)`);
+        } else {
+          console.log(`[Orchestrator] No visual context available for NEEDS_REASONING`);
+        }
+      }
 
       const sonnetResponse = await generateQuestionResponse(
         state.mode,

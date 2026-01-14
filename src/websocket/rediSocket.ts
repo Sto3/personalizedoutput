@@ -367,7 +367,8 @@ import {
   onRediSpeaking,
   onRediFinished,
   isMilitaryGradeEnabled,
-  updateSensitivity as updateOrchestratorSensitivity
+  updateSensitivity as updateOrchestratorSensitivity,
+  updateServerVisualContext  // For fallback when iOS Vision doesn't detect anything
 } from '../lib/redi/militaryGradeOrchestrator';
 import { PerceptionPacket } from '../lib/redi/militaryGradeTypes';
 
@@ -647,6 +648,9 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
       updateVisualContext(ctx, analysis.description);
     }
 
+    // Update orchestrator's server visual context for NEEDS_REASONING fallback
+    updateServerVisualContext(sessionId, analysis.description);
+
     return analysis.description;
   } catch (error) {
     console.error(`[Redi] Fresh visual analysis failed:`, error);
@@ -808,8 +812,9 @@ async function handleMotionClip(sessionId: string, deviceId: string, message: WS
   // Track motion clip analysis for history
   recordMotionClipAnalysis(sessionId, analysis.description);
 
-  // Update visual context
+  // Update visual context (both DecisionContext and Orchestrator fallback)
   updateVisualContext(ctx, analysis.description);
+  updateServerVisualContext(sessionId, analysis.description);
 
   // Motion analysis often warrants immediate feedback
   if (analysis.suggestions.length > 0) {
@@ -858,7 +863,9 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
     // Track snapshot analysis for history
     recordVisualAnalysis(sessionId, analysis.description);
 
+    // Update visual context (both DecisionContext and Orchestrator fallback)
     updateVisualContext(ctx, analysis.description);
+    updateServerVisualContext(sessionId, analysis.description);
 
     broadcastToSession(sessionId, {
       type: 'visual_analysis',
@@ -881,7 +888,9 @@ async function aggregateAndAnalyzeFrames(sessionId: string): Promise<void> {
   // Track multi-angle analysis for history
   recordVisualAnalysis(sessionId, analysis.description);
 
+  // Update visual context (both DecisionContext and Orchestrator fallback)
   updateVisualContext(ctx, analysis.description);
+  updateServerVisualContext(sessionId, analysis.description);
 
   broadcastToSession(sessionId, {
     type: 'visual_analysis',
