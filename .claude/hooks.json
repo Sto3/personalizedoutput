@@ -1,0 +1,28 @@
+{
+  "description": "Redi architecture awareness hooks - auto-loads context at session start and before edits",
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/session-start.sh\""
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE_PATH=$(echo $CLAUDE_TOOL_INPUT | grep -oE '/[^\"]+\\.(ts|js)' | head -1); if echo \"$FILE_PATH\" | grep -qiE '(redi|websocket|orchestrator|triage|pipeline|decisionEngine)'; then echo '{\"continue\":true,\"systemMessage\":\"⚠️ REDI FILE EDIT - Remember the 6 rules: 1) Map cleanup 2) Propagate state 3) Sync isSpeaking 4) Reset on mode change 5) Bridge data 6) No global scope\"}'; else echo '{\"continue\":true}'; fi"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "type": "command",
+        "command": "if echo \"$CLAUDE_USER_PROMPT\" | grep -qiE '(redi|websocket|real.?time|voice|vision|perception)'; then echo '{\"continue\":true,\"systemMessage\":\"Redi work detected. Architecture rules: 1) Map cleanup in handleSessionEnd 2) State to ALL stores 3) isSpeaking syncs both 4) Mode resets rules 5) Bridge transcript→perception 6) No global scope\"}'; else echo '{\"continue\":true}'; fi"
+      }
+    ]
+  }
+}
