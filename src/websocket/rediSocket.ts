@@ -110,6 +110,16 @@ const frameBuffers = new Map<string, { deviceId: string; image: string; timestam
 const FRAME_BUFFER_MAX = 10;
 const FRAME_AGGREGATION_INTERVAL_MS = 2000;
 
+// CRITICAL: Track most recent perception packet per session (for fresh visual context in questions)
+// This allows questions to use iOS Vision data (fast, fresh) instead of server analysis (slow, stale)
+interface RecentPerceptionData {
+  timestamp: number;
+  objects: string[];      // Object labels from iOS Vision
+  texts: string[];        // OCR text from iOS Vision
+  poseDescription: string | null;  // Brief pose description
+}
+const recentPerceptionData = new Map<string, RecentPerceptionData>();
+
 /**
  * Initialize WebSocket server for Redi
  */
@@ -503,6 +513,16 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     console.log(`[Redi WebSocket] Military-grade enabled for session ${sessionId}`);
   }
 
+  // CRITICAL: Store perception data for questions to use (fresh iOS Vision data)
+  // This allows questions to use real-time visual context instead of stale server analysis
+  const perceptionData: RecentPerceptionData = {
+    timestamp: Date.now(),
+    objects: packet.objects?.filter(o => o.confidence > 0.6).map(o => o.label) || [],
+    texts: packet.texts?.filter(t => t.confidence > 0.7).map(t => t.text.substring(0, 50)) || [],
+    poseDescription: packet.pose?.bodyPosition || null
+  };
+  recentPerceptionData.set(sessionId, perceptionData);
+
   // CRITICAL: Bridge transcript from DecisionContext to perception packet
   // iOS sends perception packets separately from audio, so we need to inject
   // the recent transcript for triage to have context to work with
@@ -703,25 +723,56 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
     if (session) {
       let visualContext = '';
 
-      // Check if this is a visual question - needs fresh frame analysis
-      const isVisualQuestion = /what (do you |can you )?see|look(ing)? at|in front|show(ing)?|camera|visible|watching/i.test(text);
+      // FRESHNESS-AWARE VISUAL DATA SELECTION (per Claude Chat architecture)
+      // Priority: 1) Fresh iOS perception data (real-time)
+      //           2) Fresh server analysis (for complex visual questions)
+      //           3) Cached server analysis (if somewhat fresh)
 
-      if (isVisualQuestion) {
-        // Get fresh visual analysis from most recent frame
+      const iosPerception = recentPerceptionData.get(sessionId);
+      const iosAge = iosPerception ? Date.now() - iosPerception.timestamp : Infinity;
+      const serverAge = Date.now() - ctx.lastVisualAt;
+
+      // Check if this is a visual question requiring deep analysis
+      const isDeepVisualQuestion = /what (do you |can you )?see|look(ing)? at|in front|show(ing)?|camera|visible|watching|describe|tell me about/i.test(text);
+
+      if (isDeepVisualQuestion) {
+        // Deep visual question - get fresh server analysis for intelligent description
         const freshVisual = await getFreshVisualAnalysis(sessionId, session.mode);
         if (freshVisual) {
           visualContext = freshVisual;
-          console.log(`[Redi] Fresh visual analysis for visual question`);
+          console.log(`[Redi] Fresh server analysis for deep visual question`);
         }
+      } else if (iosAge < 1000 && (iosPerception!.objects.length > 0 || iosPerception!.texts.length > 0)) {
+        // iOS perception data is fresh (<1s) and has content - USE IT
+        const parts: string[] = [];
+        if (iosPerception!.objects.length > 0) {
+          parts.push(`Objects: ${iosPerception!.objects.join(', ')}`);
+        }
+        if (iosPerception!.texts.length > 0) {
+          parts.push(`Text on screen: ${iosPerception!.texts.join('; ')}`);
+        }
+        if (iosPerception!.poseDescription) {
+          parts.push(`Person: ${iosPerception!.poseDescription}`);
+        }
+        visualContext = parts.join('. ');
+        console.log(`[Redi] Using fresh iOS perception data (${Math.round(iosAge)}ms old)`);
+      } else if (serverAge < 3000) {
+        // Server analysis is fresh enough - use it
+        visualContext = ctx.visualContext;
+        console.log(`[Redi] Using server visual context (${Math.round(serverAge/1000)}s old)`);
+      } else if (iosAge < 3000 && iosPerception) {
+        // iOS data is moderately fresh - better than nothing
+        const parts: string[] = [];
+        if (iosPerception.objects.length > 0) {
+          parts.push(`Objects: ${iosPerception.objects.join(', ')}`);
+        }
+        if (iosPerception.texts.length > 0) {
+          parts.push(`Text visible: ${iosPerception.texts.join('; ')}`);
+        }
+        visualContext = parts.join('. ');
+        console.log(`[Redi] Using iOS perception as fallback (${Math.round(iosAge)}ms old)`);
       } else {
-        // Non-visual question - use cached context if fresh enough
-        const VISUAL_FRESHNESS_MS = 3000;
-        const visualAge = Date.now() - ctx.lastVisualAt;
-        if (visualAge < VISUAL_FRESHNESS_MS) {
-          visualContext = ctx.visualContext;
-        } else if (ctx.visualContext) {
-          console.log(`[Redi] Visual context stale (${Math.round(visualAge/1000)}s old), not including`);
-        }
+        console.log(`[Redi] No fresh visual context available (iOS: ${Math.round(iosAge)}ms, Server: ${Math.round(serverAge)}ms)`);
       }
 
       // Use military-grade orchestrator for questions (proper Layer 2/3 routing)
@@ -1229,6 +1280,7 @@ async function handleSessionEnd(sessionId: string): Promise<void> {
 
   // Clean up session-scoped state
   lastProcessedTranscripts.delete(sessionId);
+  recentPerceptionData.delete(sessionId);  // CRITICAL: Prevent memory leak
 
   // Stop services
   stopTranscription(sessionId);
