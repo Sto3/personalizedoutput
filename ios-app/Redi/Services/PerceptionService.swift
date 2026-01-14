@@ -187,6 +187,7 @@ class PerceptionService: NSObject, ObservableObject {
     @Published var isRunning = false
     @Published var currentPose: PoseData?
     @Published var detectedObjects: [DetectedObject] = []
+    @Published var detectedTexts: [DetectedText] = []
     @Published var repCount: Int = 0
     @Published var movementPhase: MovementPhase = .rest
 
@@ -252,6 +253,11 @@ class PerceptionService: NSObject, ObservableObject {
     private var lastPose: PoseData?
     private var poseHistory: [PoseData] = []
     private let maxPoseHistory = 10
+
+    // CRITICAL: Store most recent frame for fallback when ML fails to detect objects
+    // This enables server-side Claude Vision analysis when iOS Vision comes up empty
+    private var lastCapturedFrame: String?  // Base64 JPEG, low-res (640px max)
+    private var lastFrameTimestamp: TimeInterval = 0
 
     // Movement tracking
     private var movementTracker = MovementTracker()
@@ -442,6 +448,10 @@ class PerceptionService: NSObject, ObservableObject {
         // Run YOLOv8 object detection (async, updates detectedObjects via binding)
         objectDetectionService.detectObjects(in: pixelBuffer)
 
+        // CRITICAL: Capture frame for fallback when ML fails
+        // This ensures server-side Claude Vision can analyze when iOS Vision detects nothing
+        captureFrameForFallback(pixelBuffer)
+
         // Create handler before async to avoid CVPixelBuffer sendability issues
         let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
 
@@ -450,6 +460,46 @@ class PerceptionService: NSObject, ObservableObject {
 
             // Run mode-specific perception
             self.runModeSpecificPerception(handler)
+        }
+    }
+
+    /// Capture frame as low-res JPEG for fallback when ML fails
+    private func captureFrameForFallback(_ pixelBuffer: CVPixelBuffer) {
+        // Only capture every 500ms to avoid performance overhead
+        let now = Date().timeIntervalSince1970 * 1000
+        guard now - lastFrameTimestamp > 500 else { return }
+
+        processingQueue.async { [weak self] in
+            guard let self = self else { return }
+
+            // Convert CVPixelBuffer to UIImage
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            let context = CIContext()
+            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+
+            var image = UIImage(cgImage: cgImage)
+
+            // Resize to max 640px on longest edge (keeps it small for network)
+            let maxDimension: CGFloat = 640
+            let scale = min(maxDimension / image.size.width, maxDimension / image.size.height, 1.0)
+            if scale < 1.0 {
+                let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+                UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+                if let resized = UIGraphicsGetImageFromCurrentImageContext() {
+                    image = resized
+                }
+                UIGraphicsEndImageContext()
+            }
+
+            // Convert to JPEG with moderate compression
+            guard let jpegData = image.jpegData(compressionQuality: 0.5) else { return }
+
+            // Store as base64
+            DispatchQueue.main.async {
+                self.lastCapturedFrame = jpegData.base64EncodedString()
+                self.lastFrameTimestamp = now
+            }
         }
     }
 
@@ -649,6 +699,9 @@ class PerceptionService: NSObject, ObservableObject {
         for observation in observations {
             guard let candidate = observation.topCandidates(1).first else { continue }
 
+            // Only include high-confidence text
+            guard candidate.confidence > 0.5 else { continue }
+
             texts.append(DetectedText(
                 text: candidate.string,
                 confidence: candidate.confidence,
@@ -656,11 +709,9 @@ class PerceptionService: NSObject, ObservableObject {
             ))
         }
 
-        // Update if we found meaningful text
-        if !texts.isEmpty {
-            DispatchQueue.main.async { [weak self] in
-                // Could publish detected texts if needed
-            }
+        // Store detected texts for perception packets
+        DispatchQueue.main.async { [weak self] in
+            self?.detectedTexts = texts
         }
     }
 
@@ -804,6 +855,16 @@ class PerceptionService: NSObject, ObservableObject {
         // Calculate overall confidence based on available sensors
         let overallConfidence = calculateOverallConfidence()
 
+        // CRITICAL: Include fallback frame when iOS ML detection fails
+        // This enables server-side Claude Vision to analyze when we can't identify objects locally
+        // Without this, "what do you see?" questions get no visual context and Claude hallucinates
+        let needsFallbackFrame = detectedObjects.isEmpty && detectedTexts.isEmpty
+        let fallbackFrameToSend = needsFallbackFrame ? lastCapturedFrame : nil
+
+        if needsFallbackFrame && fallbackFrameToSend != nil {
+            print("[Perception] ML detection empty - including fallback frame for server analysis")
+        }
+
         let packet = PerceptionPacket(
             sessionId: sessionId,
             deviceId: deviceId,
@@ -811,7 +872,7 @@ class PerceptionService: NSObject, ObservableObject {
             // Vision data
             pose: currentPose,
             objects: detectedObjects,
-            texts: [],
+            texts: detectedTexts,
             movement: movementTracker.currentMovement,
             // Audio data
             transcript: transcript,
@@ -825,7 +886,7 @@ class PerceptionService: NSObject, ObservableObject {
             deviceOrientation: UIDevice.current.orientation.isLandscape ? "landscape" : "portrait",
             lightLevel: lightLevel,
             lightConfidenceModifier: lightConfidenceModifier,
-            fallbackFrame: nil,
+            fallbackFrame: fallbackFrameToSend,
             // Mode-aware fields
             currentMode: currentMode.rawValue,
             isAutonomousMode: isAutonomousMode,

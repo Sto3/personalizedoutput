@@ -517,17 +517,66 @@ export async function processPerception(
 }
 
 // ============================================================================
+// THINKING ACKNOWLEDGMENTS (for slow responses > 2 seconds)
+// ============================================================================
+
+/**
+ * Varied phrases Redi uses when she needs time to think
+ * These sound natural and human - not robotic
+ */
+const THINKING_PHRASES = [
+  "Let me think about that.",
+  "Hmm, give me a moment.",
+  "Let me look carefully.",
+  "One sec, thinking.",
+  "Let me consider that.",
+  "Hmm, good question.",
+  "Let me see here.",
+  "Give me a second.",
+  "Thinking about that.",
+  "Let me take a closer look."
+];
+
+// Track recent thinking phrases per session to avoid repetition
+const recentThinkingPhrases = new Map<string, string[]>();
+
+/**
+ * Get a varied thinking phrase (avoids recent repetition)
+ */
+function getThinkingPhrase(sessionId: string): string {
+  const recent = recentThinkingPhrases.get(sessionId) || [];
+
+  // Filter out recently used phrases
+  const available = THINKING_PHRASES.filter(p => !recent.includes(p));
+  const phrases = available.length > 0 ? available : THINKING_PHRASES;
+
+  // Pick random phrase
+  const phrase = phrases[Math.floor(Math.random() * phrases.length)];
+
+  // Track it (keep last 5)
+  recent.push(phrase);
+  if (recent.length > 5) recent.shift();
+  recentThinkingPhrases.set(sessionId, recent);
+
+  return phrase;
+}
+
+// ============================================================================
 // DIRECT QUESTION HANDLING
 // ============================================================================
 
 /**
  * Handle a direct question from user
  * Routes to Haiku (fast) for simple questions, Sonnet for complex ones
+ *
+ * @param onThinkingNeeded - Optional callback fired if response takes > 2 seconds
+ *                           Allows caller to speak a "thinking" acknowledgment
  */
 export async function handleDirectQuestion(
   sessionId: string,
   question: string,
-  visualContext: string = ''
+  visualContext: string = '',
+  onThinkingNeeded?: (phrase: string) => void
 ): Promise<{
   response: string;
   latencyMs: number;
@@ -553,6 +602,19 @@ export async function handleDirectQuestion(
 
   console.log(`[Orchestrator] Question routing: ${model} (complex: ${needsSonnet})`);
 
+  // Set up thinking acknowledgment timer (fires if response takes > 2 seconds)
+  let thinkingTimer: NodeJS.Timeout | null = null;
+  let thinkingFired = false;
+
+  if (onThinkingNeeded) {
+    thinkingTimer = setTimeout(() => {
+      thinkingFired = true;
+      const phrase = getThinkingPhrase(sessionId);
+      console.log(`[Orchestrator] Response taking > 2s, sending thinking: "${phrase}"`);
+      onThinkingNeeded(phrase);
+    }, 2000);
+  }
+
   try {
     let response: string;
 
@@ -574,6 +636,11 @@ export async function handleDirectQuestion(
         visualContext
       );
       state.metrics.haikuResponses++;
+    }
+
+    // Clear thinking timer if we got response in time
+    if (thinkingTimer) {
+      clearTimeout(thinkingTimer);
     }
 
     // Process through pipeline
@@ -602,6 +669,11 @@ export async function handleDirectQuestion(
       };
     }
   } catch (error) {
+    // Clear thinking timer on error
+    if (thinkingTimer) {
+      clearTimeout(thinkingTimer);
+    }
+
     console.error('[Orchestrator] Question handling error:', error);
     return {
       response: "I'm here.",

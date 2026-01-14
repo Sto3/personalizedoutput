@@ -982,7 +982,11 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
       }
 
       // Use military-grade orchestrator for questions (proper Layer 2/3 routing)
-      const result = await handleDirectQuestion(sessionId, text, visualContext);
+      // Pass thinking callback - if response takes > 2s, Redi says "let me think about that" etc.
+      const result = await handleDirectQuestion(sessionId, text, visualContext, async (thinkingPhrase) => {
+        // Speak the thinking acknowledgment immediately (don't wait for full response)
+        await speakResponse(sessionId, thinkingPhrase, true);
+      });
 
       console.log(`[Redi] Question answered in ${result.latencyMs}ms (${result.source})`);
       await speakResponse(sessionId, result.response, true);  // isPrompted=true: skip staleness check
