@@ -22,14 +22,16 @@ import { PipelineOutput } from './militaryGradeTypes';
 
 const CONFIG = {
   // Staleness: how old context can be
-  maxContextAgeMs: 2000,
+  maxContextAgeMsUnprompted: 2000,  // Unprompted interjections: 2s
+  maxContextAgeMsPrompted: 5000,    // User questions: 5s (they're waiting)
 
   // Length limits
   maxWordsUnprompted: 8,
   maxWordsPrompted: 25,
 
-  // Rate limiting
-  minGapMs: 3000,  // Minimum time between responses
+  // Rate limiting - ONLY for unprompted interjections
+  // User questions bypass rate limit (conversation flow)
+  minGapMsUnprompted: 3000,  // Minimum time between unprompted responses
 
   // Deduplication
   similarityThreshold: 0.6,  // 60% word overlap = duplicate
@@ -188,10 +190,10 @@ export function processResponse(
     };
   }
 
-  // GUARD 1: Staleness
-  const stalenessResult = checkStaleness(state);
+  // GUARD 1: Staleness (more lenient for prompted responses - user is waiting)
+  const stalenessResult = checkStaleness(state, isPrompted);
   if (!stalenessResult.pass) {
-    console.log(`[Pipeline] Rejected by staleness guard: context ${stalenessResult.ageMs}ms old`);
+    console.log(`[Pipeline] Rejected by staleness guard: context ${stalenessResult.ageMs}ms old (max: ${stalenessResult.maxAge}ms)`);
     return {
       approved: false,
       rejectedBy: 'staleness',
@@ -212,16 +214,19 @@ export function processResponse(
     };
   }
 
-  // GUARD 3: Rate Limit
-  const rateLimitResult = checkRateLimit(state);
-  if (!rateLimitResult.pass) {
-    console.log(`[Pipeline] Rejected by rate limit: ${rateLimitResult.gapMs}ms since last`);
-    return {
-      approved: false,
-      rejectedBy: 'rate_limit',
-      processingTimeMs: Date.now() - startTime,
-      source
-    };
+  // GUARD 3: Rate Limit - ONLY for unprompted interjections
+  // User questions (prompted) bypass rate limit to allow conversation flow
+  if (!isPrompted) {
+    const rateLimitResult = checkRateLimit(state);
+    if (!rateLimitResult.pass) {
+      console.log(`[Pipeline] Rejected by rate limit: ${rateLimitResult.gapMs}ms since last (unprompted)`);
+      return {
+        approved: false,
+        rejectedBy: 'rate_limit',
+        processingTimeMs: Date.now() - startTime,
+        source
+      };
+    }
   }
 
   // GUARD 4: Content
@@ -283,11 +288,13 @@ export function processResponse(
 // INDIVIDUAL GUARD IMPLEMENTATIONS
 // ============================================================================
 
-function checkStaleness(state: PipelineState): { pass: boolean; ageMs: number } {
+function checkStaleness(state: PipelineState, isPrompted: boolean): { pass: boolean; ageMs: number; maxAge: number } {
   const ageMs = Date.now() - state.lastContextTimestamp;
+  const maxAge = isPrompted ? CONFIG.maxContextAgeMsPrompted : CONFIG.maxContextAgeMsUnprompted;
   return {
-    pass: ageMs <= CONFIG.maxContextAgeMs,
-    ageMs
+    pass: ageMs <= maxAge,
+    ageMs,
+    maxAge
   };
 }
 
@@ -304,7 +311,7 @@ function checkInterruption(state: PipelineState): { pass: boolean; reason?: stri
 function checkRateLimit(state: PipelineState): { pass: boolean; gapMs: number } {
   const gapMs = Date.now() - state.lastResponseAt;
   return {
-    pass: gapMs >= CONFIG.minGapMs,
+    pass: gapMs >= CONFIG.minGapMsUnprompted,
     gapMs
   };
 }

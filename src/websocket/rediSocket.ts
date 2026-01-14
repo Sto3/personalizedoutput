@@ -728,7 +728,7 @@ async function handleTranscript(sessionId: string, chunk: TranscriptChunk): Prom
       const result = await handleDirectQuestion(sessionId, text, visualContext);
 
       console.log(`[Redi] Question answered in ${result.latencyMs}ms (${result.source})`);
-      await speakResponse(sessionId, result.response);
+      await speakResponse(sessionId, result.response, true);  // isPrompted=true: skip staleness check
     }
   }
 }
@@ -953,8 +953,9 @@ function cleanTextForSpeech(text: string): string {
 
 /**
  * Speak a response and broadcast to appropriate devices
+ * @param isPrompted - If true (user asked a question), skip staleness check
  */
-async function speakResponse(sessionId: string, text: string): Promise<void> {
+async function speakResponse(sessionId: string, text: string, isPrompted: boolean = false): Promise<void> {
   const ctx = contexts.get(sessionId);
   if (!ctx) return;
 
@@ -964,9 +965,9 @@ async function speakResponse(sessionId: string, text: string): Promise<void> {
     return;
   }
 
-  // Check context freshness - don't respond to stale context
-  if (!isContextFresh(ctx)) {
-    console.log(`[Redi] Skipping speak - context is stale (>2sec old)`);
+  // Check context freshness - but SKIP for prompted responses (user is waiting for answer)
+  if (!isPrompted && !isContextFresh(ctx)) {
+    console.log(`[Redi] Skipping speak - context is stale (>2sec old, unprompted)`);
     return;
   }
 
