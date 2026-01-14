@@ -25,6 +25,9 @@ class WebSocketService: NSObject, ObservableObject {
     let aiResponseReceived = PassthroughSubject<AIResponse, Never>()
     let visualAnalysisReceived = PassthroughSubject<VisualAnalysis, Never>()
 
+    /// TTS fallback - when cloud TTS unavailable, use iOS local speech synthesis
+    let ttsFallbackRequested = PassthroughSubject<String, Never>()
+
     // MARK: - Private Properties
 
     private var webSocketTask: URLSessionWebSocketTask?
@@ -476,6 +479,13 @@ class WebSocketService: NSObject, ObservableObject {
         case .error:
             if let errorMsg = payload?["message"] as? String {
                 error = errorMsg
+            }
+
+        case .ttsFallback:
+            // Cloud TTS unavailable - use iOS local speech synthesis
+            if let text = payload?["text"] as? String {
+                print("[WebSocket] TTS fallback requested - using local speech for: \"\(text)\"")
+                ttsFallbackRequested.send(text)
             }
 
         default:

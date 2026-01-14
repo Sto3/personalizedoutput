@@ -654,26 +654,32 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
   };
   recentPerceptionData.set(sessionId, perceptionData);
 
-  // CRITICAL FIX: Proactive server analysis when iOS Vision fails to detect objects
-  // This ensures serverVisualContext is populated for when questions come in
-  // Without this, "what do you see?" questions get no visual grounding and Claude hallucinates
-  const iosDetectedNothing = groundedDetections.length === 0 && rawTexts.length === 0;
-  const hasFallbackFrame = !!extPacket.fallbackFrame;
+  // MILITARY-GRADE: Periodic Claude Vision analysis for UNIVERSAL identification
+  // iOS ML (YOLOv8) only recognizes ~80 object classes
+  // Claude Vision can identify ANYTHING: conference photos, documents, artwork, screens, etc.
+  // This runs every 5 seconds regardless of what iOS detected
+  const hasFrame = !!extPacket.fallbackFrame;
   const ctx = contexts.get(sessionId);
+  const iosDetectedNothing = groundedDetections.length === 0 && rawTexts.length === 0;
 
-  if (iosDetectedNothing && hasFallbackFrame && ctx) {
-    // Check if we need fresh server analysis (older than 5 seconds)
+  if (hasFrame && ctx) {
     const serverAnalysisAge = Date.now() - ctx.lastVisualAt;
-    if (serverAnalysisAge > 5000) {
-      console.log(`[Redi] iOS Vision empty, triggering proactive server analysis (last was ${Math.round(serverAnalysisAge/1000)}s ago)`);
+
+    // Analyze more frequently (3s) when iOS ML detected nothing, otherwise every 5s
+    const analysisInterval = iosDetectedNothing ? 3000 : 5000;
+
+    if (serverAnalysisAge > analysisInterval) {
+      const reason = iosDetectedNothing ? 'iOS ML empty' : 'periodic refresh';
+      console.log(`[Redi] Claude Vision analysis (${reason}) - last was ${Math.round(serverAnalysisAge/1000)}s ago`);
+
       // Async - don't block perception processing
       analyzeSnapshot(sessionId, extPacket.fallbackFrame, session.mode, '')
         .then(analysis => {
           updateVisualContext(ctx, analysis.description);
           updateServerVisualContext(sessionId, analysis.description);
-          console.log(`[Redi] Proactive server analysis complete: "${analysis.description.substring(0, 100)}..."`);
+          console.log(`[Redi] Claude Vision: "${analysis.description.substring(0, 100)}..."`);
         })
-        .catch(err => console.error('[Redi] Proactive server analysis failed:', err));
+        .catch(err => console.error('[Redi] Claude Vision analysis failed:', err));
     }
   }
 

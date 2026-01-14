@@ -328,6 +328,8 @@ enum WSMessageType: String, Codable {
     case userStopped = "user_stopped"
     // Autonomous mode detection
     case modeChange = "mode_change"
+    // Graceful degradation - use iOS TTS when cloud unavailable
+    case ttsFallback = "tts_fallback"
 }
 
 // MARK: - Transcript

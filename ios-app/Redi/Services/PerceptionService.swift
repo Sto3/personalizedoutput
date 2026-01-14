@@ -855,14 +855,14 @@ class PerceptionService: NSObject, ObservableObject {
         // Calculate overall confidence based on available sensors
         let overallConfidence = calculateOverallConfidence()
 
-        // CRITICAL: Include fallback frame when iOS ML detection fails
-        // This enables server-side Claude Vision to analyze when we can't identify objects locally
-        // Without this, "what do you see?" questions get no visual context and Claude hallucinates
-        let needsFallbackFrame = detectedObjects.isEmpty && detectedTexts.isEmpty
-        let fallbackFrameToSend = needsFallbackFrame ? lastCapturedFrame : nil
+        // MILITARY-GRADE: ALWAYS include frame for server-side Claude Vision analysis
+        // iOS ML (YOLOv8) only knows ~80 object classes - Claude Vision can identify ANYTHING
+        // This ensures Redi can describe conference photos, documents, artwork, anything on screen
+        // Backend decides when to analyze based on: questions, periodic refresh, or ML gaps
+        let frameToSend = lastCapturedFrame  // Always send if available
 
-        if needsFallbackFrame && fallbackFrameToSend != nil {
-            print("[Perception] ML detection empty - including fallback frame for server analysis")
+        if frameToSend != nil && detectedObjects.isEmpty && detectedTexts.isEmpty {
+            print("[Perception] ML detection empty - frame will enable Claude Vision analysis")
         }
 
         let packet = PerceptionPacket(
@@ -886,7 +886,7 @@ class PerceptionService: NSObject, ObservableObject {
             deviceOrientation: UIDevice.current.orientation.isLandscape ? "landscape" : "portrait",
             lightLevel: lightLevel,
             lightConfidenceModifier: lightConfidenceModifier,
-            fallbackFrame: fallbackFrameToSend,
+            fallbackFrame: frameToSend,
             // Mode-aware fields
             currentMode: currentMode.rawValue,
             isAutonomousMode: isAutonomousMode,
