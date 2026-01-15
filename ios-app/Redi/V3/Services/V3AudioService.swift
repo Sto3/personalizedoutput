@@ -156,39 +156,72 @@ class V3AudioService: ObservableObject {
     }
 
     private func playAudioInternal(_ audioData: Data) {
-        guard let format = AVAudioFormat(
+        // Source format: PCM 16-bit, 24kHz, mono (from OpenAI)
+        guard let sourceFormat = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
             sampleRate: targetSampleRate,
             channels: targetChannels,
             interleaved: true
         ) else {
-            print("[V3Audio] Failed to create playback format")
+            print("[V3Audio] Failed to create source format")
             return
         }
 
         let frameCount = UInt32(audioData.count / 2)  // 2 bytes per sample
         guard frameCount > 0,
-              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+              let sourceBuffer = AVAudioPCMBuffer(pcmFormat: sourceFormat, frameCapacity: frameCount) else {
             return
         }
-        buffer.frameLength = frameCount
+        sourceBuffer.frameLength = frameCount
 
         // Copy audio data to buffer
         audioData.withUnsafeBytes { rawPtr in
             if let baseAddress = rawPtr.baseAddress {
-                memcpy(buffer.int16ChannelData![0], baseAddress, audioData.count)
+                memcpy(sourceBuffer.int16ChannelData![0], baseAddress, audioData.count)
             }
         }
 
         // Setup playback engine if needed
         if playbackEngine == nil || playerNode == nil {
-            setupPlaybackEngine(format: format)
+            setupPlaybackEngine()
         }
 
-        guard let player = playerNode else { return }
+        guard let player = playerNode,
+              let engine = playbackEngine else { return }
+
+        // Convert to hardware sample rate for playback
+        let outputFormat = engine.mainMixerNode.outputFormat(forBus: 0)
+        guard let converter = AVAudioConverter(from: sourceFormat, to: outputFormat) else {
+            print("[V3Audio] Failed to create audio converter")
+            return
+        }
+
+        let ratio = outputFormat.sampleRate / sourceFormat.sampleRate
+        let outputFrameCapacity = AVAudioFrameCount(Double(frameCount) * ratio)
+        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputFrameCapacity) else {
+            print("[V3Audio] Failed to create output buffer")
+            return
+        }
+
+        var error: NSError?
+        var inputConsumed = false
+        let status = converter.convert(to: outputBuffer, error: &error) { inNumPackets, outStatus in
+            if inputConsumed {
+                outStatus.pointee = .noDataNow
+                return nil
+            }
+            inputConsumed = true
+            outStatus.pointee = .haveData
+            return sourceBuffer
+        }
+
+        if status == .error || outputBuffer.frameLength == 0 {
+            print("[V3Audio] Conversion failed: \(error?.localizedDescription ?? "unknown")")
+            return
+        }
 
         // Schedule and play
-        player.scheduleBuffer(buffer) { [weak self] in
+        player.scheduleBuffer(outputBuffer) { [weak self] in
             DispatchQueue.main.async {
                 self?.isPlaying = false
             }
@@ -203,18 +236,21 @@ class V3AudioService: ObservableObject {
         }
     }
 
-    private func setupPlaybackEngine(format: AVAudioFormat) {
+    private func setupPlaybackEngine() {
         playbackEngine = AVAudioEngine()
         playerNode = AVAudioPlayerNode()
 
         guard let engine = playbackEngine, let player = playerNode else { return }
 
         engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
+
+        // Connect using the mixer's native format (hardware sample rate)
+        let mixerFormat = engine.mainMixerNode.outputFormat(forBus: 0)
+        engine.connect(player, to: engine.mainMixerNode, format: mixerFormat)
 
         do {
             try engine.start()
-            print("[V3Audio] Playback engine started")
+            print("[V3Audio] Playback engine started at \(mixerFormat.sampleRate)Hz")
         } catch {
             print("[V3Audio] Playback engine error: \(error)")
         }

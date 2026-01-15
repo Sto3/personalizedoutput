@@ -335,30 +335,11 @@ async function analyzeFrameForInterjection(session: V3Session): Promise<{
   confidence: number;
   message: string;
 }> {
-  // Send frame analysis request
-  sendToOpenAI(session, {
-    type: 'conversation.item.create',
-    item: {
-      type: 'message',
-      role: 'user',
-      content: [
-        { type: 'input_image', image: session.currentFrame },
-        {
-          type: 'input_text',
-          text: `Analyze this image briefly. Is there anything worth mentioning to the user?
-If YES: respond {"speak":true,"confidence":0.8,"message":"brief observation"}
-If NO: respond {"speak":false,"confidence":0,"message":""}`
-        }
-      ]
-    }
-  });
+  // Note: OpenAI Realtime API image support is limited
+  // For now, skip image analysis to avoid API errors
+  // TODO: Implement proper image analysis when API supports it better
 
-  sendToOpenAI(session, {
-    type: 'response.create',
-    response: { modalities: ['text'] }
-  });
-
-  // For now, return default (image analysis requires response handling)
+  // Return default - no interjection
   return { shouldSpeak: false, confidence: 0, message: '' };
 }
 
