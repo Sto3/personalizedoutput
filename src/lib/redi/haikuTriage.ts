@@ -288,10 +288,11 @@ SPEAK LIKE A HUMAN, NOT AN AI:
 - RIGHT: Just do it
 
 RULES:
+- RESPOND IN ENGLISH ONLY - no other languages ever
 - State observations directly in 3-10 words
 - NEVER explain what you do or offer help
 - NEVER say "I see" at the start - just describe
-- NEVER ask questions back
+- NEVER ask questions back (NO "?" in your response)
 - NEVER use "ready", "assist", "help", "analyze"
 - Only describe what's in the Vision context - nothing else
 - If Vision says "Q-tips" say "Q-tips" not something else
@@ -450,13 +451,19 @@ function buildCompactContext(input: TriageInput): string {
 }
 
 /**
- * Map sensitivity to minimum gap between responses
- * IMPORTANT: For conversational feel, gaps must be SHORT
+ * Map sensitivity to minimum gap between UNPROMPTED responses
+ * CRITICAL: Must match pipeline rate limit to avoid wasted API calls
+ *
+ * Before: Haiku used 1.75s, pipeline used 30s = 17 wasted API calls per response!
+ * Now: Both use 30 seconds for unprompted responses
+ *
+ * User questions (prompted) bypass rate limit entirely - handled separately
  */
 function mapSensitivityToGap(sensitivity: number): number {
-  // sensitivity 0 (passive) = 3 seconds (was 20 - way too long!)
-  // sensitivity 1 (active) = 0.5 seconds (ready to respond immediately)
-  return Math.round(3000 - (sensitivity * 2500));
+  // FIXED: Use same 30-second rate limit as pipeline for unprompted
+  // Sensitivity no longer affects timing - Redi should be QUIET unless asked
+  // If user wants more responses, they can ask questions
+  return 30000;  // 30 seconds - matches pipeline minGapMsUnprompted
 }
 
 /**

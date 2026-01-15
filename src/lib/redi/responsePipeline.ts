@@ -44,8 +44,9 @@ const CONFIG = {
 // ============================================================================
 
 const BANNED_PATTERNS = [
-  // Questions
-  /\?$/,
+  // Questions - catch ANYWHERE in response, not just at end
+  // "Grab what from the fridge? I see no context" was slipping through with /?$/
+  /\?/,  // Any question mark = Redi should NEVER ask questions
 
   // Help offers
   /how can i help/i,

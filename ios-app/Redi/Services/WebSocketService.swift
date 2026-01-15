@@ -28,6 +28,11 @@ class WebSocketService: NSObject, ObservableObject {
     /// TTS fallback - when cloud TTS unavailable, use iOS local speech synthesis
     let ttsFallbackRequested = PassthroughSubject<String, Never>()
 
+    // MARK: - V2 Clean Implementation Toggle
+    // Set to true to use the new clean V2 backend (rediSocketClean.ts)
+    // Set to false to use the old V1 backend (rediSocket.ts)
+    private static let useV2Backend = true
+
     // MARK: - Private Properties
 
     private var webSocketTask: URLSessionWebSocketTask?
@@ -106,10 +111,13 @@ class WebSocketService: NSObject, ObservableObject {
     private func performConnect() {
         guard let sessionId = sessionId, let deviceId = deviceId else { return }
 
-        guard let url = URL(string: "\(baseURL)/ws/redi?sessionId=\(sessionId)&deviceId=\(deviceId)") else {
+        // Use V2 clean backend or V1 legacy backend based on toggle
+        let wsPath = Self.useV2Backend ? "/ws/redi-v2" : "/ws/redi"
+        guard let url = URL(string: "\(baseURL)\(wsPath)?sessionId=\(sessionId)&deviceId=\(deviceId)") else {
             error = "Invalid WebSocket URL"
             return
         }
+        print("[WebSocket] Using \(Self.useV2Backend ? "V2 Clean" : "V1 Legacy") backend")
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30

@@ -374,14 +374,21 @@ async function initializeSessionServices(
       });
     });
 
-    // Start insight generation loop
-    startInsightLoop(sessionId);
+    // DISABLED: Legacy insight/silence loops - these COMPETE with military-grade orchestrator
+    // causing both systems to speak simultaneously and constant talking.
+    // Military-grade orchestrator handles ALL response decisions now.
+    // See REDI_CLEAN_ARCHITECTURE_PROPOSAL.md for details.
+    //
+    // startInsightLoop(sessionId);
+    // startSilenceCheckLoop(sessionId);
 
-    // Start silence check loop
-    startSilenceCheckLoop(sessionId);
-
-    // Start frame aggregation loop
-    startFrameAggregationLoop(sessionId, mode);
+    // DISABLED: Frame aggregation loop - vision now handled inline in handlePerception
+    // This loop was causing constant vision analysis every 15s triggering unwanted responses.
+    // Vision runs ONLY when:
+    //   1. Perception packet arrives with frame (Haiku fast ~1s)
+    //   2. User explicitly asks "what do you see" (Sonnet deep)
+    //
+    // startFrameAggregationLoop(sessionId, mode);
 
     // Send initial greeting quickly (1 second delay for audio setup)
     setTimeout(async () => {

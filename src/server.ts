@@ -31,6 +31,7 @@ import homeworkApi from './api/homeworkApi';
 import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
 import { initRediWebSocket } from './websocket/rediSocket';
+import { initRediV2 } from './websocket/rediV2Server';  // Clean V2 implementation
 
 // Import Homework Rescue pages
 import {
@@ -2701,8 +2702,12 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Create HTTP server for WebSocket support
 const server = createServer(app);
 
-// Initialize Redi WebSocket server
+// Initialize Redi WebSocket server (OLD - /ws/redi)
 initRediWebSocket(server);
+
+// Initialize Redi V2 WebSocket server (CLEAN - /ws/redi-v2)
+// This is a completely separate implementation with no shared code
+initRediV2(server);
 
 server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)

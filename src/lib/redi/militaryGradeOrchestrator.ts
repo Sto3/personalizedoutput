@@ -293,6 +293,7 @@ export function cleanupMilitaryGrade(sessionId: string): void {
   cleanupPipeline(sessionId);
   sessionStates.delete(sessionId);
   serverVisualContexts.delete(sessionId);  // CRITICAL: Prevent memory leak
+  recentThinkingPhrases.delete(sessionId); // CRITICAL: Prevent memory leak (was missing!)
 
   console.log(`[Orchestrator] Military-grade cleaned up for ${sessionId}`);
 }
@@ -755,7 +756,9 @@ SPEAK LIKE A HUMAN:
 RULES:
 - MAX 15 words
 - Answer directly - no preamble
-- NEVER say "I help", "I assist", "ready", "appears to be"
+- NEVER ask questions back (no "?" in your response)
+- If you don't understand, say "Not sure what you mean" - never ask for clarification
+- NEVER say "I help", "I assist", "ready", "appears to be", "what do you want", "what item"
 - Trust the Vision context - if it says Q-tips, say Q-tips
 - Use the exact objects from Vision, don't make up others
 
