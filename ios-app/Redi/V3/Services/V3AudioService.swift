@@ -174,10 +174,14 @@ class V3AudioService: ObservableObject {
         }
         sourceBuffer.frameLength = frameCount
 
-        // Copy audio data to buffer
+        // Copy audio data to buffer (with nil check to prevent crash)
+        guard let channelData = sourceBuffer.int16ChannelData else {
+            print("[V3Audio] Failed to get channel data for playback")
+            return
+        }
         audioData.withUnsafeBytes { rawPtr in
             if let baseAddress = rawPtr.baseAddress {
-                memcpy(sourceBuffer.int16ChannelData![0], baseAddress, audioData.count)
+                memcpy(channelData[0], baseAddress, audioData.count)
             }
         }
 
@@ -237,22 +241,37 @@ class V3AudioService: ObservableObject {
     }
 
     private func setupPlaybackEngine() {
-        playbackEngine = AVAudioEngine()
-        playerNode = AVAudioPlayerNode()
+        // Clean up existing engine first to prevent resource leaks
+        if let existingPlayer = playerNode {
+            existingPlayer.stop()
+        }
+        if let existingEngine = playbackEngine {
+            existingEngine.stop()
+        }
+        playerNode = nil
+        playbackEngine = nil
 
-        guard let engine = playbackEngine, let player = playerNode else { return }
+        // Create new engine
+        let newEngine = AVAudioEngine()
+        let newPlayer = AVAudioPlayerNode()
 
-        engine.attach(player)
+        newEngine.attach(newPlayer)
 
         // Connect using the mixer's native format (hardware sample rate)
-        let mixerFormat = engine.mainMixerNode.outputFormat(forBus: 0)
-        engine.connect(player, to: engine.mainMixerNode, format: mixerFormat)
+        let mixerFormat = newEngine.mainMixerNode.outputFormat(forBus: 0)
+        newEngine.connect(newPlayer, to: newEngine.mainMixerNode, format: mixerFormat)
 
         do {
-            try engine.start()
+            try newEngine.start()
+            // Only assign after successful start
+            playbackEngine = newEngine
+            playerNode = newPlayer
             print("[V3Audio] Playback engine started at \(mixerFormat.sampleRate)Hz")
         } catch {
             print("[V3Audio] Playback engine error: \(error)")
+            // Clean up on failure
+            newPlayer.stop()
+            newEngine.stop()
         }
     }
 

@@ -253,29 +253,35 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
     switch (event.type) {
       case 'response.audio.delta':
-        // Forward audio to client
-        sendToClient(session, {
-          type: 'audio',
-          data: event.delta
-        });
+        // Forward audio to client (with null check)
+        if (event.delta) {
+          sendToClient(session, {
+            type: 'audio',
+            data: event.delta
+          });
+        }
         break;
 
       case 'response.audio_transcript.done':
-        // Send transcript to client
-        sendToClient(session, {
-          type: 'transcript',
-          text: event.transcript,
-          role: 'assistant'
-        });
+        // Send transcript to client (with null check)
+        if (event.transcript) {
+          sendToClient(session, {
+            type: 'transcript',
+            text: event.transcript,
+            role: 'assistant'
+          });
+        }
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        // User's speech transcript
-        sendToClient(session, {
-          type: 'transcript',
-          text: event.transcript,
-          role: 'user'
-        });
+        // User's speech transcript (with null check)
+        if (event.transcript) {
+          sendToClient(session, {
+            type: 'transcript',
+            text: event.transcript,
+            role: 'user'
+          });
+        }
         break;
 
       case 'input_audio_buffer.speech_started':
@@ -289,6 +295,20 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'error':
         console.error(`[Redi V3] OpenAI error:`, event.error);
         break;
+
+      case 'session.created':
+        console.log(`[Redi V3] OpenAI session created for ${session.id}`);
+        break;
+
+      case 'session.updated':
+        console.log(`[Redi V3] OpenAI session configured for ${session.id}`);
+        break;
+
+      default:
+        // Log unknown event types for debugging
+        if (event.type && !event.type.startsWith('response.')) {
+          console.log(`[Redi V3] Unhandled event: ${event.type}`);
+        }
     }
   } catch (error) {
     console.error(`[Redi V3] OpenAI message parse error:`, error);

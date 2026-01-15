@@ -46,8 +46,11 @@ class V3WebSocketService: ObservableObject {
         self.serverURL = serverURL
     }
 
+    private var isConnecting = false
+
     func connect() {
-        guard connectionState != .connecting else { return }
+        guard connectionState != .connecting, !isConnecting else { return }
+        isConnecting = true
 
         DispatchQueue.main.async {
             self.connectionState = .connecting
@@ -57,27 +60,52 @@ class V3WebSocketService: ObservableObject {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
         config.timeoutIntervalForResource = 300
+        config.waitsForConnectivity = true
 
         session = URLSession(configuration: config)
         webSocket = session?.webSocketTask(with: serverURL)
         webSocket?.resume()
 
-        // Start receiving messages
+        // Start receiving messages immediately (they'll queue until connection ready)
         receiveMessage()
 
-        // Mark as connected
-        DispatchQueue.main.async { [weak self] in
-            self?.isConnected = true
-            self?.connectionState = .connected
-            self?.reconnectAttempts = 0
-            print("[V3WebSocket] Connected")
+        // Send a ping to verify connection is actually established
+        webSocket?.sendPing { [weak self] error in
+            guard let self = self else { return }
+
+            // Check if we were disconnected while waiting for ping
+            guard self.webSocket != nil else {
+                self.isConnecting = false
+                return
+            }
+
+            if let error = error {
+                print("[V3WebSocket] Connection failed: \(error.localizedDescription)")
+                self.isConnecting = false
+                DispatchQueue.main.async {
+                    self.isConnected = false
+                    self.connectionState = .error(error.localizedDescription)
+                    self.onError?(error)
+                }
+                self.attemptReconnect()
+            } else {
+                print("[V3WebSocket] Connection verified via ping")
+                self.isConnecting = false
+                DispatchQueue.main.async {
+                    self.isConnected = true
+                    self.connectionState = .connected
+                    self.reconnectAttempts = 0
+                }
+            }
         }
     }
 
     func disconnect() {
+        isConnecting = false
         webSocket?.cancel(with: .normalClosure, reason: nil)
         webSocket = nil
         session = nil
+        reconnectAttempts = maxReconnectAttempts  // Prevent auto-reconnect
 
         DispatchQueue.main.async { [weak self] in
             self?.isConnected = false
