@@ -24,19 +24,26 @@ export function initRediV2(server: HTTPServer): void {
   });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    // Parse sessionId and deviceId from URL query string
-    const urlParts = parseUrl(req.url || '', true);
-    const sessionId = urlParts.query.sessionId as string;
-    const deviceId = urlParts.query.deviceId as string;
+    console.log(`[Redi V2] Connection attempt from ${req.url}`);
 
-    if (!sessionId) {
-      console.error('[Redi V2] Connection rejected: no sessionId');
-      ws.close(1008, 'sessionId required');
-      return;
+    try {
+      // Parse sessionId and deviceId from URL query string
+      const urlParts = parseUrl(req.url || '', true);
+      const sessionId = urlParts.query.sessionId as string;
+      const deviceId = urlParts.query.deviceId as string;
+
+      if (!sessionId) {
+        console.error('[Redi V2] Connection rejected: no sessionId');
+        ws.close(1008, 'sessionId required');
+        return;
+      }
+
+      console.log(`[Redi V2] New connection: session=${sessionId}, device=${deviceId}`);
+      handleConnection(ws, sessionId, deviceId);
+    } catch (error) {
+      console.error('[Redi V2] Connection handler error:', error);
+      ws.close(1011, 'Server error');
     }
-
-    console.log(`[Redi V2] New connection: session=${sessionId}, device=${deviceId}`);
-    handleConnection(ws, sessionId, deviceId);
   });
 
   wss.on('error', (error) => {

@@ -62,31 +62,43 @@ const anthropic = new Anthropic();
 // =============================================================================
 
 export function handleConnection(ws: WebSocket, sessionId: string, deviceId: string): void {
-  // Initialize session immediately
-  sessions.set(sessionId, {
-    id: sessionId,
-    ws,
-    deviceId,
-    lastSpokeAt: 0,
-    isSpeaking: false,
-    visualContext: '',
-    visualContextTimestamp: 0,
-  });
+  console.log(`[Redi V2] handleConnection called for ${sessionId}`);
 
-  console.log(`[Redi V2] Session started: ${sessionId}`);
+  try {
+    // Initialize session immediately
+    sessions.set(sessionId, {
+      id: sessionId,
+      ws,
+      deviceId,
+      lastSpokeAt: 0,
+      isSpeaking: false,
+      visualContext: '',
+      visualContextTimestamp: 0,
+    });
 
-  // Send session_start confirmation to iOS
-  ws.send(JSON.stringify({
-    type: 'session_start',
-    sessionId,
-    timestamp: Date.now(),
-    payload: {
-      remainingSeconds: 900  // 15 minutes
-    }
-  }));
+    console.log(`[Redi V2] Session started: ${sessionId}`);
 
-  // Simple greeting after 1 second
-  setTimeout(() => speak(sessionId, "I'm ready."), 1000);
+    // Send session_start confirmation to iOS
+    const startMessage = JSON.stringify({
+      type: 'session_start',
+      sessionId,
+      timestamp: Date.now(),
+      payload: {
+        remainingSeconds: 900  // 15 minutes
+      }
+    });
+    console.log(`[Redi V2] Sending session_start to iOS`);
+    ws.send(startMessage);
+    console.log(`[Redi V2] session_start sent successfully`);
+
+    // Simple greeting after 1 second
+    setTimeout(() => {
+      console.log(`[Redi V2] Sending greeting...`);
+      speak(sessionId, "I'm ready.");
+    }, 1000);
+  } catch (error) {
+    console.error(`[Redi V2] Error in handleConnection:`, error);
+  }
 
   // Handle incoming messages
   ws.on('message', async (data) => {
