@@ -70,7 +70,8 @@ import {
   analyzeSnapshotWithGrounding,
   analyzeMotionClip,
   getVisualContext,
-  clearVisualContext
+  clearVisualContext,
+  analyzeSnapshotFast  // Fast Haiku vision (~1s) for quick observations
 } from '../lib/redi/visionService';
 
 import {
@@ -715,6 +716,18 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
       packet.transcript = recentTranscript;
       packet.transcriptIsFinal = true;
       lastProcessedTranscripts.set(sessionId, recentTranscript); // Mark as processed
+    }
+  }
+
+  // FAST HAIKU VISION: If we have a frame, analyze it NOW (~1s)
+  // This gives Haiku actual visual context instead of garbled text
+  if (extPacket.fallbackFrame) {
+    const fastVisionStart = Date.now();
+    const fastVision = await analyzeSnapshotFast(sessionId, extPacket.fallbackFrame, session.mode);
+    if (fastVision) {
+      // Update the server visual context so Haiku triage has it
+      updateServerVisualContext(sessionId, fastVision);
+      console.log(`[Redi] Fast Haiku vision (${Date.now() - fastVisionStart}ms): "${fastVision}"`);
     }
   }
 

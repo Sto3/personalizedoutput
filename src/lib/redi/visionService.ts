@@ -88,8 +88,93 @@ interface iOSDetectionHints {
   sceneClassifications?: string[];  // Apple Vision scene classifications (1000+ categories)
 }
 
+// Cost for Haiku vision (much cheaper than Sonnet)
+const COST_PER_HAIKU_VISION = 0.002;
+
 /**
- * Analyze a single snapshot image with maximum resilience
+ * FAST vision analysis using Haiku (~1 second)
+ *
+ * Use this for quick observations. Haiku sees the ACTUAL IMAGE,
+ * not just text summaries. This prevents the hallucination problem
+ * where Haiku was responding to garbled text context.
+ *
+ * @returns Quick visual description (5-15 words) or null if nothing notable
+ */
+export async function analyzeSnapshotFast(
+  sessionId: string,
+  imageBase64: string,
+  mode: RediMode
+): Promise<string | null> {
+  const startTime = Date.now();
+
+  const systemPrompt = `You are a confident observer. Describe what you see in 5-15 words.
+
+RULES:
+- State what you see directly: "Q-tips box on bathroom counter"
+- Read any visible text/labels exactly
+- NEVER say "I see" - just describe
+- NEVER explain yourself or offer help
+- NEVER mention image quality
+- If you can't identify something, use generic terms: "blue box", "container"
+- If nothing notable visible, respond with just: NOTHING
+- IGNORE any app UI elements (buttons, overlays, timestamps)`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-3-5-haiku-20241022',
+      max_tokens: 50,
+      messages: [{
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: 'image/jpeg',
+              data: imageBase64
+            }
+          },
+          {
+            type: 'text',
+            text: 'Describe the main thing you see (5-15 words):'
+          }
+        ]
+      }],
+      system: systemPrompt
+    });
+
+    trackCost(sessionId, 'vision', COST_PER_HAIKU_VISION);
+
+    const content = response.content[0];
+    const text = content.type === 'text' ? content.text.trim() : '';
+    const latency = Date.now() - startTime;
+
+    console.log(`[Redi Vision] Haiku fast analysis (${latency}ms): ${text}`);
+
+    // Return null for empty/nothing responses
+    if (!text || text === 'NOTHING' || text.toLowerCase().includes('nothing')) {
+      return null;
+    }
+
+    // Filter out AI-speak that might slip through
+    const aiSpeakPatterns = [/i see/i, /i can/i, /appears to/i, /seems to/i, /ready/i, /assist/i, /help/i];
+    for (const pattern of aiSpeakPatterns) {
+      if (pattern.test(text)) {
+        console.log(`[Redi Vision] Haiku response filtered (AI-speak): ${text}`);
+        return null;
+      }
+    }
+
+    return text;
+
+  } catch (error) {
+    console.error(`[Redi Vision] Haiku fast analysis error:`, error);
+    return null;
+  }
+}
+
+/**
+ * Analyze a single snapshot image with maximum resilience (SONNET - slower but detailed)
  */
 export async function analyzeSnapshot(
   sessionId: string,
