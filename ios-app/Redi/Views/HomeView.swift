@@ -73,9 +73,12 @@ struct HomeView: View {
             Button("Start Free Session") {
                 startFreeSession()
             }
+            Button("Try V3 (OpenAI Realtime)") {
+                appState.useV3 = true
+            }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Start a free test session without payment? This bypasses Stripe checkout for testing.")
+            Text("Start a free test session without payment? Or try V3 with OpenAI Realtime API.")
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },

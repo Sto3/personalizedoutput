@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: redi-v3
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false  # You'll set this manually in dashboard
+      - key: NODE_ENV
+        value: production
