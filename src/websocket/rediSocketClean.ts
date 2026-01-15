@@ -105,6 +105,11 @@ export function handleConnection(ws: WebSocket, sessionId: string, deviceId: str
     try {
       const message = JSON.parse(data.toString());
 
+      // Log all incoming messages (except ping which is noisy)
+      if (message.type !== 'ping') {
+        console.log(`[Redi V2] Received message type: ${message.type}`);
+      }
+
       if (message.type === 'perception') {
         await handlePerception(sessionId, message);
         return;
@@ -155,6 +160,9 @@ async function handlePerception(sessionId: string, message: any): Promise<void> 
   const transcript = payload.transcript;
   const transcriptIsFinal = payload.transcriptIsFinal;
   const frame = payload.fallbackFrame || payload.frame;  // iOS sends as fallbackFrame
+
+  // Log perception details
+  console.log(`[Redi V2] Perception: transcript="${transcript || 'none'}", hasFrame=${!!frame}, isFinal=${transcriptIsFinal}`);
 
   // Step 1: Update vision if we have a frame (but don't block on it)
   if (frame) {
