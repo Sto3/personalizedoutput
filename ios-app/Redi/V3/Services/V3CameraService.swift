@@ -118,9 +118,19 @@ extension V3CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
 
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
+        // Lock the pixel buffer
+        CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
+        defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
+
+        // Create UIImage directly from pixel buffer
         let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+        let context = CIContext(options: [.useSoftwareRenderer: false])
+
+        let width = CVPixelBufferGetWidth(pixelBuffer)
+        let height = CVPixelBufferGetHeight(pixelBuffer)
+        let rect = CGRect(x: 0, y: 0, width: width, height: height)
+
+        guard let cgImage = context.createCGImage(ciImage, from: rect) else { return }
 
         let image = UIImage(cgImage: cgImage)
 
