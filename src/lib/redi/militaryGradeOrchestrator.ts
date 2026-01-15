@@ -378,8 +378,16 @@ export async function processPerception(
   // This is what Claude Vision actually SAW - Haiku MUST use this for accurate responses!
   let serverVisualCtx: string | undefined;
   const serverCtx = serverVisualContexts.get(sessionId);
-  if (serverCtx && (Date.now() - serverCtx.timestamp) < 10000) {
-    serverVisualCtx = serverCtx.description;
+  if (serverCtx) {
+    const contextAge = Date.now() - serverCtx.timestamp;
+    if (contextAge < 10000) {
+      serverVisualCtx = serverCtx.description;
+      console.log(`[Orchestrator] Passing vision context to Haiku (age=${contextAge}ms): ${serverCtx.description.substring(0, 80)}...`);
+    } else {
+      console.log(`[Orchestrator] Vision context too old (${contextAge}ms), not passing to Haiku`);
+    }
+  } else {
+    console.log(`[Orchestrator] No vision context available for session ${sessionId}`);
   }
 
   const triageInput = {

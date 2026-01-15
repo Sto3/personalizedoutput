@@ -181,8 +181,9 @@ function checkSilenceConditions(input: TriageInput): {
   }
 
   // We have context - let Haiku decide
+  const hasVision = !!input.serverVisualContext;
   if (debugLog) {
-    console.log(`[Haiku Triage] Has context - calling Haiku (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects})`);
+    console.log(`[Haiku Triage] Has context - calling Haiku (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects}, vision=${hasVision})`);
   }
 
   return {
@@ -333,7 +334,10 @@ function buildCompactContext(input: TriageInput): string {
   // CRITICAL: Include Claude Vision analysis if available
   // This is what Claude Vision ACTUALLY SAW - must use this for accurate responses!
   if (input.serverVisualContext) {
+    console.log(`[Haiku Triage] Including vision context: ${input.serverVisualContext.substring(0, 100)}...`);
     parts.push(`Vision: ${input.serverVisualContext}`);
+  } else {
+    console.log(`[Haiku Triage] WARNING: No vision context available for Haiku!`);
   }
 
   // Pose summary
