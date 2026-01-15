@@ -126,13 +126,13 @@ export function handleConnection(ws: WebSocket, sessionId: string, deviceId: str
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', (code, reason) => {
+    console.log(`[Redi V2] WebSocket closed for ${sessionId}: code=${code}, reason=${reason || 'none'}`);
     cleanup(sessionId);
   });
 
   ws.on('error', (error) => {
     console.error(`[Redi V2] WebSocket error for ${sessionId}:`, error);
-    cleanup(sessionId);
   });
 }
 
