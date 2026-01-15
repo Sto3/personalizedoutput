@@ -330,6 +330,12 @@ function buildCompactContext(input: TriageInput): string {
     parts.push(`User: "${input.packet.transcript}"`);
   }
 
+  // CRITICAL: Include Claude Vision analysis if available
+  // This is what Claude Vision ACTUALLY SAW - must use this for accurate responses!
+  if (input.serverVisualContext) {
+    parts.push(`Vision: ${input.serverVisualContext}`);
+  }
+
   // Pose summary
   if (input.packet.pose && input.packet.pose.confidence > 0.5) {
     const pose = input.packet.pose;

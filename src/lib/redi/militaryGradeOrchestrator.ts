@@ -373,13 +373,23 @@ export async function processPerception(
   // LAYER 2: Haiku Triage
   // ========================================
   const triageStartTime = Date.now();
+
+  // CRITICAL: Get server visual context (Claude Vision analysis)
+  // This is what Claude Vision actually SAW - Haiku MUST use this for accurate responses!
+  let serverVisualCtx: string | undefined;
+  const serverCtx = serverVisualContexts.get(sessionId);
+  if (serverCtx && (Date.now() - serverCtx.timestamp) < 10000) {
+    serverVisualCtx = serverCtx.description;
+  }
+
   const triageInput = {
     packet,
     recentContext: state.recentContext,
     ruleEngineResult: ruleResult,
     timeSinceLastSpoke: Date.now() - state.lastSpokeAt,
     sensitivity: state.sensitivity,
-    mode: state.mode
+    mode: state.mode,
+    serverVisualContext: serverVisualCtx  // CRITICAL: Pass Claude Vision analysis to Haiku!
   };
 
   const triageResult = await triage(triageInput);

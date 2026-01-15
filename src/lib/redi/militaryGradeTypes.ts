@@ -278,6 +278,7 @@ export interface TriageInput {
   timeSinceLastSpoke: number;           // ms
   sensitivity: number;                  // 0-1
   mode: RediMode;
+  serverVisualContext?: string;         // Claude Vision analysis (CRITICAL for accurate responses!)
 }
 
 /**
