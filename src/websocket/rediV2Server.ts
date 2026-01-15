@@ -1,11 +1,11 @@
 /**
  * Redi V2 Server - Clean WebSocket endpoint
  *
- * This creates a SEPARATE WebSocket server on a different path.
- * Uses noServer mode with manual upgrade handling to avoid conflicts.
+ * Uses noServer mode with manual upgrade handling.
+ * Now uses /ws/redi path (same as V1) since Cloudflare has WebSocket enabled for that path.
  *
  * Usage:
- *   iOS connects to: wss://your-server.com/ws/redi-v2?sessionId=xxx&deviceId=yyy
+ *   iOS connects to: wss://your-server.com/ws/redi?sessionId=xxx&deviceId=yyy
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -47,22 +47,21 @@ export function initRediV2(server: HTTPServer): void {
     console.error('[Redi V2] WebSocket server error:', error);
   });
 
-  // Handle upgrade requests for /ws/redi-v2 path
+  // Handle upgrade requests for /ws/redi path
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
     const pathname = parseUrl(request.url || '').pathname;
 
     console.log(`[Redi V2] Upgrade request for path: ${pathname}`);
 
-    if (pathname === '/ws/redi-v2') {
+    if (pathname === '/ws/redi') {
       console.log(`[Redi V2] Handling upgrade for V2 connection`);
       wss!.handleUpgrade(request, socket, head, (ws) => {
         wss!.emit('connection', ws, request);
       });
     }
-    // Don't handle other paths - let them fall through to V1 or other handlers
   });
 
-  console.log('[Redi V2] WebSocket server initialized on /ws/redi-v2 (noServer mode)');
+  console.log('[Redi V2] WebSocket server initialized on /ws/redi (noServer mode)');
 }
 
 export function closeRediV2(): void {
