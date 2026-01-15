@@ -168,10 +168,24 @@ function checkSilenceConditions(input: TriageInput): {
   const hasTranscript = input.packet.transcript && input.packet.transcript.trim().length > 0;
   const hasPose = input.packet.pose && input.packet.pose.confidence > 0.5;
   const hasObjects = input.packet.objects && input.packet.objects.length > 0;
+  const hasVision = !!input.serverVisualContext;
 
-  if (!hasTranscript && !hasPose && !hasObjects) {
+  // CRITICAL: If user didn't ask anything AND we have no vision, stay SILENT
+  // This prevents hallucinations like "Oreo cookies" when we can't actually see
+  if (!hasTranscript && !hasVision) {
     if (debugLog) {
-      console.log(`[Haiku Triage] Silent: no_context (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects})`);
+      console.log(`[Haiku Triage] Silent: no_vision_no_question (vision=${hasVision}, transcript=${hasTranscript})`);
+    }
+    return {
+      shouldBeSilent: true,
+      confidence: 0.95,
+      reason: 'no_vision_for_unprompted'
+    };
+  }
+
+  if (!hasTranscript && !hasPose && !hasObjects && !hasVision) {
+    if (debugLog) {
+      console.log(`[Haiku Triage] Silent: no_context (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects}, vision=${hasVision})`);
     }
     return {
       shouldBeSilent: true,
@@ -181,7 +195,6 @@ function checkSilenceConditions(input: TriageInput): {
   }
 
   // We have context - let Haiku decide
-  const hasVision = !!input.serverVisualContext;
   if (debugLog) {
     console.log(`[Haiku Triage] Has context - calling Haiku (transcript=${hasTranscript}, pose=${hasPose}, objects=${hasObjects}, vision=${hasVision})`);
   }
