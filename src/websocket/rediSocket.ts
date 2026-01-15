@@ -807,7 +807,7 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
  * Get fresh visual analysis from the most recent frame
  * Used when user asks visual questions like "what do you see?"
  *
- * Uses GROUNDED analysis when iOS detections available to prevent hallucination
+ * Uses ENRICHED analysis when iOS detections available (context, not constraints)
  */
 async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promise<string | null> {
   const buffer = frameBuffers.get(sessionId);
@@ -827,7 +827,13 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
     return null;
   }
 
-  console.log(`[Redi] Analyzing fresh frame (${Math.round(frameAge)}ms old)`);
+  // PIPELINE DIAGNOSTIC: Log image details
+  const imageSize = recentFrame.image.length;
+  const imageSizeKB = (imageSize * 0.75 / 1024).toFixed(1);  // base64 is ~33% larger than binary
+  console.log(`[Redi] PIPELINE DIAGNOSTIC:`);
+  console.log(`[Redi]   Frame age: ${Math.round(frameAge)}ms`);
+  console.log(`[Redi]   Image size: ${imageSizeKB}KB (base64: ${(imageSize/1024).toFixed(1)}KB)`);
+  console.log(`[Redi]   Device: ${recentFrame.deviceId}`);
 
   try {
     // Get iOS detections for grounding (prevents hallucination)
@@ -836,12 +842,20 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
 
     let analysis;
 
+    // PIPELINE DIAGNOSTIC: Log iOS detection state
+    console.log(`[Redi]   iOS perception age: ${iosPerception ? Math.round(iosAge) + 'ms' : 'NONE'}`);
+    if (iosPerception) {
+      console.log(`[Redi]   iOS objects: ${iosPerception.objects?.join(', ') || 'NONE'}`);
+      console.log(`[Redi]   iOS texts: ${iosPerception.texts?.join(', ') || 'NONE'}`);
+      console.log(`[Redi]   iOS scene: ${iosPerception.sceneClassifications?.slice(0, 3).join(', ') || 'NONE'}`);
+    }
+
     // Use enriched analysis if we have fresh iOS detections (context, not constraints!)
     if (iosPerception && iosAge < 3000) {
       const hasObjects = iosPerception.objects && iosPerception.objects.length > 0;
       const hasTexts = iosPerception.texts && iosPerception.texts.length > 0;
       const hasSceneClass = iosPerception.sceneClassifications && iosPerception.sceneClassifications.length > 0;
-      console.log(`[Redi] Using ENRICHED analysis (${Math.round(iosAge)}ms old) - scene: ${hasSceneClass ? iosPerception.sceneClassifications!.slice(0, 2).join(', ') : 'NONE'}, objects: ${hasObjects ? iosPerception.objects.join(', ') : 'NONE'}`);
+      console.log(`[Redi] Using ENRICHED analysis - iOS provides context, Claude is expert`);
       analysis = await analyzeSnapshotWithGrounding(
         sessionId,
         recentFrame.image,
@@ -864,6 +878,13 @@ async function getFreshVisualAnalysis(sessionId: string, mode: RediMode): Promis
         '' // No transcript context needed
       );
     }
+
+    // PIPELINE DIAGNOSTIC: Log what Claude Vision returned
+    const latency = Date.now() - recentFrame.timestamp;
+    console.log(`[Redi] CLAUDE VISION RESULT:`);
+    console.log(`[Redi]   Total latency: ${latency}ms`);
+    console.log(`[Redi]   Response length: ${analysis.description.length} chars`);
+    console.log(`[Redi]   First 200 chars: "${analysis.description.substring(0, 200)}..."`);
 
     // Also update the cached context
     const ctx = contexts.get(sessionId);

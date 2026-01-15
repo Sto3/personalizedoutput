@@ -9,6 +9,7 @@
     "build": "npx tsc --noEmit false || true && npm run copy-assets",
     "copy-assets": "node scripts/copy-assets.js",
     "test": "echo \"Error: no test specified\" && exit 1",
+    "diagnose:vision": "npx ts-node src/lib/redi/visionDiagnostics.ts",
     "test:santa": "npx ts-node test-santa-deep.js",
     "test:chat": "npx ts-node scripts/test-thought-chat.ts",
     "generate:etsy-preview": "node scripts/generateEtsyPreview.js",
