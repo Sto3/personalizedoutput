@@ -8,15 +8,16 @@ import Foundation
 import AVFoundation
 
 struct V3Config {
-    // Server URL - Uses existing Render deployment with V3 endpoint
+    // Server URL - Uses existing Render deployment with V3 via query parameter
+    // Uses /ws/redi?v=3 instead of /ws/redi-v3 for Cloudflare WebSocket compatibility
     static var serverURL: URL {
         // Check for environment override first
         if let envURL = ProcessInfo.processInfo.environment["REDI_V3_SERVER_URL"],
            let url = URL(string: envURL) {
             return url
         }
-        // V3 endpoint on existing server
-        return URL(string: "wss://personalizedoutput.com/ws/redi-v3")!
+        // V3 endpoint via query parameter (Cloudflare only has WebSocket enabled for /ws/redi)
+        return URL(string: "wss://redialways.com/ws/redi?v=3")!
     }
 
     // Audio format settings (must match OpenAI Realtime API expectations)

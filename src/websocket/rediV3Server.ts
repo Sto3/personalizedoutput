@@ -82,19 +82,21 @@ export function initRediV3(server: HTTPServer): void {
     });
   });
 
-  // Handle upgrade requests for /ws/redi-v3 path
+  // Handle upgrade requests for /ws/redi?v=3 path (uses same path as V2 for Cloudflare compatibility)
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
-    const pathname = parseUrl(request.url || '').pathname;
+    const parsedUrl = parseUrl(request.url || '', true);
+    const pathname = parsedUrl.pathname;
+    const isV3 = parsedUrl.query.v === '3';
 
-    if (pathname === '/ws/redi-v3') {
-      console.log(`[Redi V3] Handling upgrade for V3 connection`);
+    if (pathname === '/ws/redi' && isV3) {
+      console.log(`[Redi V3] Handling upgrade for V3 connection (via /ws/redi?v=3)`);
       wss!.handleUpgrade(request, socket, head, (ws) => {
         wss!.emit('connection', ws, request);
       });
     }
   });
 
-  console.log('[Redi V3] WebSocket server initialized on /ws/redi-v3');
+  console.log('[Redi V3] WebSocket server initialized on /ws/redi?v=3');
 }
 
 async function connectToOpenAI(session: V3Session): Promise<void> {

@@ -47,13 +47,16 @@ export function initRediV2(server: HTTPServer): void {
     console.error('[Redi V2] WebSocket server error:', error);
   });
 
-  // Handle upgrade requests for /ws/redi path
+  // Handle upgrade requests for /ws/redi path (but NOT v=3 which goes to V3 server)
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
-    const pathname = parseUrl(request.url || '').pathname;
+    const parsedUrl = parseUrl(request.url || '', true);
+    const pathname = parsedUrl.pathname;
+    const isV3 = parsedUrl.query.v === '3';
 
-    console.log(`[Redi V2] Upgrade request for path: ${pathname}`);
+    console.log(`[Redi V2] Upgrade request for path: ${pathname}, v=${parsedUrl.query.v}`);
 
-    if (pathname === '/ws/redi') {
+    // Skip V3 requests - those are handled by rediV3Server
+    if (pathname === '/ws/redi' && !isV3) {
       console.log(`[Redi V2] Handling upgrade for V2 connection`);
       wss!.handleUpgrade(request, socket, head, (ws) => {
         wss!.emit('connection', ws, request);
