@@ -124,7 +124,9 @@ const frameAggregationIntervals = new Map<string, NodeJS.Timeout>();
 // Frame aggregation buffer: sessionId -> array of recent frames from all devices
 const frameBuffers = new Map<string, { deviceId: string; image: string; timestamp: number }[]>();
 const FRAME_BUFFER_MAX = 10;
-const FRAME_AGGREGATION_INTERVAL_MS = 2000;
+// CRITICAL: Frame aggregation should NOT be too frequent
+// Every 15 seconds is enough for context updates - Redi shouldn't be narrating constantly
+const FRAME_AGGREGATION_INTERVAL_MS = 15000;
 
 // CRITICAL: Track most recent perception packet per session (for fresh visual context in questions)
 // This allows questions to use iOS Vision data (fast, fresh) instead of server analysis (slow, stale)

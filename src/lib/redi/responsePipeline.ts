@@ -31,7 +31,8 @@ const CONFIG = {
 
   // Rate limiting - ONLY for unprompted interjections
   // User questions bypass rate limit (conversation flow)
-  minGapMsUnprompted: 3000,  // Minimum time between unprompted responses
+  // CRITICAL: Unprompted observations should be RARE - confident observers don't narrate constantly
+  minGapMsUnprompted: 30000,  // 30 seconds between unprompted responses (was 3s - way too chatty!)
 
   // Deduplication
   similarityThreshold: 0.6,  // 60% word overlap = duplicate
