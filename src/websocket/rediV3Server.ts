@@ -102,10 +102,16 @@ export function initRediV3(server: HTTPServer): void {
 async function connectToOpenAI(session: V3Session): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
+    console.error('[Redi V3] OPENAI_API_KEY environment variable not set');
     throw new Error('OPENAI_API_KEY not configured');
   }
 
+  // Log key format for debugging (first 10 chars only)
+  console.log(`[Redi V3] Using API key starting with: ${apiKey.substring(0, 10)}...`);
+
   return new Promise((resolve, reject) => {
+    console.log(`[Redi V3] Connecting to OpenAI Realtime API at ${OPENAI_REALTIME_URL}`);
+
     const ws = new WebSocket(OPENAI_REALTIME_URL, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
@@ -136,13 +142,24 @@ async function connectToOpenAI(session: V3Session): Promise<void> {
       handleOpenAIMessage(session, data);
     });
 
-    ws.on('error', (error) => {
-      console.error(`[Redi V3] OpenAI error:`, error);
-      reject(error);
+    ws.on('error', (error: any) => {
+      console.error(`[Redi V3] OpenAI WebSocket error:`, error.message || error);
+      if (error.code) console.error(`[Redi V3] Error code: ${error.code}`);
+      reject(new Error(`OpenAI connection error: ${error.message || 'Unknown error'}`));
     });
 
-    ws.on('close', () => {
-      console.log(`[Redi V3] OpenAI connection closed for ${session.id}`);
+    ws.on('close', (code: number, reason: Buffer) => {
+      console.log(`[Redi V3] OpenAI connection closed for ${session.id}, code=${code}, reason=${reason.toString()}`);
+    });
+
+    ws.on('unexpected-response', (request: any, response: any) => {
+      console.error(`[Redi V3] OpenAI unexpected response: ${response.statusCode} ${response.statusMessage}`);
+      let body = '';
+      response.on('data', (chunk: Buffer) => { body += chunk.toString(); });
+      response.on('end', () => {
+        console.error(`[Redi V3] OpenAI response body: ${body}`);
+        reject(new Error(`OpenAI returned ${response.statusCode}: ${body}`));
+      });
     });
   });
 }
