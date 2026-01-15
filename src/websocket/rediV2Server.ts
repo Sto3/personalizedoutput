@@ -2,11 +2,10 @@
  * Redi V2 Server - Clean WebSocket endpoint
  *
  * This creates a SEPARATE WebSocket server on a different path.
- * It has ZERO connection to the old rediSocket.ts.
+ * Uses noServer mode with manual upgrade handling to avoid conflicts.
  *
  * Usage:
  *   iOS connects to: wss://your-server.com/ws/redi-v2?sessionId=xxx&deviceId=yyy
- *   (Old system remains at: wss://your-server.com/ws/redi)
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -17,14 +16,12 @@ import { handleConnection } from './rediSocketClean';
 let wss: WebSocketServer | null = null;
 
 export function initRediV2(server: HTTPServer): void {
-  // Create WebSocket server on /ws/redi-v2 path
-  wss = new WebSocketServer({
-    server,
-    path: '/ws/redi-v2'
-  });
+  // Create WebSocket server WITHOUT attaching to HTTP server
+  // We'll handle upgrades manually
+  wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    console.log(`[Redi V2] Connection attempt from ${req.url}`);
+    console.log(`[Redi V2] Connection established from ${req.url}`);
 
     try {
       // Parse sessionId and deviceId from URL query string
@@ -50,7 +47,22 @@ export function initRediV2(server: HTTPServer): void {
     console.error('[Redi V2] WebSocket server error:', error);
   });
 
-  console.log('[Redi V2] WebSocket server initialized on /ws/redi-v2');
+  // Handle upgrade requests for /ws/redi-v2 path
+  server.on('upgrade', (request: IncomingMessage, socket, head) => {
+    const pathname = parseUrl(request.url || '').pathname;
+
+    console.log(`[Redi V2] Upgrade request for path: ${pathname}`);
+
+    if (pathname === '/ws/redi-v2') {
+      console.log(`[Redi V2] Handling upgrade for V2 connection`);
+      wss!.handleUpgrade(request, socket, head, (ws) => {
+        wss!.emit('connection', ws, request);
+      });
+    }
+    // Don't handle other paths - let them fall through to V1 or other handlers
+  });
+
+  console.log('[Redi V2] WebSocket server initialized on /ws/redi-v2 (noServer mode)');
 }
 
 export function closeRediV2(): void {

@@ -2702,12 +2702,14 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Create HTTP server for WebSocket support
 const server = createServer(app);
 
-// Initialize Redi WebSocket server (OLD - /ws/redi)
-initRediWebSocket(server);
-
-// Initialize Redi V2 WebSocket server (CLEAN - /ws/redi-v2)
+// Initialize Redi V2 WebSocket server FIRST (CLEAN - /ws/redi-v2)
+// V2 uses noServer mode with manual upgrade handling - must be first!
 // This is a completely separate implementation with no shared code
 initRediV2(server);
+
+// Initialize Redi WebSocket server (OLD - /ws/redi)
+// V1 uses path option which auto-handles upgrades for its path
+initRediWebSocket(server);
 
 server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)
