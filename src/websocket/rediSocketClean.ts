@@ -96,9 +96,16 @@ export function handleConnection(ws: WebSocket, sessionId: string, deviceId: str
     console.log(`[Redi V2] session_start sent successfully`);
 
     // Simple greeting after 1 second
-    setTimeout(() => {
+    setTimeout(async () => {
       console.log(`[Redi V2] Sending greeting...`);
-      speak(sessionId, "I'm ready.");
+      await speak(sessionId, "I'm ready.");
+
+      // Reset lastSpokeAt so first observation can happen immediately after greeting
+      const session = sessions.get(sessionId);
+      if (session) {
+        session.lastSpokeAt = Date.now() - CONFIG.minGapBetweenUnpromptedMs;
+        console.log(`[Redi V2] Rate limit reset - first observation allowed`);
+      }
     }, 1000);
   } catch (error) {
     console.error(`[Redi V2] Error in handleConnection:`, error);
@@ -294,23 +301,28 @@ async function handlePerception(sessionId: string, message: any): Promise<void> 
 function shouldSpeak(session: Session): boolean {
   // Already speaking?
   if (session.isSpeaking) {
+    console.log(`[Redi V2] shouldSpeak: NO (already speaking)`);
     return false;
   }
 
   // Rate limit for unprompted
   const timeSinceLastSpoke = Date.now() - session.lastSpokeAt;
   if (timeSinceLastSpoke < CONFIG.minGapBetweenUnpromptedMs) {
+    console.log(`[Redi V2] shouldSpeak: NO (rate limit - ${Math.round(timeSinceLastSpoke/1000)}s < ${CONFIG.minGapBetweenUnpromptedMs/1000}s)`);
     return false;
   }
 
   // Do we have something to talk about?
   const hasVision = session.visualContext.length > 0;
-  const visionFresh = (Date.now() - session.visualContextTimestamp) < 10000;
+  const visionAge = Date.now() - session.visualContextTimestamp;
+  const visionFresh = visionAge < 10000;
 
   if (!hasVision || !visionFresh) {
+    console.log(`[Redi V2] shouldSpeak: NO (vision: has=${hasVision}, fresh=${visionFresh}, age=${Math.round(visionAge/1000)}s)`);
     return false;
   }
 
+  console.log(`[Redi V2] shouldSpeak: YES (will speak about: "${session.visualContext.substring(0, 50)}...")`);
   return true;
 }
 
