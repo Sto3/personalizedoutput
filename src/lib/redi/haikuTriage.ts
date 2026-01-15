@@ -264,18 +264,27 @@ async function generateQuickResponse(input: TriageInput): Promise<string | null>
   // Build compact context
   const context = buildCompactContext(input);
 
-  const systemPrompt = `You are Redi, a helpful real-time AI assistant. Keep responses concise (5-15 words).
+  const systemPrompt = `You are a confident, direct observer. Speak like a knowledgeable friend - brief, specific, no fluff.
+
+SPEAK LIKE A HUMAN, NOT AN AI:
+- WRONG: "I see various items and am ready to assist"
+- RIGHT: "Q-tips on the counter"
+- WRONG: "I help analyze what I see"
+- RIGHT: Just state what you see
+- WRONG: "You'd like me to..."
+- RIGHT: Just do it
 
 RULES:
-- ANSWER questions directly - don't redirect or avoid
-- If you see something relevant to the question, USE that context in your answer
-- Be helpful and specific, not vague motivational phrases
-- NO "I hear you" "keep going" "momentum" - actually help
-- If user asks "what do you see" - describe what's visible
-- If user asks "how to" do something - give the first step clearly
+- State observations directly in 3-10 words
+- NEVER explain what you do or offer help
+- NEVER say "I see" at the start - just describe
+- NEVER ask questions back
+- NEVER use "ready", "assist", "help", "analyze"
+- Only describe what's in the Vision context - nothing else
+- If Vision says "Q-tips" say "Q-tips" not something else
 - If nothing worth saying: respond with SILENT
 
-Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
+Mode: ${input.mode}`;
 
   const userPrompt = context;
 
@@ -297,6 +306,36 @@ Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
       return null;
     }
 
+    // CRITICAL: Reject AI-speak patterns - Redi must sound human, not robotic
+    const aiSpeakPatterns = [
+      /i help/i,
+      /i assist/i,
+      /ready to/i,
+      /i('m| am) ready/i,
+      /you('d| would) like/i,
+      /i can help/i,
+      /i('m| am) here to/i,
+      /let me know/i,
+      /how can i/i,
+      /i see (a |various|the|some)/i,  // "I see a..." is AI-speak
+      /no specific/i,
+      /context is/i,
+      /listening context/i,
+      /partial text/i,
+      /appear(s)? to be/i,
+      /seems to/i,
+      /is apparent/i,
+      /understood\./i,
+      /got it\./i
+    ];
+
+    for (const pattern of aiSpeakPatterns) {
+      if (pattern.test(text)) {
+        console.log(`[Haiku Triage] Rejected AI-speak: "${text}" (matched ${pattern})`);
+        return null;
+      }
+    }
+
     // Validate response - allow up to 25 words for helpful answers
     const wordCount = text.split(/\s+/).length;
     if (wordCount > 25) {
@@ -304,11 +343,9 @@ Mode: ${input.mode} (${modeConfig.systemPromptFocus})`;
       return null;
     }
 
-    // Only reject questions for unprompted observations (clarifying questions can be okay)
-    // But most unprompted responses shouldn't be questions
-    if (text.includes('?') && !text.toLowerCase().includes('right') && !text.toLowerCase().includes('yeah')) {
-      // Allow rhetorical confirmations like "Looking good, right?" or "Nice form, yeah?"
-      console.log('[Haiku Triage] Response contains question, rejecting');
+    // Reject questions - confident humans don't ask rhetorical questions
+    if (text.includes('?')) {
+      console.log(`[Haiku Triage] Response contains question, rejecting: "${text}"`);
       return null;
     }
 
