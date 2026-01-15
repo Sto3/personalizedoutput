@@ -433,6 +433,10 @@ import { PerceptionPacket } from '../lib/redi/militaryGradeTypes';
 // Track which sessions use military-grade
 const militaryGradeSessions = new Set<string>();
 
+// Track last Sonnet vision run per session (for smart throttling)
+const lastSonnetVisionRun = new Map<string, number>();
+const SONNET_VISION_INTERVAL_MS = 12000; // Run Sonnet every 12 seconds
+
 /**
  * Handle incoming WebSocket message from a device
  */
@@ -719,15 +723,51 @@ async function handlePerception(sessionId: string, deviceId: string, packet: Per
     }
   }
 
-  // FAST HAIKU VISION: If we have a frame, analyze it NOW (~1s)
-  // This gives Haiku actual visual context instead of garbled text
+  // PARALLEL VISION ARCHITECTURE:
+  // 1. Haiku vision runs IMMEDIATELY (fast, ~1s) - gives instant response capability
+  // 2. Sonnet vision runs in BACKGROUND every 12s - enriches context for follow-ups
   if (extPacket.fallbackFrame) {
     const fastVisionStart = Date.now();
+
+    // HAIKU VISION: Fast, immediate (~1s)
     const fastVision = await analyzeSnapshotFast(sessionId, extPacket.fallbackFrame, session.mode);
     if (fastVision) {
-      // Update the server visual context so Haiku triage has it
       updateServerVisualContext(sessionId, fastVision);
-      console.log(`[Redi] Fast Haiku vision (${Date.now() - fastVisionStart}ms): "${fastVision}"`);
+      console.log(`[Redi] Haiku vision (${Date.now() - fastVisionStart}ms): "${fastVision}"`);
+    }
+
+    // SONNET VISION: Background, every 12 seconds (enriched context)
+    const lastSonnetRun = lastSonnetVisionRun.get(sessionId) || 0;
+    const timeSinceSonnet = Date.now() - lastSonnetRun;
+
+    if (timeSinceSonnet >= SONNET_VISION_INTERVAL_MS) {
+      lastSonnetVisionRun.set(sessionId, Date.now());
+
+      // Fire Sonnet in background (non-blocking) - don't await
+      (async () => {
+        try {
+          const sonnetStart = Date.now();
+          const sonnetAnalysis = await analyzeSnapshotWithGrounding(
+            sessionId,
+            extPacket.fallbackFrame,
+            session.mode,
+            {
+              objects: packet.objects?.map(o => o.label),
+              texts: packet.texts?.map(t => t.text),
+              poseDetected: !!packet.pose,
+              sceneClassifications: (packet as any).sceneClassifications
+            }
+          );
+
+          // Update enriched context (available for follow-up questions)
+          if (sonnetAnalysis.description) {
+            updateServerVisualContext(sessionId, sonnetAnalysis.description);
+            console.log(`[Redi] Sonnet vision (${Date.now() - sonnetStart}ms, background): "${sonnetAnalysis.description.substring(0, 80)}..."`);
+          }
+        } catch (error) {
+          console.error('[Redi] Background Sonnet vision error:', error);
+        }
+      })();
     }
   }
 
@@ -1604,6 +1644,7 @@ async function handleSessionEnd(sessionId: string): Promise<void> {
   // Clean up session-scoped state
   lastProcessedTranscripts.delete(sessionId);
   recentPerceptionData.delete(sessionId);  // CRITICAL: Prevent memory leak
+  lastSonnetVisionRun.delete(sessionId);   // Clean up Sonnet throttling tracker
 
   // Stop services
   stopTranscription(sessionId);
