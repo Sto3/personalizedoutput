@@ -48,6 +48,8 @@ interface Session {
   isSpeaking: boolean;
   visualContext: string;
   visualContextTimestamp: number;
+  pendingFrame: string | null;  // Store latest snapshot for vision analysis
+  lastTranscript: string;       // Store latest transcript from iOS
 }
 
 // =============================================================================
@@ -74,6 +76,8 @@ export function handleConnection(ws: WebSocket, sessionId: string, deviceId: str
       isSpeaking: false,
       visualContext: '',
       visualContextTimestamp: 0,
+      pendingFrame: null,
+      lastTranscript: '',
     });
 
     console.log(`[Redi V2] Session started: ${sessionId}`);
@@ -115,12 +119,24 @@ export function handleConnection(ws: WebSocket, sessionId: string, deviceId: str
         return;
       }
 
+      // Handle snapshot messages - iOS sends frames separately
+      if (message.type === 'snapshot') {
+        await handleSnapshot(sessionId, message);
+        return;
+      }
+
+      // Handle transcript messages from iOS speech recognition
+      if (message.type === 'transcript') {
+        await handleTranscript(sessionId, message);
+        return;
+      }
+
       if (message.type === 'session_end') {
         cleanup(sessionId);
         return;
       }
 
-      // Ignore ping/pong and other messages silently
+      // Ignore ping/pong and audio_chunk (we don't process raw audio server-side)
       if (message.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong', timestamp: Date.now() }));
         return;
@@ -145,6 +161,75 @@ function cleanup(sessionId: string): void {
   if (sessions.has(sessionId)) {
     sessions.delete(sessionId);
     console.log(`[Redi V2] Session cleaned up: ${sessionId}`);
+  }
+}
+
+// =============================================================================
+// SNAPSHOT HANDLER - iOS sends frames separately from perception
+// =============================================================================
+
+async function handleSnapshot(sessionId: string, message: any): Promise<void> {
+  const session = sessions.get(sessionId);
+  if (!session) return;
+
+  const payload = message.payload || {};
+  const imageData = payload.image;  // Base64 encoded JPEG
+
+  if (!imageData) {
+    console.log(`[Redi V2] Snapshot received but no image data`);
+    return;
+  }
+
+  console.log(`[Redi V2] Snapshot received (${Math.round(imageData.length / 1024)}KB)`);
+
+  // Store the frame for later use
+  session.pendingFrame = imageData;
+
+  // Analyze the frame for vision context
+  const vision = await analyzeFrame(imageData);
+  if (vision) {
+    session.visualContext = vision;
+    session.visualContextTimestamp = Date.now();
+    console.log(`[Redi V2] Vision updated: "${vision}"`);
+
+    // Check if we should speak about what we see
+    if (shouldSpeak(session)) {
+      const response = await generateResponse(session, '', false);
+      if (response) {
+        await speak(sessionId, response);
+      }
+    }
+  }
+}
+
+// =============================================================================
+// TRANSCRIPT HANDLER - iOS sends speech recognition results
+// =============================================================================
+
+async function handleTranscript(sessionId: string, message: any): Promise<void> {
+  const session = sessions.get(sessionId);
+  if (!session) return;
+
+  const payload = message.payload || {};
+  const text = payload.text || '';
+  const isFinal = payload.isFinal;
+
+  if (!text.trim()) return;
+
+  console.log(`[Redi V2] Transcript: "${text}" (final=${isFinal})`);
+
+  // Store the transcript
+  session.lastTranscript = text;
+
+  // Only respond to final transcripts
+  if (isFinal && text.trim().length > 0) {
+    console.log(`[Redi V2] User said: "${text}"`);
+
+    // User asked something - respond immediately
+    const response = await generateResponse(session, text, true);
+    if (response) {
+      await speak(sessionId, response);
+    }
   }
 }
 

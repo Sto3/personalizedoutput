@@ -111,13 +111,14 @@ class WebSocketService: NSObject, ObservableObject {
     private func performConnect() {
         guard let sessionId = sessionId, let deviceId = deviceId else { return }
 
-        // Use V2 clean backend or V1 legacy backend based on toggle
-        let wsPath = Self.useV2Backend ? "/ws/redi-v2" : "/ws/redi"
+        // V2 Clean backend now uses /ws/redi path (same as old V1)
+        // This is because Cloudflare has WebSocket enabled for /ws/redi
+        let wsPath = "/ws/redi"
         guard let url = URL(string: "\(baseURL)\(wsPath)?sessionId=\(sessionId)&deviceId=\(deviceId)") else {
             error = "Invalid WebSocket URL"
             return
         }
-        print("[WebSocket] Using \(Self.useV2Backend ? "V2 Clean" : "V1 Legacy") backend")
+        print("[WebSocket] Using V2 Clean backend on \(wsPath)")
 
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
