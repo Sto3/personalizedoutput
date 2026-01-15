@@ -32,6 +32,7 @@ import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
 import { initRediWebSocket } from './websocket/rediSocket';
 import { initRediV2 } from './websocket/rediV2Server';  // Clean V2 implementation
+import { initRediV3 } from './websocket/rediV3Server';  // V3: OpenAI Realtime API
 
 // Import Homework Rescue pages
 import {
@@ -2706,6 +2707,11 @@ const server = createServer(app);
 // V2 uses noServer mode with manual upgrade handling
 // Uses /ws/redi path (same as old V1) since Cloudflare has WebSocket enabled for that path
 initRediV2(server);
+
+// Initialize Redi V3 WebSocket server (OpenAI Realtime API)
+// V3 uses /ws/redi-v3 path for testing alongside V2
+// ~500ms voice-to-voice latency
+initRediV3(server);
 
 // V1 DISABLED - V2 now handles /ws/redi path
 // initRediWebSocket(server);

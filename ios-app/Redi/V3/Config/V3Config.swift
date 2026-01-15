@@ -8,16 +8,15 @@ import Foundation
 import AVFoundation
 
 struct V3Config {
-    // Server URL - Will be updated after Render deployment
-    // For now, using placeholder that will be replaced
+    // Server URL - Uses existing Render deployment with V3 endpoint
     static var serverURL: URL {
         // Check for environment override first
         if let envURL = ProcessInfo.processInfo.environment["REDI_V3_SERVER_URL"],
            let url = URL(string: envURL) {
             return url
         }
-        // Default to Render service (update after deployment)
-        return URL(string: "wss://redi-v3.onrender.com")!
+        // V3 endpoint on existing server
+        return URL(string: "wss://personalizedoutput.com/ws/redi-v3")!
     }
 
     // Audio format settings (must match OpenAI Realtime API expectations)
