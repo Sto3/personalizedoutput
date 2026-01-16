@@ -27,6 +27,9 @@ interface V3Session {
   lastInterjectionTime: number;
   isUserSpeaking: boolean;
   interjectionInterval: NodeJS.Timeout | null;
+  // Timing tracking
+  speechStoppedAt: number;
+  responseStartedAt: number;
 }
 
 const sessions = new Map<string, V3Session>();
@@ -48,7 +51,9 @@ export function initRediV3(server: HTTPServer): void {
       frameTimestamp: 0,
       lastInterjectionTime: 0,
       isUserSpeaking: false,
-      interjectionInterval: null
+      interjectionInterval: null,
+      speechStoppedAt: 0,
+      responseStartedAt: 0
     };
 
     sessions.set(sessionId, session);
@@ -264,8 +269,9 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
     const event = JSON.parse(data.toString());
 
     switch (event.type) {
+      // === RESPONSE AUDIO ===
       case 'response.audio.delta':
-        // Forward audio to client (with null check)
+        // Forward audio to client
         if (event.delta) {
           sendToClient(session, {
             type: 'audio',
@@ -274,9 +280,14 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         }
         break;
 
+      // === TRANSCRIPTS ===
       case 'response.audio_transcript.done':
-        // Send transcript to client (with null check)
+        // Redi's response - LOG THIS
         if (event.transcript) {
+          const latency = session.responseStartedAt > 0
+            ? session.responseStartedAt - session.speechStoppedAt
+            : 0;
+          console.log(`[Redi V3] 🤖 REDI: "${event.transcript}" (latency: ${latency}ms)`);
           sendToClient(session, {
             type: 'transcript',
             text: event.transcript,
@@ -286,8 +297,9 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        // User's speech transcript (with null check)
+        // User's speech - LOG THIS
         if (event.transcript) {
+          console.log(`[Redi V3] 👤 USER: "${event.transcript}"`);
           sendToClient(session, {
             type: 'transcript',
             text: event.transcript,
@@ -296,41 +308,71 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         }
         break;
 
+      // === SPEECH DETECTION ===
       case 'input_audio_buffer.speech_started':
         session.isUserSpeaking = true;
+        console.log(`[Redi V3] 🎤 User started speaking`);
         break;
 
       case 'input_audio_buffer.speech_stopped':
         session.isUserSpeaking = false;
+        session.speechStoppedAt = Date.now();
+        console.log(`[Redi V3] 🎤 User stopped speaking`);
         // Inject current frame as visual context before response is generated
         injectVisualContext(session);
         break;
 
+      // === RESPONSE LIFECYCLE ===
+      case 'response.created':
+        session.responseStartedAt = Date.now();
+        const waitTime = session.speechStoppedAt > 0
+          ? session.responseStartedAt - session.speechStoppedAt
+          : 0;
+        console.log(`[Redi V3] ⏱️ Response started (wait: ${waitTime}ms)`);
+        break;
+
+      case 'response.done':
+        console.log(`[Redi V3] ✅ Response complete`);
+        break;
+
+      // === ERRORS ===
       case 'error':
-        console.error(`[Redi V3] OpenAI error:`, JSON.stringify(event.error, null, 2));
-        // Send error to client for debugging
+        console.error(`[Redi V3] ❌ ERROR:`, event.error?.message || JSON.stringify(event.error));
         sendToClient(session, {
           type: 'error',
           message: event.error?.message || 'Unknown OpenAI error'
         });
         break;
 
+      // === SESSION ===
       case 'session.created':
-        console.log(`[Redi V3] OpenAI session created for ${session.id}`);
+        console.log(`[Redi V3] Session created`);
         break;
 
       case 'session.updated':
-        console.log(`[Redi V3] OpenAI session configured for ${session.id}`);
+        console.log(`[Redi V3] Session configured`);
+        break;
+
+      // === IGNORED EVENTS (don't log spam) ===
+      case 'response.audio.done':
+      case 'response.content_part.added':
+      case 'response.content_part.done':
+      case 'response.output_item.added':
+      case 'response.output_item.done':
+      case 'rate_limits.updated':
+      case 'input_audio_buffer.committed':
+      case 'conversation.item.created':
+      case 'conversation.item.input_audio_transcription.delta':
+      case 'response.audio_transcript.delta':
+        // Silently ignore these common events
         break;
 
       default:
-        // Log unknown event types for debugging
-        if (event.type && !event.type.startsWith('response.')) {
-          console.log(`[Redi V3] Unhandled event: ${event.type}`);
-        }
+        // Log truly unknown events
+        console.log(`[Redi V3] Unknown event: ${event.type}`);
     }
   } catch (error) {
-    console.error(`[Redi V3] OpenAI message parse error:`, error);
+    console.error(`[Redi V3] Parse error:`, error);
   }
 }
 
