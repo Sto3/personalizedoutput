@@ -14,7 +14,8 @@ import { parse as parseUrl } from 'url';
 import { randomUUID } from 'crypto';
 
 // OpenAI Realtime API configuration
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
+// Using gpt-4o-realtime-preview-2024-12-17 which has image input support
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
 
 interface V3Session {
   id: string;
@@ -301,7 +302,12 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         break;
 
       case 'error':
-        console.error(`[Redi V3] OpenAI error:`, event.error);
+        console.error(`[Redi V3] OpenAI error:`, JSON.stringify(event.error, null, 2));
+        // Send error to client for debugging
+        sendToClient(session, {
+          type: 'error',
+          message: event.error?.message || 'Unknown OpenAI error'
+        });
         break;
 
       case 'session.created':
@@ -342,14 +348,15 @@ function injectVisualContext(session: V3Session): void {
 
   const frameAge = Date.now() - session.frameTimestamp;
   if (frameAge > 3000) {
-    console.log('[Redi V3] Frame too old, skipping visual context');
+    console.log(`[Redi V3] Frame too old (${frameAge}ms), skipping visual context`);
     return;
   }
 
-  console.log('[Redi V3] Injecting visual context (frame)');
+  const frameSize = session.currentFrame.length;
+  console.log(`[Redi V3] Injecting visual context - frame size: ${frameSize} bytes, age: ${frameAge}ms`);
 
-  // Send frame as a system message with image
-  // The frame is already base64 encoded from iOS
+  // Send frame as image input
+  // Format per OpenAI Realtime API docs: input_image with image_url as data URI
   sendToOpenAI(session, {
     type: 'conversation.item.create',
     item: {
@@ -359,10 +366,6 @@ function injectVisualContext(session: V3Session): void {
         {
           type: 'input_image',
           image_url: `data:image/jpeg;base64,${session.currentFrame}`
-        },
-        {
-          type: 'input_text',
-          text: '[This is what I see right now through the camera]'
         }
       ]
     }
