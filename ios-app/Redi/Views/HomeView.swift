@@ -436,9 +436,9 @@ struct HomeView: View {
                             .font(.caption)
                             .foregroundColor(.cyan)
                     } else {
-                        Text("\(subscription.sessionsRemaining) min remaining")
+                        Text("\(subscription.minutesRemaining) min remaining")
                             .font(.caption)
-                            .foregroundColor(subscription.sessionsRemaining <= 15 ? .orange : .cyan)
+                            .foregroundColor(subscription.minutesRemaining <= 15 ? .orange : .cyan)
                     }
                 }
 
@@ -463,7 +463,7 @@ struct HomeView: View {
             }
 
             // Low minutes warning
-            if !subscription.isUnlimited && subscription.sessionsRemaining <= 15 {
+            if !subscription.isUnlimited && subscription.minutesRemaining <= 15 {
                 HStack {
                     Image(systemName: "exclamationmark.triangle.fill")
                         .foregroundColor(.orange)
@@ -678,7 +678,7 @@ struct HomeView: View {
                         description: "120 minutes per month",
                         features: ["Roll over unused time", "All modes included"],
                         action: {
-                            Task { await viewModel.purchaseSubscription(tier: .regular) }
+                            Task { await viewModel.purchaseSubscription(tier: .monthly) }
                         }
                     )
 

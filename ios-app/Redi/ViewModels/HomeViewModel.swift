@@ -70,8 +70,7 @@ class HomeViewModel: ObservableObject {
 
         let rediProduct: RediProduct
         switch tier {
-        case .starter, .regular:
-            // Map old tiers to monthly
+        case .monthly:
             rediProduct = .monthly
         case .unlimited:
             rediProduct = .unlimited
@@ -209,7 +208,7 @@ class HomeViewModel: ObservableObject {
     func subscriptionPriceDisplay(for tier: SubscriptionTier) -> String {
         let rediProduct: RediProduct
         switch tier {
-        case .starter, .regular:
+        case .monthly:
             rediProduct = .monthly
         case .unlimited:
             rediProduct = .unlimited
@@ -221,7 +220,7 @@ class HomeViewModel: ObservableObject {
 
         // Fallback to hardcoded prices
         switch tier {
-        case .starter, .regular: return "$59.00"
+        case .monthly: return "$59.00"
         case .unlimited: return "$99.00"
         }
     }
