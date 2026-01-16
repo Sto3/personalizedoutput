@@ -361,7 +361,7 @@ function injectVisualContext(session: V3Session): void {
   console.log(`[Redi V3] Sending frame directly to Realtime API - size: ${frameSize} bytes, age: ${frameAge}ms`);
 
   // Send image directly to Realtime API (native support in GA model)
-  // Add as system context so it informs the response without prompting
+  // image_url must be a string, not an object
   sendToOpenAI(session, {
     type: 'conversation.item.create',
     item: {
@@ -370,10 +370,7 @@ function injectVisualContext(session: V3Session): void {
       content: [
         {
           type: 'input_image',
-          image_url: {
-            url: `data:image/jpeg;base64,${session.currentFrame}`,
-            detail: 'low'
-          }
+          image_url: `data:image/jpeg;base64,${session.currentFrame}`
         }
       ]
     }
