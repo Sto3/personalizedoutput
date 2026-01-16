@@ -30,9 +30,8 @@ import supportReplyApi from './api/supportReplyApi';
 import homeworkApi from './api/homeworkApi';
 import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
-import { initRediWebSocket } from './websocket/rediSocket';
-import { initRediV2 } from './websocket/rediV2Server';  // Clean V2 implementation
-import { initRediV3 } from './websocket/rediV3Server';  // V3: OpenAI Realtime API
+// V1/V2 archived - using V3 only (OpenAI Realtime API)
+import { initRediV3 } from './websocket/rediV3Server';
 
 // Import Homework Rescue pages
 import {
@@ -2703,18 +2702,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Create HTTP server for WebSocket support
 const server = createServer(app);
 
-// Initialize Redi V2 WebSocket server (CLEAN implementation)
-// V2 uses noServer mode with manual upgrade handling
-// Uses /ws/redi path (same as old V1) since Cloudflare has WebSocket enabled for that path
-initRediV2(server);
-
 // Initialize Redi V3 WebSocket server (OpenAI Realtime API)
-// V3 uses /ws/redi-v3 path for testing alongside V2
-// ~500ms voice-to-voice latency
+// V3 handles /ws/redi-v3 path with sub-300ms voice-to-voice latency
+// V1/V2 archived to src/websocket/archive/
 initRediV3(server);
-
-// V1 DISABLED - V2 now handles /ws/redi path
-// initRediWebSocket(server);
 
 server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)

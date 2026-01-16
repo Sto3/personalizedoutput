@@ -137,70 +137,132 @@ enum SessionStatus: String, Codable {
 
 // MARK: - Subscription Models
 
+/**
+ * Redi Subscription Tiers (Minute-Based)
+ *
+ * Pricing:
+ * - Try: $9 for 15 min (one-time)
+ * - Monthly: $59/mo for 120 min pool
+ * - Unlimited: $99/mo
+ * - Extensions: $4/5min, $7/10min, $10/15min
+ */
 enum SubscriptionTier: String, Codable, CaseIterable {
-    case starter = "starter"
-    case regular = "regular"
+    case monthly = "monthly"
     case unlimited = "unlimited"
 
     var displayName: String {
         switch self {
-        case .starter: return "Starter"
-        case .regular: return "Regular"
+        case .monthly: return "Monthly"
         case .unlimited: return "Unlimited"
         }
     }
 
     var priceMonthly: Int {
         switch self {
-        case .starter: return 72
-        case .regular: return 110
-        case .unlimited: return 149
+        case .monthly: return 59      // $59/mo
+        case .unlimited: return 99    // $99/mo
         }
     }
 
-    var sessionsIncluded: Int {
+    var minutesIncluded: Int {
         switch self {
-        case .starter: return 3
-        case .regular: return 5
-        case .unlimited: return -1  // Unlimited
+        case .monthly: return 120     // 120 minute pool
+        case .unlimited: return -1    // Unlimited
         }
-    }
-
-    var sessionDuration: Int {
-        return 30  // All subscription sessions are 30 min
     }
 
     var features: [String] {
         switch self {
-        case .starter:
+        case .monthly:
             return [
-                "3 sessions per month",
-                "30 minutes each",
-                "All modes included",
-                "Multi-phone support"
-            ]
-        case .regular:
-            return [
-                "5 sessions per month",
-                "30 minutes each",
+                "120 minutes per month",
+                "Roll over unused time",
                 "All modes included",
                 "Multi-phone support",
-                "Priority support"
+                "Activity logging",
+                "Export logs as PDF/CSV"
             ]
         case .unlimited:
             return [
-                "Unlimited sessions",
-                "30 minutes each",
+                "Unlimited minutes",
                 "All modes included",
                 "Multi-phone support",
+                "Activity logging",
+                "Export logs as PDF/CSV",
                 "Priority support",
-                "Early access to new features"
+                "Early access to features"
             ]
         }
     }
 
     var isUnlimited: Bool {
-        return sessionsIncluded == -1
+        return minutesIncluded == -1
+    }
+
+    var productId: String {
+        switch self {
+        case .monthly: return "com.personalizedoutput.redi.monthly"
+        case .unlimited: return "com.personalizedoutput.redi.unlimited"
+        }
+    }
+}
+
+// MARK: - One-Time Purchases
+
+enum RediPurchase: String, CaseIterable, Identifiable {
+    case tryRedi = "try"
+    case extend5 = "extend5"
+    case extend10 = "extend10"
+    case extend15 = "extend15"
+    case overage = "overage"
+
+    var id: String { rawValue }
+
+    var productId: String {
+        switch self {
+        case .tryRedi: return "com.personalizedoutput.redi.try"
+        case .extend5: return "com.personalizedoutput.redi.extend5"
+        case .extend10: return "com.personalizedoutput.redi.extend10min"
+        case .extend15: return "com.personalizedoutput.redi.extend15min"
+        case .overage: return "com.personalizedoutput.redi.overage15min"
+        }
+    }
+
+    var minutes: Int {
+        switch self {
+        case .tryRedi: return 15
+        case .extend5: return 5
+        case .extend10: return 10
+        case .extend15: return 15
+        case .overage: return 15
+        }
+    }
+
+    var price: Int {
+        switch self {
+        case .tryRedi: return 9       // $9
+        case .extend5: return 4       // $4
+        case .extend10: return 7      // $7
+        case .extend15: return 10     // $10
+        case .overage: return 10      // $10
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .tryRedi: return "Try Redi (15 min)"
+        case .extend5: return "+5 Minutes"
+        case .extend10: return "+10 Minutes"
+        case .extend15: return "+15 Minutes"
+        case .overage: return "Extra Time (15 min)"
+        }
+    }
+
+    var isExtension: Bool {
+        switch self {
+        case .extend5, .extend10, .extend15, .overage: return true
+        case .tryRedi: return false
+        }
     }
 }
 
@@ -209,28 +271,28 @@ struct UserSubscription: Codable {
     let tierId: SubscriptionTier?
     let tierName: String?
     let status: String?
-    let sessionsRemaining: Int
-    let sessionsUsedThisPeriod: Int
+    let minutesRemaining: Int
+    let minutesUsedThisPeriod: Int
     let isUnlimited: Bool
     let periodEnd: Date?
     let canStartSession: Bool
+
+    /// Display string for remaining time
+    var minutesRemainingDisplay: String {
+        if isUnlimited { return "Unlimited" }
+        if minutesRemaining < 60 { return "\(minutesRemaining) min" }
+        let hours = minutesRemaining / 60
+        let mins = minutesRemaining % 60
+        if mins == 0 { return "\(hours)h" }
+        return "\(hours)h \(mins)m"
+    }
 }
 
 enum PurchaseType: String, Codable {
-    case oneTime = "one_time"
+    case tryRedi = "try"
     case subscription = "subscription"
-}
-
-struct OneTimePurchase: Identifiable {
-    let id: Int  // Duration in minutes
-    let duration: Int
-    let price: Int
-
-    static let twentyMinutes = OneTimePurchase(id: 20, duration: 20, price: 14)
-    static let thirtyMinutes = OneTimePurchase(id: 30, duration: 30, price: 26)
-    static let sixtyMinutes = OneTimePurchase(id: 60, duration: 60, price: 49)
-
-    static let all: [OneTimePurchase] = [twentyMinutes, thirtyMinutes, sixtyMinutes]
+    case extension_ = "extension"
+    case overage = "overage"
 }
 
 // MARK: - Configuration

@@ -1,12 +1,18 @@
 /**
  * Redi V3 CameraService
  *
- * Captures camera frames at 2 FPS and compresses them for transmission.
- * Frames are resized to 512px max dimension for efficient AI analysis.
+ * Military-Grade Camera Capture:
+ * - 4K/60 HDR source for maximum detail
+ * - Smart frame rate: 5 sec when static, 4fps on motion
+ * - Compressed to 512px for efficient AI transmission
+ *
+ * The high-quality source gives us better results after compression,
+ * especially in challenging lighting conditions.
  */
 
 import AVFoundation
 import UIKit
+import Accelerate
 
 class V3CameraService: NSObject, ObservableObject {
     private let captureSession = AVCaptureSession()
@@ -15,12 +21,28 @@ class V3CameraService: NSObject, ObservableObject {
 
     @Published var isRunning = false
     @Published var previewLayer: AVCaptureVideoPreviewLayer?
+    @Published var motionDetected = false  // For UI indicator
 
     var onFrameCaptured: ((Data) -> Void)?
 
-    // Rate limiting: 2 FPS for AI analysis
+    // Smart Frame Rate: adapts based on motion
     private var lastFrameTime: Date = .distantPast
-    private let minimumFrameInterval: TimeInterval = 0.5  // 2 FPS
+    private let staticFrameInterval: TimeInterval = 5.0   // 5 sec when static
+    private let motionFrameInterval: TimeInterval = 0.25  // 4 FPS on motion
+
+    // Motion detection
+    private var lastFramePixels: [UInt8]?
+    private let motionThreshold: Float = 0.08  // 8% pixel change = motion
+    private var consecutiveMotionFrames = 0
+    private let motionConfirmFrames = 2  // Need 2 consecutive detections
+    private var consecutiveStaticFrames = 0
+    private let staticConfirmFrames = 8  // Need 8 consecutive static for cooldown
+
+    // Shared CIContext for efficient image processing
+    private let ciContext = CIContext(options: [
+        .useSoftwareRenderer: false,
+        .highQualityDownsample: true
+    ])
 
     override init() {
         super.init()
@@ -28,16 +50,81 @@ class V3CameraService: NSObject, ObservableObject {
     }
 
     private func setupCamera() {
-        captureSession.sessionPreset = .hd1280x720
+        // Use 4K for maximum source detail
+        // Even though we compress to 512px, higher source = better quality after compression
+        captureSession.sessionPreset = .hd4K3840x2160
 
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera,
                                                     for: .video,
                                                     position: .back) else {
-            print("[V3Camera] No back camera available")
+            print("[V3Camera] No back camera available, falling back to front")
+            setupFrontCamera()
             return
         }
 
+        configureCamera(camera)
+    }
+
+    private func setupFrontCamera() {
+        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera,
+                                                    for: .video,
+                                                    position: .front) else {
+            print("[V3Camera] No camera available")
+            return
+        }
+
+        configureCamera(camera)
+    }
+
+    private func configureCamera(_ camera: AVCaptureDevice) {
         do {
+            try camera.lockForConfiguration()
+
+            // Enable HDR for better dynamic range (especially for gyms, outdoors)
+            if camera.activeFormat.isVideoHDRSupported {
+                camera.automaticallyAdjustsVideoHDREnabled = true
+                print("[V3Camera] HDR enabled")
+            }
+
+            // Set 60fps for smooth motion capture (helps with motion blur)
+            // Find a format that supports 60fps
+            var best60fpsFormat: AVCaptureDevice.Format?
+            var best60fpsRange: AVFrameRateRange?
+
+            for format in camera.formats {
+                for range in format.videoSupportedFrameRateRanges {
+                    if range.maxFrameRate >= 60 {
+                        if best60fpsFormat == nil ||
+                           CMVideoFormatDescriptionGetDimensions(format.formatDescription).width >
+                           CMVideoFormatDescriptionGetDimensions(best60fpsFormat!.formatDescription).width {
+                            best60fpsFormat = format
+                            best60fpsRange = range
+                        }
+                    }
+                }
+            }
+
+            if let format = best60fpsFormat, let range = best60fpsRange {
+                camera.activeFormat = format
+                camera.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 60)
+                camera.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 60)
+                print("[V3Camera] 60fps enabled at \(CMVideoFormatDescriptionGetDimensions(format.formatDescription))")
+            } else {
+                // Fallback to 30fps
+                camera.activeVideoMinFrameDuration = CMTime(value: 1, timescale: 30)
+                camera.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: 30)
+                print("[V3Camera] 60fps not available, using 30fps")
+            }
+
+            // Optimize for low light
+            if camera.isLowLightBoostSupported {
+                camera.automaticallyEnablesLowLightBoostWhenAvailable = true
+                print("[V3Camera] Low light boost enabled")
+            }
+
+            camera.unlockForConfiguration()
+
+            // Setup input/output
             let input = try AVCaptureDeviceInput(device: camera)
             if captureSession.canAddInput(input) {
                 captureSession.addInput(input)
@@ -61,7 +148,7 @@ class V3CameraService: NSObject, ObservableObject {
                 self.previewLayer = layer
             }
 
-            print("[V3Camera] Camera setup complete")
+            print("[V3Camera] Camera setup complete (4K/60 HDR optimized)")
 
         } catch {
             print("[V3Camera] Camera setup error: \(error)")
@@ -92,6 +179,53 @@ class V3CameraService: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - Motion Detection
+
+    /// Sample pixels from frame for motion detection (fast, ~100 pixels)
+    private func getPixelSample(from buffer: CVPixelBuffer) -> [UInt8] {
+        let width = CVPixelBufferGetWidth(buffer)
+        let height = CVPixelBufferGetHeight(buffer)
+        let bytesPerRow = CVPixelBufferGetBytesPerRow(buffer)
+
+        guard let baseAddress = CVPixelBufferGetBaseAddress(buffer) else {
+            return []
+        }
+
+        // Sample ~100 pixels in a grid pattern
+        let sampleCount = 10
+        let xStep = width / sampleCount
+        let yStep = height / sampleCount
+
+        var samples: [UInt8] = []
+        samples.reserveCapacity(sampleCount * sampleCount)
+
+        for y in stride(from: yStep/2, to: height, by: yStep) {
+            for x in stride(from: xStep/2, to: width, by: xStep) {
+                let offset = y * bytesPerRow + x * 4  // BGRA = 4 bytes
+                // Get luminance approximation (just use green channel, fastest)
+                let pixel = baseAddress.load(fromByteOffset: offset + 1, as: UInt8.self)
+                samples.append(pixel)
+            }
+        }
+
+        return samples
+    }
+
+    /// Calculate difference between two pixel samples (0.0-1.0)
+    private func calculateDifference(current: [UInt8], last: [UInt8]) -> Float {
+        guard current.count == last.count, !current.isEmpty else { return 0 }
+
+        var diffSum: Int = 0
+        for i in 0..<current.count {
+            diffSum += abs(Int(current[i]) - Int(last[i]))
+        }
+
+        // Normalize to 0-1 range (max diff per pixel = 255)
+        return Float(diffSum) / Float(current.count * 255)
+    }
+
+    // MARK: - Frame Compression
+
     private func compressFrame(_ image: UIImage) -> Data? {
         let maxDimension: CGFloat = V3Config.Camera.maxDimension
         let scale = min(maxDimension / image.size.width, maxDimension / image.size.height, 1.0)
@@ -106,15 +240,12 @@ class V3CameraService: NSObject, ObservableObject {
     }
 }
 
+// MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
+
 extension V3CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
     func captureOutput(_ output: AVCaptureOutput,
                       didOutput sampleBuffer: CMSampleBuffer,
                       from connection: AVCaptureConnection) {
-
-        // Rate limit to 2 FPS
-        let now = Date()
-        guard now.timeIntervalSince(lastFrameTime) >= minimumFrameInterval else { return }
-        lastFrameTime = now
 
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
 
@@ -122,16 +253,51 @@ extension V3CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
         CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
 
-        // Create UIImage directly from pixel buffer
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext(options: [.useSoftwareRenderer: false])
+        // Motion detection
+        let currentPixels = getPixelSample(from: pixelBuffer)
+        var isMotionFrame = false
 
+        if let last = lastFramePixels {
+            let diff = calculateDifference(current: currentPixels, last: last)
+
+            if diff > motionThreshold {
+                consecutiveMotionFrames += 1
+                consecutiveStaticFrames = 0
+
+                if consecutiveMotionFrames >= motionConfirmFrames {
+                    isMotionFrame = true
+                    if !motionDetected {
+                        DispatchQueue.main.async { [weak self] in
+                            self?.motionDetected = true
+                        }
+                    }
+                }
+            } else {
+                consecutiveStaticFrames += 1
+                consecutiveMotionFrames = 0
+
+                if consecutiveStaticFrames >= staticConfirmFrames && motionDetected {
+                    DispatchQueue.main.async { [weak self] in
+                        self?.motionDetected = false
+                    }
+                }
+            }
+        }
+        lastFramePixels = currentPixels
+
+        // Smart rate limiting based on motion
+        let now = Date()
+        let interval = motionDetected ? motionFrameInterval : staticFrameInterval
+        guard now.timeIntervalSince(lastFrameTime) >= interval else { return }
+        lastFrameTime = now
+
+        // Create UIImage from pixel buffer
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
         let width = CVPixelBufferGetWidth(pixelBuffer)
         let height = CVPixelBufferGetHeight(pixelBuffer)
         let rect = CGRect(x: 0, y: 0, width: width, height: height)
 
-        guard let cgImage = context.createCGImage(ciImage, from: rect) else { return }
-
+        guard let cgImage = ciContext.createCGImage(ciImage, from: rect) else { return }
         let image = UIImage(cgImage: cgImage)
 
         if let frameData = compressFrame(image) {

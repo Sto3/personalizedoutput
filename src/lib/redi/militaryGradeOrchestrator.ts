@@ -218,7 +218,7 @@ interface ServerVisualContext {
 const serverVisualContexts = new Map<string, ServerVisualContext>();
 
 /**
- * Update server-side visual context (called from rediSocket after vision analysis)
+ * Update server-side visual context (called from rediV3Server after vision analysis)
  * This is used as fallback when iOS Vision doesn't detect objects/text
  */
 export function updateServerVisualContext(sessionId: string, description: string): void {

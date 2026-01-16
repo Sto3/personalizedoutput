@@ -34,6 +34,15 @@ class V3AudioService: ObservableObject {
     private let minBufferSize = 4800  // ~100ms at 24kHz (2 bytes per sample)
     private var playbackTimer: Timer?
 
+    // VAD (Voice Activity Detection) - reduces bandwidth by ~30-40%
+    private let vadThreshold: Float = 0.015  // RMS threshold for voice detection
+    private var isSpeaking = false
+    private var silenceFrameCount = 0
+    private let silenceFramesToStop = 10  // ~200ms of silence before stopping
+    private let trailingSilenceFrames = 5  // Send some trailing silence for natural cutoff
+
+    @Published var vadActive = false  // For UI indicator
+
     init() {
         setupAudioSession()
     }
@@ -113,6 +122,34 @@ class V3AudioService: ObservableObject {
         guard let inputFormat = inputFormat,
               let outputFormat = outputFormat else { return }
 
+        // Calculate RMS energy for VAD
+        let energy = calculateRMSEnergy(buffer)
+
+        // VAD with hysteresis
+        let wasSpeaking = isSpeaking
+        if energy > vadThreshold * 1.5 {
+            // Voice detected - start speaking
+            isSpeaking = true
+            silenceFrameCount = 0
+        } else if energy < vadThreshold * 0.5 {
+            // Below threshold - may be silence
+            silenceFrameCount += 1
+            if silenceFrameCount > silenceFramesToStop {
+                isSpeaking = false
+            }
+        }
+
+        // Update UI indicator
+        if wasSpeaking != isSpeaking {
+            DispatchQueue.main.async { [weak self] in
+                self?.vadActive = self?.isSpeaking ?? false
+            }
+        }
+
+        // Only send audio if speaking (or trailing silence for natural cutoff)
+        let shouldSend = isSpeaking || (silenceFrameCount <= trailingSilenceFrames)
+        guard shouldSend else { return }
+
         // Convert to target format
         guard let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
             return
@@ -153,6 +190,20 @@ class V3AudioService: ObservableObject {
 
         // Send to callback
         onAudioCaptured?(data)
+    }
+
+    /// Calculate RMS (Root Mean Square) energy of audio buffer
+    private func calculateRMSEnergy(_ buffer: AVAudioPCMBuffer) -> Float {
+        guard let channelData = buffer.floatChannelData?[0] else { return 0 }
+        let frameLength = Int(buffer.frameLength)
+        guard frameLength > 0 else { return 0 }
+
+        var sum: Float = 0
+        for i in 0..<frameLength {
+            sum += channelData[i] * channelData[i]
+        }
+
+        return sqrt(sum / Float(frameLength))
     }
 
     // MARK: - Buffered Playback

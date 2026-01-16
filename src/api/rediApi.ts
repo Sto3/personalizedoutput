@@ -72,7 +72,7 @@ import {
   recordMotionClipAnalysis
 } from '../lib/redi/sessionHistoryService';
 
-import { getConnectionStats } from '../websocket/rediSocket';
+import { getV3ConnectionStats } from '../websocket/rediV3Server';
 import { isDeepgramConfigured } from '../lib/redi/transcriptionService';
 import { isElevenLabsConfigured, getAvailableVoices } from '../lib/redi/voiceService';
 
@@ -804,7 +804,7 @@ router.post('/session/:sessionId/end', (req: Request, res: Response) => {
 router.get('/stats', (req: Request, res: Response) => {
   // In production, add admin authentication here
   const sessionStats = getSessionStats();
-  const connectionStats = getConnectionStats();
+  const connectionStats = getV3ConnectionStats();
 
   res.json({
     sessions: sessionStats,

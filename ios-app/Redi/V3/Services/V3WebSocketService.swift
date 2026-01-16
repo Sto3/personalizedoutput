@@ -1,8 +1,11 @@
 /**
  * Redi V3 WebSocketService
  *
- * Handles persistent WebSocket connection to V3 backend.
- * Routes audio, frames, and messages between iOS and OpenAI Realtime API.
+ * Military-Grade Connection Management:
+ * - Persistent WebSocket connection to V3 backend
+ * - Graceful reconnection with exponential backoff
+ * - Audio buffering during connectivity drops
+ * - Handles gym basements, outdoor dead zones
  */
 
 import Foundation
@@ -15,6 +18,7 @@ class V3WebSocketService: ObservableObject {
 
     @Published var isConnected = false
     @Published var connectionState: ConnectionState = .disconnected
+    @Published var isReconnecting = false
 
     enum ConnectionState: Equatable {
         case disconnected
@@ -38,9 +42,23 @@ class V3WebSocketService: ObservableObject {
     var onTranscriptReceived: ((String, String) -> Void)?  // (text, role)
     var onSessionReady: (() -> Void)?
     var onError: ((Error) -> Void)?
+    var onReconnected: (() -> Void)?  // Called when reconnection succeeds
 
+    // Reconnection management
     private var reconnectAttempts = 0
-    private let maxReconnectAttempts = 3
+    private let maxReconnectAttempts = 5
+    private var isManualDisconnect = false
+
+    // Audio buffering during reconnection
+    private var audioBuffer: [Data] = []
+    private let audioBufferLock = NSLock()
+    private let maxBufferedAudioChunks = 100  // ~2 seconds at 50 chunks/sec
+
+    // Heartbeat for connection health
+    private var heartbeatTimer: Timer?
+    private var lastPongTime: Date = Date()
+    private let heartbeatInterval: TimeInterval = 10.0
+    private let connectionTimeoutInterval: TimeInterval = 30.0
 
     init(serverURL: URL = V3Config.serverURL) {
         self.serverURL = serverURL
@@ -51,6 +69,7 @@ class V3WebSocketService: ObservableObject {
     func connect() {
         guard connectionState != .connecting, !isConnecting else { return }
         isConnecting = true
+        isManualDisconnect = false
 
         DispatchQueue.main.async {
             self.connectionState = .connecting
@@ -66,14 +85,12 @@ class V3WebSocketService: ObservableObject {
         webSocket = session?.webSocketTask(with: serverURL)
         webSocket?.resume()
 
-        // Start receiving messages immediately (they'll queue until connection ready)
+        // Start receiving messages immediately
         receiveMessage()
 
-        // Send a ping to verify connection is actually established
+        // Send a ping to verify connection
         webSocket?.sendPing { [weak self] error in
             guard let self = self else { return }
-
-            // Check if we were disconnected while waiting for ping
             guard self.webSocket != nil else {
                 self.isConnecting = false
                 return
@@ -91,24 +108,29 @@ class V3WebSocketService: ObservableObject {
             } else {
                 print("[V3WebSocket] Connection verified via ping")
                 self.isConnecting = false
-                DispatchQueue.main.async {
-                    self.isConnected = true
-                    self.connectionState = .connected
-                    self.reconnectAttempts = 0
-                }
+                self.handleReconnectSuccess()
             }
         }
     }
 
     func disconnect() {
         isConnecting = false
+        isManualDisconnect = true
+        stopHeartbeat()
+
         webSocket?.cancel(with: .normalClosure, reason: nil)
         webSocket = nil
         session = nil
         reconnectAttempts = maxReconnectAttempts  // Prevent auto-reconnect
 
+        // Clear audio buffer
+        audioBufferLock.lock()
+        audioBuffer.removeAll()
+        audioBufferLock.unlock()
+
         DispatchQueue.main.async { [weak self] in
             self?.isConnected = false
+            self?.isReconnecting = false
             self?.connectionState = .disconnected
             print("[V3WebSocket] Disconnected")
         }
@@ -126,6 +148,12 @@ class V3WebSocketService: ObservableObject {
     }
 
     func sendAudio(_ audioData: Data) {
+        // If reconnecting, buffer audio instead of dropping it
+        if isReconnecting {
+            bufferAudio(audioData)
+            return
+        }
+
         let message: [String: Any] = [
             "type": "audio",
             "data": audioData.base64EncodedString()
@@ -149,7 +177,152 @@ class V3WebSocketService: ObservableObject {
         sendJSON(message)
     }
 
-    // MARK: - Private Methods
+    func sendMode(_ mode: String) {
+        let message: [String: Any] = [
+            "type": "mode",
+            "mode": mode
+        ]
+        sendJSON(message)
+    }
+
+    // MARK: - Audio Buffering
+
+    private func bufferAudio(_ audioData: Data) {
+        audioBufferLock.lock()
+        defer { audioBufferLock.unlock() }
+
+        audioBuffer.append(audioData)
+
+        // Limit buffer size to prevent memory issues
+        if audioBuffer.count > maxBufferedAudioChunks {
+            audioBuffer.removeFirst()
+        }
+    }
+
+    private func flushAudioBuffer() {
+        audioBufferLock.lock()
+        let bufferedChunks = audioBuffer
+        audioBuffer.removeAll()
+        audioBufferLock.unlock()
+
+        guard !bufferedChunks.isEmpty else { return }
+        print("[V3WebSocket] Flushing \(bufferedChunks.count) buffered audio chunks")
+
+        for chunk in bufferedChunks {
+            let message: [String: Any] = [
+                "type": "audio",
+                "data": chunk.base64EncodedString()
+            ]
+            sendJSON(message)
+        }
+    }
+
+    // MARK: - Reconnection Management
+
+    private func handleReconnectSuccess() {
+        let wasReconnecting = isReconnecting
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.isConnected = true
+            self.isReconnecting = false
+            self.connectionState = .connected
+            self.reconnectAttempts = 0
+            self.lastPongTime = Date()
+        }
+
+        // Start heartbeat
+        startHeartbeat()
+
+        // Flush buffered audio
+        if wasReconnecting {
+            print("[V3WebSocket] Reconnection successful, flushing buffer")
+            flushAudioBuffer()
+            onReconnected?()
+        }
+    }
+
+    private func attemptReconnect() {
+        guard !isManualDisconnect else { return }
+        guard reconnectAttempts < maxReconnectAttempts else {
+            print("[V3WebSocket] Max reconnect attempts reached")
+            DispatchQueue.main.async { [weak self] in
+                self?.connectionState = .error("Connection lost. Please restart session.")
+            }
+            return
+        }
+
+        reconnectAttempts += 1
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+        let delay = pow(2.0, Double(reconnectAttempts - 1))
+
+        print("[V3WebSocket] Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+
+        DispatchQueue.main.async { [weak self] in
+            self?.isReconnecting = true
+            self?.connectionState = .connecting
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            guard let self = self, !self.isManualDisconnect else { return }
+            self.connect()
+        }
+    }
+
+    // MARK: - Heartbeat
+
+    private func startHeartbeat() {
+        stopHeartbeat()
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.heartbeatTimer = Timer.scheduledTimer(withTimeInterval: self.heartbeatInterval, repeats: true) { [weak self] _ in
+                self?.sendHeartbeat()
+            }
+        }
+    }
+
+    private func stopHeartbeat() {
+        heartbeatTimer?.invalidate()
+        heartbeatTimer = nil
+    }
+
+    private func sendHeartbeat() {
+        // Check if connection seems dead
+        let timeSinceLastPong = Date().timeIntervalSince(lastPongTime)
+        if timeSinceLastPong > connectionTimeoutInterval {
+            print("[V3WebSocket] Connection timeout (no pong for \(Int(timeSinceLastPong))s)")
+            handleConnectionLost()
+            return
+        }
+
+        webSocket?.sendPing { [weak self] error in
+            if let error = error {
+                print("[V3WebSocket] Heartbeat ping failed: \(error.localizedDescription)")
+                self?.handleConnectionLost()
+            } else {
+                self?.lastPongTime = Date()
+            }
+        }
+    }
+
+    private func handleConnectionLost() {
+        guard !isManualDisconnect else { return }
+
+        stopHeartbeat()
+        webSocket?.cancel(with: .abnormalClosure, reason: nil)
+        webSocket = nil
+
+        DispatchQueue.main.async { [weak self] in
+            self?.isConnected = false
+            self?.connectionState = .error("Connection lost")
+        }
+
+        attemptReconnect()
+    }
+
+    // MARK: - Message Handling
 
     private func sendJSON(_ dict: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
@@ -186,6 +359,9 @@ class V3WebSocketService: ObservableObject {
     }
 
     private func handleMessage(_ message: URLSessionWebSocketTask.Message) {
+        // Update last pong time on any message (connection is alive)
+        lastPongTime = Date()
+
         switch message {
         case .string(let text):
             guard let data = text.data(using: .utf8),
@@ -193,7 +369,6 @@ class V3WebSocketService: ObservableObject {
                 print("[V3WebSocket] Failed to parse message")
                 return
             }
-
             handleJSONMessage(json)
 
         case .data(let data):
@@ -240,24 +415,12 @@ class V3WebSocketService: ObservableObject {
                 self?.connectionState = .error(errorMsg)
             }
 
+        case "pong":
+            // Heartbeat response
+            lastPongTime = Date()
+
         default:
             print("[V3WebSocket] Unknown message type: \(type)")
-        }
-    }
-
-    private func attemptReconnect() {
-        guard reconnectAttempts < maxReconnectAttempts else {
-            print("[V3WebSocket] Max reconnect attempts reached")
-            return
-        }
-
-        reconnectAttempts += 1
-        let delay = Double(reconnectAttempts) * 2.0
-
-        print("[V3WebSocket] Reconnecting in \(delay)s (attempt \(reconnectAttempts))")
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            self?.connect()
         }
     }
 }
