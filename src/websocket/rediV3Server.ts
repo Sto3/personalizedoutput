@@ -15,7 +15,7 @@ import { randomUUID } from 'crypto';
 
 // OpenAI Realtime API configuration
 // Using GA model with native image support
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime';
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
 interface V3Session {
   id: string;
