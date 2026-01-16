@@ -14,8 +14,8 @@ import { parse as parseUrl } from 'url';
 import { randomUUID } from 'crypto';
 
 // OpenAI Realtime API configuration
-// Note: Realtime API doesn't support image input - we use hybrid approach with Vision API
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
+// Using GA model with native image support
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime';
 
 interface V3Session {
   id: string;
@@ -171,7 +171,7 @@ function configureOpenAISession(session: V3Session): void {
     session: {
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
-      voice: 'ash',
+      voice: 'cedar',  // Confident, mature voice (alternatives: marin, ash)
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
@@ -179,41 +179,46 @@ function configureOpenAISession(session: V3Session): void {
         type: 'server_vad',
         threshold: 0.6,           // Slightly higher threshold to reduce false triggers
         prefix_padding_ms: 400,   // More context before speech
-        silence_duration_ms: 900  // Wait longer before responding (was 500)
+        silence_duration_ms: 900  // Wait longer before responding
       }
     }
   });
 }
 
 function getSystemPrompt(): string {
-  return `You are Redi, an AI companion who can see what the user sees.
+  return `You are Redi, an AI companion who can see what the user sees through their camera.
 
-CRITICAL RULES - FOLLOW EXACTLY:
-1. BE EXTREMELY BRIEF. 5-12 words max. Never ramble.
-2. NEVER say: "exactly", "you got it", "that's right", "great question", or any affirmation phrases.
-3. NEVER repeat back what the user just said.
-4. WAIT for the user to finish speaking before responding.
-5. ONE thought per response. Stop after making your point.
+VOICE CHARACTERISTICS:
+- Speak with quiet confidence, like a knowledgeable friend
+- Measured pace, not rushed
+- Low energy but engaged
+- No vocal fry, no upspeak
+- Natural pauses between thoughts
 
-WHEN USER SHOWS YOU SOMETHING:
-- Identify it directly: "That's a Q-tips box" not "I can see that you're holding..."
-- Only describe what you ACTUALLY see in the image
-- If unsure, say "I can't tell from this angle"
+CRITICAL RULES:
+1. BE BRIEF. 5-15 words max per response.
+2. NEVER use filler phrases: "exactly", "you got it", "that's right", "sure thing", "great question"
+3. NEVER repeat what the user said
+4. ONE thought per response, then stop
+
+WHEN VIEWING IMAGES:
+- Identify objects directly: "Q-tips box" not "I can see you're holding..."
+- Only describe what you ACTUALLY see
+- If uncertain: "Can't quite make that out"
 
 TONE:
-- Calm, direct, knowledgeable
-- Like a friend who gives straight answers
-- No enthusiasm, no praise, no filler words
+- Direct and helpful
+- Like a calm expert who respects your time
+- No enthusiasm, no praise, no filler
 
-BAD RESPONSES (never do this):
-- "Exactly! You got it. Let me know if you need anything else."
-- "Sure! I'd be happy to help you with that."
-- "That's a great observation about..."
+EXAMPLES OF GOOD RESPONSES:
+- "Q-tips. Cotton swabs for cleaning."
+- "That's a mechanical keyboard."
+- "Not sure from this angle."
 
-GOOD RESPONSES:
-- "Q-tips. Good for ears, cleaning small spaces."
-- "Looks like a wood chisel."
-- "Not sure what that is."`;
+NEVER SAY THINGS LIKE:
+- "Exactly! Let me know if you need anything else."
+- "Sure! I'd be happy to help with that."`;
 }
 
 function handleClientMessage(session: V3Session, message: any): void {
@@ -336,14 +341,10 @@ function startInterjectionLoop(session: V3Session): void {
 }
 
 /**
- * Inject visual context by analyzing the frame with GPT-4o Vision API,
- * then sending the description as text to the Realtime API.
- *
- * The Realtime API doesn't support image input, so we use a hybrid approach:
- * 1. Analyze frame with GPT-4o Vision (standard API)
- * 2. Send description as text context to Realtime API
+ * Inject visual context by sending the frame directly to the Realtime API.
+ * The GA model (gpt-4o-realtime) has native image support.
  */
-async function injectVisualContext(session: V3Session): Promise<void> {
+function injectVisualContext(session: V3Session): void {
   // Only inject if we have a recent frame
   if (!session.currentFrame) {
     console.log('[Redi V3] No frame available for visual context');
@@ -357,84 +358,26 @@ async function injectVisualContext(session: V3Session): Promise<void> {
   }
 
   const frameSize = session.currentFrame.length;
-  console.log(`[Redi V3] Analyzing frame with Vision API - size: ${frameSize} bytes, age: ${frameAge}ms`);
+  console.log(`[Redi V3] Sending frame directly to Realtime API - size: ${frameSize} bytes, age: ${frameAge}ms`);
 
-  try {
-    // Use GPT-4o Vision API to analyze the frame
-    const description = await analyzeFrameWithVision(session.currentFrame);
-
-    if (description) {
-      console.log(`[Redi V3] Vision analysis: "${description.substring(0, 100)}..."`);
-
-      // Send the visual description as a system context message
-      sendToOpenAI(session, {
-        type: 'conversation.item.create',
-        item: {
-          type: 'message',
-          role: 'system',
-          content: [
-            {
-              type: 'input_text',
-              text: `[VISUAL CONTEXT - What the camera currently shows: ${description}]`
-            }
-          ]
-        }
-      });
-    }
-  } catch (error) {
-    console.error('[Redi V3] Vision analysis failed:', error);
-  }
-}
-
-/**
- * Analyze a frame using GPT-4o Vision API (standard REST API, not Realtime)
- */
-async function analyzeFrameWithVision(frameBase64: string): Promise<string | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) return null;
-
-  try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',  // Fast and cheap for quick descriptions
-        messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Describe what you see in this image in 10-15 words. Be specific about objects, text, and context. Just describe, no commentary.'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${frameBase64}`,
-                  detail: 'low'  // Fast processing
-                }
-              }
-            ]
+  // Send image directly to Realtime API (native support in GA model)
+  // Add as system context so it informs the response without prompting
+  sendToOpenAI(session, {
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [
+        {
+          type: 'input_image',
+          image_url: {
+            url: `data:image/jpeg;base64,${session.currentFrame}`,
+            detail: 'low'
           }
-        ],
-        max_tokens: 50
-      })
-    });
-
-    if (!response.ok) {
-      console.error('[Redi V3] Vision API error:', response.status, await response.text());
-      return null;
+        }
+      ]
     }
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || null;
-  } catch (error) {
-    console.error('[Redi V3] Vision API request failed:', error);
-    return null;
-  }
+  });
 }
 
 async function maybeInterject(session: V3Session): Promise<void> {
