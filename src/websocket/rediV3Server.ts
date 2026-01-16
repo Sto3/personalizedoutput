@@ -30,6 +30,75 @@ interface V3Session {
   // Timing tracking
   speechStoppedAt: number;
   responseStartedAt: number;
+  // Response guards (military-grade)
+  lastResponses: string[];
+  lastResponseTime: number;
+}
+
+// Military-grade response guards
+const RESPONSE_GUARDS = {
+  // Banned phrases that indicate low-quality responses
+  bannedPatterns: [
+    /^(sure|exactly|absolutely|definitely|of course)[!,.\s]/i,
+    /happy to help/i,
+    /let me know if/i,
+    /is there anything else/i,
+    /great question/i,
+    /that's a great/i,
+    /I can see (that )?(you|it)/i,
+    /I notice (that )?(you|it)/i,
+  ],
+  maxWords: 12,  // Hard limit
+  minResponseGapMs: 1500,  // Minimum 1.5s between responses
+  similarityThreshold: 0.6,  // Reject if 60% similar to recent response
+};
+
+// Response quality checks
+function checkResponseQuality(text: string, session: V3Session): { pass: boolean; reason?: string } {
+  // 1. Banned patterns check
+  for (const pattern of RESPONSE_GUARDS.bannedPatterns) {
+    if (pattern.test(text)) {
+      return { pass: false, reason: `Banned pattern: ${pattern}` };
+    }
+  }
+
+  // 2. Length check
+  const wordCount = text.split(/\s+/).length;
+  if (wordCount > RESPONSE_GUARDS.maxWords) {
+    return { pass: false, reason: `Too long: ${wordCount} words (max ${RESPONSE_GUARDS.maxWords})` };
+  }
+
+  // 3. Rate limit check
+  const timeSinceLastResponse = Date.now() - session.lastResponseTime;
+  if (session.lastResponseTime > 0 && timeSinceLastResponse < RESPONSE_GUARDS.minResponseGapMs) {
+    return { pass: false, reason: `Too fast: ${timeSinceLastResponse}ms (min ${RESPONSE_GUARDS.minResponseGapMs}ms)` };
+  }
+
+  // 4. Deduplication check
+  for (const prevResponse of session.lastResponses) {
+    const similarity = calculateSimilarity(text.toLowerCase(), prevResponse.toLowerCase());
+    if (similarity > RESPONSE_GUARDS.similarityThreshold) {
+      return { pass: false, reason: `Too similar (${(similarity * 100).toFixed(0)}%) to: "${prevResponse}"` };
+    }
+  }
+
+  return { pass: true };
+}
+
+function calculateSimilarity(a: string, b: string): number {
+  const wordsA = new Set(a.split(/\s+/));
+  const wordsB = new Set(b.split(/\s+/));
+  const intersection = [...wordsA].filter(w => wordsB.has(w)).length;
+  const union = new Set([...wordsA, ...wordsB]).size;
+  return union > 0 ? intersection / union : 0;
+}
+
+function recordResponse(text: string, session: V3Session): void {
+  session.lastResponses.push(text);
+  if (session.lastResponses.length > 5) {
+    session.lastResponses.shift();  // Keep only last 5
+  }
+  session.lastResponseTime = Date.now();
 }
 
 const sessions = new Map<string, V3Session>();
@@ -53,7 +122,9 @@ export function initRediV3(server: HTTPServer): void {
       isUserSpeaking: false,
       interjectionInterval: null,
       speechStoppedAt: 0,
-      responseStartedAt: 0
+      responseStartedAt: 0,
+      lastResponses: [],
+      lastResponseTime: 0
     };
 
     sessions.set(sessionId, session);
@@ -272,12 +343,22 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
       // === TRANSCRIPTS ===
       case 'response.audio_transcript.done':
-        // Redi's response - LOG THIS
+        // Redi's response - apply military-grade guards
         if (event.transcript) {
           const latency = session.responseStartedAt > 0
             ? session.responseStartedAt - session.speechStoppedAt
             : 0;
+
+          // Check response quality
+          const qualityCheck = checkResponseQuality(event.transcript, session);
+          if (!qualityCheck.pass) {
+            console.log(`[Redi V3] 🚫 BLOCKED: "${event.transcript}" - ${qualityCheck.reason}`);
+            // Still send audio (already played), but don't show transcript
+            break;
+          }
+
           console.log(`[Redi V3] 🤖 REDI: "${event.transcript}" (latency: ${latency}ms)`);
+          recordResponse(event.transcript, session);
           sendToClient(session, {
             type: 'transcript',
             text: event.transcript,

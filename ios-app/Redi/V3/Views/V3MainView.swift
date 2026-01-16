@@ -2,7 +2,7 @@
  * Redi V3 MainView
  *
  * Primary UI for Redi V3 (OpenAI Realtime API):
- * - Full screen camera preview
+ * - Full screen camera preview (landscape + portrait)
  * - Start/Stop session button
  * - Sensitivity slider
  * - Transcript display
@@ -21,153 +21,49 @@ struct V3MainView: View {
     @State private var lastRole = ""
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
-    @State private var errorMessage: String?
     @State private var isSessionReady = false
 
-    var body: some View {
-        ZStack {
-            // Camera preview (full screen background)
-            V3CameraPreview(cameraService: cameraService)
-                .ignoresSafeArea()
+    @Environment(\.horizontalSizeClass) var horizontalSizeClass
+    @Environment(\.verticalSizeClass) var verticalSizeClass
 
-            // Dark overlay when not active
-            if !isSessionActive {
-                Color.black.opacity(0.6)
+    private var isLandscape: Bool {
+        verticalSizeClass == .compact
+    }
+
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Camera preview (full screen background)
+                V3CameraPreview(cameraService: cameraService)
                     .ignoresSafeArea()
 
-                VStack(spacing: 20) {
-                    Image(systemName: "waveform.circle.fill")
-                        .font(.system(size: 80))
-                        .foregroundColor(.green.opacity(0.8))
+                // Dark overlay when not active
+                if !isSessionActive {
+                    Color.black.opacity(0.6)
+                        .ignoresSafeArea()
 
-                    Text("Redi V3")
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.white)
+                    VStack(spacing: 20) {
+                        Image(systemName: "waveform.circle.fill")
+                            .font(.system(size: isLandscape ? 50 : 80))
+                            .foregroundColor(.green.opacity(0.8))
 
-                    Text("OpenAI Realtime API")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                }
-            }
+                        Text("Redi V3")
+                            .font(isLandscape ? .title : .largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
 
-            // Main UI overlay
-            VStack {
-                // Status bar
-                HStack {
-                    Circle()
-                        .fill(statusColor)
-                        .frame(width: 12, height: 12)
-
-                    Text(statusText)
-                        .font(.caption)
-                        .foregroundColor(.white)
-
-                    Spacer()
-
-                    if isSessionActive && isSessionReady {
-                        Text("V3 Active")
-                            .font(.caption)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.green.opacity(0.3))
-                            .cornerRadius(8)
-                            .foregroundColor(.green)
+                        Text("OpenAI Realtime API")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
                     }
                 }
-                .padding()
 
-                Spacer()
-
-                // Transcript display
-                if !lastTranscript.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        HStack {
-                            Image(systemName: lastRole == "user" ? "person.fill" : "waveform")
-                                .foregroundColor(lastRole == "user" ? .blue : .green)
-
-                            Text(lastRole == "user" ? "You" : "Redi")
-                                .font(.caption)
-                                .foregroundColor(.gray)
-                        }
-
-                        Text(lastTranscript)
-                            .font(.body)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.black.opacity(0.8))
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-                    .padding(.horizontal)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                // Main UI overlay - adapts to orientation
+                if isLandscape {
+                    landscapeLayout(geometry: geometry)
+                } else {
+                    portraitLayout(geometry: geometry)
                 }
-
-                // Error message
-                if let error = errorMessage {
-                    HStack {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.yellow)
-                        Text(error)
-                            .font(.caption)
-                    }
-                    .padding()
-                    .background(Color.red.opacity(0.2))
-                    .cornerRadius(8)
-                    .foregroundColor(.white)
-                    .padding(.horizontal)
-                }
-
-                // Controls
-                VStack(spacing: 20) {
-                    // Sensitivity slider (only shown when active)
-                    if isSessionActive {
-                        VStack(spacing: 8) {
-                            Text("Interjection Sensitivity")
-                                .font(.caption)
-                                .foregroundColor(.white.opacity(0.7))
-
-                            HStack {
-                                Image(systemName: "speaker.fill")
-                                    .foregroundColor(.white.opacity(0.5))
-                                    .font(.caption)
-
-                                Slider(value: $sensitivity, in: 0...1)
-                                    .accentColor(.green)
-
-                                Image(systemName: "speaker.wave.3.fill")
-                                    .foregroundColor(.white.opacity(0.5))
-                                    .font(.caption)
-                            }
-                        }
-                        .padding(.horizontal, 40)
-                    }
-
-                    // Start/Stop button
-                    Button(action: toggleSession) {
-                        ZStack {
-                            Circle()
-                                .fill(isSessionActive ? Color.red : Color.green)
-                                .frame(width: 80, height: 80)
-                                .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
-
-                            if isConnecting {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                            } else {
-                                Image(systemName: isSessionActive ? "stop.fill" : "play.fill")
-                                    .foregroundColor(.white)
-                                    .font(.title)
-                            }
-                        }
-                    }
-                    .disabled(isConnecting)
-
-                    Text(isSessionActive ? "Tap to stop" : "Tap to start")
-                        .font(.caption)
-                        .foregroundColor(.white.opacity(0.7))
-                }
-                .padding(.bottom, 50)
             }
         }
         .onAppear {
@@ -179,6 +75,155 @@ struct V3MainView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: lastTranscript)
+    }
+
+    // MARK: - Portrait Layout
+
+    @ViewBuilder
+    private func portraitLayout(geometry: GeometryProxy) -> some View {
+        VStack {
+            statusBar
+            Spacer()
+            transcriptView
+            controlsView(compact: false)
+                .padding(.bottom, 50)
+        }
+    }
+
+    // MARK: - Landscape Layout
+
+    @ViewBuilder
+    private func landscapeLayout(geometry: GeometryProxy) -> some View {
+        HStack {
+            // Left side - transcript
+            VStack {
+                Spacer()
+                transcriptView
+                    .frame(maxWidth: geometry.size.width * 0.5)
+                Spacer()
+            }
+            .padding(.leading)
+
+            Spacer()
+
+            // Right side - controls
+            VStack {
+                statusBar
+                Spacer()
+                controlsView(compact: true)
+                Spacer()
+            }
+            .padding(.trailing)
+        }
+    }
+
+    // MARK: - Shared Components
+
+    private var statusBar: some View {
+        HStack {
+            Circle()
+                .fill(statusColor)
+                .frame(width: 12, height: 12)
+
+            Text(statusText)
+                .font(.caption)
+                .foregroundColor(.white)
+
+            Spacer()
+
+            if isSessionActive && isSessionReady {
+                Text("V3 Active")
+                    .font(.caption)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.green.opacity(0.3))
+                    .cornerRadius(8)
+                    .foregroundColor(.green)
+            }
+        }
+        .padding()
+    }
+
+    @ViewBuilder
+    private var transcriptView: some View {
+        if !lastTranscript.isEmpty {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Image(systemName: lastRole == "user" ? "person.fill" : "waveform")
+                        .foregroundColor(lastRole == "user" ? .blue : .green)
+
+                    Text(lastRole == "user" ? "You" : "Redi")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                }
+
+                Text(lastTranscript)
+                    .font(.body)
+                    .lineLimit(3)
+            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(Color.black.opacity(0.8))
+            .foregroundColor(.white)
+            .cornerRadius(12)
+            .padding(.horizontal)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
+    }
+
+    @ViewBuilder
+    private func controlsView(compact: Bool) -> some View {
+        VStack(spacing: compact ? 12 : 20) {
+            // Sensitivity slider (only shown when active)
+            if isSessionActive && !compact {
+                VStack(spacing: 8) {
+                    Text("Sensitivity")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.7))
+
+                    HStack {
+                        Image(systemName: "speaker.fill")
+                            .foregroundColor(.white.opacity(0.5))
+                            .font(.caption)
+
+                        Slider(value: $sensitivity, in: 0...1)
+                            .accentColor(.green)
+                            .frame(maxWidth: 200)
+
+                        Image(systemName: "speaker.wave.3.fill")
+                            .foregroundColor(.white.opacity(0.5))
+                            .font(.caption)
+                    }
+                }
+                .padding(.horizontal, 40)
+            }
+
+            // Start/Stop button
+            Button(action: toggleSession) {
+                ZStack {
+                    Circle()
+                        .fill(isSessionActive ? Color.red : Color.green)
+                        .frame(width: compact ? 60 : 80, height: compact ? 60 : 80)
+                        .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
+
+                    if isConnecting {
+                        ProgressView()
+                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                    } else {
+                        Image(systemName: isSessionActive ? "stop.fill" : "play.fill")
+                            .foregroundColor(.white)
+                            .font(compact ? .title2 : .title)
+                    }
+                }
+            }
+            .disabled(isConnecting)
+
+            if !compact {
+                Text(isSessionActive ? "Tap to stop" : "Tap to start")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+        }
     }
 
     private var statusColor: Color {
@@ -202,8 +247,9 @@ struct V3MainView: View {
             return "Connecting..."
         case .disconnected:
             return "Not connected"
-        case .error(let msg):
-            return "Error: \(msg)"
+        case .error:
+            // Suppress error details in UI - just show reconnecting
+            return "Reconnecting..."
         }
     }
 
@@ -217,7 +263,6 @@ struct V3MainView: View {
 
     private func startSession() {
         isConnecting = true
-        errorMessage = nil
         isSessionReady = false
 
         // Connect to server
@@ -281,14 +326,9 @@ struct V3MainView: View {
             print("[V3MainView] Session ready - OpenAI connected!")
         }
 
-        // Errors
+        // Errors - log but don't show to user (handled gracefully)
         webSocketService.onError = { error in
-            errorMessage = error.localizedDescription
-
-            // Clear error after 5 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                errorMessage = nil
-            }
+            print("[V3MainView] Error (suppressed): \(error.localizedDescription)")
         }
     }
 }

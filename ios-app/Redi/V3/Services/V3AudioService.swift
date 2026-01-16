@@ -3,7 +3,7 @@
  *
  * Handles:
  * - Microphone capture (PCM 16-bit, 24kHz, mono)
- * - Speaker playback of AI responses
+ * - Speaker playback of AI responses with buffering for smooth audio
  *
  * Audio format matches OpenAI Realtime API requirements.
  */
@@ -27,6 +27,13 @@ class V3AudioService: ObservableObject {
     private let targetSampleRate: Double = 24000
     private let targetChannels: AVAudioChannelCount = 1
 
+    // Audio buffering for smooth playback
+    private var audioBuffer = Data()
+    private let bufferLock = NSLock()
+    private var isBuffering = true
+    private let minBufferSize = 4800  // ~100ms at 24kHz (2 bytes per sample)
+    private var playbackTimer: Timer?
+
     init() {
         setupAudioSession()
     }
@@ -41,6 +48,7 @@ class V3AudioService: ObservableObject {
                 .mixWithOthers
             ])
             try audioSession.setPreferredSampleRate(targetSampleRate)
+            try audioSession.setPreferredIOBufferDuration(0.005)  // 5ms buffer for low latency
             try audioSession.setActive(true)
             print("[V3Audio] Audio session configured")
         } catch {
@@ -147,15 +155,85 @@ class V3AudioService: ObservableObject {
         onAudioCaptured?(data)
     }
 
+    // MARK: - Buffered Playback
+
     func playAudio(_ audioData: Data) {
         guard !audioData.isEmpty else { return }
 
-        DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-            self?.playAudioInternal(audioData)
+        // Add to buffer
+        bufferLock.lock()
+        audioBuffer.append(audioData)
+        let currentBufferSize = audioBuffer.count
+        bufferLock.unlock()
+
+        // Start playback once we have enough buffered
+        if isBuffering && currentBufferSize >= minBufferSize {
+            isBuffering = false
+            startContinuousPlayback()
         }
     }
 
-    private func playAudioInternal(_ audioData: Data) {
+    private func startContinuousPlayback() {
+        // Setup engine if needed
+        if playbackEngine == nil || playerNode == nil {
+            setupPlaybackEngine()
+        }
+
+        guard let player = playerNode, let engine = playbackEngine else { return }
+
+        // Start the player if not already playing
+        if !player.isPlaying {
+            player.play()
+        }
+
+        DispatchQueue.main.async { [weak self] in
+            self?.isPlaying = true
+        }
+
+        // Schedule a chunk immediately
+        scheduleNextChunk()
+    }
+
+    private func scheduleNextChunk() {
+        guard let player = playerNode, let engine = playbackEngine else { return }
+
+        // Get chunk from buffer
+        bufferLock.lock()
+        let chunkSize = min(audioBuffer.count, 9600)  // ~200ms chunks
+        guard chunkSize > 0 else {
+            bufferLock.unlock()
+            // Buffer empty - mark as done and reset for next response
+            DispatchQueue.main.async { [weak self] in
+                self?.isPlaying = false
+            }
+            isBuffering = true
+            return
+        }
+
+        let chunk = audioBuffer.prefix(chunkSize)
+        audioBuffer.removeFirst(chunkSize)
+        let remainingData = audioBuffer.count
+        bufferLock.unlock()
+
+        // Convert chunk to playable buffer
+        guard let outputBuffer = convertToPlaybackBuffer(Data(chunk), engine: engine) else {
+            // Try next chunk
+            DispatchQueue.global(qos: .userInteractive).async { [weak self] in
+                self?.scheduleNextChunk()
+            }
+            return
+        }
+
+        // Schedule this chunk, then schedule next when done
+        player.scheduleBuffer(outputBuffer) { [weak self] in
+            // Schedule next chunk immediately to avoid gaps
+            DispatchQueue.global(qos: .userInteractive).async {
+                self?.scheduleNextChunk()
+            }
+        }
+    }
+
+    private func convertToPlaybackBuffer(_ audioData: Data, engine: AVAudioEngine) -> AVAudioPCMBuffer? {
         // Source format: PCM 16-bit, 24kHz, mono (from OpenAI)
         guard let sourceFormat = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
@@ -163,21 +241,18 @@ class V3AudioService: ObservableObject {
             channels: targetChannels,
             interleaved: true
         ) else {
-            print("[V3Audio] Failed to create source format")
-            return
+            return nil
         }
 
-        let frameCount = UInt32(audioData.count / 2)  // 2 bytes per sample
+        let frameCount = UInt32(audioData.count / 2)
         guard frameCount > 0,
               let sourceBuffer = AVAudioPCMBuffer(pcmFormat: sourceFormat, frameCapacity: frameCount) else {
-            return
+            return nil
         }
         sourceBuffer.frameLength = frameCount
 
-        // Copy audio data to buffer (with nil check to prevent crash)
         guard let channelData = sourceBuffer.int16ChannelData else {
-            print("[V3Audio] Failed to get channel data for playback")
-            return
+            return nil
         }
         audioData.withUnsafeBytes { rawPtr in
             if let baseAddress = rawPtr.baseAddress {
@@ -185,26 +260,16 @@ class V3AudioService: ObservableObject {
             }
         }
 
-        // Setup playback engine if needed
-        if playbackEngine == nil || playerNode == nil {
-            setupPlaybackEngine()
-        }
-
-        guard let player = playerNode,
-              let engine = playbackEngine else { return }
-
-        // Convert to hardware sample rate for playback
+        // Convert to hardware sample rate
         let outputFormat = engine.mainMixerNode.outputFormat(forBus: 0)
         guard let converter = AVAudioConverter(from: sourceFormat, to: outputFormat) else {
-            print("[V3Audio] Failed to create audio converter")
-            return
+            return nil
         }
 
         let ratio = outputFormat.sampleRate / sourceFormat.sampleRate
         let outputFrameCapacity = AVAudioFrameCount(Double(frameCount) * ratio)
         guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: outputFrameCapacity) else {
-            print("[V3Audio] Failed to create output buffer")
-            return
+            return nil
         }
 
         var error: NSError?
@@ -220,34 +285,16 @@ class V3AudioService: ObservableObject {
         }
 
         if status == .error || outputBuffer.frameLength == 0 {
-            print("[V3Audio] Conversion failed: \(error?.localizedDescription ?? "unknown")")
-            return
+            return nil
         }
 
-        // Schedule and play
-        player.scheduleBuffer(outputBuffer) { [weak self] in
-            DispatchQueue.main.async {
-                self?.isPlaying = false
-            }
-        }
-
-        DispatchQueue.main.async { [weak self] in
-            self?.isPlaying = true
-        }
-
-        if !player.isPlaying {
-            player.play()
-        }
+        return outputBuffer
     }
 
     private func setupPlaybackEngine() {
-        // Clean up existing engine first to prevent resource leaks
-        if let existingPlayer = playerNode {
-            existingPlayer.stop()
-        }
-        if let existingEngine = playbackEngine {
-            existingEngine.stop()
-        }
+        // Clean up existing engine
+        playerNode?.stop()
+        playbackEngine?.stop()
         playerNode = nil
         playbackEngine = nil
 
@@ -257,26 +304,31 @@ class V3AudioService: ObservableObject {
 
         newEngine.attach(newPlayer)
 
-        // Connect using the mixer's native format (hardware sample rate)
         let mixerFormat = newEngine.mainMixerNode.outputFormat(forBus: 0)
         newEngine.connect(newPlayer, to: newEngine.mainMixerNode, format: mixerFormat)
 
         do {
             try newEngine.start()
-            // Only assign after successful start
             playbackEngine = newEngine
             playerNode = newPlayer
             print("[V3Audio] Playback engine started at \(mixerFormat.sampleRate)Hz")
         } catch {
             print("[V3Audio] Playback engine error: \(error)")
-            // Clean up on failure
             newPlayer.stop()
             newEngine.stop()
         }
     }
 
+    func clearBuffer() {
+        bufferLock.lock()
+        audioBuffer.removeAll()
+        bufferLock.unlock()
+        isBuffering = true
+    }
+
     func cleanup() {
         stopRecording()
+        clearBuffer()
         playerNode?.stop()
         playbackEngine?.stop()
         playerNode = nil
