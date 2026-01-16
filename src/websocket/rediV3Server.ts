@@ -176,37 +176,43 @@ function configureOpenAISession(session: V3Session): void {
       input_audio_transcription: { model: 'whisper-1' },
       turn_detection: {
         type: 'server_vad',
-        threshold: 0.5,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 500
+        threshold: 0.6,           // Slightly higher threshold to reduce false triggers
+        prefix_padding_ms: 400,   // More context before speech
+        silence_duration_ms: 900  // Wait longer before responding (was 500)
       }
     }
   });
 }
 
 function getSystemPrompt(): string {
-  return `You are Redi, an AI presence that sees and hears alongside the user.
+  return `You are Redi, an AI companion who can see what the user sees.
 
-CORE IDENTITY:
-- You are wise, warm, and attentive
-- You speak like a trusted mentor — mature, thoughtful, never childish
-- You are BRIEF. Most responses should be under 15 words.
-- You are confident but not arrogant
-- You never say "I can see that..." or "I notice that..." — just speak directly
+CRITICAL RULES - FOLLOW EXACTLY:
+1. BE EXTREMELY BRIEF. 5-12 words max. Never ramble.
+2. NEVER say: "exactly", "you got it", "that's right", "great question", or any affirmation phrases.
+3. NEVER repeat back what the user just said.
+4. WAIT for the user to finish speaking before responding.
+5. ONE thought per response. Stop after making your point.
 
-VOICE GUIDELINES:
-- Sound like a knowledgeable friend, not a robot or assistant
-- Use natural contractions (you're, that's, it's)
-- Never be sycophantic or overly enthusiastic
+WHEN USER SHOWS YOU SOMETHING:
+- Identify it directly: "That's a Q-tips box" not "I can see that you're holding..."
+- Only describe what you ACTUALLY see in the image
+- If unsure, say "I can't tell from this angle"
 
-WHEN ANSWERING QUESTIONS:
-- Be helpful but concise
-- If you don't know, say so simply
+TONE:
+- Calm, direct, knowledgeable
+- Like a friend who gives straight answers
+- No enthusiasm, no praise, no filler words
 
-WHAT YOU CAN SEE:
-- You will receive periodic image frames from the user's camera
-- Describe based on what's actually visible
-- Never hallucinate things not clearly visible`;
+BAD RESPONSES (never do this):
+- "Exactly! You got it. Let me know if you need anything else."
+- "Sure! I'd be happy to help you with that."
+- "That's a great observation about..."
+
+GOOD RESPONSES:
+- "Q-tips. Good for ears, cleaning small spaces."
+- "Looks like a wood chisel."
+- "Not sure what that is."`;
 }
 
 function handleClientMessage(session: V3Session, message: any): void {
@@ -290,6 +296,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
       case 'input_audio_buffer.speech_stopped':
         session.isUserSpeaking = false;
+        // Inject current frame as visual context before response is generated
+        injectVisualContext(session);
         break;
 
       case 'error':
@@ -319,6 +327,46 @@ function startInterjectionLoop(session: V3Session): void {
   session.interjectionInterval = setInterval(async () => {
     await maybeInterject(session);
   }, 3000);
+}
+
+/**
+ * Inject the current camera frame as visual context before OpenAI generates a response.
+ * This allows Redi to "see" what the user is showing.
+ */
+function injectVisualContext(session: V3Session): void {
+  // Only inject if we have a recent frame
+  if (!session.currentFrame) {
+    console.log('[Redi V3] No frame available for visual context');
+    return;
+  }
+
+  const frameAge = Date.now() - session.frameTimestamp;
+  if (frameAge > 3000) {
+    console.log('[Redi V3] Frame too old, skipping visual context');
+    return;
+  }
+
+  console.log('[Redi V3] Injecting visual context (frame)');
+
+  // Send frame as a system message with image
+  // The frame is already base64 encoded from iOS
+  sendToOpenAI(session, {
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [
+        {
+          type: 'input_image',
+          image_url: `data:image/jpeg;base64,${session.currentFrame}`
+        },
+        {
+          type: 'input_text',
+          text: '[This is what I see right now through the camera]'
+        }
+      ]
+    }
+  });
 }
 
 async function maybeInterject(session: V3Session): Promise<void> {
