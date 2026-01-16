@@ -14,8 +14,8 @@ import { parse as parseUrl } from 'url';
 import { randomUUID } from 'crypto';
 
 // OpenAI Realtime API configuration
-// Using gpt-4o-realtime-preview-2024-12-17 which has image input support
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
+// Note: Realtime API doesn't support image input - we use hybrid approach with Vision API
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
 
 interface V3Session {
   id: string;
@@ -336,10 +336,14 @@ function startInterjectionLoop(session: V3Session): void {
 }
 
 /**
- * Inject the current camera frame as visual context before OpenAI generates a response.
- * This allows Redi to "see" what the user is showing.
+ * Inject visual context by analyzing the frame with GPT-4o Vision API,
+ * then sending the description as text to the Realtime API.
+ *
+ * The Realtime API doesn't support image input, so we use a hybrid approach:
+ * 1. Analyze frame with GPT-4o Vision (standard API)
+ * 2. Send description as text context to Realtime API
  */
-function injectVisualContext(session: V3Session): void {
+async function injectVisualContext(session: V3Session): Promise<void> {
   // Only inject if we have a recent frame
   if (!session.currentFrame) {
     console.log('[Redi V3] No frame available for visual context');
@@ -353,23 +357,84 @@ function injectVisualContext(session: V3Session): void {
   }
 
   const frameSize = session.currentFrame.length;
-  console.log(`[Redi V3] Injecting visual context - frame size: ${frameSize} bytes, age: ${frameAge}ms`);
+  console.log(`[Redi V3] Analyzing frame with Vision API - size: ${frameSize} bytes, age: ${frameAge}ms`);
 
-  // Send frame as image input
-  // Format per OpenAI Realtime API docs: input_image with image_url as data URI
-  sendToOpenAI(session, {
-    type: 'conversation.item.create',
-    item: {
-      type: 'message',
-      role: 'user',
-      content: [
-        {
-          type: 'input_image',
-          image_url: `data:image/jpeg;base64,${session.currentFrame}`
+  try {
+    // Use GPT-4o Vision API to analyze the frame
+    const description = await analyzeFrameWithVision(session.currentFrame);
+
+    if (description) {
+      console.log(`[Redi V3] Vision analysis: "${description.substring(0, 100)}..."`);
+
+      // Send the visual description as a system context message
+      sendToOpenAI(session, {
+        type: 'conversation.item.create',
+        item: {
+          type: 'message',
+          role: 'system',
+          content: [
+            {
+              type: 'input_text',
+              text: `[VISUAL CONTEXT - What the camera currently shows: ${description}]`
+            }
+          ]
         }
-      ]
+      });
     }
-  });
+  } catch (error) {
+    console.error('[Redi V3] Vision analysis failed:', error);
+  }
+}
+
+/**
+ * Analyze a frame using GPT-4o Vision API (standard REST API, not Realtime)
+ */
+async function analyzeFrameWithVision(frameBase64: string): Promise<string | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',  // Fast and cheap for quick descriptions
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: 'Describe what you see in this image in 10-15 words. Be specific about objects, text, and context. Just describe, no commentary.'
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${frameBase64}`,
+                  detail: 'low'  // Fast processing
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 50
+      })
+    });
+
+    if (!response.ok) {
+      console.error('[Redi V3] Vision API error:', response.status, await response.text());
+      return null;
+    }
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch (error) {
+    console.error('[Redi V3] Vision API request failed:', error);
+    return null;
+  }
 }
 
 async function maybeInterject(session: V3Session): Promise<void> {
