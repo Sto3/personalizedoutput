@@ -146,9 +146,10 @@ class V3AudioService: ObservableObject {
             }
         }
 
-        // Only send audio if speaking (or trailing silence for natural cutoff)
-        let shouldSend = isSpeaking || (silenceFrameCount <= trailingSilenceFrames)
-        guard shouldSend else { return }
+        // IMPORTANT: Send ALL audio to OpenAI - their server VAD needs to hear
+        // the silence to detect when speech ends. Don't filter on client side.
+        // let shouldSend = isSpeaking || (silenceFrameCount <= trailingSilenceFrames)
+        // guard shouldSend else { return }
 
         // Convert to target format
         guard let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else {
