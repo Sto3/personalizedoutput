@@ -517,8 +517,9 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         session.isUserSpeaking = false;
         session.speechStoppedAt = Date.now();
         console.log(`[Redi V3] 🎤 User stopped speaking`);
-        // Inject current frame as visual context before response is generated
-        injectVisualContext(session);
+        // TEMPORARILY DISABLED: Frame injection was causing ~1 minute delays
+        // TODO: Re-enable with optimizations (smaller frames, async processing)
+        // injectVisualContext(session);
         break;
 
       // === RESPONSE LIFECYCLE ===
