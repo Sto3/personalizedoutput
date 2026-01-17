@@ -23,7 +23,7 @@ struct V3MainView: View {
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
     @State private var isSessionReady = false
-    @State private var lastToggleTime: Date = .distantPast  // Debounce protection
+    @State private var buttonDisabled = false  // Prevent accidental double-tap
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
@@ -211,11 +211,11 @@ struct V3MainView: View {
             Button(action: toggleSession) {
                 ZStack {
                     Circle()
-                        .fill(isSessionActive ? Color.red : Color.green)
+                        .fill(buttonDisabled ? Color.gray : (isSessionActive ? Color.red : Color.green))
                         .frame(width: compact ? 60 : 80, height: compact ? 60 : 80)
                         .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
 
-                    if isConnecting {
+                    if isConnecting || buttonDisabled {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle(tint: .white))
                     } else {
@@ -225,7 +225,7 @@ struct V3MainView: View {
                     }
                 }
             }
-            .disabled(isConnecting)
+            .disabled(isConnecting || buttonDisabled)
 
             if !compact {
                 Text(isSessionActive ? "Tap to stop" : "Tap to start")
@@ -263,20 +263,23 @@ struct V3MainView: View {
     }
 
     private func toggleSession() {
-        // Debounce: ignore taps within 2 seconds of last toggle
-        let now = Date()
-        let timeSinceLastToggle = now.timeIntervalSince(lastToggleTime)
-        if timeSinceLastToggle < 2.0 {
-            print("[V3MainView] Toggle ignored - debounce (\(String(format: "%.1f", timeSinceLastToggle))s since last)")
+        // Extra protection: if button is disabled, ignore
+        guard !buttonDisabled else {
+            print("[V3MainView] Toggle ignored - button disabled")
             return
         }
-        lastToggleTime = now
 
         print("[V3MainView] Toggle: isSessionActive=\(isSessionActive)")
         if isSessionActive {
             stopSession()
         } else {
+            // Disable button for 5 seconds after starting to prevent accidental stop
+            buttonDisabled = true
             startSession()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                self.buttonDisabled = false
+                print("[V3MainView] Button re-enabled")
+            }
         }
     }
 
