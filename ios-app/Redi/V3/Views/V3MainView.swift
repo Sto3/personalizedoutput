@@ -297,7 +297,10 @@ struct V3MainView: View {
     }
 
     private func stopSession() {
-        print("[V3MainView] Stopping session...")
+        // DEBUG: Print stack trace to find what's calling stopSession
+        print("[V3MainView] Stopping session... STACK TRACE:")
+        Thread.callStackSymbols.prefix(10).forEach { print("  \($0)") }
+
         cameraService.stopCapture()
         audioService.stopRecording()
         webSocketService.disconnect()
