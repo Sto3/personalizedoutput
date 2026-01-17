@@ -23,7 +23,6 @@ struct V3MainView: View {
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
     @State private var isSessionReady = false
-    @State private var buttonDisabled = false  // Prevent accidental double-tap
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
@@ -210,11 +209,12 @@ struct V3MainView: View {
             // Start/Stop button - using onTapGesture to avoid SwiftUI button re-render triggers
             ZStack {
                 Circle()
-                    .fill(buttonDisabled ? Color.gray : (isSessionActive ? Color.red : Color.green))
+                    .fill(isSessionActive ? Color.red.opacity(0.6) : Color.green)
                     .frame(width: compact ? 60 : 80, height: compact ? 60 : 80)
                     .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
 
-                if isConnecting || buttonDisabled {
+                if isConnecting {
+                    // Only show loading during initial connection
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
@@ -225,12 +225,17 @@ struct V3MainView: View {
             }
             .contentShape(Circle())
             .onTapGesture {
-                guard !isConnecting && !buttonDisabled else { return }
+                // During session, prompt user to use X button
+                if isSessionActive {
+                    // Session running - use X to exit
+                    return
+                }
+                guard !isConnecting else { return }
                 toggleSession()
             }
 
             if !compact {
-                Text(isSessionActive ? "Tap to stop" : "Tap to start")
+                Text(isSessionActive ? "Use X to stop" : "Tap to start")
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
             }
@@ -265,24 +270,14 @@ struct V3MainView: View {
     }
 
     private func toggleSession() {
-        // Extra protection: if button is disabled, ignore
-        guard !buttonDisabled else {
-            print("[V3MainView] Toggle ignored - button disabled")
+        // Only allow starting - stopping is via X button to avoid SwiftUI bug
+        guard !isSessionActive else {
+            print("[V3MainView] Toggle ignored - use X to stop")
             return
         }
 
-        print("[V3MainView] Toggle: isSessionActive=\(isSessionActive)")
-        if isSessionActive {
-            stopSession()
-            // Re-enable button after stopping
-            buttonDisabled = false
-        } else {
-            // Disable start/stop button for ENTIRE session
-            // User must use X button to exit (prevents SwiftUI re-render bug)
-            buttonDisabled = true
-            startSession()
-            // NO automatic re-enable - use X button to stop
-        }
+        print("[V3MainView] Toggle: starting session")
+        startSession()
     }
 
     private func startSession() {
