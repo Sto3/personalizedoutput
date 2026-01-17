@@ -27,11 +27,11 @@ class V3AudioService: ObservableObject {
     private let targetSampleRate: Double = 24000
     private let targetChannels: AVAudioChannelCount = 1
 
-    // Audio buffering for smooth playback
+    // Audio buffering for smooth playback - minimized for low latency
     private var audioBuffer = Data()
     private let bufferLock = NSLock()
     private var isBuffering = true
-    private let minBufferSize = 4800  // ~100ms at 24kHz (2 bytes per sample)
+    private let minBufferSize = 1200  // ~25ms at 24kHz (reduced for low latency)
     private var playbackTimer: Timer?
 
     // VAD (Voice Activity Detection) - reduces bandwidth by ~30-40%
