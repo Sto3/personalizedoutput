@@ -389,6 +389,7 @@ class V3WebSocketService: ObservableObject {
         case "audio":
             if let audioBase64 = json["data"] as? String,
                let audioData = Data(base64Encoded: audioBase64) {
+                print("[V3WebSocket] Received audio chunk: \(audioData.count) bytes")
                 DispatchQueue.main.async { [weak self] in
                     self?.onAudioReceived?(audioData)
                 }

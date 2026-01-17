@@ -68,6 +68,9 @@ class V3AudioService: ObservableObject {
     func startRecording() {
         guard !isRecording else { return }
 
+        // Pre-create playback engine for instant audio response
+        setupPlaybackEngine()
+
         do {
             audioEngine = AVAudioEngine()
             guard let audioEngine = audioEngine else { return }
