@@ -124,10 +124,12 @@ struct V3MainView: View {
         HStack {
             // Back button to exit V3 - using onTapGesture to avoid SwiftUI auto-trigger bug
             Image(systemName: "xmark.circle.fill")
-                .font(.title2)
-                .foregroundColor(.white.opacity(0.7))
-                .contentShape(Circle())
+                .font(.system(size: 28))
+                .foregroundColor(.white.opacity(0.8))
+                .frame(width: 44, height: 44)  // Larger tap target
+                .contentShape(Rectangle())
                 .onTapGesture {
+                    print("[V3MainView] X button tapped")
                     exitV3()
                 }
 
@@ -227,17 +229,12 @@ struct V3MainView: View {
             }
             .contentShape(Circle())
             .onTapGesture {
-                // During session, prompt user to use X button
-                if isSessionActive {
-                    // Session running - use X to exit
-                    return
-                }
                 guard !isConnecting else { return }
                 toggleSession()
             }
 
             if !compact {
-                Text(isSessionActive ? "Use X to stop" : "Tap to start")
+                Text(isSessionActive ? "Tap to stop" : "Tap to start")
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
             }
@@ -272,14 +269,12 @@ struct V3MainView: View {
     }
 
     private func toggleSession() {
-        // Only allow starting - stopping is via X button to avoid SwiftUI bug
-        guard !isSessionActive else {
-            print("[V3MainView] Toggle ignored - use X to stop")
-            return
+        print("[V3MainView] Toggle: isSessionActive=\(isSessionActive)")
+        if isSessionActive {
+            stopSession()
+        } else {
+            startSession()
         }
-
-        print("[V3MainView] Toggle: starting session")
-        startSession()
     }
 
     private func startSession() {
