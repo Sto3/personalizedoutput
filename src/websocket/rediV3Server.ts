@@ -47,6 +47,7 @@ interface V3Session {
   // Echo suppression - prevents Redi from hearing its own voice
   isRediSpeaking: boolean;
   rediStoppedSpeakingAt: number;
+  lastAudioSentToClientAt: number;  // Track when we actually send audio to client
   // Response guards (military-grade)
   lastResponses: string[];
   lastResponseTime: number;
@@ -161,6 +162,7 @@ export async function initRediV3(server: HTTPServer): Promise<void> {
       // Echo suppression
       isRediSpeaking: false,
       rediStoppedSpeakingAt: 0,
+      lastAudioSentToClientAt: 0,
       lastResponses: [],
       lastResponseTime: 0,
       // Military-grade additions
@@ -342,16 +344,42 @@ function handleClientMessage(session: V3Session, message: any): void {
       if (message.data) {
         // ECHO SUPPRESSION: Discard audio while Redi is speaking
         // This prevents Redi from hearing its own voice through the mic
-        const ECHO_GRACE_PERIOD_MS = 500;  // Also discard audio for 500ms after Redi stops
-        const timeSinceRediStopped = Date.now() - session.rediStoppedSpeakingAt;
+        //
+        // The grace period needs to be long enough to account for:
+        // - Audio processing latency on iOS (~100-200ms)
+        // - Network round-trip time (~50-100ms)
+        // - Audio buffer sizes (~100-200ms)
+        // - Speaker-to-mic acoustic delay
+        // - OpenAI processing time
+        const ECHO_GRACE_PERIOD_MS = 2000;  // 2 seconds after Redi stops
+        const now = Date.now();
+        const timeSinceRediStopped = now - session.rediStoppedSpeakingAt;
+        const timeSinceLastAudioSent = now - session.lastAudioSentToClientAt;
 
         if (session.isRediSpeaking) {
           // Redi is currently speaking - discard this audio
+          // Only log occasionally to avoid spam
+          if (Math.random() < 0.05) {
+            console.log(`[Redi V3] 🔇 Discarding audio (Redi speaking)`);
+          }
+          return;
+        }
+
+        // Check BOTH: when response ended AND when last audio chunk was sent
+        // The audio chunk timing is more accurate for echo detection
+        if (session.lastAudioSentToClientAt > 0 && timeSinceLastAudioSent < ECHO_GRACE_PERIOD_MS) {
+          // Recently sent audio to client - grace period for echo
+          if (Math.random() < 0.05) {
+            console.log(`[Redi V3] 🔇 Discarding audio (${timeSinceLastAudioSent}ms since last audio sent)`);
+          }
           return;
         }
 
         if (session.rediStoppedSpeakingAt > 0 && timeSinceRediStopped < ECHO_GRACE_PERIOD_MS) {
           // Redi just stopped speaking - grace period to catch echo tail
+          if (Math.random() < 0.05) {
+            console.log(`[Redi V3] 🔇 Discarding audio (${timeSinceRediStopped}ms since response ended)`);
+          }
           return;
         }
 
@@ -486,6 +514,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
             type: 'audio',
             data: event.delta
           });
+          // Track when we sent audio for echo suppression
+          session.lastAudioSentToClientAt = Date.now();
         }
         break;
 
