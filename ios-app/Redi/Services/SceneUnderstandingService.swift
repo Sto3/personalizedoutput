@@ -402,6 +402,7 @@ class SceneUnderstandingService: NSObject, ObservableObject {
         case .music: return "playing_music"
         case .assembly: return "building"
         case .monitoring: return "monitoring"
+        case .driving: return "driving"
         }
     }
 
