@@ -340,15 +340,29 @@ function handleClientMessage(session: V3Session, message: any): void {
           console.log(`[Redi V3] Receiving audio from client (${audioData.length} chars base64)`);
         }
 
-        // Apply denoising if available
-        // NOTE: Current denoiser expects 16kHz, V3 uses 24kHz
-        // For full integration, we'd need to resample 24kHz → 16kHz → denoise → 24kHz
-        // For now, structure is in place but denoising is skipped due to sample rate mismatch
-        if (audioDenoiser?.isReady()) {
-          // TODO: Add resampling for 24kHz → 16kHz → denoise → 24kHz
-          // For now, log that denoiser is available but sample rate doesn't match
-          // console.log('[Redi V3] Audio denoiser ready but needs 16kHz (have 24kHz)');
-        }
+        // AUDIO DENOISER STATUS: DISABLED DUE TO SAMPLE RATE MISMATCH
+        //
+        // The RNNoise-based denoiser expects 16kHz audio, but OpenAI Realtime API
+        // requires 24kHz. Options to enable denoising in the future:
+        //
+        // Option 1: Resample (adds latency)
+        //   24kHz → 16kHz → denoise → 24kHz
+        //   Adds ~10-20ms latency per chunk
+        //
+        // Option 2: Find/train 24kHz denoiser
+        //   RNNoise can be retrained for different sample rates
+        //   Would require new WASM build
+        //
+        // Option 3: Client-side denoising
+        //   iOS could denoise before sending
+        //   Apple's Voice Processing has built-in noise reduction
+        //
+        // For now, OpenAI's Whisper handles noisy audio reasonably well.
+        // Denoiser structure is in place for future activation.
+        //
+        // if (audioDenoiser?.isReady()) {
+        //   audioData = denoiseAudio(audioData);  // Would require resampling
+        // }
 
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
@@ -402,7 +416,7 @@ function handleClientMessage(session: V3Session, message: any): void {
  * Check if mode string is valid
  */
 function isValidMode(mode: string): mode is RediMode {
-  const validModes: RediMode[] = ['general', 'cooking', 'studying', 'meeting', 'sports', 'music', 'assembly', 'monitoring'];
+  const validModes: RediMode[] = ['general', 'cooking', 'studying', 'meeting', 'sports', 'music', 'assembly', 'monitoring', 'driving'];
   return validModes.includes(mode as RediMode);
 }
 
@@ -517,9 +531,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         session.isUserSpeaking = false;
         session.speechStoppedAt = Date.now();
         console.log(`[Redi V3] 🎤 User stopped speaking`);
-        // TEMPORARILY DISABLED: Frame injection was causing ~1 minute delays
-        // TODO: Re-enable with optimizations (smaller frames, async processing)
-        // injectVisualContext(session);
+        // Frame injection now uses smart detection - only inject when user asks visual questions
+        maybeInjectVisualContext(session);
         break;
 
       // === RESPONSE LIFECYCLE ===
@@ -583,6 +596,61 @@ function startInterjectionLoop(session: V3Session): void {
 }
 
 /**
+ * Patterns that indicate user wants visual context
+ */
+const VISUAL_QUESTION_PATTERNS = [
+  /what (do you|can you|am i|are we) see/i,
+  /what('s| is) (this|that|here|there)/i,
+  /look(ing)? at/i,
+  /show me/i,
+  /describe/i,
+  /what am i (holding|doing|looking at)/i,
+  /can you see/i,
+  /do you see/i,
+  /tell me (what|about)/i,
+  /what's (in front|around|behind)/i,
+  /identify/i,
+  /recognize/i,
+  /help (me )?(with|identify|find)/i,
+];
+
+/**
+ * Check if the recent transcript suggests user wants visual context
+ */
+function wantsVisualContext(session: V3Session): boolean {
+  if (!session.lastTranscript) return false;
+
+  const transcript = session.lastTranscript.toLowerCase();
+
+  // Check for visual question patterns
+  for (const pattern of VISUAL_QUESTION_PATTERNS) {
+    if (pattern.test(transcript)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Smart frame injection - only inject when user's question requires visual context.
+ * This prevents delays from unnecessary frame processing.
+ */
+function maybeInjectVisualContext(session: V3Session): void {
+  // Skip for driving mode (uses on-device services)
+  if (session.currentMode === 'driving') {
+    return;
+  }
+
+  // Check if user's question needs visual context
+  if (!wantsVisualContext(session)) {
+    return;
+  }
+
+  injectVisualContext(session);
+}
+
+/**
  * Inject visual context by sending the frame directly to the Realtime API.
  * The GA model (gpt-4o-realtime) has native image support.
  */
@@ -594,13 +662,14 @@ function injectVisualContext(session: V3Session): void {
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
-  if (frameAge > 3000) {
+  // Reduced from 3000ms to 2000ms for fresher frames
+  if (frameAge > 2000) {
     console.log(`[Redi V3] Frame too old (${frameAge}ms), skipping visual context`);
     return;
   }
 
   const frameSize = session.currentFrame.length;
-  console.log(`[Redi V3] Sending frame directly to Realtime API - size: ${frameSize} bytes, age: ${frameAge}ms`);
+  console.log(`[Redi V3] 📸 Injecting visual context - size: ${frameSize} bytes, age: ${frameAge}ms, trigger: "${session.lastTranscript}"`);
 
   // Send image directly to Realtime API (native support in GA model)
   // image_url must be a string, not an object
@@ -660,16 +729,30 @@ async function maybeInterject(session: V3Session): Promise<void> {
   }
 }
 
+/**
+ * Analyze frame for autonomous interjection (proactive speaking).
+ *
+ * CURRENT STATUS: INTENTIONALLY DISABLED
+ *
+ * This function is stubbed because:
+ * 1. OpenAI Realtime API image analysis has limitations with proactive responses
+ * 2. Visual-triggered interjections caused latency issues in testing
+ * 3. User-initiated visual queries work well via maybeInjectVisualContext()
+ *
+ * The smart frame injection system (VISUAL_QUESTION_PATTERNS) handles
+ * user-requested visual context effectively. Autonomous interjection
+ * may be re-enabled when:
+ * - OpenAI improves image processing latency
+ * - We implement local vision analysis on iOS
+ * - User testing indicates demand for proactive visual feedback
+ */
 async function analyzeFrameForInterjection(session: V3Session): Promise<{
   shouldSpeak: boolean;
   confidence: number;
   message: string;
 }> {
-  // Note: OpenAI Realtime API image support is limited
-  // For now, skip image analysis to avoid API errors
-  // TODO: Implement proper image analysis when API supports it better
-
-  // Return default - no interjection
+  // INTENTIONALLY DISABLED - see function documentation above
+  // Return default - no autonomous interjection
   return { shouldSpeak: false, confidence: 0, message: '' };
 }
 

@@ -62,6 +62,10 @@ const ERROR_PATTERNS: Record<RediMode, RegExp[]> = {
   ],
   monitoring: [
     /fell|crying|help|emergency/i
+  ],
+  driving: [
+    /pull over|emergency|accident|police/i,
+    /lost|wrong turn|missed exit/i
   ]
 };
 

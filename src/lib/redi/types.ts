@@ -13,7 +13,8 @@ export type RediMode =
   | 'sports'        // Sports & Movement
   | 'music'         // Music & Instrument
   | 'assembly'      // Building & Assembly
-  | 'monitoring';   // Watching Over
+  | 'monitoring'    // Watching Over
+  | 'driving';      // Driving Mode - uses on-device TTS, navigation, driver monitoring
 
 export type VoiceGender = 'male' | 'female';
 
@@ -271,5 +272,11 @@ export const MODE_CONFIGS: Record<RediMode, {
     useMotionDetection: true,
     defaultSensitivity: 0.2,
     systemPromptFocus: 'safety, alerting to concerning situations, and status updates when asked'
+  },
+  driving: {
+    snapshotIntervalMs: 0,           // No snapshots - uses on-device services only
+    useMotionDetection: false,       // Not used - has own driver monitoring
+    defaultSensitivity: 0.8,         // High sensitivity for safety alerts
+    systemPromptFocus: 'driving safety - navigation, drowsiness detection, distraction alerts, rear awareness, and emergency vehicle detection. 90% runs on-device (FREE), 10% cloud for conversation.'
   }
 };

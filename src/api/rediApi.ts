@@ -1236,7 +1236,8 @@ function getModeDisplayName(mode: RediMode): string {
     sports: 'Sports & Movement',
     music: 'Music & Instrument',
     assembly: 'Building & Assembly',
-    monitoring: 'Watching Over'
+    monitoring: 'Watching Over',
+    driving: 'Driving Mode'
   };
   return names[mode] || mode;
 }

@@ -557,9 +557,54 @@ export const MUSIC_RULES: FormRule[] = [
 ];
 
 /**
+ * Driving mode rules
+ * NOTE: Most driving mode processing happens on-device (iOS).
+ * These rules are for the rare cases when cloud processing is used.
+ */
+export const DRIVING_RULES: FormRule[] = [
+  {
+    id: 'driving_distraction_detected',
+    name: 'Driving Distraction Alert',
+    modes: ['driving'],
+    condition: (p) => {
+      // Detect if user appears to be looking at phone while driving
+      // This is a backup - iOS handles most of this on-device
+      const pose = p.pose;
+      if (!pose) return false;
+      // Head significantly tilted down (looking at phone)
+      const headTilt = pose.nose?.y ?? 0;
+      return headTilt > 0.6; // Lower in frame = looking down
+    },
+    response: 'Eyes on the road',
+    priority: 10, // Critical - safety
+    cooldownMs: 10000,
+    category: 'safety'
+  },
+  {
+    id: 'driving_phone_visible',
+    name: 'Phone in Hand Alert',
+    modes: ['driving'],
+    condition: (p) => {
+      // Detect phone/device in hand while driving
+      const objects = p.detectedObjects ?? [];
+      const hasPhone = objects.some(obj =>
+        obj.label.toLowerCase().includes('phone') ||
+        obj.label.toLowerCase().includes('cell') ||
+        obj.label.toLowerCase().includes('mobile')
+      );
+      return hasPhone;
+    },
+    response: 'Put your phone down',
+    priority: 10, // Critical - safety
+    cooldownMs: 30000,
+    category: 'safety'
+  }
+];
+
+/**
  * Get all rules for a mode
  */
 export function getRulesForMode(mode: RediMode): FormRule[] {
-  const allRules = [...SPORTS_RULES, ...STUDYING_RULES, ...MUSIC_RULES];
+  const allRules = [...SPORTS_RULES, ...STUDYING_RULES, ...MUSIC_RULES, ...DRIVING_RULES];
   return allRules.filter(r => r.modes.includes(mode));
 }

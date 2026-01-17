@@ -16,10 +16,19 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { RediMode } from './types';
 
-// Initialize Anthropic client
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+// Initialize Anthropic client (lazy - may be null if key not set)
+let anthropic: Anthropic | null = null;
+
+function getAnthropicClient(): Anthropic {
+  if (!anthropic) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error('ANTHROPIC_API_KEY environment variable not set');
+    }
+    anthropic = new Anthropic({ apiKey });
+  }
+  return anthropic;
+}
 
 export interface DeepAnalysisResult {
   shouldSpeak: boolean;
@@ -47,6 +56,7 @@ const MODE_CONTEXT: Record<RediMode, string> = {
   music: 'The user is practicing music. Focus on technique, timing, and musical expression.',
   assembly: 'The user is building/assembling something. Focus on steps, safety, and component handling.',
   monitoring: 'The user needs monitoring (elder care, baby). Focus on safety and alerting only when necessary.',
+  driving: 'The user is driving. Focus on navigation, safety alerts, and minimal distraction. 90% runs on-device, only use cloud for conversation when user explicitly asks.',
 };
 
 /**
@@ -108,7 +118,8 @@ Respond in this exact JSON format:
   });
 
   try {
-    const response = await anthropic.messages.create({
+    const client = getAnthropicClient();
+    const response = await client.messages.create({
       model: 'claude-sonnet-4-5-20250514',
       max_tokens: 200,
       messages: [{ role: 'user', content }],

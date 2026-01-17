@@ -63,6 +63,7 @@ enum RediMode: String, Codable, CaseIterable {
     case music = "music"
     case assembly = "assembly"
     case monitoring = "monitoring"
+    case driving = "driving"        // Driving mode - on-device TTS, navigation, driver monitoring
 
     var displayName: String {
         switch self {
@@ -74,6 +75,7 @@ enum RediMode: String, Codable, CaseIterable {
         case .music: return "Music & Instrument"
         case .assembly: return "Building & Assembly"
         case .monitoring: return "Watching Over"
+        case .driving: return "Driving Mode"
         }
     }
 
@@ -87,13 +89,14 @@ enum RediMode: String, Codable, CaseIterable {
         case .music: return "music.note"
         case .assembly: return "wrench.and.screwdriver.fill"
         case .monitoring: return "eye.fill"
+        case .driving: return "car.fill"
         }
     }
 
     var usesMotionDetection: Bool {
         switch self {
         case .general, .cooking, .sports, .music, .assembly, .monitoring: return true
-        case .studying, .meeting: return false
+        case .studying, .meeting, .driving: return false  // Driving has its own monitoring
         }
     }
 
@@ -107,12 +110,18 @@ enum RediMode: String, Codable, CaseIterable {
         case .music: return 0
         case .assembly: return 5000
         case .monitoring: return 15000
+        case .driving: return 0  // Uses on-device services only
         }
     }
 
     /// Whether this mode is a specialized focus (vs autonomous general)
     var isSpecializedMode: Bool {
         return self != .general
+    }
+
+    /// Whether this mode runs primarily on-device (minimal cloud usage)
+    var isOnDeviceMode: Bool {
+        return self == .driving
     }
 }
 
@@ -518,12 +527,15 @@ struct SessionHistoryEntry: Codable, Identifiable {
 
     var modeDisplayName: String {
         let modes: [String: String] = [
+            "general": "Use Redi for Anything",
+            "cooking": "Cooking & Kitchen",
             "studying": "Studying & Learning",
             "meeting": "Meeting & Presentation",
             "sports": "Sports & Movement",
             "music": "Music & Instrument",
             "assembly": "Building & Assembly",
-            "monitoring": "Watching Over"
+            "monitoring": "Watching Over",
+            "driving": "Driving Mode"
         ]
         return modes[mode] ?? mode.capitalized
     }
