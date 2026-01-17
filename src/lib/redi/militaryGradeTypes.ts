@@ -567,13 +567,14 @@ export const DRIVING_RULES: FormRule[] = [
     name: 'Driving Distraction Alert',
     modes: ['driving'],
     condition: (p) => {
-      // Detect if user appears to be looking at phone while driving
-      // This is a backup - iOS handles most of this on-device
+      // Detect if user appears to be looking down (at phone) while driving
+      // This is a backup - iOS handles most of this on-device via DriverMonitoringService
       const pose = p.pose;
       if (!pose) return false;
-      // Head significantly tilted down (looking at phone)
-      const headTilt = pose.nose?.y ?? 0;
-      return headTilt > 0.6; // Lower in frame = looking down
+      // Use neck position to detect head tilted down
+      // Neck below center of frame suggests looking down
+      const neckY = pose.neck?.y ?? 0;
+      return neckY > 0.6; // Lower in frame = looking down
     },
     response: 'Eyes on the road',
     priority: 10, // Critical - safety
@@ -586,7 +587,8 @@ export const DRIVING_RULES: FormRule[] = [
     modes: ['driving'],
     condition: (p) => {
       // Detect phone/device in hand while driving
-      const objects = p.detectedObjects ?? [];
+      // Uses 'objects' array from PerceptionPacket
+      const objects = p.objects ?? [];
       const hasPhone = objects.some(obj =>
         obj.label.toLowerCase().includes('phone') ||
         obj.label.toLowerCase().includes('cell') ||
