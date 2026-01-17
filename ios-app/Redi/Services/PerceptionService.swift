@@ -581,6 +581,13 @@ class PerceptionService: NSObject, ObservableObject {
                 if let poseRequest = bodyPoseRequest {
                     requests.append(poseRequest)
                 }
+
+            case .driving:
+                // Driving mode runs primarily on-device in Driving/ folder
+                // Minimal perception here - just basic pose for distraction detection
+                if let poseRequest = bodyPoseRequest {
+                    requests.append(poseRequest)
+                }
             }
 
             if !requests.isEmpty {
@@ -850,6 +857,11 @@ class PerceptionService: NSObject, ObservableObject {
 
         case .cooking, .meeting, .general:
             // No specific form alerts for these modes
+            break
+
+        case .driving:
+            // Driving alerts handled by Driving/DrivingRuleEngine
+            // This mode runs primarily on-device
             break
         }
     }
