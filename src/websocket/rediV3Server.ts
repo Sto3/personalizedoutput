@@ -336,6 +336,10 @@ function handleClientMessage(session: V3Session, message: any): void {
       // Forward audio to OpenAI (with optional denoising)
       if (message.data) {
         let audioData = message.data;
+        // Debug: log audio receipt (first few chunks only to avoid spam)
+        if (!session.lastTranscript) {
+          console.log(`[Redi V3] Receiving audio from client (${audioData.length} chars base64)`);
+        }
 
         // Apply denoising if available
         // NOTE: Current denoiser expects 16kHz, V3 uses 24kHz
@@ -733,6 +737,9 @@ function speakProactively(session: V3Session, message: string): void {
 function sendToOpenAI(session: V3Session, message: any): void {
   if (session.openaiWs?.readyState === WebSocket.OPEN) {
     session.openaiWs.send(JSON.stringify(message));
+  } else if (message.type === 'input_audio_buffer.append') {
+    // Log if audio send fails due to OpenAI not ready
+    console.log(`[Redi V3] Cannot send audio - OpenAI WS state: ${session.openaiWs?.readyState}`);
   }
 }
 
