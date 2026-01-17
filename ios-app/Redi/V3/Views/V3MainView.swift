@@ -12,6 +12,7 @@
 import SwiftUI
 
 struct V3MainView: View {
+    @EnvironmentObject var appState: AppState
     @StateObject private var cameraService = V3CameraService()
     @StateObject private var audioService = V3AudioService()
     @StateObject private var webSocketService = V3WebSocketService()
@@ -68,6 +69,12 @@ struct V3MainView: View {
         }
         .onAppear {
             setupCallbacks()
+            // Auto-start session when V3 view appears
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if !isSessionActive {
+                    startSession()
+                }
+            }
         }
         .onChange(of: sensitivity) { newValue in
             if isSessionActive {
@@ -75,6 +82,12 @@ struct V3MainView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: lastTranscript)
+        .onDisappear {
+            // Clean up when view disappears
+            if isSessionActive {
+                stopSession()
+            }
+        }
     }
 
     // MARK: - Portrait Layout
@@ -121,6 +134,13 @@ struct V3MainView: View {
 
     private var statusBar: some View {
         HStack {
+            // Back button to exit V3
+            Button(action: exitV3) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+
             Circle()
                 .fill(statusColor)
                 .frame(width: 12, height: 12)
@@ -287,6 +307,11 @@ struct V3MainView: View {
         lastTranscript = ""
     }
 
+    private func exitV3() {
+        stopSession()
+        appState.useV3 = false
+    }
+
     private func setupCallbacks() {
         // Camera frames → Server
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
@@ -335,4 +360,5 @@ struct V3MainView: View {
 
 #Preview {
     V3MainView()
+        .environmentObject(AppState())
 }
