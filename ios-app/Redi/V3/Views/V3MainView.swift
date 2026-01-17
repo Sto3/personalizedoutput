@@ -207,25 +207,27 @@ struct V3MainView: View {
                 .padding(.horizontal, 40)
             }
 
-            // Start/Stop button
-            Button(action: toggleSession) {
-                ZStack {
-                    Circle()
-                        .fill(buttonDisabled ? Color.gray : (isSessionActive ? Color.red : Color.green))
-                        .frame(width: compact ? 60 : 80, height: compact ? 60 : 80)
-                        .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
+            // Start/Stop button - using onTapGesture to avoid SwiftUI button re-render triggers
+            ZStack {
+                Circle()
+                    .fill(buttonDisabled ? Color.gray : (isSessionActive ? Color.red : Color.green))
+                    .frame(width: compact ? 60 : 80, height: compact ? 60 : 80)
+                    .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
 
-                    if isConnecting || buttonDisabled {
-                        ProgressView()
-                            .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                    } else {
-                        Image(systemName: isSessionActive ? "stop.fill" : "play.fill")
-                            .foregroundColor(.white)
-                            .font(compact ? .title2 : .title)
-                    }
+                if isConnecting || buttonDisabled {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Image(systemName: isSessionActive ? "stop.fill" : "play.fill")
+                        .foregroundColor(.white)
+                        .font(compact ? .title2 : .title)
                 }
             }
-            .disabled(isConnecting || buttonDisabled)
+            .contentShape(Circle())
+            .onTapGesture {
+                guard !isConnecting && !buttonDisabled else { return }
+                toggleSession()
+            }
 
             if !compact {
                 Text(isSessionActive ? "Tap to stop" : "Tap to start")
