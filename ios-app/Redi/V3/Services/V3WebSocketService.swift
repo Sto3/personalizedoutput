@@ -114,9 +114,6 @@ class V3WebSocketService: ObservableObject {
     }
 
     func disconnect() {
-        print("[V3WebSocket] disconnect() called - stack trace:")
-        Thread.callStackSymbols.prefix(8).forEach { print($0) }
-
         isConnecting = false
         isManualDisconnect = true
         stopHeartbeat()
@@ -351,7 +348,6 @@ class V3WebSocketService: ObservableObject {
 
             case .failure(let error):
                 print("[V3WebSocket] Receive error: \(error)")
-                print("[V3WebSocket] WebSocket readyState: \(String(describing: self?.webSocket?.state))")
                 DispatchQueue.main.async {
                     self?.isConnected = false
                     self?.connectionState = .error(error.localizedDescription)

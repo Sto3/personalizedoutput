@@ -69,12 +69,6 @@ struct V3MainView: View {
         }
         .onAppear {
             setupCallbacks()
-            // Auto-start session when V3 view appears
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if !isSessionActive {
-                    startSession()
-                }
-            }
         }
         .onChange(of: sensitivity) { newValue in
             if isSessionActive {
@@ -276,7 +270,7 @@ struct V3MainView: View {
     }
 
     private func startSession() {
-        print("[V3MainView] startSession() called")
+        print("[V3MainView] Starting session...")
         isConnecting = true
         isSessionReady = false
 
@@ -289,13 +283,10 @@ struct V3MainView: View {
 
         isSessionActive = true
         isConnecting = false
-        print("[V3MainView] Session started - camera, audio, websocket active")
     }
 
     private func stopSession() {
-        print("[V3MainView] stopSession() called - stack trace follows")
-        Thread.callStackSymbols.prefix(10).forEach { print($0) }
-
+        print("[V3MainView] Stopping session...")
         cameraService.stopCapture()
         audioService.stopRecording()
         webSocketService.disconnect()
@@ -304,7 +295,6 @@ struct V3MainView: View {
         isSessionActive = false
         isSessionReady = false
         lastTranscript = ""
-        print("[V3MainView] Session stopped")
     }
 
     private func exitV3() {
