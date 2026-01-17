@@ -348,6 +348,7 @@ class V3WebSocketService: ObservableObject {
 
             case .failure(let error):
                 print("[V3WebSocket] Receive error: \(error)")
+                print("[V3WebSocket] WebSocket readyState: \(String(describing: self?.webSocket?.state))")
                 DispatchQueue.main.async {
                     self?.isConnected = false
                     self?.connectionState = .error(error.localizedDescription)

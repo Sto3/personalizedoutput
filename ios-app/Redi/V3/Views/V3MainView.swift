@@ -82,12 +82,6 @@ struct V3MainView: View {
             }
         }
         .animation(.easeInOut(duration: 0.3), value: lastTranscript)
-        .onDisappear {
-            // Clean up when view disappears
-            if isSessionActive {
-                stopSession()
-            }
-        }
     }
 
     // MARK: - Portrait Layout
@@ -282,6 +276,7 @@ struct V3MainView: View {
     }
 
     private func startSession() {
+        print("[V3MainView] startSession() called")
         isConnecting = true
         isSessionReady = false
 
@@ -294,9 +289,13 @@ struct V3MainView: View {
 
         isSessionActive = true
         isConnecting = false
+        print("[V3MainView] Session started - camera, audio, websocket active")
     }
 
     private func stopSession() {
+        print("[V3MainView] stopSession() called - stack trace follows")
+        Thread.callStackSymbols.prefix(10).forEach { print($0) }
+
         cameraService.stopCapture()
         audioService.stopRecording()
         webSocketService.disconnect()
@@ -305,6 +304,7 @@ struct V3MainView: View {
         isSessionActive = false
         isSessionReady = false
         lastTranscript = ""
+        print("[V3MainView] Session stopped")
     }
 
     private func exitV3() {
