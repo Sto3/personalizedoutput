@@ -274,14 +274,14 @@ struct V3MainView: View {
         print("[V3MainView] Toggle: isSessionActive=\(isSessionActive)")
         if isSessionActive {
             stopSession()
+            // Re-enable button after stopping
+            buttonDisabled = false
         } else {
-            // Disable button for 5 seconds after starting to prevent accidental stop
+            // Disable start/stop button for ENTIRE session
+            // User must use X button to exit (prevents SwiftUI re-render bug)
             buttonDisabled = true
             startSession()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                self.buttonDisabled = false
-                print("[V3MainView] Button re-enabled")
-            }
+            // NO automatic re-enable - use X button to stop
         }
     }
 
