@@ -23,6 +23,7 @@ struct V3MainView: View {
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
     @State private var isSessionReady = false
+    @State private var lastToggleTime: Date = .distantPast  // Debounce protection
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
@@ -262,6 +263,16 @@ struct V3MainView: View {
     }
 
     private func toggleSession() {
+        // Debounce: ignore taps within 2 seconds of last toggle
+        let now = Date()
+        let timeSinceLastToggle = now.timeIntervalSince(lastToggleTime)
+        if timeSinceLastToggle < 2.0 {
+            print("[V3MainView] Toggle ignored - debounce (\(String(format: "%.1f", timeSinceLastToggle))s since last)")
+            return
+        }
+        lastToggleTime = now
+
+        print("[V3MainView] Toggle: isSessionActive=\(isSessionActive)")
         if isSessionActive {
             stopSession()
         } else {
