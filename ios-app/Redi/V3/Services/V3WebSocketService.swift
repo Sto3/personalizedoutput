@@ -114,6 +114,9 @@ class V3WebSocketService: ObservableObject {
     }
 
     func disconnect() {
+        print("[V3WebSocket] disconnect() called - stack trace:")
+        Thread.callStackSymbols.prefix(8).forEach { print($0) }
+
         isConnecting = false
         isManualDisconnect = true
         stopHeartbeat()
