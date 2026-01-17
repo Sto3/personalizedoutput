@@ -44,6 +44,9 @@ interface V3Session {
   // Timing tracking
   speechStoppedAt: number;
   responseStartedAt: number;
+  // Echo suppression - prevents Redi from hearing its own voice
+  isRediSpeaking: boolean;
+  rediStoppedSpeakingAt: number;
   // Response guards (military-grade)
   lastResponses: string[];
   lastResponseTime: number;
@@ -155,6 +158,9 @@ export async function initRediV3(server: HTTPServer): Promise<void> {
       interjectionInterval: null,
       speechStoppedAt: 0,
       responseStartedAt: 0,
+      // Echo suppression
+      isRediSpeaking: false,
+      rediStoppedSpeakingAt: 0,
       lastResponses: [],
       lastResponseTime: 0,
       // Military-grade additions
@@ -334,6 +340,21 @@ function handleClientMessage(session: V3Session, message: any): void {
     case 'audio':
       // Forward audio to OpenAI (with optional denoising)
       if (message.data) {
+        // ECHO SUPPRESSION: Discard audio while Redi is speaking
+        // This prevents Redi from hearing its own voice through the mic
+        const ECHO_GRACE_PERIOD_MS = 500;  // Also discard audio for 500ms after Redi stops
+        const timeSinceRediStopped = Date.now() - session.rediStoppedSpeakingAt;
+
+        if (session.isRediSpeaking) {
+          // Redi is currently speaking - discard this audio
+          return;
+        }
+
+        if (session.rediStoppedSpeakingAt > 0 && timeSinceRediStopped < ECHO_GRACE_PERIOD_MS) {
+          // Redi just stopped speaking - grace period to catch echo tail
+          return;
+        }
+
         let audioData = message.data;
         // Debug: log audio receipt (first few chunks only to avoid spam)
         if (!session.lastTranscript) {
@@ -538,6 +559,7 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       // === RESPONSE LIFECYCLE ===
       case 'response.created':
         session.responseStartedAt = Date.now();
+        session.isRediSpeaking = true;  // Echo suppression: Redi is now speaking
         const waitTime = session.speechStoppedAt > 0
           ? session.responseStartedAt - session.speechStoppedAt
           : 0;
@@ -545,6 +567,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         break;
 
       case 'response.done':
+        session.isRediSpeaking = false;  // Echo suppression: Redi finished speaking
+        session.rediStoppedSpeakingAt = Date.now();
         console.log(`[Redi V3] ✅ Response complete`);
         break;
 
