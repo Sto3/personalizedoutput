@@ -122,12 +122,14 @@ struct V3MainView: View {
 
     private var statusBar: some View {
         HStack {
-            // Back button to exit V3
-            Button(action: exitV3) {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundColor(.white.opacity(0.7))
-            }
+            // Back button to exit V3 - using onTapGesture to avoid SwiftUI auto-trigger bug
+            Image(systemName: "xmark.circle.fill")
+                .font(.title2)
+                .foregroundColor(.white.opacity(0.7))
+                .contentShape(Circle())
+                .onTapGesture {
+                    exitV3()
+                }
 
             Circle()
                 .fill(statusColor)
