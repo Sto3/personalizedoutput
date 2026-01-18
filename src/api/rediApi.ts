@@ -1224,6 +1224,97 @@ router.get('/history/stats', async (req: Request, res: Response) => {
   }
 });
 
+// ============================================================
+// VISUAL NAVIGATION ENDPOINT
+// ============================================================
+
+/**
+ * POST /api/redi/visual-navigation
+ * Analyze a forward-facing camera frame to provide landmark-based navigation hints.
+ * Transforms "Turn right in 400 feet" into "Turn right at the Shell station ahead"
+ */
+router.post('/visual-navigation', async (req: Request, res: Response) => {
+  const { frame, instruction, context } = req.body;
+
+  if (!frame || !instruction) {
+    res.status(400).json({ error: 'Missing frame or instruction' });
+    return;
+  }
+
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  if (!openaiApiKey) {
+    console.error('[Visual Nav] OpenAI API key not configured');
+    res.status(503).json({ error: 'Vision service not configured' });
+    return;
+  }
+
+  try {
+    // Call GPT-4o vision to analyze the frame
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openaiApiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: `You are a navigation assistant helping a driver. Given a forward-facing camera view and a navigation instruction, provide a more helpful landmark-based direction.
+
+Rules:
+- Be CONCISE - the driver needs quick, clear guidance
+- Focus on VISIBLE landmarks: gas stations, stores, traffic lights, signs, buildings
+- If you see a clear landmark near the turn, use it: "Turn right at the Shell station"
+- If no obvious landmark, describe what's visible: "Turn right after the red building"
+- Never invent landmarks you can't see
+- Maximum 10 words
+- If you can't see anything helpful, respond with just the original instruction shortened`
+          },
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'text',
+                text: `Navigation instruction: "${instruction}"\n\nWhat visible landmark can help the driver know where to turn?`
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${frame}`,
+                  detail: 'low'  // Fast processing for driving context
+                }
+              }
+            ]
+          }
+        ],
+        max_tokens: 50,
+        temperature: 0.3  // Low temperature for consistent, factual responses
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Visual Nav] OpenAI API error:', errorText);
+      res.status(500).json({ error: 'Vision analysis failed' });
+      return;
+    }
+
+    const data = await response.json();
+    const hint = data.choices?.[0]?.message?.content?.trim() || instruction;
+
+    console.log(`[Visual Nav] "${instruction}" → "${hint}"`);
+
+    res.json({ hint });
+
+  } catch (error) {
+    console.error('[Visual Nav] Error:', error);
+    // Return original instruction as fallback
+    res.json({ hint: instruction });
+  }
+});
+
 /**
  * Helper: Get display name for mode
  */

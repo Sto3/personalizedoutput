@@ -23,6 +23,7 @@ class DrivingViewModel: ObservableObject {
     private let rearAwareness = RearAwarenessService()
     private let ruleEngine = DrivingRuleEngine()
     private let tts = DrivingTTSService()
+    private let visualNavigation = VisualNavigationService()
 
     // MARK: - Published State
 
@@ -51,9 +52,27 @@ class DrivingViewModel: ObservableObject {
     }
 
     private func setupBindings() {
-        // Navigation instructions → Rule Engine → TTS
+        // Navigation instructions → Visual Analysis → Rule Engine → TTS
         navigationService.onInstructionReady = { [weak self] instruction in
-            self?.ruleEngine.queueNavigationInstruction(instruction)
+            guard let self = self else { return }
+
+            // Try to enhance with landmark context
+            self.visualNavigation.analyzeForLandmarks(instruction: instruction)
+
+            // Queue original instruction (may be enhanced by visual callback)
+            self.ruleEngine.queueNavigationInstruction(instruction)
+        }
+
+        // Visual navigation provides landmark-enhanced instructions
+        visualNavigation.onLandmarkHintReady = { [weak self] hint in
+            guard let self = self else { return }
+            // Speak the landmark-enhanced instruction immediately
+            // This provides "Turn right at the Shell station" instead of "Turn right in 400 feet"
+            self.tts.speak(hint, priority: true)
+            DispatchQueue.main.async {
+                self.currentInstruction = hint
+            }
+            print("[Driving] 📍 Visual landmark: \(hint)")
         }
 
         navigationService.onDestinationReached = { [weak self] in
@@ -166,6 +185,7 @@ class DrivingViewModel: ObservableObject {
         // Start all monitoring services
         driverMonitoring.startMonitoring()
         rearAwareness.startMonitoring()
+        visualNavigation.startCapture()  // Forward-facing camera for landmarks
 
         // Start duration timer
         durationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -192,6 +212,7 @@ class DrivingViewModel: ObservableObject {
         driverMonitoring.stopMonitoring()
         rearAwareness.stopMonitoring()
         navigationService.stopNavigation()
+        visualNavigation.stopCapture()
 
         // Stop timers
         durationTimer?.invalidate()

@@ -34,6 +34,15 @@
 		ED2BF773D000DBF150F17712 /* StoreKitService.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */; };
 		ED79ACF21932FDCFD407078B /* AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 150F0DC41592737940795313 /* AudioService.swift */; };
 		EDDC5BDA47D35F4CE1CAF36D /* V3CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A15A5C980612F788435CE38 /* V3CameraService.swift */; };
+		/* Driving files */
+		DR1V1NG001B001A001B001C1 /* DrivingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG001F001A001B001C1 /* DrivingView.swift */; };
+		DR1V1NG002B002A002B002C2 /* DrivingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG002F002A002B002C2 /* DrivingViewModel.swift */; };
+		DR1V1NG003B003A003B003C3 /* NavigationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG003F003A003B003C3 /* NavigationService.swift */; };
+		DR1V1NG004B004A004B004C4 /* DriverMonitoringService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG004F004A004B004C4 /* DriverMonitoringService.swift */; };
+		DR1V1NG005B005A005B005C5 /* RearAwarenessService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG005F005A005B005C5 /* RearAwarenessService.swift */; };
+		DR1V1NG006B006A006B006C6 /* DrivingRuleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG006F006A006B006C6 /* DrivingRuleEngine.swift */; };
+		DR1V1NG007B007A007B007C7 /* DrivingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG007F007A007B007C7 /* DrivingTTSService.swift */; };
+		DR1V1NG008B008A008B008C8 /* VisualNavigationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG008F008A008B008C8 /* VisualNavigationService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +75,15 @@
 		DD078B8E09E9F023A212E581 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
 		F2EB01869FCA9D8F2292C998 /* Redi.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Redi.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		/* Driving files */
+		DR1V1NG001F001A001B001C1 /* DrivingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingView.swift; path = Driving/Views/DrivingView.swift; sourceTree = "<group>"; };
+		DR1V1NG002F002A002B002C2 /* DrivingViewModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingViewModel.swift; path = Driving/ViewModels/DrivingViewModel.swift; sourceTree = "<group>"; };
+		DR1V1NG003F003A003B003C3 /* NavigationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = NavigationService.swift; path = Driving/Services/NavigationService.swift; sourceTree = "<group>"; };
+		DR1V1NG004F004A004B004C4 /* DriverMonitoringService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DriverMonitoringService.swift; path = Driving/Services/DriverMonitoringService.swift; sourceTree = "<group>"; };
+		DR1V1NG005F005A005B005C5 /* RearAwarenessService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = RearAwarenessService.swift; path = Driving/Services/RearAwarenessService.swift; sourceTree = "<group>"; };
+		DR1V1NG006F006A006B006C6 /* DrivingRuleEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingRuleEngine.swift; path = Driving/Services/DrivingRuleEngine.swift; sourceTree = "<group>"; };
+		DR1V1NG007F007A007B007C7 /* DrivingTTSService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingTTSService.swift; path = Driving/Services/DrivingTTSService.swift; sourceTree = "<group>"; };
+		DR1V1NG008F008A008B008C8 /* VisualNavigationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisualNavigationService.swift; path = Driving/Services/VisualNavigationService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -169,12 +187,53 @@
 			name = Views;
 			sourceTree = "<group>";
 		};
+		/* Driving Groups */
+		DR1V1NG000G000A000B000C0 /* Driving */ = {
+			isa = PBXGroup;
+			children = (
+				DR1V1NG000G001A001B001C1 /* Services */,
+				DR1V1NG000G002A002B002C2 /* ViewModels */,
+				DR1V1NG000G003A003B003C3 /* Views */,
+			);
+			name = Driving;
+			sourceTree = "<group>";
+		};
+		DR1V1NG000G001A001B001C1 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				DR1V1NG004F004A004B004C4 /* DriverMonitoringService.swift */,
+				DR1V1NG006F006A006B006C6 /* DrivingRuleEngine.swift */,
+				DR1V1NG007F007A007B007C7 /* DrivingTTSService.swift */,
+				DR1V1NG003F003A003B003C3 /* NavigationService.swift */,
+				DR1V1NG005F005A005B005C5 /* RearAwarenessService.swift */,
+				DR1V1NG008F008A008B008C8 /* VisualNavigationService.swift */,
+			);
+			name = Services;
+			sourceTree = "<group>";
+		};
+		DR1V1NG000G002A002B002C2 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				DR1V1NG002F002A002B002C2 /* DrivingViewModel.swift */,
+			);
+			name = ViewModels;
+			sourceTree = "<group>";
+		};
+		DR1V1NG000G003A003B003C3 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				DR1V1NG001F001A001B001C1 /* DrivingView.swift */,
+			);
+			name = Views;
+			sourceTree = "<group>";
+		};
 		FE7D5ACDAD9848F606558C22 = {
 			isa = PBXGroup;
 			children = (
 				97D9CC5312EFE7EC3589A208 /* Assets.xcassets */,
 				A09B1F75008D18DF50E341BE /* StoreKitConfiguration.storekit */,
 				C9ED63D2C52CD9A595BD6DF1 /* App */,
+				DR1V1NG000G000A000B000C0 /* Driving */,
 				411FFA900230A532330A79C8 /* Models */,
 				2E58C488A3F1229AE1A8082A /* Services */,
 				DB23F85911621373C42106FD /* ViewModels */,
@@ -278,6 +337,15 @@
 				286BF8E5642D302C409B86FA /* V3WebSocketService.swift in Sources */,
 				5629191D2A7213E67B75C821 /* V3MainView.swift in Sources */,
 				80809D51FC00F865012D06C4 /* V3CameraPreview.swift in Sources */,
+				/* Driving sources */
+				DR1V1NG001B001A001B001C1 /* DrivingView.swift in Sources */,
+				DR1V1NG002B002A002B002C2 /* DrivingViewModel.swift in Sources */,
+				DR1V1NG003B003A003B003C3 /* NavigationService.swift in Sources */,
+				DR1V1NG004B004A004B004C4 /* DriverMonitoringService.swift in Sources */,
+				DR1V1NG005B005A005B005C5 /* RearAwarenessService.swift in Sources */,
+				DR1V1NG006B006A006B006C6 /* DrivingRuleEngine.swift in Sources */,
+				DR1V1NG007B007A007B007C7 /* DrivingTTSService.swift in Sources */,
+				DR1V1NG008B008A008B008C8 /* VisualNavigationService.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
