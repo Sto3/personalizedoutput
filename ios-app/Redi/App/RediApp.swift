@@ -65,7 +65,12 @@ struct ContentView: View {
             } else if !appState.hasCompletedOnboarding {
                 OnboardingView()
             } else if let session = appState.currentSession {
-                SessionView(session: session)
+                // Route driving mode to dedicated DrivingView (90% on-device)
+                if session.mode == .driving {
+                    DrivingView()
+                } else {
+                    SessionView(session: session)
+                }
             } else {
                 HomeView()
             }
