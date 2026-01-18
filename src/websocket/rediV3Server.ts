@@ -797,6 +797,7 @@ function wantsVisualContext(session: V3Session): boolean {
 /**
  * Always inject visual context when user speaks.
  * Redi should always be aware of what the camera sees.
+ * This is the core value proposition - like having a coach actually there.
  */
 function maybeInjectVisualContext(session: V3Session): void {
   // Skip for driving mode (uses on-device services)
@@ -804,30 +805,24 @@ function maybeInjectVisualContext(session: V3Session): void {
     return;
   }
 
-  // Always inject visual context if we have a frame
-  // Redi should always be visually aware, not just when asked
-  const frameAge = session.currentFrame ? Date.now() - session.frameTimestamp : Infinity;
-
-  if (frameAge > 5000) {
-    // Frame is too stale - request a fresh one from iOS
-    console.log(`[Redi V3] 📷 Requesting fresh frame (current is ${frameAge}ms old)`);
-    sendToClient(session, { type: 'request_frame' });
-    session.pendingVisualQuestion = true;
-    session.hasRecentVisual = false;
-
-    // Wait up to 500ms for fresh frame, then proceed without if needed
-    setTimeout(() => {
-      if (session.pendingVisualQuestion) {
-        console.log(`[Redi V3] ⏰ Fresh frame timeout - responding without visual`);
-        session.pendingVisualQuestion = false;
-        // Don't inject stale frame - just respond without visual context
-      }
-    }, 500);
-  } else if (session.currentFrame) {
-    // Frame is fresh enough - inject immediately
-    console.log(`[Redi V3] 👁️ Injecting visual context (always-on vision)`);
-    injectVisualContext(session);
+  // No frame at all - can't inject vision
+  if (!session.currentFrame) {
+    console.log(`[Redi V3] ❌ No frame available - responding without vision`);
+    return;
   }
+
+  const frameAge = Date.now() - session.frameTimestamp;
+
+  // If frame is stale, request a fresh one but still use what we have
+  if (frameAge > 3000) {
+    console.log(`[Redi V3] 📷 Frame is ${frameAge}ms old - requesting fresh but using current`);
+    sendToClient(session, { type: 'request_frame' });
+  }
+
+  // ALWAYS inject visual context - Redi should always see what the camera sees
+  // Even a slightly stale frame is better than no visual context
+  console.log(`[Redi V3] 👁️ Injecting visual context (age: ${frameAge}ms)`);
+  injectVisualContext(session);
 }
 
 /**
