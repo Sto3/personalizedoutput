@@ -409,7 +409,12 @@ class V3WebSocketService: ObservableObject {
         case "session_ready":
             print("[V3WebSocket] Session ready")
             DispatchQueue.main.async { [weak self] in
-                self?.onSessionReady?()
+                guard let self = self else { return }
+                // Ensure connection state is correct when session is ready
+                self.isConnected = true
+                self.isReconnecting = false
+                self.connectionState = .connected
+                self.onSessionReady?()
             }
 
         case "error":
