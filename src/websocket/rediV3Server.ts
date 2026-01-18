@@ -51,6 +51,8 @@ interface V3Session {
   // Response guards (military-grade)
   lastResponses: string[];
   lastResponseTime: number;
+  // Vision context tracking
+  visualContextInjected: boolean;  // True when we've sent a frame for this response
   // Military-grade additions
   currentMode: RediMode;
   lastTranscript: string;
@@ -72,12 +74,11 @@ const RESPONSE_GUARDS = {
     /is there anything else/i,
     /great question/i,
     /that's a great/i,
-    /I can see (that )?(you|it)/i,
-    /I notice (that )?(you|it)/i,
   ],
-  maxWords: 25,  // Allow conversational responses
-  minResponseGapMs: 1500,  // Minimum 1.5s between responses
-  similarityThreshold: 0.6,  // Reject if 60% similar to recent response
+  maxWords: 50,  // Standard responses - generous for natural conversation
+  maxWordsVision: 100,  // Vision responses need more room to describe what's seen
+  minResponseGapMs: 1000,  // Minimum 1s between responses
+  similarityThreshold: 0.7,  // Only reject if 70% similar to recent response
 };
 
 // Response quality checks
@@ -89,10 +90,11 @@ function checkResponseQuality(text: string, session: V3Session): { pass: boolean
     }
   }
 
-  // 2. Length check
+  // 2. Length check - allow longer responses for visual questions
   const wordCount = text.split(/\s+/).length;
-  if (wordCount > RESPONSE_GUARDS.maxWords) {
-    return { pass: false, reason: `Too long: ${wordCount} words (max ${RESPONSE_GUARDS.maxWords})` };
+  const maxWords = session.visualContextInjected ? RESPONSE_GUARDS.maxWordsVision : RESPONSE_GUARDS.maxWords;
+  if (wordCount > maxWords) {
+    return { pass: false, reason: `Too long: ${wordCount} words (max ${maxWords})` };
   }
 
   // 3. Rate limit check
@@ -165,6 +167,8 @@ export async function initRediV3(server: HTTPServer): Promise<void> {
       lastAudioSentToClientAt: 0,
       lastResponses: [],
       lastResponseTime: 0,
+      // Vision context tracking
+      visualContextInjected: false,
       // Military-grade additions
       currentMode: 'general',
       lastTranscript: '',
@@ -320,21 +324,25 @@ CRITICAL RULES:
 2. For greetings like "Hey Redi" - just respond with a friendly greeting, don't describe anything
 3. Answer questions naturally - if they ask about something specific, help with that
 
-COMMUNICATION STYLE:
-- Be conversational and natural, like a helpful friend
-- Keep responses concise: 1-2 short sentences (10-20 words ideal)
-- Match the user's energy and intent
+RESPONSE LENGTH RULES:
+- Default: Keep responses SHORT (10-20 words, 1-2 sentences)
+- Greetings/acknowledgments: Very brief (5-10 words)
+- Visual descriptions: Can be longer (30-50 words) to describe what you see
+- Complex questions: Match response length to question complexity
+- If the user wants more detail, they'll ask
 
 EXAMPLES:
 User: "Hey Redi" → "Hey! What's up?"
-User: "What do you see?" → "Looks like a keyboard and monitor setup."
+User: "What do you see?" → "I see a laptop screen showing a webpage with some text and navigation buttons."
 User: "What am I holding?" → "That's a water bottle."
-User: "Hello" → "Hi there! How can I help?"
+User: "Hello" → "Hi there!"
+User: "Explain how this works" → [Provide a clear, helpful explanation at appropriate length]
 
 AVOID:
+- Rambling or over-explaining simple things
 - Describing what you see unless asked
-- Filler phrases: "Sure!", "Great question!"
-- Long responses over 25 words`;
+- Filler phrases: "Sure!", "Great question!", "Happy to help!"
+- Starting with "I can see that..." or "I notice that..."`;
 }
 
 function handleClientMessage(session: V3Session, message: any): void {
@@ -608,6 +616,7 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'response.done':
         session.isRediSpeaking = false;  // Echo suppression: Redi finished speaking
         session.rediStoppedSpeakingAt = Date.now();
+        session.visualContextInjected = false;  // Reset vision flag for next response
 
         // Tell iOS to unmute mic after a short delay (let audio finish playing)
         setTimeout(() => {
@@ -643,6 +652,7 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'response.output_item.done':
       case 'rate_limits.updated':
       case 'input_audio_buffer.committed':
+      case 'input_audio_buffer.cleared':  // Echo suppression confirmation
       case 'conversation.item.created':
       case 'conversation.item.input_audio_transcription.delta':
       case 'response.audio_transcript.delta':
@@ -739,6 +749,9 @@ function injectVisualContext(session: V3Session): void {
 
   const frameSize = session.currentFrame.length;
   console.log(`[Redi V3] 📸 Injecting visual context - size: ${frameSize} bytes, age: ${frameAge}ms, trigger: "${session.lastTranscript}"`);
+
+  // Mark that we've injected visual context so response guards allow longer responses
+  session.visualContextInjected = true;
 
   // Send image directly to Realtime API (native support in GA model)
   // image_url must be a string, not an object
