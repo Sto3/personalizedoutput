@@ -29,7 +29,8 @@ import { analyzeEdgeCase, shouldUseDeepAnalysis, formatDeepAnalysisResult } from
 
 // OpenAI Realtime API configuration
 // Using GA model with native image support
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
+// Use explicit vision-capable model for image support
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
 
 interface V3Session {
   id: string;
@@ -803,15 +804,19 @@ function injectVisualContext(session: V3Session): void {
   }
 
   const frameSize = session.currentFrame.length;
-  console.log(`[Redi V3] 📸 Injecting visual context - size: ${frameSize} bytes, age: ${frameAge}ms, trigger: "${session.lastTranscript}"`);
+  console.log(`[Redi V3] 📸 Injecting visual context:`);
+  console.log(`[Redi V3]    Frame size: ${frameSize} chars`);
+  console.log(`[Redi V3]    Frame age: ${frameAge}ms`);
+  console.log(`[Redi V3]    Trigger: "${session.lastTranscript}"`);
+  console.log(`[Redi V3]    First 50 chars: ${session.currentFrame.substring(0, 50)}...`);
 
   // Mark that we've injected visual context
   session.visualContextInjected = true;
   session.hasRecentVisual = true;
 
-  // Send image directly to Realtime API (native support in GA model)
-  // image_url must be a string, not an object
-  sendToOpenAI(session, {
+  // FIXED FORMAT: Use 'image' property with raw base64, not 'image_url' with data URL
+  // The Realtime API expects just the base64 string without the data URL prefix
+  const imageMessage = {
     type: 'conversation.item.create',
     item: {
       type: 'message',
@@ -819,11 +824,30 @@ function injectVisualContext(session: V3Session): void {
       content: [
         {
           type: 'input_image',
-          image_url: `data:image/jpeg;base64,${session.currentFrame}`
+          image: session.currentFrame  // Raw base64, no "data:image/jpeg;base64," prefix
+        }
+      ]
+    }
+  };
+
+  console.log(`[Redi V3] 📤 Sending image message to OpenAI...`);
+  sendToOpenAI(session, imageMessage);
+
+  // Also send a text prompt to ensure the model processes the image
+  sendToOpenAI(session, {
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [
+        {
+          type: 'input_text',
+          text: '[An image of what the user is looking at was just provided. Please describe what you see in the image to help them.]'
         }
       ]
     }
   });
+  console.log(`[Redi V3] 📤 Sent image prompt text`);
 }
 
 async function maybeInterject(session: V3Session): Promise<void> {
