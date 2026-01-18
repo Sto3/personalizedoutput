@@ -306,9 +306,10 @@ function configureOpenAISession(session: V3Session): void {
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
+      type: 'conversation',  // Required for GA model
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
-      voice: 'onyx',  // Deep masculine voice
+      voice: 'coral',  // GA model voice (onyx not available in GA)
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
@@ -530,7 +531,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
     switch (event.type) {
       // === RESPONSE AUDIO ===
-      case 'response.audio.delta':
+      case 'response.audio.delta':        // Preview API
+      case 'response.output_audio.delta': // GA API
         // Forward audio to client
         if (event.delta) {
           sendToClient(session, {
@@ -543,7 +545,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         break;
 
       // === TRANSCRIPTS ===
-      case 'response.audio_transcript.done':
+      case 'response.audio_transcript.done':        // Preview API
+      case 'response.output_audio_transcript.done': // GA API
         // Redi's response - apply military-grade guards
         if (event.transcript) {
           const latency = session.responseStartedAt > 0
@@ -684,6 +687,7 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
       // === IGNORED EVENTS (don't log spam) ===
       case 'response.audio.done':
+      case 'response.output_audio.done':  // GA API
       case 'response.content_part.added':
       case 'response.content_part.done':
       case 'response.output_item.added':
@@ -693,6 +697,9 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'input_audio_buffer.cleared':  // Echo suppression confirmation
       case 'conversation.item.input_audio_transcription.delta':
       case 'response.audio_transcript.delta':
+      case 'response.output_audio_transcript.delta':  // GA API
+      case 'conversation.item.added':  // GA API
+      case 'conversation.item.done':   // GA API
         // Silently ignore these common events
         break;
 
