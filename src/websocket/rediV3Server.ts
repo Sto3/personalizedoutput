@@ -53,6 +53,9 @@ interface V3Session {
   lastResponseTime: number;
   // Vision context tracking
   visualContextInjected: boolean;  // True when we've sent a frame for this response
+  hasRecentVisual: boolean;  // True if we have a recent frame (< 3s old)
+  pendingVisualQuestion: boolean;  // True if waiting for fresh frame
+  currentResponseId: string | null;  // For barge-in cancellation
   // Military-grade additions
   currentMode: RediMode;
   lastTranscript: string;
@@ -169,6 +172,9 @@ export async function initRediV3(server: HTTPServer): Promise<void> {
       lastResponseTime: 0,
       // Vision context tracking
       visualContextInjected: false,
+      hasRecentVisual: false,
+      pendingVisualQuestion: false,
+      currentResponseId: null,
       // Military-grade additions
       currentMode: 'general',
       lastTranscript: '',
@@ -317,32 +323,33 @@ function configureOpenAISession(session: V3Session): void {
 }
 
 function getSystemPrompt(): string {
-  return `You are Redi, a helpful AI assistant. You have access to the user's camera but ONLY describe what you see when specifically asked.
+  return `You are Redi, a helpful AI assistant.
 
-CRITICAL RULES:
-1. ONLY describe what you see if the user asks "what do you see?" or similar
-2. For greetings like "Hey Redi" - just respond with a friendly greeting, don't describe anything
-3. Answer questions naturally - if they ask about something specific, help with that
+CRITICAL VISUAL RULES (MOST IMPORTANT):
+1. You can ONLY describe what you see if an image was JUST provided in this conversation turn
+2. If NO image was provided in this turn, you CANNOT see anything - say "I don't have a current view right now"
+3. NEVER guess or assume what's on screen based on conversation history
+4. NEVER claim to see something based on what was discussed - only what's in an actual image
+5. If asked about visuals without an image, say: "I can't see your screen at the moment. Could you describe what you're looking at?"
 
 RESPONSE LENGTH RULES:
 - Default: Keep responses SHORT (10-20 words, 1-2 sentences)
-- Greetings/acknowledgments: Very brief (5-10 words)
-- Visual descriptions: Can be longer (30-50 words) to describe what you see
+- Greetings: Very brief (5-10 words)
+- Visual descriptions: Can be longer (30-50 words) ONLY when you have an actual image
 - Complex questions: Match response length to question complexity
-- If the user wants more detail, they'll ask
 
 EXAMPLES:
 User: "Hey Redi" → "Hey! What's up?"
-User: "What do you see?" → "I see a laptop screen showing a webpage with some text and navigation buttons."
-User: "What am I holding?" → "That's a water bottle."
+User: "What do you see?" (with image) → "I see a laptop screen with..."
+User: "What do you see?" (no image) → "I don't have a view right now. What are you looking at?"
+User: "Where is the Mail app?" (no image) → "I can't see your screen. Can you describe what icons you see?"
 User: "Hello" → "Hi there!"
-User: "Explain how this works" → [Provide a clear, helpful explanation at appropriate length]
 
 AVOID:
-- Rambling or over-explaining simple things
-- Describing what you see unless asked
-- Filler phrases: "Sure!", "Great question!", "Happy to help!"
-- Starting with "I can see that..." or "I notice that..."`;
+- Guessing screen contents based on conversation (THIS IS HALLUCINATION)
+- Saying "I can see where things are" when you have no image
+- Rambling or over-explaining
+- Filler phrases: "Sure!", "Great question!"`;
 }
 
 function handleClientMessage(session: V3Session, message: any): void {
@@ -432,6 +439,14 @@ function handleClientMessage(session: V3Session, message: any): void {
       // Store frame for interjection analysis
       session.currentFrame = message.data;
       session.frameTimestamp = Date.now();
+      session.hasRecentVisual = true;
+
+      // If we were waiting for a fresh frame for a visual question, inject it now
+      if (session.pendingVisualQuestion) {
+        console.log(`[Redi V3] 📸 Fresh frame received - injecting for visual question`);
+        session.pendingVisualQuestion = false;
+        injectVisualContext(session);
+      }
       break;
 
     case 'sensitivity':
@@ -584,6 +599,15 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'input_audio_buffer.speech_started':
         session.isUserSpeaking = true;
         console.log(`[Redi V3] 🎤 User started speaking`);
+
+        // BARGE-IN: If Redi is speaking, interrupt and let user talk
+        if (session.isRediSpeaking && session.currentResponseId) {
+          console.log(`[Redi V3] 🛑 User interrupted Redi - canceling response`);
+          sendToOpenAI(session, { type: 'response.cancel' });
+          sendToClient(session, { type: 'stop_audio' });
+          session.isRediSpeaking = false;
+          session.currentResponseId = null;
+        }
         break;
 
       case 'input_audio_buffer.speech_stopped':
@@ -598,6 +622,7 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'response.created':
         session.responseStartedAt = Date.now();
         session.isRediSpeaking = true;  // Echo suppression: Redi is now speaking
+        session.currentResponseId = event.response?.id || null;  // Track for barge-in
 
         // CRITICAL: Clear OpenAI's input audio buffer when response starts
         // This prevents echoes (Redi's own voice picked up by mic) from being transcribed
@@ -617,6 +642,7 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         session.isRediSpeaking = false;  // Echo suppression: Redi finished speaking
         session.rediStoppedSpeakingAt = Date.now();
         session.visualContextInjected = false;  // Reset vision flag for next response
+        session.currentResponseId = null;  // Clear response ID
 
         // Tell iOS to unmute mic after a short delay (let audio finish playing)
         setTimeout(() => {
@@ -723,10 +749,32 @@ function maybeInjectVisualContext(session: V3Session): void {
 
   // Check if user's question needs visual context
   if (!wantsVisualContext(session)) {
+    session.hasRecentVisual = false;
     return;
   }
 
-  injectVisualContext(session);
+  // Check frame freshness
+  const frameAge = session.currentFrame ? Date.now() - session.frameTimestamp : Infinity;
+
+  if (frameAge > 2000) {
+    // Frame is stale - request a fresh one from iOS
+    console.log(`[Redi V3] 📷 Requesting fresh frame (current is ${frameAge}ms old)`);
+    sendToClient(session, { type: 'request_frame' });
+    session.pendingVisualQuestion = true;
+    session.hasRecentVisual = false;
+
+    // Wait up to 500ms for fresh frame, then proceed with whatever we have
+    setTimeout(() => {
+      if (session.pendingVisualQuestion) {
+        console.log(`[Redi V3] ⏰ Fresh frame timeout - proceeding with stale frame`);
+        session.pendingVisualQuestion = false;
+        injectVisualContext(session);
+      }
+    }, 500);
+  } else {
+    // Frame is fresh enough - inject immediately
+    injectVisualContext(session);
+  }
 }
 
 /**
@@ -736,22 +784,25 @@ function maybeInjectVisualContext(session: V3Session): void {
 function injectVisualContext(session: V3Session): void {
   // Only inject if we have a recent frame
   if (!session.currentFrame) {
-    console.log('[Redi V3] No frame available for visual context');
+    console.log('[Redi V3] ❌ No frame available for visual context');
+    session.hasRecentVisual = false;
     return;
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
-  // Reduced from 3000ms to 2000ms for fresher frames
-  if (frameAge > 2000) {
-    console.log(`[Redi V3] Frame too old (${frameAge}ms), skipping visual context`);
+  // Allow up to 3 seconds for frames (increased from 2s to give fresh frame requests time)
+  if (frameAge > 3000) {
+    console.log(`[Redi V3] ❌ Frame too old (${frameAge}ms), skipping visual context`);
+    session.hasRecentVisual = false;
     return;
   }
 
   const frameSize = session.currentFrame.length;
   console.log(`[Redi V3] 📸 Injecting visual context - size: ${frameSize} bytes, age: ${frameAge}ms, trigger: "${session.lastTranscript}"`);
 
-  // Mark that we've injected visual context so response guards allow longer responses
+  // Mark that we've injected visual context
   session.visualContextInjected = true;
+  session.hasRecentVisual = true;
 
   // Send image directly to Realtime API (native support in GA model)
   // image_url must be a string, not an object

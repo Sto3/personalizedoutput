@@ -44,6 +44,8 @@ class V3WebSocketService: ObservableObject {
     var onError: ((Error) -> Void)?
     var onReconnected: (() -> Void)?  // Called when reconnection succeeds
     var onMicMuteChanged: ((Bool) -> Void)?  // Called when server requests mic mute/unmute (echo suppression)
+    var onStopAudio: (() -> Void)?  // Called when server requests immediate audio stop (barge-in)
+    var onRequestFrame: (() -> Void)?  // Called when server needs a fresh frame for visual context
 
     // Reconnection management
     private var reconnectAttempts = 0
@@ -429,6 +431,20 @@ class V3WebSocketService: ObservableObject {
                 DispatchQueue.main.async { [weak self] in
                     self?.onMicMuteChanged?(muted)
                 }
+            }
+
+        case "stop_audio":
+            // Barge-in: user interrupted, stop playing Redi's audio immediately
+            print("[V3WebSocket] Stop audio request (barge-in)")
+            DispatchQueue.main.async { [weak self] in
+                self?.onStopAudio?()
+            }
+
+        case "request_frame":
+            // Server needs a fresh frame for visual context
+            print("[V3WebSocket] Fresh frame requested")
+            DispatchQueue.main.async { [weak self] in
+                self?.onRequestFrame?()
             }
 
         default:

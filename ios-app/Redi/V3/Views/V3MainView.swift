@@ -362,6 +362,18 @@ struct V3MainView: View {
         webSocketService.onMicMuteChanged = { [weak audioService] muted in
             audioService?.isMicMuted = muted
         }
+
+        // Barge-in: server tells us to stop audio when user interrupts
+        webSocketService.onStopAudio = { [weak audioService] in
+            audioService?.stopAudio()
+        }
+
+        // Fresh frame request: server needs a fresh frame for visual context
+        webSocketService.onRequestFrame = { [weak cameraService, weak webSocketService] in
+            cameraService?.captureFrameNow { frameData in
+                webSocketService?.sendFrame(frameData)
+            }
+        }
     }
 }
 

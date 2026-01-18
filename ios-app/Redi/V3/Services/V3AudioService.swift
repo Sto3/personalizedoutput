@@ -74,6 +74,16 @@ class V3AudioService: ObservableObject {
             guard let audioEngine = audioEngine else { return }
 
             let inputNode = audioEngine.inputNode
+
+            // CRITICAL: Enable Voice Processing for Acoustic Echo Cancellation (AEC)
+            // This uses iOS's built-in echo cancellation to prevent Redi from hearing itself
+            do {
+                try inputNode.setVoiceProcessingEnabled(true)
+                print("[V3Audio] ✅ Voice Processing (AEC) enabled")
+            } catch {
+                print("[V3Audio] ⚠️ Voice Processing not available: \(error)")
+            }
+
             inputFormat = inputNode.outputFormat(forBus: 0)
 
             // Create output format (PCM 16-bit, 24kHz, mono)
@@ -380,6 +390,17 @@ class V3AudioService: ObservableObject {
         audioBuffer.removeAll()
         bufferLock.unlock()
         isBuffering = true
+    }
+
+    /// Stop audio playback immediately (for barge-in when user interrupts)
+    func stopAudio() {
+        print("[V3Audio] 🛑 Stopping audio playback (barge-in)")
+        playerNode?.stop()
+        clearBuffer()
+
+        DispatchQueue.main.async { [weak self] in
+            self?.isPlaying = false
+        }
     }
 
     func cleanup() {

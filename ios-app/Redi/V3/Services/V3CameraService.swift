@@ -179,6 +179,21 @@ class V3CameraService: NSObject, ObservableObject {
         }
     }
 
+    // MARK: - On-Demand Frame Capture
+
+    /// Callback for immediate frame capture request
+    private var pendingFrameCallback: ((Data) -> Void)?
+
+    /// Capture a frame immediately and return via callback (for visual context requests)
+    func captureFrameNow(completion: @escaping (Data) -> Void) {
+        guard isRunning else {
+            print("[V3Camera] Cannot capture frame - not running")
+            return
+        }
+        pendingFrameCallback = completion
+        print("[V3Camera] 📸 Fresh frame requested")
+    }
+
     // MARK: - Motion Detection
 
     /// Sample pixels from frame for motion detection (fast, ~100 pixels)
@@ -285,10 +300,15 @@ extension V3CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
         }
         lastFramePixels = currentPixels
 
-        // Smart rate limiting based on motion
+        // Check if there's a pending on-demand request (bypass rate limiting)
+        let hasPendingRequest = pendingFrameCallback != nil
+
+        // Smart rate limiting based on motion (skip if on-demand request)
         let now = Date()
-        let interval = motionDetected ? motionFrameInterval : staticFrameInterval
-        guard now.timeIntervalSince(lastFrameTime) >= interval else { return }
+        if !hasPendingRequest {
+            let interval = motionDetected ? motionFrameInterval : staticFrameInterval
+            guard now.timeIntervalSince(lastFrameTime) >= interval else { return }
+        }
         lastFrameTime = now
 
         // Create UIImage from pixel buffer
@@ -301,6 +321,14 @@ extension V3CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
         let image = UIImage(cgImage: cgImage)
 
         if let frameData = compressFrame(image) {
+            // Check for pending on-demand frame request first
+            if let callback = pendingFrameCallback {
+                pendingFrameCallback = nil
+                print("[V3Camera] 📸 Fresh frame captured and sent")
+                callback(frameData)
+            }
+
+            // Also send via regular callback
             onFrameCaptured?(frameData)
         }
     }
