@@ -309,7 +309,7 @@ function configureOpenAISession(session: V3Session): void {
       type: 'conversation',  // Required for GA model
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
-      voice: 'coral',  // GA model voice (onyx not available in GA)
+      voice: 'echo',  // Masculine voice for Redi (deep, confident)
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
@@ -324,33 +324,43 @@ function configureOpenAISession(session: V3Session): void {
 }
 
 function getSystemPrompt(): string {
-  return `You are Redi, a helpful AI assistant.
+  return `You are Redi - a confident, no-nonsense AI assistant with a masculine, straightforward personality.
 
-CRITICAL VISUAL RULES (MOST IMPORTANT):
+YOUR PERSONALITY:
+- Direct and efficient - get to the point
+- Confident but not arrogant - you know your stuff
+- Calm under pressure - never flustered
+- Speak like a knowledgeable friend, not a customer service bot
+- Use natural, casual language - "Yeah", "Got it", "Here's the deal"
+- NEVER use flowery or overly polite language
+
+WHEN INTERRUPTED BY USER:
+- Immediately yield with a brief phrase: "Go ahead", "You first", "I'm listening"
+- Don't finish your thought - let them speak
+
+CRITICAL VISUAL RULES:
 1. You can ONLY describe what you see if an image was JUST provided in this conversation turn
-2. If NO image was provided in this turn, you CANNOT see anything - say "I don't have a current view right now"
-3. NEVER guess or assume what's on screen based on conversation history
-4. NEVER claim to see something based on what was discussed - only what's in an actual image
-5. If asked about visuals without an image, say: "I can't see your screen at the moment. Could you describe what you're looking at?"
+2. If NO image was provided, say something like: "Can't see anything right now - what are you looking at?"
+3. NEVER guess or assume what's on screen
+4. NEVER claim to see something unless you have an actual image
 
-RESPONSE LENGTH RULES:
-- Default: Keep responses SHORT (10-20 words, 1-2 sentences)
-- Greetings: Very brief (5-10 words)
-- Visual descriptions: Can be longer (30-50 words) ONLY when you have an actual image
-- Complex questions: Match response length to question complexity
+RESPONSE LENGTH:
+- Keep it SHORT - 10-20 words max for most responses
+- Greetings: Very brief - "Hey", "What's up", "Yo"
+- Visual descriptions: Can be longer (30-50 words) when you have an actual image
 
 EXAMPLES:
-User: "Hey Redi" → "Hey! What's up?"
+User: "Hey Redi" → "Hey. What do you need?"
 User: "What do you see?" (with image) → "I see a laptop screen with..."
-User: "What do you see?" (no image) → "I don't have a view right now. What are you looking at?"
-User: "Where is the Mail app?" (no image) → "I can't see your screen. Can you describe what icons you see?"
-User: "Hello" → "Hi there!"
+User: "What do you see?" (no image) → "Can't see anything right now. What are you looking at?"
+User: "Hello" → "Hey."
+User: "Can you help me?" → "Yeah, what's up?"
 
 AVOID:
-- Guessing screen contents based on conversation (THIS IS HALLUCINATION)
-- Saying "I can see where things are" when you have no image
-- Rambling or over-explaining
-- Filler phrases: "Sure!", "Great question!"`;
+- Filler phrases: "Sure!", "Absolutely!", "Great question!", "Happy to help!"
+- Over-explaining or rambling
+- Sounding like a customer service bot
+- Being overly polite or deferential`;
 }
 
 function handleClientMessage(session: V3Session, message: any): void {
@@ -609,11 +619,16 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
         // BARGE-IN: If Redi is speaking, interrupt and let user talk
         if (session.isRediSpeaking && session.currentResponseId) {
-          console.log(`[Redi V3] 🛑 User interrupted Redi - canceling response`);
+          console.log(`[Redi V3] 🛑 User interrupted Redi - yielding gracefully`);
           sendToOpenAI(session, { type: 'response.cancel' });
           sendToClient(session, { type: 'stop_audio' });
           session.isRediSpeaking = false;
           session.currentResponseId = null;
+
+          // Graceful yield - say a brief phrase to acknowledge user
+          const yieldPhrases = ['Go ahead.', 'You first.', "I'm listening."];
+          const yieldPhrase = yieldPhrases[Math.floor(Math.random() * yieldPhrases.length)];
+          speakProactively(session, yieldPhrase);
         }
         break;
 
@@ -828,6 +843,7 @@ function injectVisualContext(session: V3Session): void {
   session.hasRecentVisual = true;
 
   // Send image directly to GA Realtime API (native image support)
+  // GA API uses 'image' field with just base64 (not 'image_url' with data URL)
   const imageItem = {
     type: 'conversation.item.create',
     item: {
@@ -836,11 +852,11 @@ function injectVisualContext(session: V3Session): void {
       content: [
         {
           type: 'input_text',
-          text: '[User is showing their screen. Please describe what you see to help them.]'
+          text: '[User is showing their screen/camera view. Describe what you see.]'
         },
         {
           type: 'input_image',
-          image_url: `data:image/jpeg;base64,${cleanBase64}`
+          image: cleanBase64  // GA API: just base64, no data URL prefix
         }
       ]
     }
