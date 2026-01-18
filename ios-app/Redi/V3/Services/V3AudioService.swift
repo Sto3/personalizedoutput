@@ -20,6 +20,7 @@ class V3AudioService: ObservableObject {
 
     @Published var isRecording = false
     @Published var isPlaying = false
+    @Published var isMicMuted = false  // Echo suppression: server can mute mic while Redi speaks
 
     var onAudioCaptured: ((Data) -> Void)?
 
@@ -188,6 +189,9 @@ class V3AudioService: ObservableObject {
 
         let dataSize = Int(convertedBuffer.frameLength) * 2  // 2 bytes per sample
         let data = Data(bytes: channelData[0], count: dataSize)
+
+        // Echo suppression: don't send audio while mic is muted (Redi is speaking)
+        guard !isMicMuted else { return }
 
         // Send to callback
         onAudioCaptured?(data)

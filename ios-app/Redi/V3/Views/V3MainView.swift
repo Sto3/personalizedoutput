@@ -356,6 +356,12 @@ struct V3MainView: View {
         webSocketService.onError = { error in
             print("[V3MainView] Error (suppressed): \(error.localizedDescription)")
         }
+
+        // Echo suppression: server tells us when to mute/unmute mic
+        // This prevents Redi from hearing its own voice through the speaker
+        webSocketService.onMicMuteChanged = { [weak audioService] muted in
+            audioService?.isMicMuted = muted
+        }
     }
 }
 

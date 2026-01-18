@@ -43,6 +43,7 @@ class V3WebSocketService: ObservableObject {
     var onSessionReady: (() -> Void)?
     var onError: ((Error) -> Void)?
     var onReconnected: (() -> Void)?  // Called when reconnection succeeds
+    var onMicMuteChanged: ((Bool) -> Void)?  // Called when server requests mic mute/unmute (echo suppression)
 
     // Reconnection management
     private var reconnectAttempts = 0
@@ -419,6 +420,16 @@ class V3WebSocketService: ObservableObject {
         case "pong":
             // Heartbeat response
             lastPongTime = Date()
+
+        case "mute_mic":
+            // Echo suppression: server is telling us to mute/unmute mic
+            // This prevents Redi from hearing its own voice through the speaker
+            if let muted = json["muted"] as? Bool {
+                print("[V3WebSocket] Mic mute request: \(muted ? "MUTE" : "UNMUTE")")
+                DispatchQueue.main.async { [weak self] in
+                    self?.onMicMuteChanged?(muted)
+                }
+            }
 
         default:
             print("[V3WebSocket] Unknown message type: \(type)")

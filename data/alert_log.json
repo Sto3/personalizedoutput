@@ -24,7 +24,22 @@
       "type": "daily_summary",
       "timestamp": "2026-01-14T19:00:18.152Z",
       "message": "📊 Daily Summary - 60 views, 0 generations"
+    },
+    {
+      "type": "daily_summary",
+      "timestamp": "2026-01-15T19:01:17.199Z",
+      "message": "📊 Daily Summary - 60 views, 0 generations"
+    },
+    {
+      "type": "daily_summary",
+      "timestamp": "2026-01-16T19:40:32.870Z",
+      "message": "📊 Daily Summary - 60 views, 0 generations"
+    },
+    {
+      "type": "daily_summary",
+      "timestamp": "2026-01-17T19:33:05.545Z",
+      "message": "📊 Daily Summary - 60 views, 0 generations"
     }
   ],
-  "lastDailySummary": "2026-01-14"
+  "lastDailySummary": "2026-01-17"
 }

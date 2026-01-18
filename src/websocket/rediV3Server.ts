@@ -590,6 +590,15 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'response.created':
         session.responseStartedAt = Date.now();
         session.isRediSpeaking = true;  // Echo suppression: Redi is now speaking
+
+        // CRITICAL: Clear OpenAI's input audio buffer when response starts
+        // This prevents echoes (Redi's own voice picked up by mic) from being transcribed
+        // Without this, OpenAI has already buffered audio that we can't discard server-side
+        sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+
+        // Also tell iOS to mute mic while Redi is speaking
+        sendToClient(session, { type: 'mute_mic', muted: true });
+
         const waitTime = session.speechStoppedAt > 0
           ? session.responseStartedAt - session.speechStoppedAt
           : 0;
@@ -599,6 +608,12 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'response.done':
         session.isRediSpeaking = false;  // Echo suppression: Redi finished speaking
         session.rediStoppedSpeakingAt = Date.now();
+
+        // Tell iOS to unmute mic after a short delay (let audio finish playing)
+        setTimeout(() => {
+          sendToClient(session, { type: 'mute_mic', muted: false });
+        }, 500);
+
         console.log(`[Redi V3] ✅ Response complete`);
         break;
 
