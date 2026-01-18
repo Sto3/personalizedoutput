@@ -29,8 +29,7 @@ import { analyzeEdgeCase, shouldUseDeepAnalysis, formatDeepAnalysisResult } from
 
 // OpenAI Realtime API configuration
 // Using GA model with native image support
-// Use explicit vision-capable model for image support
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
 interface V3Session {
   id: string;
@@ -254,8 +253,7 @@ async function connectToOpenAI(session: V3Session): Promise<void> {
 
     const ws = new WebSocket(OPENAI_REALTIME_URL, {
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'OpenAI-Beta': 'realtime=v1'
+        'Authorization': `Bearer ${apiKey}`
       }
     });
 
@@ -310,7 +308,7 @@ function configureOpenAISession(session: V3Session): void {
     session: {
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
-      voice: 'alloy',  // Natural, balanced voice
+      voice: 'onyx',  // Deep masculine voice
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
@@ -792,8 +790,7 @@ function maybeInjectVisualContext(session: V3Session): void {
 
 /**
  * Inject visual context by sending the frame directly to the Realtime API.
- * Based on Claude Chat research: use image_url with data URL format,
- * include text in same message, and explicitly trigger response.create
+ * The GA model (gpt-realtime) supports native image input.
  */
 function injectVisualContext(session: V3Session): void {
   // Only inject if we have a recent frame
@@ -818,15 +815,12 @@ function injectVisualContext(session: V3Session): void {
   console.log(`[Redi V3]    Frame size: ${cleanBase64.length} chars`);
   console.log(`[Redi V3]    Frame age: ${frameAge}ms`);
   console.log(`[Redi V3]    Trigger: "${session.lastTranscript}"`);
-  console.log(`[Redi V3]    Starts with: ${cleanBase64.substring(0, 30)}...`);
 
   // Mark that we've injected visual context
   session.visualContextInjected = true;
   session.hasRecentVisual = true;
 
-  // CORRECT FORMAT per OpenAI docs and Claude Chat research:
-  // - Use image_url with data URL (data:image/jpeg;base64,...)
-  // - Include text prompt in same message BEFORE the image
+  // Send image directly to GA Realtime API (native image support)
   const imageItem = {
     type: 'conversation.item.create',
     item: {
@@ -845,11 +839,10 @@ function injectVisualContext(session: V3Session): void {
     }
   };
 
-  console.log(`[Redi V3] 📤 Sending image message to OpenAI...`);
+  console.log(`[Redi V3] 📤 Sending image to OpenAI Realtime API...`);
   sendToOpenAI(session, imageItem);
 
-  // IMPORTANT: Explicitly trigger a response after image injection
-  // This ensures OpenAI processes the image before responding
+  // Trigger a response
   console.log(`[Redi V3] 📤 Triggering response.create for image...`);
   sendToOpenAI(session, { type: 'response.create' });
 }
