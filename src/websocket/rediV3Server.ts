@@ -676,6 +676,14 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         console.log(`[Redi V3] Session configured`);
         break;
 
+      // === CONVERSATION EVENTS ===
+      case 'conversation.item.created':
+        // Log when items are created - important for debugging image injection
+        if (event.item?.content?.some((c: any) => c.type === 'input_image')) {
+          console.log(`[Redi V3] ✅ Image item created successfully (id: ${event.item?.id})`);
+        }
+        break;
+
       // === IGNORED EVENTS (don't log spam) ===
       case 'response.audio.done':
       case 'response.content_part.added':
@@ -685,7 +693,6 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
       case 'rate_limits.updated':
       case 'input_audio_buffer.committed':
       case 'input_audio_buffer.cleared':  // Echo suppression confirmation
-      case 'conversation.item.created':
       case 'conversation.item.input_audio_transcription.delta':
       case 'response.audio_transcript.delta':
         // Silently ignore these common events
@@ -785,7 +792,8 @@ function maybeInjectVisualContext(session: V3Session): void {
 
 /**
  * Inject visual context by sending the frame directly to the Realtime API.
- * The GA model (gpt-4o-realtime) has native image support.
+ * Based on Claude Chat research: use image_url with data URL format,
+ * include text in same message, and explicitly trigger response.create
  */
 function injectVisualContext(session: V3Session): void {
   // Only inject if we have a recent frame
@@ -796,45 +804,30 @@ function injectVisualContext(session: V3Session): void {
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
-  // Allow up to 3 seconds for frames (increased from 2s to give fresh frame requests time)
+  // Allow up to 3 seconds for frames
   if (frameAge > 3000) {
     console.log(`[Redi V3] ❌ Frame too old (${frameAge}ms), skipping visual context`);
     session.hasRecentVisual = false;
     return;
   }
 
-  const frameSize = session.currentFrame.length;
+  // Clean base64 string (remove any line breaks or whitespace)
+  const cleanBase64 = session.currentFrame.replace(/[\r\n\s]/g, '');
+
   console.log(`[Redi V3] 📸 Injecting visual context:`);
-  console.log(`[Redi V3]    Frame size: ${frameSize} chars`);
+  console.log(`[Redi V3]    Frame size: ${cleanBase64.length} chars`);
   console.log(`[Redi V3]    Frame age: ${frameAge}ms`);
   console.log(`[Redi V3]    Trigger: "${session.lastTranscript}"`);
-  console.log(`[Redi V3]    First 50 chars: ${session.currentFrame.substring(0, 50)}...`);
+  console.log(`[Redi V3]    Starts with: ${cleanBase64.substring(0, 30)}...`);
 
   // Mark that we've injected visual context
   session.visualContextInjected = true;
   session.hasRecentVisual = true;
 
-  // FIXED FORMAT: Use 'image' property with raw base64, not 'image_url' with data URL
-  // The Realtime API expects just the base64 string without the data URL prefix
-  const imageMessage = {
-    type: 'conversation.item.create',
-    item: {
-      type: 'message',
-      role: 'user',
-      content: [
-        {
-          type: 'input_image',
-          image: session.currentFrame  // Raw base64, no "data:image/jpeg;base64," prefix
-        }
-      ]
-    }
-  };
-
-  console.log(`[Redi V3] 📤 Sending image message to OpenAI...`);
-  sendToOpenAI(session, imageMessage);
-
-  // Also send a text prompt to ensure the model processes the image
-  sendToOpenAI(session, {
+  // CORRECT FORMAT per OpenAI docs and Claude Chat research:
+  // - Use image_url with data URL (data:image/jpeg;base64,...)
+  // - Include text prompt in same message BEFORE the image
+  const imageItem = {
     type: 'conversation.item.create',
     item: {
       type: 'message',
@@ -842,12 +835,23 @@ function injectVisualContext(session: V3Session): void {
       content: [
         {
           type: 'input_text',
-          text: '[An image of what the user is looking at was just provided. Please describe what you see in the image to help them.]'
+          text: '[User is showing their screen. Please describe what you see to help them.]'
+        },
+        {
+          type: 'input_image',
+          image_url: `data:image/jpeg;base64,${cleanBase64}`
         }
       ]
     }
-  });
-  console.log(`[Redi V3] 📤 Sent image prompt text`);
+  };
+
+  console.log(`[Redi V3] 📤 Sending image message to OpenAI...`);
+  sendToOpenAI(session, imageItem);
+
+  // IMPORTANT: Explicitly trigger a response after image injection
+  // This ensures OpenAI processes the image before responding
+  console.log(`[Redi V3] 📤 Triggering response.create for image...`);
+  sendToOpenAI(session, { type: 'response.create' });
 }
 
 async function maybeInterject(session: V3Session): Promise<void> {
