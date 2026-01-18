@@ -85,8 +85,32 @@ const RESPONSE_GUARDS = {
   similarityThreshold: 0.7,  // Only reject if 70% similar to recent response
 };
 
+// Patterns that indicate the model is describing what it "sees"
+const VISION_CLAIM_PATTERNS = [
+  /i (can |)see /i,
+  /i('m| am) (looking at|seeing|viewing)/i,
+  /looks like/i,
+  /appears to be/i,
+  /there('s| is) a /i,
+  /i (can |)spot /i,
+  /in (the |this )?(image|picture|photo|frame|view|screen)/i,
+  /what i('m| am) seeing/i,
+  /from what i (can |)see/i,
+  /visible/i,
+  /i notice /i,
+];
+
 // Response quality checks
 function checkResponseQuality(text: string, session: V3Session): { pass: boolean; reason?: string } {
+  // 0. ANTI-HALLUCINATION: Block vision claims when no image was injected
+  if (!session.visualContextInjected) {
+    for (const pattern of VISION_CLAIM_PATTERNS) {
+      if (pattern.test(text)) {
+        return { pass: false, reason: `HALLUCINATION BLOCKED: Vision claim without image - "${pattern}"` };
+      }
+    }
+  }
+
   // 1. Banned patterns check
   for (const pattern of RESPONSE_GUARDS.bannedPatterns) {
     if (pattern.test(text)) {
@@ -309,7 +333,7 @@ function configureOpenAISession(session: V3Session): void {
       type: 'conversation',  // Required for GA model
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
-      voice: 'echo',  // Masculine voice for Redi (deep, confident)
+      voice: 'ash',  // Most masculine GA voice (deep, confident)
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
