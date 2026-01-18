@@ -69,9 +69,10 @@ let audioDenoiser: AudioDenoiser | null = null;
 
 // Military-grade response guards
 const RESPONSE_GUARDS = {
-  // Banned phrases that indicate low-quality responses
+  // Banned phrases that indicate low-quality/sycophantic responses
+  // Note: "sure" removed - it's a natural conversational word
   bannedPatterns: [
-    /^(sure|exactly|absolutely|definitely|of course)[!,.\s]/i,
+    /^(exactly|absolutely|definitely|of course)[!,.\s]/i,
     /happy to help/i,
     /let me know if/i,
     /is there anything else/i,
@@ -587,6 +588,10 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
             session.transcriptHistory.shift();
           }
 
+          // NOW inject visual context if this is a visual question
+          // This happens AFTER we have the actual transcript, not before
+          maybeInjectVisualContext(session);
+
           sendToClient(session, {
             type: 'transcript',
             text: event.transcript,
@@ -614,8 +619,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         session.isUserSpeaking = false;
         session.speechStoppedAt = Date.now();
         console.log(`[Redi V3] 🎤 User stopped speaking`);
-        // Frame injection now uses smart detection - only inject when user asks visual questions
-        maybeInjectVisualContext(session);
+        // NOTE: Don't inject visual context here - transcript hasn't arrived yet!
+        // Visual context injection moved to transcript handler below
         break;
 
       // === RESPONSE LIFECYCLE ===
