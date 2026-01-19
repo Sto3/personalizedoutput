@@ -822,6 +822,9 @@ function wantsVisualContext(session: V3Session): boolean {
  * Always inject visual context when user speaks.
  * Redi should always be aware of what the camera sees.
  * This is the core value proposition - like having a coach actually there.
+ *
+ * CRITICAL TIMING: OpenAI's VAD auto-triggers responses BEFORE we get the transcript.
+ * So we must CANCEL the auto-response, inject the image, then trigger a NEW response.
  */
 function maybeInjectVisualContext(session: V3Session): void {
   // Skip for driving mode (uses on-device services)
@@ -843,8 +846,16 @@ function maybeInjectVisualContext(session: V3Session): void {
     sendToClient(session, { type: 'request_frame' });
   }
 
-  // ALWAYS inject visual context - Redi should always see what the camera sees
-  // Even a slightly stale frame is better than no visual context
+  // CRITICAL: Cancel any in-progress response before injecting image
+  // OpenAI's VAD auto-triggers responses before we get the transcript,
+  // so we need to cancel and re-trigger with the image included
+  if (session.currentResponseId) {
+    console.log(`[Redi V3] 🛑 Cancelling auto-response to inject image first`);
+    sendToOpenAI(session, { type: 'response.cancel' });
+    sendToClient(session, { type: 'stop_audio' });
+    session.currentResponseId = null;
+  }
+
   console.log(`[Redi V3] 👁️ Injecting visual context (age: ${frameAge}ms)`);
   injectVisualContext(session);
 }
