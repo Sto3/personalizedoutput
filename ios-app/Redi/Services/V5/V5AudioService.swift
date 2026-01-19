@@ -189,6 +189,13 @@ class V5AudioService: ObservableObject {
         clearBuffer()
         playerNode?.stop()
         playbackEngine?.stop()
+
+        // CRITICAL: Release the audio session so microphone indicator turns off
+        do {
+            try AVAudioSession.sharedInstance().setActive(false)
+        } catch {
+            print("[V5Audio] Failed to deactivate session: \(error)")
+        }
     }
 
     deinit { cleanup() }
