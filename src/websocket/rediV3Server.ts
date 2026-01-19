@@ -612,7 +612,8 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
         }
         break;
 
-      case 'conversation.item.input_audio_transcription.completed':
+      case 'conversation.item.input_audio_transcription.completed':  // Preview API
+      case 'conversation.item.audio_transcription.completed':        // GA API
         // User's speech - LOG THIS
         if (event.transcript) {
           console.log(`[Redi V3] 👤 USER: "${event.transcript}"`);
@@ -858,7 +859,7 @@ function injectVisualContext(session: V3Session): void {
   session.hasRecentVisual = true;
 
   // Send image directly to GA Realtime API (native image support)
-  // GA API uses 'image' field with just base64 (not 'image_url' with data URL)
+  // GA API uses 'image_url' field with full data URL prefix
   const imageItem = {
     type: 'conversation.item.create',
     item: {
@@ -871,7 +872,7 @@ function injectVisualContext(session: V3Session): void {
         },
         {
           type: 'input_image',
-          image: cleanBase64  // GA API: just base64, no data URL prefix
+          image_url: `data:image/jpeg;base64,${cleanBase64}`  // GA API: full data URL
         }
       ]
     }
