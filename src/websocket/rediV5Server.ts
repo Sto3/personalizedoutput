@@ -455,7 +455,7 @@ export async function initRediV5(server: HTTPServer): Promise<void> {
     const pathname = parsedUrl.pathname;
     const version = parsedUrl.query.v;
 
-    if (pathname === '/ws/redi' && version === '4') {
+    if (pathname === '/ws/redi' && version === '5') {
       console.log(`[Redi V5] Handling upgrade for V5 connection`);
       wss!.handleUpgrade(request, socket, head, (ws) => {
         wss!.emit('connection', ws, request);
