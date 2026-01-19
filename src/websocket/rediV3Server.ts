@@ -330,7 +330,7 @@ function configureOpenAISession(session: V3Session): void {
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
-      type: 'conversation',  // Required for GA model
+      type: 'realtime',  // GA model session type
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
       voice: 'ash',  // Most masculine GA voice (deep, confident)
@@ -996,21 +996,19 @@ async function maybeUseDeepAnalysis(session: V3Session, userQuestion?: string): 
 }
 
 function speakProactively(session: V3Session, message: string): void {
+  // GA API: Create a message item and trigger speech
   sendToOpenAI(session, {
     type: 'conversation.item.create',
     item: {
       type: 'message',
       role: 'assistant',
-      content: [{ type: 'text', text: message }]
+      content: [{ type: 'output_text', text: message }]  // GA uses 'output_text'
     }
   });
 
+  // Trigger response to speak the message
   sendToOpenAI(session, {
-    type: 'response.create',
-    response: {
-      modalities: ['audio'],
-      instructions: `Say exactly: "${message}"`
-    }
+    type: 'response.create'  // GA API: simpler response.create
   });
 }
 
