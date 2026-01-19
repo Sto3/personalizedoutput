@@ -43,10 +43,6 @@
 		DR1V1NG006B006A006B006C6 /* DrivingRuleEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG006F006A006B006C6 /* DrivingRuleEngine.swift */; };
 		DR1V1NG007B007A007B007C7 /* DrivingTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG007F007A007B007C7 /* DrivingTTSService.swift */; };
 		DR1V1NG008B008A008B008C8 /* VisualNavigationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG008F008A008B008C8 /* VisualNavigationService.swift */; };
-		1DE4D16B4AE14013B5C68DFB /* V5Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD19B055865344E0BF4B29A4 /* V5Config.swift */; };
-		5BDFC5B4D2F84EDC9B83341A /* V5AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */; };
-		9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */; };
-		9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1EEF7931605422AB46F4851 /* V5MainView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -88,10 +84,6 @@
 		DR1V1NG006F006A006B006C6 /* DrivingRuleEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingRuleEngine.swift; path = Driving/Services/DrivingRuleEngine.swift; sourceTree = "<group>"; };
 		DR1V1NG007F007A007B007C7 /* DrivingTTSService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingTTSService.swift; path = Driving/Services/DrivingTTSService.swift; sourceTree = "<group>"; };
 		DR1V1NG008F008A008B008C8 /* VisualNavigationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisualNavigationService.swift; path = Driving/Services/VisualNavigationService.swift; sourceTree = "<group>"; };
-		FD19B055865344E0BF4B29A4 /* V5Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Config/V5Config.swift; sourceTree = "<group>"; };
-		24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Services/V5AudioService.swift; sourceTree = "<group>"; };
-		DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Services/V5WebSocketService.swift; sourceTree = "<group>"; };
-		A1EEF7931605422AB46F4851 /* V5MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Views/V5MainView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -354,11 +346,7 @@
 				DR1V1NG006B006A006B006C6 /* DrivingRuleEngine.swift in Sources */,
 				DR1V1NG007B007A007B007C7 /* DrivingTTSService.swift in Sources */,
 				DR1V1NG008B008A008B008C8 /* VisualNavigationService.swift in Sources */,
-			
-				1DE4D16B4AE14013B5C68DFB /* V5Config.swift in Sources */,
-				5BDFC5B4D2F84EDC9B83341A /* V5AudioService.swift in Sources */,
-				9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */,
-				9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */,);
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
