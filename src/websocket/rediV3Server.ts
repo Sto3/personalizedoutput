@@ -327,18 +327,29 @@ async function connectToOpenAI(session: V3Session): Promise<void> {
 }
 
 function configureOpenAISession(session: V3Session): void {
-  // GA API session.update
-  // - 'type: realtime' is REQUIRED
-  // - 'modalities' is NOT supported at session level
-  sendToOpenAI(session, {
+  // GA API session.update - uses nested audio structure
+  const sessionConfig = {
     type: 'session.update',
     session: {
-      type: 'realtime',  // REQUIRED for GA API
+      type: 'realtime',
+      model: 'gpt-realtime',
       instructions: getSystemPrompt(),
-      voice: 'ash',  // Most masculine GA voice (deep, confident)
-      input_audio_format: 'pcm16',
-      output_audio_format: 'pcm16',
-      input_audio_transcription: { model: 'whisper-1' },
+      voice: 'ash',  // Masculine voice
+      // GA API: Audio settings nested under 'audio'
+      audio: {
+        input: {
+          format: 'pcm16',
+          sample_rate: 24000
+        },
+        output: {
+          format: 'pcm16',
+          sample_rate: 24000
+        }
+      },
+      // GA API: transcription model updated
+      input_audio_transcription: {
+        model: 'gpt-4o-transcribe'
+      },
       turn_detection: {
         type: 'server_vad',
         threshold: 0.6,
@@ -346,7 +357,10 @@ function configureOpenAISession(session: V3Session): void {
         silence_duration_ms: 800
       }
     }
-  });
+  };
+
+  console.log(`[Redi V3] 🔧 Configuring session with GA API format...`);
+  sendToOpenAI(session, sessionConfig);
 }
 
 function getSystemPrompt(): string {
@@ -723,9 +737,12 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
 
       // === CONVERSATION EVENTS ===
       case 'conversation.item.created':
-        // Log when items are created - important for debugging image injection
-        if (event.item?.content?.some((c: any) => c.type === 'input_image')) {
-          console.log(`[Redi V3] ✅ Image item created successfully (id: ${event.item?.id})`);
+        // Comprehensive logging for debugging
+        const contentTypes = event.item?.content?.map((c: any) => c.type) || [];
+        console.log(`[Redi V3] 📥 CONVERSATION ITEM CREATED: id=${event.item?.id}, content=[${contentTypes.join(', ')}]`);
+
+        if (contentTypes.includes('input_image')) {
+          console.log(`[Redi V3] ✅ IMAGE ACCEPTED BY OPENAI - item id: ${event.item?.id}`);
         }
         break;
 
@@ -854,7 +871,7 @@ function injectVisualContext(session: V3Session): void {
   const cleanBase64 = session.currentFrame.replace(/[\r\n\s]/g, '');
 
   console.log(`[Redi V3] 📸 Injecting visual context:`);
-  console.log(`[Redi V3]    Frame size: ${cleanBase64.length} chars`);
+  console.log(`[Redi V3]    Frame size: ${cleanBase64.length} chars (${Math.round(cleanBase64.length * 0.75 / 1024)}KB)`);
   console.log(`[Redi V3]    Frame age: ${frameAge}ms`);
   console.log(`[Redi V3]    Trigger: "${session.lastTranscript}"`);
 
@@ -862,8 +879,8 @@ function injectVisualContext(session: V3Session): void {
   session.visualContextInjected = true;
   session.hasRecentVisual = true;
 
-  // Send image directly to GA Realtime API (native image support)
-  // GA API uses 'image_url' field with full data URL prefix
+  // Send image to GA Realtime API
+  // IMPORTANT: Include BOTH input_text AND input_image (per OpenAI Playground format)
   const imageItem = {
     type: 'conversation.item.create',
     item: {
@@ -872,17 +889,19 @@ function injectVisualContext(session: V3Session): void {
       content: [
         {
           type: 'input_text',
-          text: '[User is showing their screen/camera view. Describe what you see.]'
+          text: '[Current camera view attached - describe what you see and respond to my question]'
         },
         {
           type: 'input_image',
-          image_url: `data:image/jpeg;base64,${cleanBase64}`  // GA API: full data URL
+          image_url: `data:image/jpeg;base64,${cleanBase64}`
         }
       ]
     }
   };
 
-  console.log(`[Redi V3] 📤 Sending image to OpenAI Realtime API...`);
+  console.log(`[Redi V3] 🖼️ SENDING IMAGE TO OPENAI:`);
+  console.log(`[Redi V3]    - Content types: input_text, input_image`);
+  console.log(`[Redi V3]    - Image format: data:image/jpeg;base64,...`);
   sendToOpenAI(session, imageItem);
 
   // Trigger a response
