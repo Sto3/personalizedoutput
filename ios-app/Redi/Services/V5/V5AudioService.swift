@@ -1,5 +1,5 @@
 /**
- * Redi V4 AudioService
+ * Redi V5 AudioService
  * ====================
  * 
  * CLEAN VERSION - Handles audio capture and playback
@@ -16,7 +16,7 @@
 import AVFoundation
 import Combine
 
-class V4AudioService: ObservableObject {
+class V5AudioService: ObservableObject {
     // Recording
     private var audioEngine: AVAudioEngine?
     private var inputFormat: AVAudioFormat?
@@ -75,13 +75,13 @@ class V4AudioService: ObservableObject {
             try session.setActive(true)
             
             let actualRate = session.sampleRate
-            print("[V4Audio] ✅ Session configured")
-            print("[V4Audio]    Requested: \(targetSampleRate)Hz")
-            print("[V4Audio]    Actual: \(actualRate)Hz")
-            print("[V4Audio]    Will resample: \(actualRate != targetSampleRate)")
+            print("[V5Audio] ✅ Session configured")
+            print("[V5Audio]    Requested: \(targetSampleRate)Hz")
+            print("[V5Audio]    Actual: \(actualRate)Hz")
+            print("[V5Audio]    Will resample: \(actualRate != targetSampleRate)")
             
         } catch {
-            print("[V4Audio] ❌ Session setup error: \(error)")
+            print("[V5Audio] ❌ Session setup error: \(error)")
         }
     }
     
@@ -99,21 +99,21 @@ class V4AudioService: ObservableObject {
             // Enable Voice Processing for AEC
             do {
                 try inputNode.setVoiceProcessingEnabled(true)
-                print("[V4Audio] ✅ Voice Processing (AEC) enabled")
+                print("[V5Audio] ✅ Voice Processing (AEC) enabled")
             } catch {
-                print("[V4Audio] ⚠️ Voice Processing not available: \(error)")
+                print("[V5Audio] ⚠️ Voice Processing not available: \(error)")
             }
             
             // Get device's native format
             inputFormat = inputNode.outputFormat(forBus: 0)
             guard let inputFmt = inputFormat else {
-                print("[V4Audio] ❌ Failed to get input format")
+                print("[V5Audio] ❌ Failed to get input format")
                 return
             }
             
-            print("[V4Audio] Device input format:")
-            print("[V4Audio]    Sample rate: \(inputFmt.sampleRate)Hz")
-            print("[V4Audio]    Channels: \(inputFmt.channelCount)")
+            print("[V5Audio] Device input format:")
+            print("[V5Audio]    Sample rate: \(inputFmt.sampleRate)Hz")
+            print("[V5Audio]    Channels: \(inputFmt.channelCount)")
             
             // Create target format: PCM 16-bit, 24kHz, mono
             outputFormat = AVAudioFormat(
@@ -124,14 +124,14 @@ class V4AudioService: ObservableObject {
             )
             
             guard let outputFmt = outputFormat else {
-                print("[V4Audio] ❌ Failed to create output format")
+                print("[V5Audio] ❌ Failed to create output format")
                 return
             }
             
-            print("[V4Audio] Target output format:")
-            print("[V4Audio]    Sample rate: \(outputFmt.sampleRate)Hz")
-            print("[V4Audio]    Channels: \(outputFmt.channelCount)")
-            print("[V4Audio]    Bits: 16 (pcmFormatInt16)")
+            print("[V5Audio] Target output format:")
+            print("[V5Audio]    Sample rate: \(outputFmt.sampleRate)Hz")
+            print("[V5Audio]    Channels: \(outputFmt.channelCount)")
+            print("[V5Audio]    Bits: 16 (pcmFormatInt16)")
             
             // Install tap - process audio in callback
             inputNode.installTap(onBus: 0, bufferSize: 4800, format: inputFmt) { [weak self] buffer, _ in
@@ -143,10 +143,10 @@ class V4AudioService: ObservableObject {
             DispatchQueue.main.async {
                 self.isRecording = true
             }
-            print("[V4Audio] ✅ Recording started")
+            print("[V5Audio] ✅ Recording started")
             
         } catch {
-            print("[V4Audio] ❌ Recording error: \(error)")
+            print("[V5Audio] ❌ Recording error: \(error)")
         }
     }
     
@@ -160,7 +160,7 @@ class V4AudioService: ObservableObject {
         DispatchQueue.main.async {
             self.isRecording = false
         }
-        print("[V4Audio] Recording stopped (chunks: \(chunksRecorded))")
+        print("[V5Audio] Recording stopped (chunks: \(chunksRecorded))")
     }
     
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
@@ -172,7 +172,7 @@ class V4AudioService: ObservableObject {
         
         // Create converter
         guard let converter = AVAudioConverter(from: inputFmt, to: outputFmt) else {
-            print("[V4Audio] ❌ Failed to create converter")
+            print("[V5Audio] ❌ Failed to create converter")
             return
         }
         
@@ -202,7 +202,7 @@ class V4AudioService: ObservableObject {
         
         if status == .error {
             if let err = error {
-                print("[V4Audio] ❌ Conversion error: \(err)")
+                print("[V5Audio] ❌ Conversion error: \(err)")
             }
             return
         }
@@ -218,7 +218,7 @@ class V4AudioService: ObservableObject {
         
         // Debug log periodically
         if Date().timeIntervalSince(lastDebugLog) > 5.0 {
-            print("[V4Audio] 🎤 Stats: recorded=\(chunksRecorded), played=\(chunksPlayed), bytes=\(byteCount)")
+            print("[V5Audio] 🎤 Stats: recorded=\(chunksRecorded), played=\(chunksPlayed), bytes=\(byteCount)")
             lastDebugLog = Date()
         }
         
@@ -366,9 +366,9 @@ class V4AudioService: ObservableObject {
             try engine.start()
             playbackEngine = engine
             playerNode = player
-            print("[V4Audio] ✅ Playback engine at \(mixerFormat.sampleRate)Hz")
+            print("[V5Audio] ✅ Playback engine at \(mixerFormat.sampleRate)Hz")
         } catch {
-            print("[V4Audio] ❌ Playback engine error: \(error)")
+            print("[V5Audio] ❌ Playback engine error: \(error)")
             player.stop()
             engine.stop()
         }
@@ -384,7 +384,7 @@ class V4AudioService: ObservableObject {
     }
     
     func stopAudio() {
-        print("[V4Audio] 🛑 Stopping playback (barge-in)")
+        print("[V5Audio] 🛑 Stopping playback (barge-in)")
         playerNode?.stop()
         clearBuffer()
         DispatchQueue.main.async {

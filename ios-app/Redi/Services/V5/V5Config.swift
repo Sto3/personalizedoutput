@@ -1,5 +1,5 @@
 /**
- * Redi V4 Configuration
+ * Redi V5 Configuration
  * ====================
  * 
  * CLEAN VERSION - Matches server config exactly
@@ -11,15 +11,15 @@
 import Foundation
 import AVFoundation
 
-struct V4Config {
-    // Server URL - V4 endpoint
+struct V5Config {
+    // Server URL - V5 endpoint
     static var serverURL: URL {
-        if let envURL = ProcessInfo.processInfo.environment["REDI_V4_SERVER_URL"],
+        if let envURL = ProcessInfo.processInfo.environment["REDI_V5_SERVER_URL"],
            let url = URL(string: envURL) {
             return url
         }
-        // V4 endpoint - NOTE: Uses redialways.com (production domain)
-        return URL(string: "wss://redialways.com/ws/redi?v=4")!
+        // V5 endpoint - NOTE: Uses redialways.com (production domain)
+        return URL(string: "wss://redialways.com/ws/redi?v=5")!
     }
 
     // Audio format settings - MUST match server exactly

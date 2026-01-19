@@ -1,8 +1,8 @@
 /**
- * Redi V4 WebSocketService
+ * Redi V5 WebSocketService
  * ========================
  * 
- * CLEAN VERSION - WebSocket connection to V4 backend
+ * CLEAN VERSION - WebSocket connection to V5 backend
  * 
  * Features:
  * - Persistent connection with reconnection
@@ -13,7 +13,7 @@
 import Foundation
 import Combine
 
-class V4WebSocketService: ObservableObject {
+class V5WebSocketService: ObservableObject {
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession?
     private let serverURL: URL
@@ -69,9 +69,9 @@ class V4WebSocketService: ObservableObject {
     private var messagesSent = 0
     private var messagesReceived = 0
     
-    init(serverURL: URL = V4Config.serverURL) {
+    init(serverURL: URL = V5Config.serverURL) {
         self.serverURL = serverURL
-        print("[V4WS] Initialized with URL: \(serverURL)")
+        print("[V5WS] Initialized with URL: \(serverURL)")
     }
     
     private var isConnecting = false
@@ -84,7 +84,7 @@ class V4WebSocketService: ObservableObject {
         DispatchQueue.main.async {
             self.connectionState = .connecting
         }
-        print("[V4WS] Connecting to \(serverURL)")
+        print("[V5WS] Connecting to \(serverURL)")
         
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 30
@@ -102,7 +102,7 @@ class V4WebSocketService: ObservableObject {
             self.isConnecting = false
             
             if let error = error {
-                print("[V4WS] ❌ Connection failed: \(error.localizedDescription)")
+                print("[V5WS] ❌ Connection failed: \(error.localizedDescription)")
                 DispatchQueue.main.async {
                     self.isConnected = false
                     self.connectionState = .error(error.localizedDescription)
@@ -110,7 +110,7 @@ class V4WebSocketService: ObservableObject {
                 }
                 self.attemptReconnect()
             } else {
-                print("[V4WS] ✅ Connection verified")
+                print("[V5WS] ✅ Connection verified")
                 self.handleReconnectSuccess()
             }
         }
@@ -134,7 +134,7 @@ class V4WebSocketService: ObservableObject {
             self?.isConnected = false
             self?.isReconnecting = false
             self?.connectionState = .disconnected
-            print("[V4WS] Disconnected (sent: \(self?.messagesSent ?? 0), received: \(self?.messagesReceived ?? 0))")
+            print("[V5WS] Disconnected (sent: \(self?.messagesSent ?? 0), received: \(self?.messagesReceived ?? 0))")
         }
     }
     
@@ -205,7 +205,7 @@ class V4WebSocketService: ObservableObject {
         audioBufferLock.unlock()
         
         guard !buffered.isEmpty else { return }
-        print("[V4WS] Flushing \(buffered.count) buffered audio chunks")
+        print("[V5WS] Flushing \(buffered.count) buffered audio chunks")
         
         for chunk in buffered {
             let message: [String: Any] = [
@@ -233,7 +233,7 @@ class V4WebSocketService: ObservableObject {
         startHeartbeat()
         
         if wasReconnecting {
-            print("[V4WS] Reconnection successful")
+            print("[V5WS] Reconnection successful")
             flushAudioBuffer()
             onReconnected?()
         }
@@ -242,7 +242,7 @@ class V4WebSocketService: ObservableObject {
     private func attemptReconnect() {
         guard !isManualDisconnect else { return }
         guard reconnectAttempts < maxReconnectAttempts else {
-            print("[V4WS] Max reconnect attempts reached")
+            print("[V5WS] Max reconnect attempts reached")
             DispatchQueue.main.async { [weak self] in
                 self?.connectionState = .error("Connection lost. Please restart.")
             }
@@ -252,7 +252,7 @@ class V4WebSocketService: ObservableObject {
         reconnectAttempts += 1
         let delay = pow(2.0, Double(reconnectAttempts - 1))
         
-        print("[V4WS] Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
+        print("[V5WS] Reconnecting in \(delay)s (attempt \(reconnectAttempts)/\(maxReconnectAttempts))")
         
         DispatchQueue.main.async { [weak self] in
             self?.isReconnecting = true
@@ -289,14 +289,14 @@ class V4WebSocketService: ObservableObject {
     private func sendHeartbeat() {
         let timeSinceLastPong = Date().timeIntervalSince(lastPongTime)
         if timeSinceLastPong > connectionTimeout {
-            print("[V4WS] Connection timeout")
+            print("[V5WS] Connection timeout")
             handleConnectionLost()
             return
         }
         
         webSocket?.sendPing { [weak self] error in
             if let error = error {
-                print("[V4WS] Heartbeat failed: \(error.localizedDescription)")
+                print("[V5WS] Heartbeat failed: \(error.localizedDescription)")
                 self?.handleConnectionLost()
             } else {
                 self?.lastPongTime = Date()
@@ -324,7 +324,7 @@ class V4WebSocketService: ObservableObject {
     private func sendJSON(_ dict: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
               let string = String(data: data, encoding: .utf8) else {
-            print("[V4WS] Failed to serialize message")
+            print("[V5WS] Failed to serialize message")
             return
         }
         
@@ -332,7 +332,7 @@ class V4WebSocketService: ObservableObject {
         
         webSocket?.send(.string(string)) { [weak self] error in
             if let error = error {
-                print("[V4WS] Send error: \(error)")
+                print("[V5WS] Send error: \(error)")
                 self?.onError?(error)
             }
         }
@@ -346,7 +346,7 @@ class V4WebSocketService: ObservableObject {
                 self?.receiveMessage()
                 
             case .failure(let error):
-                print("[V4WS] Receive error: \(error)")
+                print("[V5WS] Receive error: \(error)")
                 DispatchQueue.main.async {
                     self?.isConnected = false
                     self?.connectionState = .error(error.localizedDescription)
@@ -365,7 +365,7 @@ class V4WebSocketService: ObservableObject {
         case .string(let text):
             guard let data = text.data(using: .utf8),
                   let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                print("[V4WS] Failed to parse message")
+                print("[V5WS] Failed to parse message")
                 return
             }
             handleJSONMessage(json)
@@ -376,7 +376,7 @@ class V4WebSocketService: ObservableObject {
             }
             
         @unknown default:
-            print("[V4WS] Unknown message type")
+            print("[V5WS] Unknown message type")
         }
     }
     
@@ -401,7 +401,7 @@ class V4WebSocketService: ObservableObject {
             }
             
         case "session_ready":
-            print("[V4WS] ✅ Session ready")
+            print("[V5WS] ✅ Session ready")
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 self.isConnected = true
@@ -412,7 +412,7 @@ class V4WebSocketService: ObservableObject {
             
         case "error":
             let errorMsg = json["message"] as? String ?? "Unknown error"
-            print("[V4WS] Server error: \(errorMsg)")
+            print("[V5WS] Server error: \(errorMsg)")
             DispatchQueue.main.async { [weak self] in
                 self?.connectionState = .error(errorMsg)
             }
@@ -422,26 +422,26 @@ class V4WebSocketService: ObservableObject {
             
         case "mute_mic":
             if let muted = json["muted"] as? Bool {
-                print("[V4WS] Mic mute: \(muted)")
+                print("[V5WS] Mic mute: \(muted)")
                 DispatchQueue.main.async { [weak self] in
                     self?.onMicMuteChanged?(muted)
                 }
             }
             
         case "stop_audio":
-            print("[V4WS] Stop audio (barge-in)")
+            print("[V5WS] Stop audio (barge-in)")
             DispatchQueue.main.async { [weak self] in
                 self?.onStopAudio?()
             }
             
         case "request_frame":
-            print("[V4WS] Frame requested")
+            print("[V5WS] Frame requested")
             DispatchQueue.main.async { [weak self] in
                 self?.onRequestFrame?()
             }
             
         default:
-            print("[V4WS] Unknown message type: \(type)")
+            print("[V5WS] Unknown message type: \(type)")
         }
     }
 }

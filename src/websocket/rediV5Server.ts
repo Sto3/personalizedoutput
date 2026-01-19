@@ -1,5 +1,5 @@
 /**
- * Redi V4 Server - OpenAI Realtime API Integration
+ * Redi V5 Server - OpenAI Realtime API Integration
  * ================================================
  * 
  * CLEAN REWRITE - No legacy contamination
@@ -9,8 +9,9 @@
  * 2. Explicit 24kHz sample rate handling
  * 3. Better audio debugging
  * 4. Vision injection WORKING (maintained from V3)
+ * 5. DRIVING MODE FIX: Vision enabled + safety-first prompts + no hallucinations
  * 
- * Path: /ws/redi?v=4
+ * Path: /ws/redi?v=5
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -32,19 +33,19 @@ import { analyzeEdgeCase, shouldUseDeepAnalysis, formatDeepAnalysisResult } from
 // OpenAI Realtime API - GA model with native image support
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
-// Audio Configuration - MUST match iOS V4Config
+// Audio Configuration - MUST match iOS V5Config
 const AUDIO_CONFIG = {
-  sampleRate: 24000,     // 24kHz - OpenAI Realtime standard
-  channels: 1,           // Mono
-  bitsPerSample: 16,     // 16-bit PCM
-  format: 'pcm16'        // OpenAI format string
+  sampleRate: 24000,
+  channels: 1,
+  bitsPerSample: 16,
+  format: 'pcm16'
 } as const;
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
-interface V4Session {
+interface V5Session {
   id: string;
   clientWs: WebSocket;
   openaiWs: WebSocket | null;
@@ -88,7 +89,7 @@ interface V4Session {
 }
 
 // =============================================================================
-// RESPONSE GUARDS
+// RESPONSE GUARDS - MODE SPECIFIC
 // =============================================================================
 
 const RESPONSE_GUARDS = {
@@ -100,13 +101,17 @@ const RESPONSE_GUARDS = {
     /great question/i,
     /that's a great/i,
   ],
+  // Standard modes
   maxWords: 50,
   maxWordsVision: 100,
+  // DRIVING MODE: Ultra-short for safety
+  maxWordsDriving: 15,        // Driver can't process long responses
+  maxWordsDrivingVision: 25,  // Still brief even with vision
   minResponseGapMs: 1000,
   similarityThreshold: 0.7,
 };
 
-// Vision hallucination patterns
+// Vision hallucination patterns - EXTRA STRICT FOR DRIVING
 const VISION_CLAIM_PATTERNS = [
   /i (can |)see /i,
   /i('m| am) (looking at|seeing|viewing)/i,
@@ -119,6 +124,22 @@ const VISION_CLAIM_PATTERNS = [
   /from what i (can |)see/i,
   /visible/i,
   /i notice /i,
+];
+
+// DRIVING-SPECIFIC: Patterns that indicate dangerous hallucination
+const DRIVING_HALLUCINATION_PATTERNS = [
+  /turn (left|right) (at|on|onto)/i,      // Fake directions
+  /take the (next|first|second)/i,         // Fake navigation
+  /in (\d+) (miles?|feet|meters?|yards?)/i, // Fake distances
+  /continue (for|straight)/i,              // Fake routing
+  /merge (onto|into)/i,                    // Fake lane guidance
+  /exit (at|onto|number)/i,                // Fake exit instructions
+  /your destination is/i,                  // Fake arrival
+  /arriving (at|in)/i,                     // Fake ETA
+  /recalculating/i,                        // Pretending to be GPS
+  /route (updated|changed|found)/i,        // Fake routing
+  /(\d+) minutes? (away|remaining)/i,      // Fake time estimates
+  /speed limit is/i,                       // Unless actually visible
 ];
 
 // Visual question patterns
@@ -142,14 +163,25 @@ const VISUAL_QUESTION_PATTERNS = [
 // STATE
 // =============================================================================
 
-const sessions = new Map<string, V4Session>();
+const sessions = new Map<string, V5Session>();
 let wss: WebSocketServer | null = null;
 
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
-function checkResponseQuality(text: string, session: V4Session): { pass: boolean; reason?: string } {
+function checkResponseQuality(text: string, session: V5Session): { pass: boolean; reason?: string } {
+  const isDriving = session.currentMode === 'driving';
+  
+  // DRIVING MODE: Extra strict hallucination blocking
+  if (isDriving) {
+    for (const pattern of DRIVING_HALLUCINATION_PATTERNS) {
+      if (pattern.test(text)) {
+        return { pass: false, reason: `DRIVING SAFETY: Blocked navigation hallucination - "${pattern}"` };
+      }
+    }
+  }
+  
   // Anti-hallucination: Block vision claims without image
   if (!session.visualContextInjected) {
     for (const pattern of VISION_CLAIM_PATTERNS) {
@@ -166,11 +198,22 @@ function checkResponseQuality(text: string, session: V4Session): { pass: boolean
     }
   }
 
-  // Length check
+  // Length check - MODE SPECIFIC
   const wordCount = text.split(/\s+/).length;
-  const maxWords = session.visualContextInjected ? RESPONSE_GUARDS.maxWordsVision : RESPONSE_GUARDS.maxWords;
+  let maxWords: number;
+  
+  if (isDriving) {
+    maxWords = session.visualContextInjected 
+      ? RESPONSE_GUARDS.maxWordsDrivingVision 
+      : RESPONSE_GUARDS.maxWordsDriving;
+  } else {
+    maxWords = session.visualContextInjected 
+      ? RESPONSE_GUARDS.maxWordsVision 
+      : RESPONSE_GUARDS.maxWords;
+  }
+  
   if (wordCount > maxWords) {
-    return { pass: false, reason: `Too long: ${wordCount} words (max ${maxWords})` };
+    return { pass: false, reason: `Too long: ${wordCount} words (max ${maxWords} for ${isDriving ? 'driving' : 'standard'} mode)` };
   }
 
   // Rate limit
@@ -198,7 +241,7 @@ function calculateSimilarity(a: string, b: string): number {
   return union > 0 ? intersection / union : 0;
 }
 
-function recordResponse(text: string, session: V4Session): void {
+function recordResponse(text: string, session: V5Session): void {
   session.lastResponses.push(text);
   if (session.lastResponses.length > 5) {
     session.lastResponses.shift();
@@ -206,7 +249,7 @@ function recordResponse(text: string, session: V4Session): void {
   session.lastResponseTime = Date.now();
 }
 
-function wantsVisualContext(session: V4Session): boolean {
+function wantsVisualContext(session: V5Session): boolean {
   if (!session.lastTranscript) return false;
   const transcript = session.lastTranscript.toLowerCase();
   for (const pattern of VISUAL_QUESTION_PATTERNS) {
@@ -218,10 +261,20 @@ function wantsVisualContext(session: V4Session): boolean {
 }
 
 // =============================================================================
-// SYSTEM PROMPT
+// SYSTEM PROMPTS - MODE SPECIFIC
 // =============================================================================
 
-function getSystemPrompt(): string {
+function getSystemPrompt(mode: RediMode = 'general'): string {
+  // DRIVING MODE: Special safety-focused prompt
+  if (mode === 'driving') {
+    return getDrivingSystemPrompt();
+  }
+  
+  // Standard prompt for all other modes
+  return getGeneralSystemPrompt();
+}
+
+function getGeneralSystemPrompt(): string {
   return `Speak with energy and enthusiasm! Be upbeat, encouraging, and pump people up.
 
 You are Redi - a confident, no-nonsense AI assistant with a masculine, straightforward personality.
@@ -265,23 +318,70 @@ AVOID:
 - Being overly polite or deferential`;
 }
 
+function getDrivingSystemPrompt(): string {
+  return `You are Redi in DRIVING MODE. The user is operating a vehicle. SAFETY IS PARAMOUNT.
+
+CRITICAL RULES - VIOLATIONS ARE DANGEROUS:
+
+1. NEVER GIVE NAVIGATION DIRECTIONS
+   - You are NOT a GPS. You do NOT know where the user is going.
+   - NEVER say "turn left", "turn right", "take the exit", "in 500 feet", etc.
+   - If asked for directions, say: "I can't give directions. Use your GPS app."
+   - If asked "which way", say: "Check your navigation. I can't guide you."
+
+2. ULTRA-SHORT RESPONSES ONLY
+   - Driver cannot process long sentences while driving
+   - Maximum 10-15 words per response
+   - No explanations, just key info
+
+3. ONLY DESCRIBE WHAT YOU ACTUALLY SEE
+   - If an image is provided, describe ONLY what's visible
+   - Focus on: road conditions, weather, obstacles, signs you can read
+   - If you see a sign, read it exactly - don't interpret it
+   - If no image: "Can't see the road right now"
+
+4. NEVER HALLUCINATE OR GUESS
+   - If you don't know something, say "I don't know"
+   - Never make up distances, times, or directions
+   - Never pretend to know traffic conditions you can't see
+   - Never estimate arrival times
+
+5. SAFETY ALERTS ONLY WHEN CERTAIN
+   - Only alert about things you can actually see in the image
+   - "I see brake lights ahead" (if visible) ✓
+   - "There might be traffic" (guessing) ✗
+
+VALID RESPONSES:
+- "I can't give directions. Use your GPS."
+- "I don't have navigation. What else can I help with?"
+- "Can't see the road right now."
+- "I see [exactly what's in the image]."
+- "Check your maps app for that."
+- "I don't know that. Focus on driving."
+
+LANGUAGE: English only. Brief. No filler words.
+
+REMEMBER: A wrong direction could cause an accident. When in doubt, say you don't know.`;
+}
+
 // =============================================================================
 // MAIN INITIALIZATION
 // =============================================================================
 
-export async function initRediV4(server: HTTPServer): Promise<void> {
-  console.log('[Redi V4] ========================================');
-  console.log('[Redi V4] Starting Redi V4 Server');
-  console.log('[Redi V4] Audio Config:', AUDIO_CONFIG);
-  console.log('[Redi V4] ========================================');
+export async function initRediV5(server: HTTPServer): Promise<void> {
+  console.log('[Redi V5] ========================================');
+  console.log('[Redi V5] Starting Redi V5 Server');
+  console.log('[Redi V5] Audio Config:', AUDIO_CONFIG);
+  console.log('[Redi V5] Driving Mode: ENABLED with safety guards');
+  console.log('[Redi V5] ========================================');
 
   wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const sessionId = randomUUID();
-    console.log(`[Redi V4] New connection: ${sessionId}`);
+    console.log(`[Redi V5] New connection: ${sessionId}`);
 
-    const session: V4Session = {
+    const session: V5Session = {
       id: sessionId,
       clientWs: ws,
       openaiWs: null,
@@ -315,7 +415,7 @@ export async function initRediV4(server: HTTPServer): Promise<void> {
     // Initialize rule engine
     initRuleEngine(sessionId);
     session.ruleEngineInitialized = true;
-    console.log(`[Redi V4] Rule engine initialized for session ${sessionId}`);
+    console.log(`[Redi V5] Rule engine initialized for session ${sessionId}`);
 
     sessions.set(sessionId, session);
 
@@ -323,7 +423,7 @@ export async function initRediV4(server: HTTPServer): Promise<void> {
     try {
       await connectToOpenAI(session);
     } catch (error) {
-      console.error(`[Redi V4] OpenAI connection failed:`, error);
+      console.error(`[Redi V5] OpenAI connection failed:`, error);
       ws.close(1011, 'OpenAI connection failed');
       return;
     }
@@ -334,52 +434,52 @@ export async function initRediV4(server: HTTPServer): Promise<void> {
         const message = JSON.parse(data.toString());
         handleClientMessage(session, message);
       } catch (error) {
-        console.error(`[Redi V4] Message parse error:`, error);
+        console.error(`[Redi V5] Message parse error:`, error);
       }
     });
 
     ws.on('close', () => {
-      console.log(`[Redi V4] Client disconnected: ${sessionId}`);
+      console.log(`[Redi V5] Client disconnected: ${sessionId}`);
       cleanup(sessionId);
     });
 
     ws.on('error', (error) => {
-      console.error(`[Redi V4] Client error:`, error);
+      console.error(`[Redi V5] Client error:`, error);
       cleanup(sessionId);
     });
   });
 
-  // Handle upgrade requests for /ws/redi?v=4
+  // Handle upgrade requests for /ws/redi?v=5
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
     const parsedUrl = parseUrl(request.url || '', true);
     const pathname = parsedUrl.pathname;
     const version = parsedUrl.query.v;
 
     if (pathname === '/ws/redi' && version === '4') {
-      console.log(`[Redi V4] Handling upgrade for V4 connection`);
+      console.log(`[Redi V5] Handling upgrade for V5 connection`);
       wss!.handleUpgrade(request, socket, head, (ws) => {
         wss!.emit('connection', ws, request);
       });
     }
   });
 
-  console.log('[Redi V4] WebSocket server initialized on /ws/redi?v=4');
+  console.log('[Redi V5] WebSocket server initialized on /ws/redi?v=5');
 }
 
 // =============================================================================
 // OPENAI CONNECTION
 // =============================================================================
 
-async function connectToOpenAI(session: V4Session): Promise<void> {
+async function connectToOpenAI(session: V5Session): Promise<void> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY not configured');
   }
 
-  console.log(`[Redi V4] API key: ${apiKey.substring(0, 10)}...`);
+  console.log(`[Redi V5] API key: ${apiKey.substring(0, 10)}...`);
 
   return new Promise((resolve, reject) => {
-    console.log(`[Redi V4] Connecting to: ${OPENAI_REALTIME_URL}`);
+    console.log(`[Redi V5] Connecting to: ${OPENAI_REALTIME_URL}`);
 
     const ws = new WebSocket(OPENAI_REALTIME_URL, {
       headers: {
@@ -388,7 +488,7 @@ async function connectToOpenAI(session: V4Session): Promise<void> {
     });
 
     ws.on('open', () => {
-      console.log(`[Redi V4] ✅ Connected to OpenAI Realtime API`);
+      console.log(`[Redi V5] ✅ Connected to OpenAI Realtime API`);
       session.openaiWs = ws;
 
       // Configure session with CORRECT format
@@ -411,20 +511,20 @@ async function connectToOpenAI(session: V4Session): Promise<void> {
     });
 
     ws.on('error', (error: any) => {
-      console.error(`[Redi V4] OpenAI error:`, error.message || error);
+      console.error(`[Redi V5] OpenAI error:`, error.message || error);
       reject(new Error(`OpenAI connection error: ${error.message || 'Unknown'}`));
     });
 
     ws.on('close', (code: number, reason: Buffer) => {
-      console.log(`[Redi V4] OpenAI closed: code=${code}, reason=${reason.toString()}`);
+      console.log(`[Redi V5] OpenAI closed: code=${code}, reason=${reason.toString()}`);
     });
 
     ws.on('unexpected-response', (request: any, response: any) => {
-      console.error(`[Redi V4] OpenAI unexpected: ${response.statusCode} ${response.statusMessage}`);
+      console.error(`[Redi V5] OpenAI unexpected: ${response.statusCode} ${response.statusMessage}`);
       let body = '';
       response.on('data', (chunk: Buffer) => { body += chunk.toString(); });
       response.on('end', () => {
-        console.error(`[Redi V4] Response body: ${body}`);
+        console.error(`[Redi V5] Response body: ${body}`);
         reject(new Error(`OpenAI returned ${response.statusCode}: ${body}`));
       });
     });
@@ -432,27 +532,18 @@ async function connectToOpenAI(session: V4Session): Promise<void> {
 }
 
 // =============================================================================
-// SESSION CONFIGURATION - CRITICAL AUDIO FIX
+// SESSION CONFIGURATION
 // =============================================================================
 
-function configureOpenAISession(session: V4Session): void {
-  /**
-   * CRITICAL: OpenAI Realtime API GA Format
-   * 
-   * The GA API uses STRING format identifiers, not objects.
-   * - 'pcm16' = 16-bit PCM at 24kHz
-   * 
-   * Previous V3 bug: Used { type: 'audio/pcm', rate: 24000 } which may
-   * have caused audio format misinterpretation.
-   */
+function configureOpenAISession(session: V5Session): void {
   const sessionConfig = {
     type: 'session.update',
     session: {
       modalities: ['text', 'audio'],
-      instructions: getSystemPrompt(),
-      voice: 'echo',  // Energetic masculine voice
-      input_audio_format: 'pcm16',   // STRING format - 16-bit PCM at 24kHz
-      output_audio_format: 'pcm16',  // STRING format - 16-bit PCM at 24kHz
+      instructions: getSystemPrompt(session.currentMode),
+      voice: 'echo',
+      input_audio_format: 'pcm16',
+      output_audio_format: 'pcm16',
       input_audio_transcription: {
         model: 'whisper-1'
       },
@@ -461,25 +552,46 @@ function configureOpenAISession(session: V4Session): void {
         threshold: 0.5,
         prefix_padding_ms: 300,
         silence_duration_ms: 500,
-        create_response: false  // Manual control - inject image first
+        create_response: false
       }
     }
   };
 
-  console.log('[Redi V4] 🔧 Configuring session:');
-  console.log('[Redi V4]    - input_audio_format: pcm16');
-  console.log('[Redi V4]    - output_audio_format: pcm16');
-  console.log('[Redi V4]    - voice: echo');
-  console.log('[Redi V4]    - turn_detection.create_response: false');
+  console.log('[Redi V5] 🔧 Configuring session:');
+  console.log('[Redi V5]    - Mode:', session.currentMode);
+  console.log('[Redi V5]    - input_audio_format: pcm16');
+  console.log('[Redi V5]    - output_audio_format: pcm16');
+  console.log('[Redi V5]    - voice: echo');
   
   sendToOpenAI(session, sessionConfig);
+}
+
+/**
+ * Update OpenAI session when mode changes
+ * This is critical for driving mode to get the safety-focused prompt
+ */
+function updateSessionForMode(session: V5Session): void {
+  console.log(`[Redi V5] 🔄 Updating session for mode: ${session.currentMode}`);
+  
+  const sessionUpdate = {
+    type: 'session.update',
+    session: {
+      instructions: getSystemPrompt(session.currentMode)
+    }
+  };
+  
+  sendToOpenAI(session, sessionUpdate);
+  
+  if (session.currentMode === 'driving') {
+    console.log('[Redi V5] ⚠️ DRIVING MODE ACTIVE - Safety guards enabled');
+  }
 }
 
 // =============================================================================
 // CLIENT MESSAGE HANDLING
 // =============================================================================
 
-function handleClientMessage(session: V4Session, message: any): void {
+function handleClientMessage(session: V5Session, message: any): void {
   switch (message.type) {
     case 'audio':
       handleAudioFromClient(session, message);
@@ -491,7 +603,7 @@ function handleClientMessage(session: V4Session, message: any): void {
       session.hasRecentVisual = true;
 
       if (session.pendingVisualQuestion) {
-        console.log(`[Redi V4] 📷 Fresh frame for pending question`);
+        console.log(`[Redi V5] 📷 Fresh frame for pending question`);
         injectVisualContext(session);
         sendToOpenAI(session, { type: 'response.create' });
         session.pendingVisualQuestion = false;
@@ -500,13 +612,17 @@ function handleClientMessage(session: V4Session, message: any): void {
 
     case 'sensitivity':
       session.sensitivity = Math.max(0, Math.min(1, message.value || 0.5));
-      console.log(`[Redi V4] Sensitivity: ${session.sensitivity}`);
+      console.log(`[Redi V5] Sensitivity: ${session.sensitivity}`);
       break;
 
     case 'mode':
       if (message.mode && isValidMode(message.mode)) {
+        const previousMode = session.currentMode;
         session.currentMode = message.mode;
-        console.log(`[Redi V4] Mode: ${session.currentMode}`);
+        console.log(`[Redi V5] Mode changed: ${previousMode} → ${session.currentMode}`);
+        
+        // Update OpenAI session with new mode-specific prompt
+        updateSessionForMode(session);
       }
       break;
 
@@ -517,11 +633,11 @@ function handleClientMessage(session: V4Session, message: any): void {
       break;
 
     default:
-      console.log(`[Redi V4] Unknown message type: ${message.type}`);
+      console.log(`[Redi V5] Unknown message type: ${message.type}`);
   }
 }
 
-function handleAudioFromClient(session: V4Session, message: any): void {
+function handleAudioFromClient(session: V5Session, message: any): void {
   if (!message.data) return;
 
   session.audioChunksReceived++;
@@ -533,23 +649,22 @@ function handleAudioFromClient(session: V4Session, message: any): void {
   const timeSinceRediStopped = now - session.rediStoppedSpeakingAt;
 
   if (session.isRediSpeaking) {
-    // Log occasionally
     if (Math.random() < 0.02) {
-      console.log(`[Redi V4] 🔇 Audio discarded (Redi speaking)`);
+      console.log(`[Redi V5] 🔇 Audio discarded (Redi speaking)`);
     }
     return;
   }
 
   if (session.lastAudioSentToClientAt > 0 && timeSinceLastAudioSent < ECHO_GRACE_PERIOD_MS) {
     if (Math.random() < 0.02) {
-      console.log(`[Redi V4] 🔇 Audio discarded (${timeSinceLastAudioSent}ms since output)`);
+      console.log(`[Redi V5] 🔇 Audio discarded (${timeSinceLastAudioSent}ms since output)`);
     }
     return;
   }
 
   if (session.rediStoppedSpeakingAt > 0 && timeSinceRediStopped < ECHO_GRACE_PERIOD_MS) {
     if (Math.random() < 0.02) {
-      console.log(`[Redi V4] 🔇 Audio discarded (${timeSinceRediStopped}ms since response)`);
+      console.log(`[Redi V5] 🔇 Audio discarded (${timeSinceRediStopped}ms since response)`);
     }
     return;
   }
@@ -557,22 +672,22 @@ function handleAudioFromClient(session: V4Session, message: any): void {
   // Debug audio stats periodically
   if (now - session.lastAudioDebugLog > 5000) {
     const audioBytes = Buffer.from(message.data, 'base64').length;
-    console.log(`[Redi V4] 🎤 Audio stats: received=${session.audioChunksReceived}, sent=${session.audioChunksSent}, chunk=${audioBytes}B`);
+    console.log(`[Redi V5] 🎤 Audio stats: received=${session.audioChunksReceived}, sent=${session.audioChunksSent}, chunk=${audioBytes}B`);
     session.lastAudioDebugLog = now;
   }
 
   // Forward to OpenAI
   sendToOpenAI(session, {
     type: 'input_audio_buffer.append',
-    audio: message.data  // Already base64 from iOS
+    audio: message.data
   });
 }
 
-function handlePerceptionPacket(session: V4Session, packet: PerceptionPacket): void {
+function handlePerceptionPacket(session: V5Session, packet: PerceptionPacket): void {
   const ruleResult = evaluateRules(session.id, packet, session.currentMode);
 
   if (ruleResult.triggered && ruleResult.skipAI && ruleResult.response) {
-    console.log(`[Redi V4] 🎯 Rule: "${ruleResult.response}"`);
+    console.log(`[Redi V5] 🎯 Rule: "${ruleResult.response}"`);
     speakProactively(session, ruleResult.response);
     return;
   }
@@ -598,7 +713,7 @@ function isValidMode(mode: string): mode is RediMode {
 // OPENAI MESSAGE HANDLING
 // =============================================================================
 
-function handleOpenAIMessage(session: V4Session, data: Buffer): void {
+function handleOpenAIMessage(session: V5Session, data: Buffer): void {
   try {
     const event = JSON.parse(data.toString());
 
@@ -626,11 +741,11 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
 
           const qualityCheck = checkResponseQuality(event.transcript, session);
           if (!qualityCheck.pass) {
-            console.log(`[Redi V4] 🚫 BLOCKED: "${event.transcript}" - ${qualityCheck.reason}`);
+            console.log(`[Redi V5] 🚫 BLOCKED: "${event.transcript}" - ${qualityCheck.reason}`);
             break;
           }
 
-          console.log(`[Redi V4] 🤖 REDI: "${event.transcript}" (latency: ${latency}ms)`);
+          console.log(`[Redi V5] 🤖 REDI: "${event.transcript}" (latency: ${latency}ms, mode: ${session.currentMode})`);
           recordResponse(event.transcript, session);
 
           session.transcriptHistory.push(`REDI: ${event.transcript}`);
@@ -649,7 +764,7 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
       case 'conversation.item.input_audio_transcription.completed':
       case 'conversation.item.audio_transcription.completed':
         if (event.transcript) {
-          console.log(`[Redi V4] 👤 USER: "${event.transcript}"`);
+          console.log(`[Redi V5] 👤 USER: "${event.transcript}" (mode: ${session.currentMode})`);
 
           session.lastTranscript = event.transcript;
           session.transcriptHistory.push(`USER: ${event.transcript}`);
@@ -663,9 +778,10 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
             role: 'user'
           });
 
-          // Inject visual context, then trigger response
+          // Inject visual context (ALSO for driving mode now!)
           maybeInjectVisualContext(session);
-          console.log(`[Redi V4] 📤 Triggering response (image: ${session.visualContextInjected ? 'YES' : 'NO'})`);
+          
+          console.log(`[Redi V5] 📤 Triggering response (image: ${session.visualContextInjected ? 'YES' : 'NO'}, mode: ${session.currentMode})`);
           sendToOpenAI(session, { type: 'response.create' });
         }
         break;
@@ -673,11 +789,11 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
       // === SPEECH DETECTION ===
       case 'input_audio_buffer.speech_started':
         session.isUserSpeaking = true;
-        console.log(`[Redi V4] 🎤 User started speaking`);
+        console.log(`[Redi V5] 🎤 User started speaking`);
 
         // Barge-in handling
         if (session.isRediSpeaking && session.currentResponseId) {
-          console.log(`[Redi V4] 🛑 User interrupted - yielding`);
+          console.log(`[Redi V5] 🛑 User interrupted - yielding`);
           sendToOpenAI(session, { type: 'response.cancel' });
           sendToClient(session, { type: 'stop_audio' });
           session.isRediSpeaking = false;
@@ -692,7 +808,7 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
       case 'input_audio_buffer.speech_stopped':
         session.isUserSpeaking = false;
         session.speechStoppedAt = Date.now();
-        console.log(`[Redi V4] 🎤 User stopped speaking`);
+        console.log(`[Redi V5] 🎤 User stopped speaking`);
         break;
 
       // === RESPONSE LIFECYCLE ===
@@ -701,14 +817,13 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
         session.isRediSpeaking = true;
         session.currentResponseId = event.response?.id || null;
 
-        // Clear OpenAI's input buffer to prevent echo
         sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
         sendToClient(session, { type: 'mute_mic', muted: true });
 
         const waitTime = session.speechStoppedAt > 0
           ? session.responseStartedAt - session.speechStoppedAt
           : 0;
-        console.log(`[Redi V4] ⏱️ Response started (wait: ${waitTime}ms)`);
+        console.log(`[Redi V5] ⏱️ Response started (wait: ${waitTime}ms)`);
         break;
 
       case 'response.done':
@@ -721,12 +836,12 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
           sendToClient(session, { type: 'mute_mic', muted: false });
         }, 500);
 
-        console.log(`[Redi V4] ✅ Response complete`);
+        console.log(`[Redi V5] ✅ Response complete`);
         break;
 
       // === ERRORS ===
       case 'error':
-        console.error(`[Redi V4] ❌ ERROR:`, event.error?.message || JSON.stringify(event.error));
+        console.error(`[Redi V5] ❌ ERROR:`, event.error?.message || JSON.stringify(event.error));
         sendToClient(session, {
           type: 'error',
           message: event.error?.message || 'Unknown OpenAI error'
@@ -735,19 +850,19 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
 
       // === SESSION ===
       case 'session.created':
-        console.log(`[Redi V4] Session created`);
+        console.log(`[Redi V5] Session created`);
         break;
 
       case 'session.updated':
-        console.log(`[Redi V4] ✅ Session configured successfully`);
+        console.log(`[Redi V5] ✅ Session configured (mode: ${session.currentMode})`);
         break;
 
       // === CONVERSATION ===
       case 'conversation.item.created':
         const contentTypes = event.item?.content?.map((c: any) => c.type) || [];
-        console.log(`[Redi V4] 📥 Item created: [${contentTypes.join(', ')}]`);
+        console.log(`[Redi V5] 📥 Item created: [${contentTypes.join(', ')}]`);
         if (contentTypes.includes('input_image')) {
-          console.log(`[Redi V4] ✅ IMAGE ACCEPTED BY OPENAI`);
+          console.log(`[Redi V5] ✅ IMAGE ACCEPTED BY OPENAI`);
         }
         break;
 
@@ -766,52 +881,50 @@ function handleOpenAIMessage(session: V4Session, data: Buffer): void {
       case 'response.output_audio_transcript.delta':
       case 'conversation.item.added':
       case 'conversation.item.done':
-        // Silently ignore
         break;
 
       default:
-        console.log(`[Redi V4] Unknown event: ${event.type}`);
+        console.log(`[Redi V5] Unknown event: ${event.type}`);
     }
   } catch (error) {
-    console.error(`[Redi V4] Parse error:`, error);
+    console.error(`[Redi V5] Parse error:`, error);
   }
 }
 
 // =============================================================================
-// VISION HANDLING
+// VISION HANDLING - NOW WORKS FOR ALL MODES INCLUDING DRIVING
 // =============================================================================
 
-function maybeInjectVisualContext(session: V4Session): void {
-  if (session.currentMode === 'driving') {
-    return;
-  }
+function maybeInjectVisualContext(session: V5Session): void {
+  // REMOVED: Skip for driving mode - driving mode NOW gets vision too!
+  // The driving prompt is strict about what to say based on vision
 
   if (!session.currentFrame) {
-    console.log(`[Redi V4] ❌ No frame available`);
+    console.log(`[Redi V5] ❌ No frame available`);
     return;
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
 
   if (frameAge > 3000) {
-    console.log(`[Redi V4] 📷 Frame is ${frameAge}ms old - requesting fresh`);
+    console.log(`[Redi V5] 📷 Frame is ${frameAge}ms old - requesting fresh`);
     sendToClient(session, { type: 'request_frame' });
   }
 
-  console.log(`[Redi V4] 👁️ Injecting visual context (age: ${frameAge}ms)`);
+  console.log(`[Redi V5] 👁️ Injecting visual context (age: ${frameAge}ms, mode: ${session.currentMode})`);
   injectVisualContext(session);
 }
 
-function injectVisualContext(session: V4Session): void {
+function injectVisualContext(session: V5Session): void {
   if (!session.currentFrame) {
-    console.log('[Redi V4] ❌ No frame for visual context');
+    console.log('[Redi V5] ❌ No frame for visual context');
     session.hasRecentVisual = false;
     return;
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
   if (frameAge > 3000) {
-    console.log(`[Redi V4] ❌ Frame too old (${frameAge}ms)`);
+    console.log(`[Redi V5] ❌ Frame too old (${frameAge}ms)`);
     session.hasRecentVisual = false;
     return;
   }
@@ -819,12 +932,18 @@ function injectVisualContext(session: V4Session): void {
   const cleanBase64 = session.currentFrame.replace(/[\r\n\s]/g, '');
   const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
 
-  console.log(`[Redi V4] 📸 Sending image: ${sizeKB}KB, age ${frameAge}ms`);
+  console.log(`[Redi V5] 📸 Sending image: ${sizeKB}KB, age ${frameAge}ms, mode ${session.currentMode}`);
 
   session.visualContextInjected = true;
   session.hasRecentVisual = true;
 
-  // GA Realtime API image format
+  // Mode-specific image context text
+  let contextText = '[Current camera view attached - describe what you see and respond to my question]';
+  
+  if (session.currentMode === 'driving') {
+    contextText = '[Camera view while driving - ONLY describe what you can actually see. Do NOT give directions or navigation. If asked about directions, say you cannot provide navigation.]';
+  }
+
   const imageItem = {
     type: 'conversation.item.create',
     item: {
@@ -833,7 +952,7 @@ function injectVisualContext(session: V4Session): void {
       content: [
         {
           type: 'input_text',
-          text: '[Current camera view attached - describe what you see and respond to my question]'
+          text: contextText
         },
         {
           type: 'input_image',
@@ -843,7 +962,7 @@ function injectVisualContext(session: V4Session): void {
     }
   };
 
-  console.log(`[Redi V4] 🖼️ SENDING IMAGE TO OPENAI`);
+  console.log(`[Redi V5] 🖼️ SENDING IMAGE TO OPENAI`);
   sendToOpenAI(session, imageItem);
 }
 
@@ -851,13 +970,16 @@ function injectVisualContext(session: V4Session): void {
 // INTERJECTION LOOP
 // =============================================================================
 
-function startInterjectionLoop(session: V4Session): void {
+function startInterjectionLoop(session: V5Session): void {
   session.interjectionInterval = setInterval(async () => {
     await maybeInterject(session);
   }, 3000);
 }
 
-async function maybeInterject(session: V4Session): Promise<void> {
+async function maybeInterject(session: V5Session): Promise<void> {
+  // No proactive interjections in driving mode - too dangerous
+  if (session.currentMode === 'driving') return;
+  
   if (session.isUserSpeaking) return;
   if (session.sensitivity < 0.1) return;
   if (!session.currentFrame) return;
@@ -870,14 +992,14 @@ async function maybeInterject(session: V4Session): Promise<void> {
 
   if (timeSinceLastInterjection < minInterval) return;
 
-  // Interjection disabled for now (see V3 comments)
+  // Interjection analysis disabled for now
 }
 
 // =============================================================================
 // PROACTIVE SPEECH
 // =============================================================================
 
-function speakProactively(session: V4Session, message: string): void {
+function speakProactively(session: V5Session, message: string): void {
   sendToOpenAI(session, {
     type: 'conversation.item.create',
     item: {
@@ -894,13 +1016,13 @@ function speakProactively(session: V4Session, message: string): void {
 // WEBSOCKET HELPERS
 // =============================================================================
 
-function sendToOpenAI(session: V4Session, message: any): void {
+function sendToOpenAI(session: V5Session, message: any): void {
   if (session.openaiWs?.readyState === WebSocket.OPEN) {
     session.openaiWs.send(JSON.stringify(message));
   }
 }
 
-function sendToClient(session: V4Session, message: any): void {
+function sendToClient(session: V5Session, message: any): void {
   if (session.clientWs.readyState === WebSocket.OPEN) {
     session.clientWs.send(JSON.stringify(message));
   }
@@ -923,20 +1045,20 @@ function cleanup(sessionId: string): void {
     }
 
     sessions.delete(sessionId);
-    console.log(`[Redi V4] Session cleaned up: ${sessionId}`);
+    console.log(`[Redi V5] Session cleaned up: ${sessionId}`);
   }
 }
 
-export function closeRediV4(): void {
+export function closeRediV5(): void {
   sessions.forEach((session, id) => cleanup(id));
   if (wss) {
     wss.close();
     wss = null;
-    console.log('[Redi V4] Server closed');
+    console.log('[Redi V5] Server closed');
   }
 }
 
-export function getV4ConnectionStats(): {
+export function getV5ConnectionStats(): {
   activeSessions: number;
   totalEver: number;
   uptime: number;
