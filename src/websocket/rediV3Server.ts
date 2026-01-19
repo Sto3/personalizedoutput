@@ -353,7 +353,7 @@ function configureOpenAISession(session: V3Session): void {
         },
         output: {
           format: { type: 'audio/pcm', rate: 24000 },
-          voice: 'ash'  // Masculine voice
+          voice: 'echo'  // Energetic masculine voice
         }
       }
     }
@@ -364,7 +364,9 @@ function configureOpenAISession(session: V3Session): void {
 }
 
 function getSystemPrompt(): string {
-  return `You are Redi - a confident, no-nonsense AI assistant with a masculine, straightforward personality.
+  return `Speak with energy and enthusiasm! Be upbeat, encouraging, and pump people up.
+
+You are Redi - a confident, no-nonsense AI assistant with a masculine, straightforward personality.
 
 LANGUAGE: ALWAYS respond in English. Never use any other language regardless of what language the user speaks.
 
