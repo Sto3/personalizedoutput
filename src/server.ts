@@ -30,8 +30,9 @@ import supportReplyApi from './api/supportReplyApi';
 import homeworkApi from './api/homeworkApi';
 import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
-// V1/V2 archived - using V3 only (OpenAI Realtime API)
+// V1/V2 archived - V3 and V4 active (OpenAI Realtime API)
 import { initRediV3 } from './websocket/rediV3Server';
+import { initRediV4 } from './websocket/rediV4Server';
 
 // Import Homework Rescue pages
 import {
@@ -2703,9 +2704,13 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 const server = createServer(app);
 
 // Initialize Redi V3 WebSocket server (OpenAI Realtime API)
-// V3 handles /ws/redi-v3 path with sub-300ms voice-to-voice latency
+// V3 handles /ws/redi?v=3 path with sub-300ms voice-to-voice latency
 // V1/V2 archived to src/websocket/archive/
 initRediV3(server);
+
+// Initialize Redi V4 WebSocket server (CLEAN REWRITE - audio format fix)
+// V4 handles /ws/redi?v=4 with correct 'pcm16' string format
+initRediV4(server);
 
 server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)
