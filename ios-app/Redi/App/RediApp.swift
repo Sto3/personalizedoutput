@@ -62,7 +62,7 @@ struct ContentView: View {
         Group {
             if appState.useV5 {
                 // V5: DEFINITIVE VERSION - Audio fix + Vision fix + Driving safety
-                V5MainView()
+                V3MainView()
             } else if appState.useV3 {
                 // V3: Backup only
                 V3MainView()
