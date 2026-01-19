@@ -327,11 +327,11 @@ async function connectToOpenAI(session: V3Session): Promise<void> {
 }
 
 function configureOpenAISession(session: V3Session): void {
+  // GA API session.update - modalities not supported at session level
+  // Language and voice are set via instructions and voice parameter
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
-      type: 'realtime',  // GA model session type
-      modalities: ['text', 'audio'],
       instructions: getSystemPrompt(),
       voice: 'ash',  // Most masculine GA voice (deep, confident)
       input_audio_format: 'pcm16',
@@ -349,6 +349,8 @@ function configureOpenAISession(session: V3Session): void {
 
 function getSystemPrompt(): string {
   return `You are Redi - a confident, no-nonsense AI assistant with a masculine, straightforward personality.
+
+LANGUAGE: ALWAYS respond in English. Never use any other language regardless of what language the user speaks.
 
 YOUR PERSONALITY:
 - Direct and efficient - get to the point
