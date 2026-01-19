@@ -327,11 +327,13 @@ async function connectToOpenAI(session: V3Session): Promise<void> {
 }
 
 function configureOpenAISession(session: V3Session): void {
-  // GA API session.update - modalities not supported at session level
-  // Language and voice are set via instructions and voice parameter
+  // GA API session.update
+  // - 'type: realtime' is REQUIRED
+  // - 'modalities' is NOT supported at session level
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
+      type: 'realtime',  // REQUIRED for GA API
       instructions: getSystemPrompt(),
       voice: 'ash',  // Most masculine GA voice (deep, confident)
       input_audio_format: 'pcm16',
