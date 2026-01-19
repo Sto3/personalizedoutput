@@ -27,7 +27,8 @@ class AppState: ObservableObject {
             UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
         }
     }
-    @Published var useV3: Bool = false  // Toggle for V3 (OpenAI Realtime)
+    @Published var useV3: Bool = false  // Toggle for V3 (OpenAI Realtime) - BACKUP
+    @Published var useV5: Bool = false  // Toggle for V5 (DEFINITIVE - audio fix)
 
     private var sessionObserver: NSObjectProtocol?
 
@@ -59,8 +60,11 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if appState.useV3 {
-                // V3: OpenAI Realtime API - Clean rebuild
+            if appState.useV5 {
+                // V5: DEFINITIVE VERSION - Audio fix + Vision fix + Driving safety
+                V5MainView()
+            } else if appState.useV3 {
+                // V3: Backup only
                 V3MainView()
             } else if !appState.hasCompletedOnboarding {
                 OnboardingView()

@@ -73,12 +73,15 @@ struct HomeView: View {
             Button("Start Free Session") {
                 startFreeSession()
             }
-            Button("Try V3 (OpenAI Realtime)") {
+            Button("Try V5 (DEFINITIVE)") {
+                appState.useV5 = true
+            }
+            Button("Try V3 (Backup)") {
                 appState.useV3 = true
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Start a free test session without payment? Or try V3 with OpenAI Realtime API.")
+            Text("Start a free test session without payment? Or try V5 (definitive) or V3 (backup).")
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },
