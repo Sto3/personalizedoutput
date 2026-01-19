@@ -348,7 +348,7 @@ function configureOpenAISession(session: V3Session): void {
             threshold: 0.6,
             prefix_padding_ms: 300,
             silence_duration_ms: 800,
-            create_response: true
+            create_response: false  // Manual response control - allows image injection first
           }
         },
         output: {
@@ -645,15 +645,19 @@ function handleOpenAIMessage(session: V3Session, data: Buffer): void {
             session.transcriptHistory.shift();
           }
 
-          // NOW inject visual context if this is a visual question
-          // This happens AFTER we have the actual transcript, not before
-          maybeInjectVisualContext(session);
-
           sendToClient(session, {
             type: 'transcript',
             text: event.transcript,
             role: 'user'
           });
+
+          // Inject visual context (if available) - this adds image to conversation
+          maybeInjectVisualContext(session);
+
+          // NOW trigger response manually (create_response: false means VAD won't auto-trigger)
+          // Image is already in context if we had one
+          console.log(`[Redi V3] 📤 Triggering response (image: ${session.visualContextInjected ? 'YES' : 'NO'})`);
+          sendToOpenAI(session, { type: 'response.create' });
         }
         break;
 
@@ -823,8 +827,9 @@ function wantsVisualContext(session: V3Session): boolean {
  * Redi should always be aware of what the camera sees.
  * This is the core value proposition - like having a coach actually there.
  *
- * CRITICAL TIMING: OpenAI's VAD auto-triggers responses BEFORE we get the transcript.
- * So we must CANCEL the auto-response, inject the image, then trigger a NEW response.
+ * TIMING: With create_response: false, VAD won't auto-trigger responses.
+ * We inject the image here, then the caller triggers response.create manually.
+ * No racing or cancellation needed.
  */
 function maybeInjectVisualContext(session: V3Session): void {
   // Skip for driving mode (uses on-device services)
@@ -844,16 +849,6 @@ function maybeInjectVisualContext(session: V3Session): void {
   if (frameAge > 3000) {
     console.log(`[Redi V3] 📷 Frame is ${frameAge}ms old - requesting fresh but using current`);
     sendToClient(session, { type: 'request_frame' });
-  }
-
-  // CRITICAL: Cancel any in-progress response before injecting image
-  // OpenAI's VAD auto-triggers responses before we get the transcript,
-  // so we need to cancel and re-trigger with the image included
-  if (session.currentResponseId) {
-    console.log(`[Redi V3] 🛑 Cancelling auto-response to inject image first`);
-    sendToOpenAI(session, { type: 'response.cancel' });
-    sendToClient(session, { type: 'stop_audio' });
-    session.currentResponseId = null;
   }
 
   console.log(`[Redi V3] 👁️ Injecting visual context (age: ${frameAge}ms)`);
@@ -916,10 +911,7 @@ function injectVisualContext(session: V3Session): void {
   console.log(`[Redi V3]    - Content types: input_text, input_image`);
   console.log(`[Redi V3]    - Image format: data:image/jpeg;base64,...`);
   sendToOpenAI(session, imageItem);
-
-  // Trigger a response
-  console.log(`[Redi V3] 📤 Triggering response.create for image...`);
-  sendToOpenAI(session, { type: 'response.create' });
+  // NOTE: response.create is triggered by the caller (transcript handler) AFTER this
 }
 
 async function maybeInterject(session: V3Session): Promise<void> {
