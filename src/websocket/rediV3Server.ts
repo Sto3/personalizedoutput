@@ -327,39 +327,39 @@ async function connectToOpenAI(session: V3Session): Promise<void> {
 }
 
 function configureOpenAISession(session: V3Session): void {
-  // GA API session.update - uses nested audio structure
+  // GA API session.update - CORRECT structure per OpenAI docs
+  // Key learnings:
+  // 1. voice goes in audio.output.voice (NOT session.voice)
+  // 2. format is object { type: 'audio/pcm', rate: 24000 } (NOT string 'pcm16')
+  // 3. transcription goes in audio.input.transcription (NOT session.input_audio_transcription)
+  // 4. turn_detection goes in audio.input.turn_detection (NOT session.turn_detection)
+  // 5. model is in WebSocket URL, not session config
   const sessionConfig = {
     type: 'session.update',
     session: {
       type: 'realtime',
-      model: 'gpt-realtime',
       instructions: getSystemPrompt(),
-      voice: 'ash',  // Masculine voice
-      // GA API: Audio settings nested under 'audio'
       audio: {
         input: {
-          format: 'pcm16',
-          sample_rate: 24000
+          format: { type: 'audio/pcm', rate: 24000 },
+          transcription: { model: 'gpt-4o-transcribe' },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.6,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 800,
+            create_response: true
+          }
         },
         output: {
-          format: 'pcm16',
-          sample_rate: 24000
+          format: { type: 'audio/pcm', rate: 24000 },
+          voice: 'ash'  // Masculine voice
         }
-      },
-      // GA API: transcription model updated
-      input_audio_transcription: {
-        model: 'gpt-4o-transcribe'
-      },
-      turn_detection: {
-        type: 'server_vad',
-        threshold: 0.6,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 800
       }
     }
   };
 
-  console.log(`[Redi V3] 🔧 Configuring session with GA API format...`);
+  console.log('[Redi V3] 🔧 Configuring session with GA API format...');
   sendToOpenAI(session, sessionConfig);
 }
 
