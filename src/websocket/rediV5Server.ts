@@ -369,7 +369,10 @@ REMEMBER: A wrong direction could cause an accident. When in doubt, say you don'
 // =============================================================================
 
 export async function initRediV5(server: HTTPServer): Promise<void> {
-  console.log('[Redi V5] ========================================');
+  console.log('');
+  console.log('╔══════════════════════════════════════════════════════════════╗');
+  console.log('║                    REDI V5 INITIALIZING                       ║');
+  console.log('╚══════════════════════════════════════════════════════════════╝');
   console.log('[Redi V5] Starting Redi V5 Server');
   console.log('[Redi V5] Audio Config:', AUDIO_CONFIG);
   console.log('[Redi V5] Driving Mode: ENABLED with safety guards');
