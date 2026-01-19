@@ -14,8 +14,8 @@ import SwiftUI
 struct V3MainView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var cameraService = V3CameraService()
-    @StateObject private var audioService = V3AudioService()
-    @StateObject private var webSocketService = V3WebSocketService()
+    @StateObject private var audioService = V5AudioService()
+    @StateObject private var webSocketService = V5WebSocketService()
 
     @State private var isSessionActive = false
     @State private var lastTranscript = ""
