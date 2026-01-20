@@ -2712,6 +2712,10 @@ initRediV3(server);
 // V5 handles /ws/redi?v=5 - Audio fix + Vision fix + Driving safety
 initRediV5(server);
 
+// Initialize Redi V6 WebSocket server (CLEAN REWRITE)
+// V6 handles /ws/redi?v=6 - Correct OpenAI API format, no 'modalities' error
+initRediV6(server);
+
 server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)
   startUsageMonitoring();

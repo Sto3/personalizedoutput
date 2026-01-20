@@ -18,8 +18,8 @@ struct V5Config {
            let url = URL(string: envURL) {
             return url
         }
-        // V5 endpoint - NOTE: Uses redialways.com (production domain)
-        return URL(string: "wss://redialways.com/ws/redi?v=5")!
+        // V6 endpoint - NOTE: Uses redialways.com (production domain)
+        return URL(string: "wss://redialways.com/ws/redi?v=6")!
     }
 
     // Audio format settings - MUST match server exactly
