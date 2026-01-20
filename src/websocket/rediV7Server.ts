@@ -15,6 +15,7 @@
  * 7. Stricter frame freshness (2 sec max)
  * 8. Enhanced system prompt for accuracy
  * 9. Graceful error recovery
+ * 10. gpt-realtime GA model with VISION SUPPORT
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -28,7 +29,10 @@ import { randomUUID } from 'crypto';
 // =============================================================================
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview';
+
+// CRITICAL: Use gpt-realtime (GA) instead of gpt-4o-realtime-preview
+// The preview model does NOT support vision! Only gpt-realtime does.
+const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
 // Frame quality settings - HIGHER for better vision accuracy
 const MAX_FRAME_AGE_MS = 2000;  // Max 2 seconds old (was 5)
@@ -116,12 +120,15 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] 🚀 Starting V7 Server - PRODUCTION GRADE');
   console.log('[Redi V7] ═══════════════════════════════════════════');
+  console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
+  console.log('[Redi V7] Version: Jan 20 2026 - Vision Fix');
   console.log('[Redi V7] Features:');
   console.log('[Redi V7]   ✓ Response state machine');
   console.log('[Redi V7]   ✓ Barge-in with response.cancel');
   console.log('[Redi V7]   ✓ Fresh frame requests');
   console.log('[Redi V7]   ✓ 2-second max frame age');
   console.log('[Redi V7]   ✓ Higher image quality');
+  console.log('[Redi V7]   ✓ IMAGE INPUT SUPPORTED (gpt-realtime GA)');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -209,17 +216,17 @@ export function handleV7Upgrade(request: IncomingMessage, socket: any, head: Buf
 
 async function connectToOpenAI(session: Session): Promise<void> {
   return new Promise((resolve, reject) => {
-    console.log(`[Redi V7] 🔗 Connecting to OpenAI...`);
+    console.log(`[Redi V7] 🔗 Connecting to OpenAI (gpt-realtime GA)...`);
 
+    // NOTE: For GA API, we do NOT include OpenAI-Beta header
     const ws = new WebSocket(OPENAI_REALTIME_URL, {
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'OpenAI-Beta': 'realtime=v1'
+        'Authorization': `Bearer ${OPENAI_API_KEY}`
       }
     });
 
     ws.on('open', () => {
-      console.log(`[Redi V7] ✅ Connected to OpenAI`);
+      console.log(`[Redi V7] ✅ Connected to OpenAI (gpt-realtime)`);
       session.openaiWs = ws;
       configureSession(session);
       resolve();
@@ -246,9 +253,11 @@ async function connectToOpenAI(session: Session): Promise<void> {
 // =============================================================================
 
 function configureSession(session: Session): void {
+  // CRITICAL: GA API requires type: 'realtime' in session config
   const config = {
     type: 'session.update',
     session: {
+      type: 'realtime',  // Required for GA API
       instructions: SYSTEM_PROMPT,
       voice: 'alloy',
       input_audio_format: 'pcm16',
@@ -265,7 +274,7 @@ function configureSession(session: Session): void {
     }
   };
 
-  console.log('[Redi V7] 🔧 Configuring session...');
+  console.log('[Redi V7] 🔧 Configuring session (GA API format)...');
   sendToOpenAI(session, config);
 }
 
@@ -349,13 +358,18 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         sendToClient(session, { type: 'mute_mic', muted: true });
         break;
 
+      // GA API uses response.output_audio.delta instead of response.audio.delta
       case 'response.audio.delta':
-        if (event.delta) {
-          sendToClient(session, { type: 'audio', data: event.delta });
+      case 'response.output_audio.delta':
+        const audioData = event.delta || event.data;
+        if (audioData) {
+          sendToClient(session, { type: 'audio', data: audioData });
         }
         break;
 
+      // GA API uses response.output_audio_transcript.done
       case 'response.audio_transcript.done':
+      case 'response.output_audio_transcript.done':
         if (event.transcript) {
           console.log(`[Redi V7] 🤖 Redi: "${event.transcript}"`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'assistant' });
@@ -375,6 +389,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'conversation.item.created':
+      case 'conversation.item.added':
         logConversationItem(event);
         break;
 
@@ -465,6 +480,10 @@ function handleOpenAIError(session: Session, error: any): void {
     // This shouldn't happen with our state machine, but recover gracefully
     console.log('[Redi V7] ⚠️ Response collision - waiting for current to complete');
     // Don't change state - let the current response complete
+  } else if (errorCode === 'image_input_not_supported') {
+    // This means we're using the wrong model - should not happen with gpt-realtime
+    console.error('[Redi V7] ❌ CRITICAL: Model does not support images! Check OPENAI_REALTIME_URL');
+    sendToClient(session, { type: 'error', message: 'Vision not available - wrong model' });
   } else {
     sendToClient(session, { type: 'error', message: errorMsg });
   }
@@ -533,6 +552,7 @@ function maybeInjectImage(session: Session, transcript: string): boolean {
   console.log(`[Redi V7] 📷 Injecting image: ${sizeKB}KB, age ${frameAge}ms`);
 
   // Create conversation item with image
+  // Format matches GA API: type: 'input_image' with image_url containing data URI
   const imageItem = {
     type: 'conversation.item.create',
     item: {
@@ -561,7 +581,7 @@ function logConversationItem(event: any): void {
   if (contentTypes.length > 0) {
     console.log(`[Redi V7] 📥 Item created: [${contentTypes.join(', ')}]`);
     if (contentTypes.includes('input_image')) {
-      console.log(`[Redi V7] ✅ IMAGE ACCEPTED`);
+      console.log(`[Redi V7] ✅ IMAGE ACCEPTED BY MODEL`);
     }
   }
 }
