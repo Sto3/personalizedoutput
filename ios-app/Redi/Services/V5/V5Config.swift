@@ -3,7 +3,7 @@ import AVFoundation
 
 struct V5Config {
     static var serverURL: URL {
-        return URL(string: "wss://redialways.com/ws/redi?v=5")!
+        return URL(string: "wss://redialways.com/ws/redi?v=6")!
     }
 
     struct Audio {

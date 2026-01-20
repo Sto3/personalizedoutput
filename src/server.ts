@@ -33,7 +33,7 @@ import rediApi from './api/rediApi';
 // V1/V2 archived - V3 and V5 active (OpenAI Realtime API)
 import { initRediV3 } from './websocket/rediV3Server';
 import { initRediV5 } from './websocket/rediV5Server';
-
+import { initRediV6, closeRediV6 } from './websocket/rediV6Server';
 // Import Homework Rescue pages
 import {
   renderHomeworkRescuePage,
