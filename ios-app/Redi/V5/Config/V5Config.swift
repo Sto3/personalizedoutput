@@ -12,14 +12,14 @@ import Foundation
 import AVFoundation
 
 struct V5Config {
-    // Server URL - V5 endpoint
+    // Server URL - V7 endpoint (production-grade reliability)
     static var serverURL: URL {
         if let envURL = ProcessInfo.processInfo.environment["REDI_V5_SERVER_URL"],
            let url = URL(string: envURL) {
             return url
         }
-        // V6 endpoint - NOTE: Uses redialways.com (production domain)
-        return URL(string: "wss://redialways.com/ws/redi?v=6")!
+        // V7 endpoint - Production-grade with state machine, barge-in, fresh frames
+        return URL(string: "wss://redialways.com/ws/redi?v=7")!
     }
 
     // Audio format settings - MUST match server exactly
@@ -36,11 +36,11 @@ struct V5Config {
         static let minPlaybackBuffer = 1200  // 50ms minimum before starting playback
     }
 
-    // Frame capture settings
+    // Frame capture settings - V7 uses higher quality
     struct Camera {
         static let staticFrameInterval: TimeInterval = 5.0
         static let motionFrameInterval: TimeInterval = 0.25
-        static let maxDimension: CGFloat = 512
-        static let compressionQuality: CGFloat = 0.7
+        static let maxDimension: CGFloat = 768  // Increased from 512 for better OCR
+        static let compressionQuality: CGFloat = 0.85  // Increased from 0.7
     }
 }
