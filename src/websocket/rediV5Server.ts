@@ -12,6 +12,8 @@
  * 5. DRIVING MODE FIX: Vision enabled + safety-first prompts + no hallucinations
  * 
  * Path: /ws/redi?v=5
+ * 
+ * ROUTING: V5 handles routing for V5, V6, and V7 connections
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -28,6 +30,9 @@ import { analyzeEdgeCase, shouldUseDeepAnalysis, formatDeepAnalysisResult } from
 
 // V6 upgrade handler - for routing V6 connections
 import { handleV6Upgrade } from './rediV6Server';
+
+// V7 upgrade handler - for routing V7 connections (PRODUCTION GRADE)
+import { handleV7Upgrade } from './rediV7Server';
 
 // =============================================================================
 // CONFIGURATION
@@ -376,6 +381,7 @@ export async function initRediV5(server: HTTPServer): Promise<void> {
   console.log('[Redi V5] Starting Redi V5 Server');
   console.log('[Redi V5] Audio Config:', AUDIO_CONFIG);
   console.log('[Redi V5] Driving Mode: ENABLED with safety guards');
+  console.log('[Redi V5] Routing: V5, V6, V7');
   console.log('[Redi V5] ========================================');
 
   wss = new WebSocketServer({ noServer: true });
@@ -452,7 +458,7 @@ export async function initRediV5(server: HTTPServer): Promise<void> {
     });
   });
 
-  // Handle upgrade requests for /ws/redi?v=5 and v=6
+  // Handle upgrade requests for /ws/redi?v=5, v=6, and v=7
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
     const parsedUrl = parseUrl(request.url || '', true);
     const pathname = parsedUrl.pathname;
@@ -466,12 +472,18 @@ export async function initRediV5(server: HTTPServer): Promise<void> {
         });
       } else if (version === '6') {
         // Route V6 connections to V6 server
+        console.log(`[Redi V5] Routing to V6 server`);
         handleV6Upgrade(request, socket, head);
+      } else if (version === '7') {
+        // Route V7 connections to V7 server (PRODUCTION GRADE)
+        console.log(`[Redi V5] Routing to V7 server (PRODUCTION GRADE)`);
+        handleV7Upgrade(request, socket, head);
       }
     }
   });
 
   console.log('[Redi V5] WebSocket server initialized on /ws/redi?v=5');
+  console.log('[Redi V5] Also routing: v=6 → V6, v=7 → V7');
 }
 
 // =============================================================================
