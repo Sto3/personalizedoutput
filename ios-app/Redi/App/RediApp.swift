@@ -27,8 +27,12 @@ class AppState: ObservableObject {
             UserDefaults.standard.set(hasCompletedOnboarding, forKey: "hasCompletedOnboarding")
         }
     }
-    @Published var useV3: Bool = false  // Toggle for V3 (OpenAI Realtime) - BACKUP
-    @Published var useV5: Bool = false  // Toggle for V5 (DEFINITIVE - audio fix)
+    
+    // Version toggles for admin testing
+    @Published var useV7: Bool = false  // V7: Production - state machine, barge-in handling
+    @Published var useV6: Bool = false  // V6: Stable fallback
+    @Published var useV5: Bool = false  // V5: Routes to V6/V7 based on config
+    @Published var useV3: Bool = false  // V3: Legacy backup
 
     private var sessionObserver: NSObjectProtocol?
 
@@ -60,11 +64,19 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if appState.useV5 {
-                // V5: DEFINITIVE VERSION - Audio fix + Vision fix + Driving safety
+            if appState.useV7 {
+                // V7: Production - state machine, barge-in, fresh frame requests
+                // Uses V5 services which connect to ?v=7 endpoint
+                V3MainView()
+            } else if appState.useV6 {
+                // V6: Stable fallback - correct OpenAI format
+                // Need to temporarily change config to use v=6
+                V3MainView()
+            } else if appState.useV5 {
+                // V5: Default path - routes based on V5Config (currently ?v=7)
                 V3MainView()
             } else if appState.useV3 {
-                // V3: Backup only
+                // V3: Legacy backup only
                 V3MainView()
             } else if !appState.hasCompletedOnboarding {
                 OnboardingView()
