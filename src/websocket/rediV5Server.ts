@@ -539,6 +539,7 @@ function configureOpenAISession(session: V5Session): void {
   const sessionConfig = {
     type: 'session.update',
     session: {
+      type: 'realtime',
       modalities: ['text', 'audio'],
       instructions: getSystemPrompt(session.currentMode),
       voice: 'echo',
