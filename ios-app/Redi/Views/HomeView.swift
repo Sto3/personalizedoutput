@@ -70,10 +70,13 @@ struct HomeView: View {
             joinSessionSheet
         }
         .alert("Admin Test Mode", isPresented: $showingAdminBypass) {
-            Button("Start V6 (Vision Fixed)") {
-                appState.useV5 = true  // V5 services connect to V6 server
+            Button("Start V7 (Production)") {
+                appState.useV7 = true
             }
-            Button("Start V3 (Backup)") {
+            Button("Start V6 (Stable)") {
+                appState.useV6 = true
+            }
+            Button("Start V3 (Legacy)") {
                 appState.useV3 = true
             }
             Button("Start Free Session") {
@@ -81,7 +84,7 @@ struct HomeView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Select a version to test:\n• V6 = Latest with vision fix\n• V3 = Backup version")
+            Text("Select a version to test:\n• V7 = Production (state machine, barge-in)\n• V6 = Stable fallback\n• V3 = Legacy backup")
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },
