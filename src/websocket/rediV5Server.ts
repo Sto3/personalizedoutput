@@ -598,9 +598,11 @@ function handleClientMessage(session: V5Session, message: any): void {
       break;
 
     case 'frame':
+      console.log('[Redi V5] 📷 Frame received:', message.data?.length || 0, 'chars');
       session.currentFrame = message.data;
       session.frameTimestamp = Date.now();
       session.hasRecentVisual = true;
+      console.log('[Redi V5] 📷 Frame stored, hasRecentVisual:', session.hasRecentVisual);
 
       if (session.pendingVisualQuestion) {
         console.log(`[Redi V5] 📷 Fresh frame for pending question`);

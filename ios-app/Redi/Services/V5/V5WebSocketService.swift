@@ -61,6 +61,7 @@ class V5WebSocketService: ObservableObject {
     }
 
     func sendFrame(_ frameData: Data) {
+        print("[V5WS] 📷 sendFrame called: \(frameData.count) bytes")
         sendJSON(["type": "frame", "data": frameData.base64EncodedString(), "timestamp": Date().timeIntervalSince1970])
     }
 
@@ -78,8 +79,16 @@ class V5WebSocketService: ObservableObject {
 
     private func sendJSON(_ dict: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
-              let string = String(data: data, encoding: .utf8) else { return }
-        webSocket?.send(.string(string)) { _ in }
+              let string = String(data: data, encoding: .utf8) else {
+            print("[V5WS] ❌ JSON serialization failed")
+            return
+        }
+        print("[V5WS] 📤 Sending: \(dict["type"] ?? "unknown") (\(string.count) chars)")
+        webSocket?.send(.string(string)) { error in
+            if let error = error {
+                print("[V5WS] ❌ Send error: \(error)")
+            }
+        }
     }
 
     private func receiveMessage() {

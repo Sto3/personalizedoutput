@@ -316,6 +316,7 @@ struct V3MainView: View {
     private func setupCallbacks() {
         // Camera frames → Server
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
+            print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
         }
 
