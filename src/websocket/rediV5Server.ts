@@ -26,6 +26,9 @@ import { RediMode } from '../lib/redi/types';
 import { PerceptionPacket } from '../lib/redi/militaryGradeTypes';
 import { analyzeEdgeCase, shouldUseDeepAnalysis, formatDeepAnalysisResult } from '../lib/redi/deepAnalysis';
 
+// V6 upgrade handler - for routing V6 connections
+import { handleV6Upgrade } from './rediV6Server';
+
 // =============================================================================
 // CONFIGURATION
 // =============================================================================
@@ -449,17 +452,22 @@ export async function initRediV5(server: HTTPServer): Promise<void> {
     });
   });
 
-  // Handle upgrade requests for /ws/redi?v=5
+  // Handle upgrade requests for /ws/redi?v=5 and v=6
   server.on('upgrade', (request: IncomingMessage, socket, head) => {
     const parsedUrl = parseUrl(request.url || '', true);
     const pathname = parsedUrl.pathname;
     const version = parsedUrl.query.v;
 
-    if (pathname === '/ws/redi' && version === '5') {
-      console.log(`[Redi V5] Handling upgrade for V5 connection`);
-      wss!.handleUpgrade(request, socket, head, (ws) => {
-        wss!.emit('connection', ws, request);
-      });
+    if (pathname === '/ws/redi') {
+      if (version === '5') {
+        console.log(`[Redi V5] Handling upgrade for V5 connection`);
+        wss!.handleUpgrade(request, socket, head, (ws) => {
+          wss!.emit('connection', ws, request);
+        });
+      } else if (version === '6') {
+        // Route V6 connections to V6 server
+        handleV6Upgrade(request, socket, head);
+      }
     }
   });
 

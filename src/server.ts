@@ -2703,18 +2703,18 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 // Create HTTP server for WebSocket support
 const server = createServer(app);
 
+// Initialize Redi V6 WebSocket server FIRST (V5 routes v=6 connections to it)
+// V6 handles /ws/redi?v=6 - Correct OpenAI API format, no 'modalities' error
+initRediV6(server);
+
 // Initialize Redi V3 WebSocket server (OpenAI Realtime API)
 // V3 handles /ws/redi?v=3 path - BACKUP ONLY
 // V1/V2 archived to src/websocket/archive/
 initRediV3(server);
 
 // Initialize Redi V5 WebSocket server (DEFINITIVE VERSION)
-// V5 handles /ws/redi?v=5 - Audio fix + Vision fix + Driving safety
+// V5 handles /ws/redi?v=5 AND routes v=6 to V6 server
 initRediV5(server);
-
-// Initialize Redi V6 WebSocket server (CLEAN REWRITE)
-// V6 handles /ws/redi?v=6 - Correct OpenAI API format, no 'modalities' error
-initRediV6(server);
 
 server.listen(PORT, () => {
   // Start API usage monitoring (checks every 4 hours, alerts at 80%/90%/95%)

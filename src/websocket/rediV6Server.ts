@@ -134,21 +134,21 @@ export async function initRediV6(server: HTTPServer): Promise<void> {
     });
   });
 
-  // Handle upgrade for V6
-  server.on('upgrade', (request: IncomingMessage, socket, head) => {
-    const parsedUrl = parseUrl(request.url || '', true);
-    const pathname = parsedUrl.pathname;
-    const version = parsedUrl.query.v;
-
-    if (pathname === '/ws/redi' && version === '6') {
-      console.log(`[Redi V6] Handling upgrade for V6 connection`);
-      wss!.handleUpgrade(request, socket, head, (ws) => {
-        wss!.emit('connection', ws, request);
-      });
-    }
-  });
-
   console.log('[Redi V6] WebSocket server initialized on /ws/redi?v=6');
+}
+
+// Export function to handle V6 upgrades (called from V5 router)
+export function handleV6Upgrade(request: IncomingMessage, socket: any, head: Buffer): boolean {
+  if (!wss) {
+    console.error('[Redi V6] WSS not initialized');
+    return false;
+  }
+
+  console.log(`[Redi V6] Handling upgrade for V6 connection`);
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss!.emit('connection', ws, request);
+  });
+  return true;
 }
 
 // =============================================================================
