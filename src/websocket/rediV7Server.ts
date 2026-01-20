@@ -16,6 +16,7 @@
  * 8. Enhanced system prompt for accuracy
  * 9. Graceful error recovery
  * 10. gpt-realtime GA model with VISION SUPPORT
+ * 11. GA API nested audio format (fixed Jan 20)
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -121,7 +122,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] 🚀 Starting V7 Server - PRODUCTION GRADE');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
-  console.log('[Redi V7] Version: Jan 20 2026 - Vision Fix');
+  console.log('[Redi V7] Version: Jan 20 2026 - GA Audio Format Fix');
   console.log('[Redi V7] Features:');
   console.log('[Redi V7]   ✓ Response state machine');
   console.log('[Redi V7]   ✓ Barge-in with response.cancel');
@@ -129,6 +130,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7]   ✓ 2-second max frame age');
   console.log('[Redi V7]   ✓ Higher image quality');
   console.log('[Redi V7]   ✓ IMAGE INPUT SUPPORTED (gpt-realtime GA)');
+  console.log('[Redi V7]   ✓ GA NESTED AUDIO FORMAT');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -249,32 +251,49 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 // =============================================================================
-// SESSION CONFIGURATION
+// SESSION CONFIGURATION - GA API NESTED AUDIO FORMAT
 // =============================================================================
 
 function configureSession(session: Session): void {
-  // CRITICAL: GA API requires type: 'realtime' in session config
+  // CRITICAL: GA API uses NESTED audio object, not flat properties
+  // Beta format: input_audio_format: 'pcm16', voice: 'alloy'
+  // GA format: audio.input.format.type, audio.output.voice
   const config = {
     type: 'session.update',
     session: {
-      type: 'realtime',  // Required for GA API
+      type: 'realtime',
+      model: 'gpt-realtime',
       instructions: SYSTEM_PROMPT,
-      voice: 'alloy',
-      input_audio_format: 'pcm16',
-      output_audio_format: 'pcm16',
-      input_audio_transcription: {
-        model: 'whisper-1'
-      },
-      turn_detection: {
-        type: 'server_vad',
-        threshold: 0.5,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 500  // Slightly faster response
+      output_modalities: ['audio'],
+      audio: {
+        input: {
+          format: {
+            type: 'audio/pcm',
+            rate: 24000
+          },
+          transcription: {
+            model: 'whisper-1'
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 500
+          }
+        },
+        output: {
+          format: {
+            type: 'audio/pcm',
+            rate: 24000
+          },
+          voice: 'alloy'
+        }
       }
     }
   };
 
-  console.log('[Redi V7] 🔧 Configuring session (GA API format)...');
+  console.log('[Redi V7] 🔧 Configuring session (GA nested audio format)...');
+  console.log('[Redi V7] 📋 Config: type=realtime, model=gpt-realtime, voice=alloy');
   sendToOpenAI(session, config);
 }
 
@@ -330,7 +349,13 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'session.updated':
-        console.log('[Redi V7] ✅ Session configured');
+        console.log('[Redi V7] ✅ Session configured successfully');
+        // Log the effective config for debugging
+        if (event.session) {
+          const voice = event.session.audio?.output?.voice || event.session.voice || 'unknown';
+          const model = event.session.model || 'unknown';
+          console.log(`[Redi V7] 📋 Effective config: model=${model}, voice=${voice}`);
+        }
         break;
 
       case 'error':
@@ -484,6 +509,9 @@ function handleOpenAIError(session: Session, error: any): void {
     // This means we're using the wrong model - should not happen with gpt-realtime
     console.error('[Redi V7] ❌ CRITICAL: Model does not support images! Check OPENAI_REALTIME_URL');
     sendToClient(session, { type: 'error', message: 'Vision not available - wrong model' });
+  } else if (errorCode === 'invalid_session_update') {
+    // Session config format issue - log full error
+    console.error('[Redi V7] ❌ Invalid session config:', JSON.stringify(error, null, 2));
   } else {
     sendToClient(session, { type: 'error', message: errorMsg });
   }
