@@ -73,7 +73,7 @@ struct HomeView: View {
             Button("Start Free Session") {
                 startFreeSession()
             }
-            Button("Try V5 (DEFINITIVE)") {
+            Button("Try V6 (LATEST)") {
                 appState.useV5 = true
             }
             Button("Try V3 (Backup)") {
@@ -81,7 +81,7 @@ struct HomeView: View {
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Start a free test session without payment? Or try V5 (definitive) or V3 (backup).")
+            Text("Start a free test session without payment? Or try V6 (latest) or V3 (backup).")
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },

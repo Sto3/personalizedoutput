@@ -50,12 +50,12 @@ struct V5MainView: View {
                             .font(.system(size: isLandscape ? 50 : 80))
                             .foregroundColor(.green.opacity(0.8))
 
-                        Text("Redi V5")
+                        Text("Redi V6")
                             .font(isLandscape ? .title : .largeTitle)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
 
-                        Text("OpenAI Realtime - Definitive")
+                        Text("OpenAI Realtime - Clean Rewrite")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
@@ -146,7 +146,7 @@ struct V5MainView: View {
             Spacer()
 
             if isSessionActive && isSessionReady {
-                Text("V5 Active")
+                Text("V6 Active")
                     .font(.caption)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
