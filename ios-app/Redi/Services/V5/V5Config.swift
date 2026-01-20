@@ -3,7 +3,7 @@ import AVFoundation
 
 struct V5Config {
     static var serverURL: URL {
-        return URL(string: "wss://redialways.com/ws/redi?v=6")!
+        return URL(string: "wss://redialways.com/ws/redi?v=7")!
     }
 
     struct Audio {
@@ -19,7 +19,7 @@ struct V5Config {
     struct Camera {
         static let staticFrameInterval: TimeInterval = 5.0
         static let motionFrameInterval: TimeInterval = 0.25
-        static let maxDimension: CGFloat = 512
-        static let compressionQuality: CGFloat = 0.7
+        static let maxDimension: CGFloat = 768  // Higher for better OCR
+        static let compressionQuality: CGFloat = 0.85  // Higher quality
     }
 }
