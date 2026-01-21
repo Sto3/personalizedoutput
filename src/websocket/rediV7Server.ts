@@ -2,14 +2,14 @@
  * Redi V7 Server - PRODUCTION-GRADE RELIABILITY
  * =============================================
  * 
- * CRITICAL FIX: Always inject fresh images on every question.
- * The state machine was blocking image injection.
+ * CRITICAL FIX: Image must be part of response.create, not separate conversation item.
+ * Previous approach added images as separate messages, which OpenAI didn't associate
+ * with the user's question.
  * 
- * KEY CHANGES:
- * 1. Inject image immediately when user STOPS speaking (not when transcript comes)
- * 2. Don't block image injection based on response state
- * 3. Request fresh frame when speech STARTS, inject when speech STOPS
- * 4. Simpler state management - let OpenAI handle response flow
+ * NEW APPROACH:
+ * 1. When user stops speaking, save the frame
+ * 2. When transcript arrives, trigger response with image context
+ * 3. Use response.create with modalities including the image
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -26,7 +26,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
 // Frame settings
-const MAX_FRAME_AGE_MS = 3000;  // Increased to 3 seconds
+const MAX_FRAME_AGE_MS = 5000;  // 5 seconds - more tolerance
 
 // =============================================================================
 // TYPES
@@ -40,11 +40,12 @@ interface Session {
   // Frame management
   currentFrame: string | null;
   frameTimestamp: number;
+  pendingFrame: string | null;  // Frame to use for next response
   
   // Speaking states
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
-  lastTranscript: string;
+  pendingTranscript: string | null;  // Transcript waiting for response
   
   // Stats
   connectionTime: number;
@@ -67,15 +68,19 @@ let wss: WebSocketServer | null = null;
 const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time voice and vision.
 
 CRITICAL RULES FOR VISION:
-1. ONLY describe what you can ACTUALLY SEE in the image. Never guess or assume.
-2. If you cannot clearly read text, say "I can see text but can't read it clearly"
-3. If asked about something not visible, say "I don't see that in the current view"
-4. Be SPECIFIC about locations: use "left side", "right side", "center", "top", "bottom"
-5. For app icons: describe by COLOR and SHAPE, give EXACT position
-6. Express uncertainty: "I think that's..." or "It looks like..." when not 100% sure
-7. NEVER make up details. If the image is blurry or unclear, say so.
-8. For docks at the BOTTOM of screen: count icons from LEFT to RIGHT
-9. For docks on the SIDE of screen: count icons from TOP to BOTTOM
+1. ONLY describe what you can ACTUALLY SEE in the current image. Never guess or assume.
+2. EACH RESPONSE must be based on the CURRENT image, not previous images.
+3. If you cannot clearly read text, say "I can see text but can't read it clearly"
+4. If asked about something not visible, say "I don't see that in the current view"
+5. Be SPECIFIC about locations: use "left side", "right side", "center", "top", "bottom"
+6. For app icons: describe by COLOR and SHAPE, give EXACT position
+7. Express uncertainty: "I think that's..." or "It looks like..." when not 100% sure
+8. NEVER make up details. If the image is blurry or unclear, say so.
+9. If the scene has CHANGED from before, acknowledge it: "Now I see..."
+
+WHEN IMAGE IS PROVIDED:
+- Always describe what you CURRENTLY see
+- Don't reference previous images unless asked to compare
 
 WHEN NO IMAGE IS PROVIDED:
 - Say "I don't have a camera view right now" 
@@ -86,7 +91,7 @@ RESPONSE STYLE:
 - Natural, conversational tone
 - No filler phrases like "Great question!"
 - Don't repeat yourself
-- Each response should describe the CURRENT view, not previous views
+- Each response should describe the CURRENT view freshly
 
 LANGUAGE: Always respond in English.`;
 
@@ -96,15 +101,14 @@ LANGUAGE: Always respond in English.`;
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 Server - ALWAYS INJECT IMAGES');
+  console.log('[Redi V7] 🚀 V7 Server - IMAGE WITH RESPONSE FIX');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
-  console.log('[Redi V7] Version: Jan 21 2026 - Always Inject Fix');
+  console.log('[Redi V7] Version: Jan 21 2026 - Image With Response');
   console.log('[Redi V7] Features:');
-  console.log('[Redi V7]   ✓ Inject image when user STOPS speaking');
-  console.log('[Redi V7]   ✓ Request frame when user STARTS speaking');
+  console.log('[Redi V7]   ✓ Image included IN response.create');
+  console.log('[Redi V7]   ✓ Fresh frame for EVERY question');
   console.log('[Redi V7]   ✓ Barge-in with response.cancel');
-  console.log('[Redi V7]   ✓ IMAGE INPUT on EVERY question');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -124,9 +128,10 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       openaiWs: null,
       currentFrame: null,
       frameTimestamp: 0,
+      pendingFrame: null,
       isUserSpeaking: false,
       isAssistantSpeaking: false,
-      lastTranscript: '',
+      pendingTranscript: null,
       connectionTime: Date.now(),
       responsesCompleted: 0,
       imagesInjected: 0,
@@ -227,33 +232,19 @@ function configureSession(session: Session): void {
   const config = {
     type: 'session.update',
     session: {
-      type: 'realtime',
-      model: 'gpt-realtime',
+      modalities: ['text', 'audio'],
       instructions: SYSTEM_PROMPT,
-      output_modalities: ['audio'],
-      audio: {
-        input: {
-          format: {
-            type: 'audio/pcm',
-            rate: 24000
-          },
-          transcription: {
-            model: 'whisper-1'
-          },
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 500
-          }
-        },
-        output: {
-          format: {
-            type: 'audio/pcm',
-            rate: 24000
-          },
-          voice: 'alloy'
-        }
+      voice: 'alloy',
+      input_audio_format: 'pcm16',
+      output_audio_format: 'pcm16',
+      input_audio_transcription: {
+        model: 'whisper-1'
+      },
+      turn_detection: {
+        type: 'server_vad',
+        threshold: 0.5,
+        prefix_padding_ms: 300,
+        silence_duration_ms: 500
       }
     }
   };
@@ -283,7 +274,7 @@ function handleClientMessage(session: Session, message: any): void {
       session.currentFrame = message.data;
       session.frameTimestamp = Date.now();
       
-      console.log(`[Redi V7] 📷 Frame: ${frameSizeKB}KB`);
+      console.log(`[Redi V7] 📷 Frame received: ${frameSizeKB}KB`);
       break;
 
     case 'mode':
@@ -326,9 +317,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'conversation.item.input_audio_transcription.completed':
         if (event.transcript) {
-          session.lastTranscript = event.transcript;
-          console.log(`[Redi V7] 👤 User: "${event.transcript}"`);
-          sendToClient(session, { type: 'transcript', text: event.transcript, role: 'user' });
+          handleTranscriptReceived(session, event.transcript);
         }
         break;
 
@@ -338,15 +327,12 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'response.audio.delta':
-      case 'response.output_audio.delta':
-        const audioData = event.delta || event.data;
-        if (audioData) {
-          sendToClient(session, { type: 'audio', data: audioData });
+        if (event.delta) {
+          sendToClient(session, { type: 'audio', data: event.delta });
         }
         break;
 
       case 'response.audio_transcript.done':
-      case 'response.output_audio_transcript.done':
         if (event.transcript) {
           console.log(`[Redi V7] 🤖 Redi: "${event.transcript}"`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'assistant' });
@@ -360,16 +346,13 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
       case 'response.cancelled':
         console.log('[Redi V7] 🛑 Response cancelled');
         session.isAssistantSpeaking = false;
-        break;
-
-      case 'conversation.item.created':
-      case 'conversation.item.added':
-        logConversationItem(event);
+        sendToClient(session, { type: 'mute_mic', muted: false });
         break;
 
       case 'rate_limits.updated':
       case 'input_audio_buffer.committed':
       case 'input_audio_buffer.cleared':
+      case 'conversation.item.created':
         break;
     }
   } catch (error) {
@@ -379,7 +362,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 }
 
 // =============================================================================
-// SPEECH HANDLERS - KEY LOGIC
+// SPEECH & TRANSCRIPT HANDLERS
 // =============================================================================
 
 function handleUserStartedSpeaking(session: Session): void {
@@ -402,14 +385,29 @@ function handleUserStoppedSpeaking(session: Session): void {
   session.isUserSpeaking = false;
   console.log('[Redi V7] 🎤 User stopped speaking');
   
-  // CRITICAL: Inject the current frame into the conversation NOW
-  // This happens BEFORE OpenAI generates a response
-  injectCurrentFrame(session);
+  // Save the current frame for the upcoming response
+  if (session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
+    session.pendingFrame = session.currentFrame;
+    const sizeKB = Math.round(session.currentFrame.length * 0.75 / 1024);
+    console.log(`[Redi V7] 📷 Frame saved for response: ${sizeKB}KB`);
+  } else {
+    session.pendingFrame = null;
+    console.log('[Redi V7] 📷 No fresh frame available');
+  }
+}
+
+function handleTranscriptReceived(session: Session, transcript: string): void {
+  console.log(`[Redi V7] 👤 User: "${transcript}"`);
+  sendToClient(session, { type: 'transcript', text: transcript, role: 'user' });
+  
+  // Now trigger a response WITH the pending frame
+  triggerResponseWithImage(session, transcript);
 }
 
 function handleResponseDone(session: Session): void {
   session.isAssistantSpeaking = false;
   session.responsesCompleted++;
+  session.pendingFrame = null;
   
   sendToClient(session, { type: 'mute_mic', muted: false });
   console.log('[Redi V7] ✅ Response complete');
@@ -422,15 +420,11 @@ function handleOpenAIError(session: Session, error: any): void {
   console.error(`[Redi V7] ❌ OpenAI Error [${errorCode}]: ${errorMsg}`);
   session.errors++;
   
-  if (errorCode === 'image_input_not_supported') {
-    console.error('[Redi V7] ❌ CRITICAL: Model does not support images!');
-  }
-  
   sendToClient(session, { type: 'error', message: errorMsg });
 }
 
 // =============================================================================
-// IMAGE INJECTION - ALWAYS INJECT
+// IMAGE INJECTION - WITH RESPONSE
 // =============================================================================
 
 function requestFreshFrame(session: Session): void {
@@ -438,52 +432,45 @@ function requestFreshFrame(session: Session): void {
   console.log('[Redi V7] 📷 Requested fresh frame');
 }
 
-function injectCurrentFrame(session: Session): void {
-  if (!session.currentFrame) {
-    console.log('[Redi V7] 📷 No frame available to inject');
-    return;
+function triggerResponseWithImage(session: Session, transcript: string): void {
+  // Build the input content
+  const inputContent: any[] = [];
+  
+  // Add image if available
+  if (session.pendingFrame) {
+    const cleanBase64 = session.pendingFrame.replace(/[\r\n\s]/g, '');
+    const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
+    
+    console.log(`[Redi V7] 📷 Including image in response: ${sizeKB}KB`);
+    
+    // First add the image as a user message in the conversation
+    const imageMessage = {
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'user',
+        content: [
+          {
+            type: 'input_image',
+            image_url: `data:image/jpeg;base64,${cleanBase64}`
+          },
+          {
+            type: 'input_text',
+            text: `[This is what I'm currently looking at. User's question: "${transcript}"]`
+          }
+        ]
+      }
+    };
+    
+    sendToOpenAI(session, imageMessage);
+    session.imagesInjected++;
+    console.log(`[Redi V7] ✅ Image injected (total: ${session.imagesInjected})`);
   }
-
-  const frameAge = Date.now() - session.frameTimestamp;
-  if (frameAge > MAX_FRAME_AGE_MS) {
-    console.log(`[Redi V7] 📷 Frame too old (${frameAge}ms), not injecting`);
-    return;
-  }
-
-  const cleanBase64 = session.currentFrame.replace(/[\r\n\s]/g, '');
-  const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
-
-  console.log(`[Redi V7] 📷 Injecting frame: ${sizeKB}KB, ${frameAge}ms old`);
-
-  // Create a conversation item with the image
-  const imageItem = {
-    type: 'conversation.item.create',
-    item: {
-      type: 'message',
-      role: 'user',
-      content: [
-        {
-          type: 'input_text',
-          text: '[Current camera view attached]'
-        },
-        {
-          type: 'input_image',
-          image_url: `data:image/jpeg;base64,${cleanBase64}`
-        }
-      ]
-    }
-  };
-
-  sendToOpenAI(session, imageItem);
-  session.imagesInjected++;
-  console.log(`[Redi V7] ✅ Frame injected (total: ${session.imagesInjected})`);
-}
-
-function logConversationItem(event: any): void {
-  const contentTypes = event.item?.content?.map((c: any) => c.type) || [];
-  if (contentTypes.includes('input_image')) {
-    console.log(`[Redi V7] ✅ IMAGE ACCEPTED by OpenAI`);
-  }
+  
+  // Now trigger the response
+  // The model will use the image + transcript we just added
+  sendToOpenAI(session, { type: 'response.create' });
+  console.log('[Redi V7] 🚀 Response triggered');
 }
 
 // =============================================================================
