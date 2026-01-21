@@ -1,24 +1,14 @@
 /**
- * Redi V7 Server - MANUAL RESPONSE TRIGGERING
- * ============================================
+ * Redi V7 Server - FIXED HYBRID APPROACH
+ * =======================================
  * 
- * CRITICAL FIX Jan 21 2026:
- * - DISABLED auto-response (turn_detection: null)
- * - Manually commit audio buffer when speech stops
- * - Wait for transcript → inject image → THEN trigger response
- * - This ensures images are ALWAYS included before response
+ * PROBLEM: Previous attempt disabled VAD completely, breaking speech detection.
  * 
- * THE PROBLEM WAS:
- * OpenAI's server_vad auto-triggers responses IMMEDIATELY when silence
- * is detected, BEFORE transcript arrives, so we couldn't inject images.
- * Result: Redi hallucinated what it "saw" without actually having an image.
- * 
- * THE FIX:
- * 1. turn_detection: null - no auto-response
- * 2. We manually call input_audio_buffer.commit when user stops speaking
- * 3. Wait for transcript to arrive
- * 4. Inject image FIRST
- * 5. Then call response.create
+ * SOLUTION: Keep server VAD but intercept the response flow:
+ * 1. Server VAD detects speech (we get speech_started/stopped events)
+ * 2. On speech_stopped → save frame, OpenAI commits audio automatically
+ * 3. On transcript → inject image → manually trigger response
+ * 4. Key: Cancel any auto-response and trigger our own WITH the image
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -35,10 +25,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
 
 // Frame settings
-const MAX_FRAME_AGE_MS = 8000;  // 8 seconds max frame age (more lenient)
-
-// Speech detection settings (client-side since we disabled server VAD)
-const SILENCE_THRESHOLD_MS = 800;  // How long silence before we commit
+const MAX_FRAME_AGE_MS = 10000;  // 10 seconds max frame age
 
 // =============================================================================
 // TYPES
@@ -58,10 +45,8 @@ interface Session {
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
   
-  // Manual VAD tracking (since we disabled server VAD)
-  lastAudioTime: number;
-  silenceTimer: NodeJS.Timeout | null;
-  hasUncommittedAudio: boolean;
+  // Track if we've handled this turn (prevent double response)
+  currentTurnHandled: boolean;
   
   // Stats
   connectionTime: number;
@@ -78,26 +63,23 @@ const sessions = new Map<string, Session>();
 let wss: WebSocketServer | null = null;
 
 // =============================================================================
-// SYSTEM PROMPT - STRICT NO-HALLUCINATION
+// SYSTEM PROMPT
 // =============================================================================
 
 const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time voice and vision.
 
-CRITICAL RULES FOR VISION:
-1. ONLY describe what you can ACTUALLY SEE in the attached image
+CRITICAL VISION RULES:
+1. ONLY describe what you can ACTUALLY SEE in the current image
 2. If NO IMAGE is attached to this message, say "I don't have a camera view right now"
-3. NEVER guess, assume, or hallucinate what might be visible
-4. If the image is blurry or unclear, say so honestly
-5. Be SPECIFIC about locations: "left side", "right side", "center", "top", "bottom"
-6. Express uncertainty when appropriate: "I think that's..." or "It looks like..."
+3. NEVER guess or hallucinate - only describe what's visible
+4. Be specific about positions: left, right, center, top, bottom
+5. If image is blurry, say so
 
 RESPONSE STYLE:
-- Be concise (under 40 words unless detail is needed)
-- Natural, conversational tone
+- Concise (under 40 words unless detail needed)
+- Natural, conversational
 - No filler phrases
-- Respond in English only
-
-REMEMBER: If you don't see an image attached, you CANNOT see anything. Do not pretend otherwise.`;
+- English only`;
 
 // =============================================================================
 // INITIALIZATION
@@ -105,15 +87,13 @@ REMEMBER: If you don't see an image attached, you CANNOT see anything. Do not pr
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 Server - MANUAL RESPONSE MODE');
+  console.log('[Redi V7] 🚀 V7 Server - HYBRID VAD + MANUAL RESPONSE');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-4o-realtime-preview-2024-12-17');
-  console.log('[Redi V7] Version: Jan 21 2026 - Manual Trigger Fix');
-  console.log('[Redi V7] KEY CHANGES:');
-  console.log('[Redi V7]   ✓ turn_detection: NULL (no auto-response)');
-  console.log('[Redi V7]   ✓ Manual audio commit on silence');
-  console.log('[Redi V7]   ✓ Image injected BEFORE response.create');
-  console.log('[Redi V7]   ✓ No more hallucinations!');
+  console.log('[Redi V7] Strategy:');
+  console.log('[Redi V7]   ✓ Server VAD for speech detection');
+  console.log('[Redi V7]   ✓ Intercept auto-response');
+  console.log('[Redi V7]   ✓ Inject image before triggering response');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -136,9 +116,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       pendingFrame: null,
       isUserSpeaking: false,
       isAssistantSpeaking: false,
-      lastAudioTime: 0,
-      silenceTimer: null,
-      hasUncommittedAudio: false,
+      currentTurnHandled: false,
       connectionTime: Date.now(),
       responsesCompleted: 0,
       imagesInjected: 0,
@@ -233,12 +211,10 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 // =============================================================================
-// SESSION CONFIGURATION - NO AUTO-RESPONSE
+// SESSION CONFIGURATION - Server VAD enabled
 // =============================================================================
 
 function configureSession(session: Session): void {
-  // CRITICAL: turn_detection is NULL - no automatic response triggering
-  // We will manually commit audio and trigger responses
   const config = {
     type: 'session.update',
     session: {
@@ -249,12 +225,18 @@ function configureSession(session: Session): void {
       input_audio_transcription: {
         model: 'whisper-1'
       },
-      // NULL = no auto-response, we control when responses happen
-      turn_detection: null
+      // Keep server VAD for speech detection
+      // Higher threshold to reduce false triggers from background noise
+      turn_detection: {
+        type: 'server_vad',
+        threshold: 0.7,  // Higher = less sensitive to noise
+        prefix_padding_ms: 300,
+        silence_duration_ms: 700  // Slightly longer silence needed
+      }
     }
   };
 
-  console.log('[Redi V7] 🔧 Configuring session (turn_detection: NULL)...');
+  console.log('[Redi V7] 🔧 Configuring session with server VAD...');
   sendToOpenAI(session, config);
 }
 
@@ -265,101 +247,25 @@ function configureSession(session: Session): void {
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      handleAudioFromClient(session, message.data);
+      if (message.data) {
+        sendToOpenAI(session, {
+          type: 'input_audio_buffer.append',
+          audio: message.data
+        });
+      }
       break;
 
     case 'frame':
-      handleFrameFromClient(session, message.data);
-      break;
-
-    case 'mode':
-    case 'sensitivity':
+      const frameSize = message.data?.length || 0;
+      const frameSizeKB = Math.round(frameSize * 0.75 / 1024);
+      session.currentFrame = message.data;
+      session.frameTimestamp = Date.now();
+      console.log(`[Redi V7] 📷 Frame received: ${frameSizeKB}KB`);
       break;
 
     default:
-      console.log(`[Redi V7] Unknown message: ${message.type}`);
+      break;
   }
-}
-
-function handleAudioFromClient(session: Session, audioData: string): void {
-  if (!audioData) return;
-  
-  // Forward audio to OpenAI
-  sendToOpenAI(session, {
-    type: 'input_audio_buffer.append',
-    audio: audioData
-  });
-  
-  // Track that we have uncommitted audio
-  session.hasUncommittedAudio = true;
-  session.lastAudioTime = Date.now();
-  
-  // Mark user as speaking if they weren't
-  if (!session.isUserSpeaking) {
-    session.isUserSpeaking = true;
-    console.log('[Redi V7] 🎤 User speaking...');
-    
-    // Request a fresh frame immediately
-    requestFreshFrame(session);
-    
-    // Cancel any active response (barge-in)
-    if (session.isAssistantSpeaking) {
-      console.log('[Redi V7] 🛑 BARGE-IN: Cancelling response');
-      sendToClient(session, { type: 'stop_audio' });
-      sendToOpenAI(session, { type: 'response.cancel' });
-      session.isAssistantSpeaking = false;
-    }
-  }
-  
-  // Reset/start silence timer
-  if (session.silenceTimer) {
-    clearTimeout(session.silenceTimer);
-  }
-  
-  session.silenceTimer = setTimeout(() => {
-    handleSilenceDetected(session);
-  }, SILENCE_THRESHOLD_MS);
-}
-
-function handleFrameFromClient(session: Session, frameData: string): void {
-  if (!frameData) return;
-  
-  const frameSizeKB = Math.round(frameData.length * 0.75 / 1024);
-  session.currentFrame = frameData;
-  session.frameTimestamp = Date.now();
-  
-  console.log(`[Redi V7] 📷 Frame received: ${frameSizeKB}KB`);
-}
-
-// =============================================================================
-// MANUAL SILENCE DETECTION (since we disabled server VAD)
-// =============================================================================
-
-function handleSilenceDetected(session: Session): void {
-  if (!session.isUserSpeaking || !session.hasUncommittedAudio) {
-    return;
-  }
-  
-  session.isUserSpeaking = false;
-  session.silenceTimer = null;
-  
-  console.log('[Redi V7] 🎤 Silence detected - committing audio');
-  
-  // Save current frame for the response
-  if (session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
-    session.pendingFrame = session.currentFrame;
-    const sizeKB = Math.round(session.currentFrame.length * 0.75 / 1024);
-    console.log(`[Redi V7] 📷 Frame saved: ${sizeKB}KB, age ${Date.now() - session.frameTimestamp}ms`);
-  } else {
-    session.pendingFrame = null;
-    console.log('[Redi V7] 📷 No fresh frame available');
-  }
-  
-  // MANUALLY commit the audio buffer
-  // This will trigger OpenAI to transcribe it
-  console.log('[Redi V7] 📤 Committing audio buffer...');
-  sendToOpenAI(session, { type: 'input_audio_buffer.commit' });
-  session.hasUncommittedAudio = false;
 }
 
 // =============================================================================
@@ -376,23 +282,24 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'session.updated':
-        console.log('[Redi V7] ✅ Session configured (manual mode)');
+        console.log('[Redi V7] ✅ Session configured');
         break;
 
       case 'error':
         handleOpenAIError(session, event.error);
         break;
 
-      // NOTE: speech_started/speech_stopped won't fire with turn_detection: null
-      // We handle speech detection ourselves based on audio timing
-      
-      case 'input_audio_buffer.committed':
-        console.log('[Redi V7] ✅ Audio buffer committed');
+      case 'input_audio_buffer.speech_started':
+        handleSpeechStarted(session);
+        break;
+
+      case 'input_audio_buffer.speech_stopped':
+        handleSpeechStopped(session);
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
         if (event.transcript) {
-          handleTranscriptReceived(session, event.transcript);
+          handleTranscriptCompleted(session, event.transcript, event.item_id);
         }
         break;
 
@@ -431,7 +338,9 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         sendToClient(session, { type: 'mute_mic', muted: false });
         break;
 
+      // Ignore these
       case 'rate_limits.updated':
+      case 'input_audio_buffer.committed':
       case 'input_audio_buffer.cleared':
         break;
     }
@@ -442,19 +351,57 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 }
 
 // =============================================================================
-// TRANSCRIPT & RESPONSE HANDLING - THE KEY FIX
+// SPEECH HANDLING
 // =============================================================================
 
-function handleTranscriptReceived(session: Session, transcript: string): void {
+function handleSpeechStarted(session: Session): void {
+  session.isUserSpeaking = true;
+  session.currentTurnHandled = false;  // New turn starting
+  console.log('[Redi V7] 🎤 User speaking...');
+  
+  // Request fresh frame immediately
+  requestFreshFrame(session);
+  
+  // Barge-in: cancel any active response
+  if (session.isAssistantSpeaking) {
+    console.log('[Redi V7] 🛑 BARGE-IN: Cancelling response');
+    sendToClient(session, { type: 'stop_audio' });
+    sendToOpenAI(session, { type: 'response.cancel' });
+    session.isAssistantSpeaking = false;
+  }
+}
+
+function handleSpeechStopped(session: Session): void {
+  session.isUserSpeaking = false;
+  console.log('[Redi V7] 🎤 User stopped speaking');
+  
+  // Save current frame for the upcoming response
+  if (session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
+    session.pendingFrame = session.currentFrame;
+    const sizeKB = Math.round(session.currentFrame.length * 0.75 / 1024);
+    console.log(`[Redi V7] 📷 Frame saved: ${sizeKB}KB`);
+  } else {
+    session.pendingFrame = null;
+    console.log('[Redi V7] 📷 No fresh frame available');
+  }
+}
+
+function handleTranscriptCompleted(session: Session, transcript: string, itemId: string): void {
   console.log(`[Redi V7] 👤 User: "${transcript}"`);
   sendToClient(session, { type: 'transcript', text: transcript, role: 'user' });
   
-  // STEP 1: Inject image FIRST (if available)
-  const imageInjected = injectImageIfAvailable(session);
+  // Prevent handling the same turn twice
+  if (session.currentTurnHandled) {
+    console.log('[Redi V7] ⚠️ Turn already handled, skipping');
+    return;
+  }
+  session.currentTurnHandled = true;
   
-  // STEP 2: THEN trigger response
-  // This ensures the image is in the conversation context BEFORE response generation
-  console.log(`[Redi V7] 🚀 Triggering response (image: ${imageInjected ? 'YES' : 'NO'})`);
+  // CRITICAL: Inject image FIRST, then trigger response
+  const hasImage = injectImageIfAvailable(session);
+  
+  // Now trigger the response manually
+  console.log(`[Redi V7] 🚀 Triggering response (image: ${hasImage ? 'YES' : 'NO'})`);
   sendToOpenAI(session, { type: 'response.create' });
 }
 
@@ -471,14 +418,18 @@ function handleOpenAIError(session: Session, error: any): void {
   const errorCode = error?.code || 'unknown';
   const errorMsg = error?.message || 'Unknown error';
   
+  // Don't log "active response" errors - they're expected when we race
+  if (errorCode === 'conversation_already_has_active_response') {
+    console.log('[Redi V7] ⚠️ Response already active (expected race condition)');
+    return;
+  }
+  
   console.error(`[Redi V7] ❌ OpenAI Error [${errorCode}]: ${errorMsg}`);
   session.errors++;
-  
-  // Don't send errors to client for now, handle gracefully
 }
 
 // =============================================================================
-// IMAGE INJECTION - ALWAYS BEFORE RESPONSE
+// IMAGE INJECTION
 // =============================================================================
 
 function requestFreshFrame(session: Session): void {
@@ -487,27 +438,19 @@ function requestFreshFrame(session: Session): void {
 }
 
 function injectImageIfAvailable(session: Session): boolean {
-  // Check if we have a pending frame
-  if (!session.pendingFrame) {
-    // Try current frame as fallback
-    if (session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
-      session.pendingFrame = session.currentFrame;
-    } else {
-      console.log('[Redi V7] 📷 No image available for injection');
-      return false;
-    }
+  // Try pending frame first, then current frame
+  let frameToUse = session.pendingFrame;
+  if (!frameToUse && session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
+    frameToUse = session.currentFrame;
   }
-
-  // Check frame age
-  const frameAge = Date.now() - session.frameTimestamp;
-  if (frameAge > MAX_FRAME_AGE_MS) {
-    console.log(`[Redi V7] 📷 Frame too old (${frameAge}ms), skipping`);
-    session.pendingFrame = null;
+  
+  if (!frameToUse) {
+    console.log('[Redi V7] 📷 No image available');
     return false;
   }
 
-  // Clean base64 string
-  const cleanBase64 = session.pendingFrame.replace(/[\r\n\s]/g, '');
+  const frameAge = Date.now() - session.frameTimestamp;
+  const cleanBase64 = frameToUse.replace(/[\r\n\s]/g, '');
   const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
 
   console.log(`[Redi V7] 📷 Injecting image: ${sizeKB}KB, age ${frameAge}ms`);
@@ -521,7 +464,7 @@ function injectImageIfAvailable(session: Session): boolean {
       content: [
         {
           type: 'input_text',
-          text: '[Camera view attached - describe what you see]'
+          text: '[Camera view attached]'
         },
         {
           type: 'input_image',
@@ -562,9 +505,6 @@ function sendToClient(session: Session, message: any): void {
 function cleanup(sessionId: string): void {
   const session = sessions.get(sessionId);
   if (session) {
-    if (session.silenceTimer) {
-      clearTimeout(session.silenceTimer);
-    }
     session.openaiWs?.close();
     sessions.delete(sessionId);
     console.log(`[Redi V7] Cleaned up: ${sessionId}`);
