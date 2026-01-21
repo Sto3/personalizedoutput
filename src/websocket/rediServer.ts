@@ -73,7 +73,7 @@ interface Session {
 // STATE
 // =============================================================================
 
-const sessions = new Map<string, Session>();
+const sessions = new Map&lt;string, Session&gt;();
 let wss: WebSocketServer | null = null;
 
 // =============================================================================
@@ -108,7 +108,7 @@ LANGUAGE: Always respond in English.`;
 // INITIALIZATION
 // =============================================================================
 
-export async function initRediServer(server: HTTPServer): Promise<void> {
+export async function initRediServer(server: HTTPServer): Promise&lt;void&gt; {
   console.log('[Redi] ═══════════════════════════════════════════');
   console.log('[Redi] 🚀 Starting Production Server');
   console.log('[Redi] ═══════════════════════════════════════════');
@@ -128,7 +128,7 @@ export async function initRediServer(server: HTTPServer): Promise<void> {
 
   wss = new WebSocketServer({ noServer: true });
 
-  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
+  wss.on('connection', async (ws: WebSocket, req: IncomingMessage) =&gt; {
     const sessionId = randomUUID();
     console.log(`[Redi] 🔌 New connection: ${sessionId}`);
 
@@ -165,7 +165,7 @@ export async function initRediServer(server: HTTPServer): Promise<void> {
       return;
     }
 
-    ws.on('message', (data: Buffer) => {
+    ws.on('message', (data: Buffer) =&gt; {
       try {
         const message = JSON.parse(data.toString());
         handleClientMessage(session, message);
@@ -174,13 +174,13 @@ export async function initRediServer(server: HTTPServer): Promise<void> {
       }
     });
 
-    ws.on('close', (code) => {
+    ws.on('close', (code) =&gt; {
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
       console.log(`[Redi] 🔌 Disconnected: ${sessionId} (${duration}s, ${session.responsesCompleted} responses, ${session.imagesInjected} images, ${session.responsesDropped} dropped)`);
       cleanup(sessionId);
     });
 
-    ws.on('error', (error) => {
+    ws.on('error', (error) =&gt; {
       console.error(`[Redi] Client error:`, error);
       cleanup(sessionId);
     });
@@ -196,7 +196,7 @@ export function handleRediUpgrade(request: IncomingMessage, socket: any, head: B
   }
 
   console.log(`[Redi] 🔄 Handling upgrade for connection`);
-  wss.handleUpgrade(request, socket, head, (ws) => {
+  wss.handleUpgrade(request, socket, head, (ws) =&gt; {
     wss!.emit('connection', ws, request);
   });
   return true;
@@ -206,8 +206,8 @@ export function handleRediUpgrade(request: IncomingMessage, socket: any, head: B
 // OPENAI CONNECTION
 // =============================================================================
 
-async function connectToOpenAI(session: Session): Promise<void> {
-  return new Promise((resolve, reject) => {
+async function connectToOpenAI(session: Session): Promise&lt;void&gt; {
+  return new Promise((resolve, reject) =&gt; {
     console.log(`[Redi] 🔗 Connecting to OpenAI...`);
 
     const ws = new WebSocket(OPENAI_REALTIME_URL, {
@@ -216,24 +216,24 @@ async function connectToOpenAI(session: Session): Promise<void> {
       }
     });
 
-    ws.on('open', () => {
+    ws.on('open', () =&gt; {
       console.log(`[Redi] ✅ Connected to OpenAI`);
       session.openaiWs = ws;
       configureSession(session);
       resolve();
     });
 
-    ws.on('message', (data: Buffer) => {
+    ws.on('message', (data: Buffer) =&gt; {
       handleOpenAIMessage(session, data);
     });
 
-    ws.on('error', (error) => {
+    ws.on('error', (error) =&gt; {
       console.error(`[Redi] ❌ OpenAI error:`, error);
       session.errors++;
       reject(error);
     });
 
-    ws.on('close', (code) => {
+    ws.on('close', (code) =&gt; {
       console.log(`[Redi] OpenAI closed: code=${code}`);
     });
   });
@@ -307,7 +307,7 @@ function handleClientMessage(session: Session, message: any): void {
       console.log(`[Redi] 📷 Frame: ${frameSizeKB}KB`);
 
       // If we're waiting for a frame, process now!
-      if (session.responseState === 'waiting_for_frame' && session.currentPendingTranscript) {
+      if (session.responseState === 'waiting_for_frame' &amp;&amp; session.currentPendingTranscript) {
         console.log('[Redi] 📷 Frame arrived - processing response!');
         clearFrameWaitTimer(session);
         triggerResponseWithImage(session, session.currentPendingTranscript);
@@ -377,7 +377,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
       case 'response.audio_transcript.done':
       case 'response.output_audio_transcript.done':
         if (event.transcript) {
-          console.log(`[Redi] 🤖 Redi: "${event.transcript)}"`);
+          console.log(`[Redi] 🤖 Redi: "${event.transcript}"`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'assistant' });
         }
         break;
@@ -418,7 +418,7 @@ function handleUserStartedSpeaking(session: Session): void {
   console.log('[Redi] 🎤 User speaking...');
 
   // BARGE-IN: Cancel any active response
-  if (session.responseState === 'active' && session.currentResponseId) {
+  if (session.responseState === 'active' &amp;&amp; session.currentResponseId) {
     console.log('[Redi] 🛑 BARGE-IN: Cancelling response');
     session.responseState = 'cancelling';
     sendToClient(session, { type: 'stop_audio' });
@@ -436,7 +436,7 @@ function handleUserStartedSpeaking(session: Session): void {
 
 function handleTranscriptCompleted(session: Session, transcript: string): void {
   session.lastTranscript = transcript;
-  console.log(`[Redi] 👤 User: "${transcript)}"`);
+  console.log(`[Redi] 👤 User: "${transcript}"`);
   sendToClient(session, { type: 'transcript', text: transcript, role: 'user' });
 
   // CRITICAL: Don't queue - if we're busy, just drop it
@@ -480,7 +480,7 @@ function handleOpenAIError(session: Session, error: any): void {
 
 function processResponse(session: Session, transcript: string): void {
   const frameAge = Date.now() - session.frameTimestamp;
-  const haveFreshFrame = session.currentFrame && frameAge <= MAX_FRAME_AGE_MS;
+  const haveFreshFrame = session.currentFrame &amp;&amp; frameAge &lt;= MAX_FRAME_AGE_MS;
 
   if (haveFreshFrame) {
     console.log(`[Redi] 📷 Fresh frame (${frameAge}ms old)`);
@@ -492,7 +492,7 @@ function processResponse(session: Session, transcript: string): void {
 
     requestFreshFrame(session);
 
-    session.frameWaitTimer = setTimeout(() => {
+    session.frameWaitTimer = setTimeout(() =&gt; {
       if (session.responseState === 'waiting_for_frame') {
         console.log('[Redi] ⏰ Frame timeout - responding anyway');
         triggerResponseWithImage(session, session.currentPendingTranscript || transcript);
@@ -536,7 +536,7 @@ function maybeInjectImage(session: Session, transcript: string): boolean {
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
-  if (frameAge > MAX_FRAME_AGE_MS) {
+  if (frameAge &gt; MAX_FRAME_AGE_MS) {
     console.log(`[Redi] 📷 Frame too old (${frameAge}ms)`);
     return false;
   }
@@ -570,7 +570,7 @@ function maybeInjectImage(session: Session, transcript: string): boolean {
 }
 
 function logConversationItem(event: any): void {
-  const contentTypes = event.item?.content?.map((c: any) => c.type) || [];
+  const contentTypes = event.item?.content?.map((c: any) =&gt; c.type) || [];
   if (contentTypes.includes('input_image')) {
     console.log(`[Redi] ✅ IMAGE ACCEPTED`);
   }
@@ -607,7 +607,7 @@ function cleanup(sessionId: string): void {
 }
 
 export function closeRediServer(): void {
-  sessions.forEach((_, id) => cleanup(id));
+  sessions.forEach((_, id) =&gt; cleanup(id));
   if (wss) {
     wss.close();
     wss = null;
@@ -616,7 +616,7 @@ export function closeRediServer(): void {
 }
 
 export function getRediStats(): object {
-  const sessionStats = Array.from(sessions.values()).map(s => ({
+  const sessionStats = Array.from(sessions.values()).map(s =&gt; ({
     id: s.id.slice(0, 8),
     uptime: Math.round((Date.now() - s.connectionTime) / 1000),
     responses: s.responsesCompleted,
