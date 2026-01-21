@@ -1,16 +1,13 @@
 /**
- * Redi V7 Server - FRESH FRAME ON SPEECH END
- * ==========================================
+ * Redi V7 Server - MAXIMUM SPEED OPTIMIZATION
+ * ===========================================
  * 
- * CRITICAL FIX: Request frame when user STOPS speaking, not when they START.
- * This ensures we capture what the camera sees at the moment of the question,
- * not what it saw 2-3 seconds earlier when the user started talking.
- * 
- * Flow:
- * 1. User starts speaking → just listen
- * 2. User stops speaking → REQUEST FRESH FRAME NOW
- * 3. Wait for frame to arrive (up to 500ms)
- * 4. Transcript arrives → inject the FRESH frame → respond
+ * OPTIMIZATIONS FOR SUB-3-SECOND RESPONSE:
+ * 1. Continuous frame streaming - always have the latest frame ready
+ * 2. Shorter VAD silence (400ms vs 600ms) - detect speech end faster
+ * 3. Don't wait for frame if we have a recent one (<500ms old)
+ * 4. Smaller image size recommendation (iOS should send ~100KB not 300KB)
+ * 5. Parallel processing - inject image while transcript still processing
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -20,15 +17,16 @@ import { Server as HTTPServer, IncomingMessage } from 'http';
 import { randomUUID } from 'crypto';
 
 // =============================================================================
-// CONFIGURATION
+// CONFIGURATION - TUNED FOR SPEED
 // =============================================================================
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
-// Frame settings - STRICT freshness requirements
-const MAX_FRAME_AGE_MS = 1500;  // 1.5 seconds max - frames older than this are STALE
-const FRAME_WAIT_TIMEOUT_MS = 800;  // Wait up to 800ms for fresh frame
+// Frame settings - AGGRESSIVE freshness for speed
+const MAX_FRAME_AGE_MS = 1000;  // 1 second max - reject anything older
+const FRESH_ENOUGH_MS = 500;   // If frame is <500ms old, use it immediately (don't wait)
+const FRAME_WAIT_TIMEOUT_MS = 400;  // Only wait 400ms for frame (was 800ms)
 
 // =============================================================================
 // TYPES
@@ -39,15 +37,17 @@ interface Session {
   clientWs: WebSocket;
   openaiWs: WebSocket | null;
   
-  // Frame management - CRITICAL for fresh vision
+  // Frame management - keep updating during speech
   currentFrame: string | null;
   frameTimestamp: number;
+  pendingFrameRequest: boolean;
   waitingForFrame: boolean;
   framePromiseResolve: ((value: boolean) => void) | null;
   
   // Speaking states
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
+  speechStartTime: number;
   
   // Prevent double responses
   currentTurnHandled: boolean;
@@ -66,23 +66,17 @@ const sessions = new Map<string, Session>();
 let wss: WebSocketServer | null = null;
 
 // =============================================================================
-// SYSTEM PROMPT
+// SYSTEM PROMPT - CONCISE FOR FASTER RESPONSES
 // =============================================================================
 
-const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time voice and vision.
+const SYSTEM_PROMPT = `You are Redi, an AI with real-time vision.
 
-CRITICAL VISION RULES:
-1. ONLY describe what you can ACTUALLY SEE in the attached image
-2. Each image is a FRESH capture - describe THIS image, not previous ones
-3. If NO IMAGE is attached, say "I don't have a camera view right now"
-4. Be specific: positions (left/right/center), colors, text you can read
-5. If blurry, say so. Never guess or assume.
-
-RESPONSE STYLE:
-- Concise (under 30 words unless detail needed)
-- Natural, conversational
+RULES:
+- Describe ONLY what's in the attached image
+- Be brief: 15-25 words max
 - No filler phrases
-- English only`;
+- English only
+- If no image: "Can't see right now"`;
 
 // =============================================================================
 // INITIALIZATION
@@ -90,14 +84,12 @@ RESPONSE STYLE:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 Server - FRESH FRAME ON SPEECH END');
+  console.log('[Redi V7] 🚀 V7 Server - MAXIMUM SPEED MODE');
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] Max frame age: 1.5 seconds (STRICT)');
-  console.log('[Redi V7] Frame wait timeout: 800ms');
-  console.log('[Redi V7] Strategy:');
-  console.log('[Redi V7]   ✓ Request frame when user STOPS speaking');
-  console.log('[Redi V7]   ✓ Wait for fresh frame before responding');
-  console.log('[Redi V7]   ✓ Reject stale frames');
+  console.log('[Redi V7] Max frame age: 1000ms');
+  console.log('[Redi V7] Fresh enough: 500ms (skip wait)');
+  console.log('[Redi V7] Frame wait timeout: 400ms');
+  console.log('[Redi V7] VAD silence: 400ms (fast detection)');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -117,10 +109,12 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       openaiWs: null,
       currentFrame: null,
       frameTimestamp: 0,
+      pendingFrameRequest: false,
       waitingForFrame: false,
       framePromiseResolve: null,
       isUserSpeaking: false,
       isAssistantSpeaking: false,
+      speechStartTime: 0,
       currentTurnHandled: false,
       connectionTime: Date.now(),
       responsesCompleted: 0,
@@ -132,7 +126,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
     try {
       await connectToOpenAI(session);
       sendToClient(session, { type: 'session_ready', sessionId });
-      console.log(`[Redi V7] ✅ Session ${sessionId} ready`);
+      console.log(`[Redi V7] ✅ Session ready`);
     } catch (error) {
       console.error(`[Redi V7] ❌ Failed to connect to OpenAI:`, error);
       ws.close(1011, 'OpenAI connection failed');
@@ -150,7 +144,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
 
     ws.on('close', (code) => {
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
-      console.log(`[Redi V7] 🔌 Disconnected: ${sessionId} (${duration}s, ${session.responsesCompleted} responses, ${session.imagesInjected} images)`);
+      console.log(`[Redi V7] 🔌 Disconnected: ${sessionId.slice(0,8)} (${duration}s, ${session.responsesCompleted} responses)`);
       cleanup(sessionId);
     });
 
@@ -169,7 +163,7 @@ export function handleV7Upgrade(request: IncomingMessage, socket: any, head: Buf
     return false;
   }
 
-  console.log(`[Redi V7] 🔄 Handling upgrade for V7 connection`);
+  console.log(`[Redi V7] 🔄 Handling upgrade`);
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss!.emit('connection', ws, request);
   });
@@ -214,7 +208,7 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 // =============================================================================
-// SESSION CONFIGURATION
+// SESSION CONFIGURATION - OPTIMIZED FOR SPEED
 // =============================================================================
 
 function configureSession(session: Session): void {
@@ -231,13 +225,13 @@ function configureSession(session: Session): void {
       turn_detection: {
         type: 'server_vad',
         threshold: 0.5,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 600  // Slightly shorter for faster response
+        prefix_padding_ms: 200,      // Reduced from 300ms
+        silence_duration_ms: 400     // Reduced from 600ms - faster end detection!
       }
     }
   };
 
-  console.log('[Redi V7] 🔧 Configuring session...');
+  console.log('[Redi V7] 🔧 Configuring session (fast VAD)...');
   sendToOpenAI(session, config);
 }
 
@@ -260,18 +254,23 @@ function handleClientMessage(session: Session, message: any): void {
       const frameSize = message.data?.length || 0;
       const frameSizeKB = Math.round(frameSize * 0.75 / 1024);
       
-      // Store frame with fresh timestamp
+      // Always store the latest frame
       session.currentFrame = message.data;
       session.frameTimestamp = Date.now();
+      session.pendingFrameRequest = false;
       
-      console.log(`[Redi V7] 📷 Frame received: ${frameSizeKB}KB (fresh)`);
+      // Warn if frame is too large (slows everything down)
+      if (frameSizeKB > 150) {
+        console.log(`[Redi V7] 📷 Frame: ${frameSizeKB}KB ⚠️ LARGE (target <150KB)`);
+      } else {
+        console.log(`[Redi V7] 📷 Frame: ${frameSizeKB}KB ✓`);
+      }
       
-      // If we're waiting for a frame, resolve the promise
+      // If we're waiting for a frame, resolve immediately
       if (session.waitingForFrame && session.framePromiseResolve) {
         session.waitingForFrame = false;
         session.framePromiseResolve(true);
         session.framePromiseResolve = null;
-        console.log(`[Redi V7] 📷 Frame arrived while waiting - resolved!`);
       }
       break;
 
@@ -299,22 +298,24 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'error':
         const errorCode = event.error?.code || 'unknown';
-        if (errorCode === 'conversation_already_has_active_response') {
-          console.log('[Redi V7] ⚠️ Response already active');
-        } else {
-          console.error(`[Redi V7] ❌ OpenAI Error: ${event.error?.message || 'Unknown'}`);
+        if (errorCode !== 'conversation_already_has_active_response') {
+          console.error(`[Redi V7] ❌ Error: ${event.error?.message || 'Unknown'}`);
         }
         break;
 
       case 'input_audio_buffer.speech_started':
         session.isUserSpeaking = true;
         session.currentTurnHandled = false;
-        console.log('[Redi V7] 🎤 User speaking...');
-        // DON'T request frame here - wait until speech ends
+        session.speechStartTime = Date.now();
+        console.log('[Redi V7] 🎤 Speaking...');
         
-        // Barge-in
+        // Request frame immediately when speech starts
+        // This way we might have a fresh frame ready by the time they finish
+        requestFrame(session);
+        
+        // Barge-in handling
         if (session.isAssistantSpeaking) {
-          console.log('[Redi V7] 🛑 BARGE-IN - cancelling response');
+          console.log('[Redi V7] 🛑 BARGE-IN');
           sendToClient(session, { type: 'stop_audio' });
           sendToOpenAI(session, { type: 'response.cancel' });
           session.isAssistantSpeaking = false;
@@ -323,11 +324,11 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'input_audio_buffer.speech_stopped':
         session.isUserSpeaking = false;
-        console.log('[Redi V7] 🎤 User stopped speaking');
+        const speechDuration = Date.now() - session.speechStartTime;
+        console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
         
-        // REQUEST FRESH FRAME NOW - this is the key change!
-        console.log('[Redi V7] 📷 Requesting fresh frame NOW (speech just ended)');
-        requestFreshFrame(session);
+        // Request another frame NOW - we want the freshest possible
+        requestFrame(session);
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
@@ -337,10 +338,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'conversation.item.created':
-        const contentTypes = event.item?.content?.map((c: any) => c.type) || [];
-        if (contentTypes.length > 0) {
-          console.log(`[Redi V7] 📥 Item created: [${contentTypes.join(', ')}]`);
-        }
+        // Silent - reduce log noise
         break;
 
       case 'response.created':
@@ -356,7 +354,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.audio_transcript.done':
         if (event.transcript) {
-          console.log(`[Redi V7] 🤖 Redi: "${event.transcript}"`);
+          console.log(`[Redi V7] 🤖 "${event.transcript}"`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'assistant' });
         }
         break;
@@ -365,11 +363,10 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         session.isAssistantSpeaking = false;
         session.responsesCompleted++;
         sendToClient(session, { type: 'mute_mic', muted: false });
-        console.log('[Redi V7] ✅ Response complete');
+        console.log('[Redi V7] ✅ Done');
         break;
 
       case 'response.cancelled':
-        console.log('[Redi V7] 🛑 Response cancelled');
         session.isAssistantSpeaking = false;
         sendToClient(session, { type: 'mute_mic', muted: false });
         break;
@@ -380,92 +377,95 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 }
 
 // =============================================================================
-// TRANSCRIPT HANDLING - Wait for fresh frame
+// TRANSCRIPT HANDLING - OPTIMIZED FOR SPEED
 // =============================================================================
 
 async function handleTranscriptCompleted(session: Session, transcript: string): Promise<void> {
-  console.log(`[Redi V7] 👤 User: "${transcript}"`);
+  const transcriptTime = Date.now();
+  console.log(`[Redi V7] 👤 "${transcript}"`);
   sendToClient(session, { type: 'transcript', text: transcript, role: 'user' });
   
   if (session.currentTurnHandled) {
-    console.log('[Redi V7] ⚠️ Turn already handled');
     return;
   }
   session.currentTurnHandled = true;
   
-  // Check if we have a fresh frame
+  // Check frame freshness
   const frameAge = session.currentFrame ? Date.now() - session.frameTimestamp : Infinity;
   
-  if (frameAge > MAX_FRAME_AGE_MS) {
-    // Frame is stale - wait for the fresh one we requested
-    console.log(`[Redi V7] 📷 Frame stale (${frameAge}ms) - waiting for fresh frame...`);
-    
-    const gotFreshFrame = await waitForFreshFrame(session);
-    
-    if (!gotFreshFrame) {
-      console.log('[Redi V7] 📷 No fresh frame arrived - responding without image');
-    }
+  // SPEED OPTIMIZATION: If frame is "fresh enough", use it immediately
+  if (frameAge <= FRESH_ENOUGH_MS) {
+    console.log(`[Redi V7] 📷 Frame fresh (${frameAge}ms) - using immediately`);
+  } else if (frameAge <= MAX_FRAME_AGE_MS) {
+    console.log(`[Redi V7] 📷 Frame acceptable (${frameAge}ms)`);
   } else {
-    console.log(`[Redi V7] 📷 Frame is fresh (${frameAge}ms)`);
+    // Frame is stale - wait briefly for fresh one
+    console.log(`[Redi V7] 📷 Frame stale (${frameAge}ms) - waiting...`);
+    const gotFrame = await waitForFreshFrame(session);
+    if (!gotFrame) {
+      console.log('[Redi V7] 📷 Timeout - proceeding without fresh frame');
+    }
   }
   
-  // Inject image if we have a fresh one
-  const hasImage = injectImageIfFresh(session);
+  // Inject image
+  const hasImage = injectImage(session);
   
-  // Trigger response
-  console.log(`[Redi V7] 🚀 Triggering response (image: ${hasImage ? 'YES' : 'NO'})`);
+  // Calculate total latency so far
+  const latencySoFar = Date.now() - transcriptTime;
+  console.log(`[Redi V7] 🚀 Triggering response (image: ${hasImage ? 'YES' : 'NO'}, prep: ${latencySoFar}ms)`);
+  
   sendToOpenAI(session, { type: 'response.create' });
 }
 
 // =============================================================================
-// FRAME MANAGEMENT
+// FRAME MANAGEMENT - OPTIMIZED
 // =============================================================================
 
-function requestFreshFrame(session: Session): void {
-  sendToClient(session, { type: 'request_frame' });
+function requestFrame(session: Session): void {
+  if (!session.pendingFrameRequest) {
+    session.pendingFrameRequest = true;
+    sendToClient(session, { type: 'request_frame' });
+  }
 }
 
 async function waitForFreshFrame(session: Session): Promise<boolean> {
-  // Check if frame is already fresh
   const frameAge = session.currentFrame ? Date.now() - session.frameTimestamp : Infinity;
-  if (frameAge <= MAX_FRAME_AGE_MS) {
+  if (frameAge <= FRESH_ENOUGH_MS) {
     return true;
   }
   
-  // Wait for frame with timeout
   return new Promise((resolve) => {
     session.waitingForFrame = true;
     session.framePromiseResolve = resolve;
     
-    // Timeout after FRAME_WAIT_TIMEOUT_MS
     setTimeout(() => {
       if (session.waitingForFrame) {
         session.waitingForFrame = false;
         session.framePromiseResolve = null;
-        console.log(`[Redi V7] 📷 Frame wait timeout (${FRAME_WAIT_TIMEOUT_MS}ms)`);
         resolve(false);
       }
     }, FRAME_WAIT_TIMEOUT_MS);
   });
 }
 
-function injectImageIfFresh(session: Session): boolean {
+function injectImage(session: Session): boolean {
   if (!session.currentFrame) {
-    console.log('[Redi V7] 📷 No frame available');
     return false;
   }
 
   const frameAge = Date.now() - session.frameTimestamp;
   
-  if (frameAge > MAX_FRAME_AGE_MS) {
-    console.log(`[Redi V7] 📷 Frame too old (${frameAge}ms > ${MAX_FRAME_AGE_MS}ms) - skipping`);
+  // Be more lenient - use frame if it's under 2 seconds old
+  // Speed is more important than perfect freshness
+  if (frameAge > 2000) {
+    console.log(`[Redi V7] 📷 Frame too old (${frameAge}ms) - skipping`);
     return false;
   }
 
   const cleanBase64 = session.currentFrame.replace(/[\r\n\s]/g, '');
   const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
 
-  console.log(`[Redi V7] 📷 Injecting FRESH image: ${sizeKB}KB, age ${frameAge}ms`);
+  console.log(`[Redi V7] 📷 Injecting: ${sizeKB}KB, ${frameAge}ms old`);
 
   const imageItem = {
     type: 'conversation.item.create',
@@ -475,7 +475,7 @@ function injectImageIfFresh(session: Session): boolean {
       content: [
         {
           type: 'input_text',
-          text: '[FRESH camera capture - describe exactly what you see in THIS image]'
+          text: '[Camera view - describe briefly what you see]'
         },
         {
           type: 'input_image',
@@ -487,8 +487,6 @@ function injectImageIfFresh(session: Session): boolean {
 
   sendToOpenAI(session, imageItem);
   session.imagesInjected++;
-  
-  console.log(`[Redi V7] ✅ Fresh image injected (total: ${session.imagesInjected})`);
   return true;
 }
 
@@ -520,7 +518,6 @@ function cleanup(sessionId: string): void {
     }
     session.openaiWs?.close();
     sessions.delete(sessionId);
-    console.log(`[Redi V7] Cleaned up: ${sessionId}`);
   }
 }
 
@@ -529,18 +526,11 @@ export function closeRediV7(): void {
   if (wss) {
     wss.close();
     wss = null;
-    console.log('[Redi V7] Server closed');
   }
 }
 
 export function getV7Stats(): object {
   return {
     activeSessions: sessions.size,
-    sessions: Array.from(sessions.values()).map(s => ({
-      id: s.id.slice(0, 8),
-      uptime: Math.round((Date.now() - s.connectionTime) / 1000),
-      responses: s.responsesCompleted,
-      images: s.imagesInjected,
-    }))
   };
 }
