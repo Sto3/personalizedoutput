@@ -1,19 +1,20 @@
 /**
- * Redi V7 Server - MAXIMUM SPEED + ACCURACY
- * ==========================================
+ * Redi V7 Server - TRANSCRIPT-TIME FRAME CAPTURE
+ * ===============================================
  * 
- * KEY FIX: Wait for frame captured AFTER speech stops!
+ * KEY INSIGHT: The delay between speech_stopped and transcript arrival is ~1.3 seconds.
+ * During this time, the user continues moving the camera!
  * 
- * The problem was:
- * - User moves camera while speaking
- * - Frame arrives during speech (shows OLD position)
- * - User stops speaking (camera now at NEW position)
- * - We used the OLD frame because it was "fresh enough"
+ * OLD BEHAVIOR:
+ * - Speech stops → capture frame → transcript arrives → use old frame
+ * - Result: Frame shows where camera WAS, not where it IS
  * 
- * The fix:
- * - Track when speech STOPPED
- * - Only use frames that arrived AFTER speech stopped
- * - This ensures we see what the camera is pointing at NOW
+ * NEW BEHAVIOR:
+ * - Speech stops → (user keeps moving camera) → transcript arrives → REQUEST NEW FRAME → use fresh frame
+ * - Result: Frame shows where camera is RIGHT NOW
+ * 
+ * The fix: When transcript arrives, ALWAYS request a new frame and wait for it.
+ * Don't use any cached frame - it's guaranteed to be stale.
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -29,9 +30,8 @@ import { randomUUID } from 'crypto';
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
-// Frame settings
-const MAX_FRAME_AGE_MS = 1500;      // Max age from when it was captured
-const FRAME_WAIT_TIMEOUT_MS = 600;  // Wait up to 600ms for post-speech frame
+// Frame settings - tuned for accuracy
+const FRAME_WAIT_TIMEOUT_MS = 500;  // Wait up to 500ms for the fresh frame
 
 // =============================================================================
 // TYPES
@@ -49,8 +49,8 @@ interface Session {
   waitingForFrame: boolean;
   framePromiseResolve: ((value: boolean) => void) | null;
   
-  // KEY: Track when speech stopped so we only use frames AFTER that
-  speechStoppedAt: number;
+  // Track transcript arrival time - we only want frames AFTER this
+  transcriptArrivedAt: number;
   
   // Speaking states
   isUserSpeaking: boolean;
@@ -92,12 +92,11 @@ RULES:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 Server - SPEED + ACCURACY');
+  console.log('[Redi V7] 🚀 V7 Server - TRANSCRIPT-TIME FRAME CAPTURE');
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] Frame wait: 600ms (for post-speech frame)');
-  console.log('[Redi V7] Max frame age: 1500ms');
+  console.log('[Redi V7] Frame wait: 500ms');
   console.log('[Redi V7] VAD silence: 400ms');
-  console.log('[Redi V7] KEY: Only use frames captured AFTER speech stops');
+  console.log('[Redi V7] KEY: Request NEW frame when transcript arrives');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -120,7 +119,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       pendingFrameRequest: false,
       waitingForFrame: false,
       framePromiseResolve: null,
-      speechStoppedAt: 0,
+      transcriptArrivedAt: 0,
       isUserSpeaking: false,
       isAssistantSpeaking: false,
       speechStartTime: 0,
@@ -235,7 +234,7 @@ function configureSession(session: Session): void {
         type: 'server_vad',
         threshold: 0.5,
         prefix_padding_ms: 200,
-        silence_duration_ms: 400  // Fast end detection
+        silence_duration_ms: 400
       }
     }
   };
@@ -275,17 +274,17 @@ function handleClientMessage(session: Session, message: any): void {
         console.log(`[Redi V7] 📷 Frame: ${frameSizeKB}KB ✓`);
       }
       
-      // KEY: Check if this frame arrived AFTER speech stopped
+      // KEY: Check if this frame arrived AFTER transcript arrived
       if (session.waitingForFrame && session.framePromiseResolve) {
-        if (session.frameTimestamp > session.speechStoppedAt) {
-          // This frame was captured AFTER user stopped speaking - perfect!
-          console.log(`[Redi V7] 📷 Post-speech frame arrived!`);
+        if (session.frameTimestamp > session.transcriptArrivedAt) {
+          // This frame was captured AFTER transcript arrived - perfect!
+          console.log(`[Redi V7] 📷 Fresh frame arrived!`);
           session.waitingForFrame = false;
           session.framePromiseResolve(true);
           session.framePromiseResolve = null;
         } else {
-          // Frame was captured during speech - keep waiting
-          console.log(`[Redi V7] 📷 Frame from during speech - still waiting...`);
+          // Frame was captured before transcript - keep waiting
+          console.log(`[Redi V7] 📷 Stale frame (before transcript) - still waiting...`);
         }
       }
       break;
@@ -325,9 +324,6 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         session.speechStartTime = Date.now();
         console.log('[Redi V7] 🎤 Speaking...');
         
-        // Request frames while user speaks (keeps pipeline primed)
-        requestFrame(session);
-        
         // Barge-in handling
         if (session.isAssistantSpeaking) {
           console.log('[Redi V7] 🛑 BARGE-IN');
@@ -339,12 +335,9 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'input_audio_buffer.speech_stopped':
         session.isUserSpeaking = false;
-        session.speechStoppedAt = Date.now();  // KEY: Record when speech stopped
         const speechDuration = Date.now() - session.speechStartTime;
         console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
-        
-        // Request fresh frame NOW - this will show where camera is pointing
-        requestFrame(session);
+        // Don't request frame here anymore - wait for transcript
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
@@ -392,11 +385,13 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 }
 
 // =============================================================================
-// TRANSCRIPT HANDLING - WAIT FOR POST-SPEECH FRAME
+// TRANSCRIPT HANDLING - REQUEST FRESH FRAME AT TRANSCRIPT TIME
 // =============================================================================
 
 async function handleTranscriptCompleted(session: Session, transcript: string): Promise<void> {
   const transcriptTime = Date.now();
+  session.transcriptArrivedAt = transcriptTime;  // KEY: Mark when transcript arrived
+  
   console.log(`[Redi V7] 👤 "${transcript}"`);
   sendToClient(session, { type: 'transcript', text: transcript, role: 'user' });
   
@@ -405,24 +400,16 @@ async function handleTranscriptCompleted(session: Session, transcript: string): 
   }
   session.currentTurnHandled = true;
   
-  // KEY: We need a frame that was captured AFTER speech stopped
-  // This ensures we see what the camera is pointing at NOW, not during speech
+  // KEY FIX: ALWAYS request a new frame when transcript arrives!
+  // Any cached frame is stale - user may have moved camera during the ~1.3s transcript delay
+  console.log(`[Redi V7] 📷 Requesting fresh frame (transcript just arrived)...`);
   
-  const frameAge = session.currentFrame ? Date.now() - session.frameTimestamp : Infinity;
-  const frameIsPostSpeech = session.frameTimestamp > session.speechStoppedAt;
-  
-  if (frameIsPostSpeech && frameAge < MAX_FRAME_AGE_MS) {
-    // Great! We already have a frame from after speech stopped
-    console.log(`[Redi V7] 📷 Have post-speech frame (${frameAge}ms old)`);
+  const gotFrame = await waitForFreshFrame(session);
+  if (gotFrame) {
+    const frameAge = Date.now() - session.frameTimestamp;
+    console.log(`[Redi V7] 📷 Got fresh frame! (${frameAge}ms old)`);
   } else {
-    // Need to wait for a frame that was captured after speech stopped
-    console.log(`[Redi V7] 📷 Waiting for post-speech frame...`);
-    const gotFrame = await waitForPostSpeechFrame(session);
-    if (gotFrame) {
-      console.log(`[Redi V7] 📷 Got post-speech frame!`);
-    } else {
-      console.log(`[Redi V7] 📷 Timeout - using best available frame`);
-    }
+    console.log(`[Redi V7] 📷 Timeout - using best available frame`);
   }
   
   // Inject image
@@ -445,17 +432,12 @@ function requestFrame(session: Session): void {
   }
 }
 
-async function waitForPostSpeechFrame(session: Session): Promise<boolean> {
-  // Check if we already have a good frame
-  if (session.currentFrame && session.frameTimestamp > session.speechStoppedAt) {
-    return true;
-  }
-  
+async function waitForFreshFrame(session: Session): Promise<boolean> {
   return new Promise((resolve) => {
     session.waitingForFrame = true;
     session.framePromiseResolve = resolve;
     
-    // Request fresh frame
+    // Request fresh frame immediately
     session.pendingFrameRequest = false;
     requestFrame(session);
     
@@ -476,8 +458,8 @@ function injectImage(session: Session): boolean {
 
   const frameAge = Date.now() - session.frameTimestamp;
   
-  // Accept frame if it's reasonably recent
-  if (frameAge > 2000) {
+  // Only use very fresh frames now
+  if (frameAge > 1000) {
     console.log(`[Redi V7] 📷 Frame too old (${frameAge}ms) - skipping`);
     return false;
   }
