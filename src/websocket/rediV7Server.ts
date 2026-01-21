@@ -6,6 +6,7 @@
  * 1. Changed model to gpt-realtime (GA) - same as working V6
  * 2. Keep server VAD for speech detection
  * 3. Inject image before response.create
+ * 4. FIXED: Reduced frame age from 10s to 3s (was causing stale vision)
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -22,8 +23,8 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 // FIXED: Use GA model (same as V6) - preview model was causing audio issues
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
-// Frame settings
-const MAX_FRAME_AGE_MS = 10000;  // 10 seconds max frame age
+// Frame settings - CRITICAL: Keep frame age low to prevent stale vision
+const MAX_FRAME_AGE_MS = 3000;  // 3 seconds max frame age (was 10s - too stale!)
 
 // =============================================================================
 // TYPES
@@ -72,6 +73,7 @@ CRITICAL VISION RULES:
 3. NEVER guess or hallucinate - only describe what's visible
 4. Be specific about positions: left, right, center, top, bottom
 5. If image is blurry, say so
+6. Each image is FRESH - describe what you see NOW, not what you saw before
 
 RESPONSE STYLE:
 - Concise (under 40 words unless detail needed)
@@ -85,12 +87,13 @@ RESPONSE STYLE:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 Server - GA MODEL + IMAGE INJECTION');
+  console.log('[Redi V7] 🚀 V7 Server - GA MODEL + FRESH FRAMES');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-realtime (GA - same as V6)');
+  console.log('[Redi V7] Max frame age: 3 seconds (FIXED from 10s)');
   console.log('[Redi V7] Strategy:');
   console.log('[Redi V7]   ✓ Server VAD for speech detection');
-  console.log('[Redi V7]   ✓ Inject image before response');
+  console.log('[Redi V7]   ✓ Inject FRESH image before response');
   console.log('[Redi V7]   ✓ Fixed audio (GA model)');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
@@ -354,7 +357,7 @@ function handleSpeechStarted(session: Session): void {
   session.currentTurnHandled = false;
   console.log('[Redi V7] 🎤 User speaking...');
   
-  // Request fresh frame
+  // Request fresh frame IMMEDIATELY when user starts speaking
   requestFreshFrame(session);
   
   // Barge-in
@@ -370,13 +373,15 @@ function handleSpeechStopped(session: Session): void {
   session.isUserSpeaking = false;
   console.log('[Redi V7] 🎤 User stopped speaking');
   
-  // Save frame for response
+  // Use the CURRENT frame (which should be fresh from the request when speech started)
   if (session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
     session.pendingFrame = session.currentFrame;
     const sizeKB = Math.round(session.currentFrame.length * 0.75 / 1024);
-    console.log(`[Redi V7] 📷 Frame saved: ${sizeKB}KB`);
+    const ageMs = Date.now() - session.frameTimestamp;
+    console.log(`[Redi V7] 📷 Frame ready: ${sizeKB}KB, age ${ageMs}ms`);
   } else {
     session.pendingFrame = null;
+    console.log(`[Redi V7] 📷 No fresh frame available (age > ${MAX_FRAME_AGE_MS}ms)`);
   }
 }
 
@@ -430,6 +435,7 @@ function requestFreshFrame(session: Session): void {
 }
 
 function injectImageIfAvailable(session: Session): boolean {
+  // First try pending frame, then current frame if fresh
   let frameToUse = session.pendingFrame;
   if (!frameToUse && session.currentFrame && (Date.now() - session.frameTimestamp) < MAX_FRAME_AGE_MS) {
     frameToUse = session.currentFrame;
@@ -454,7 +460,7 @@ function injectImageIfAvailable(session: Session): boolean {
       content: [
         {
           type: 'input_text',
-          text: '[Camera view attached]'
+          text: '[Camera view attached - describe what you see RIGHT NOW in this specific image]'
         },
         {
           type: 'input_image',
