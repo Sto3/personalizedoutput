@@ -2,6 +2,7 @@
  * SessionViewModel.swift
  *
  * Manages the active Redi session, coordinating all services.
+ * CRITICAL: Uses RediWebSocketService to connect to V7 server.
  */
 
 import Foundation
@@ -30,35 +31,10 @@ class SessionViewModel: ObservableObject {
     let cameraService = CameraService()
     let audioService = AudioService()
     let motionService = MotionService()
-    let perceptionService = PerceptionService()  // Military-grade perception
-    let audioClassificationService = AudioClassificationService()  // Environmental sound detection
-    let webSocketService: WebSocketService
-
-    // MARK: - Military-Grade Mode
-
-    /// Enable military-grade architecture (structured perception data vs raw frames)
-    /// Set to true for 10x faster, more reliable responses
-    @Published var useMilitaryGrade: Bool = true
-
-    /// Rep counter from perception service
-    @Published var repCount: Int = 0
-
-    /// Current movement phase
-    @Published var movementPhase: String = "rest"
-
-    // MARK: - Autonomous Mode Detection
-
-    /// Whether Redi is in autonomous mode (figuring out what user is doing)
-    @Published var isAutonomousMode: Bool = false
-
-    /// The currently detected/active mode (may differ from session.mode if autonomous)
-    @Published var detectedMode: RediMode = .general
-
-    /// Confidence in the detected mode (0-1)
-    @Published var modeConfidence: Float = 0.0
-
-    /// Human-readable description of what Redi thinks user is doing
-    @Published var detectedActivity: String?
+    
+    // CRITICAL: Use RediWebSocketService (connects to V7 server at redialways.com)
+    // NOT WebSocketService (which connects to wrong server personalizedoutput.com)
+    let webSocketService: RediWebSocketService
 
     // MARK: - Private Properties
 
@@ -100,7 +76,12 @@ class SessionViewModel: ObservableObject {
         self.session = session
         self.remainingSeconds = session.remainingSeconds
         self.sensitivity = session.sensitivity
-        self.webSocketService = WebSocketService()
+        
+        // Initialize RediWebSocketService - uses RediConfig.serverURL
+        self.webSocketService = RediWebSocketService()
+        
+        print("[Session] Initialized with RediWebSocketService")
+        print("[Session] Server URL: \(RediConfig.serverURL)")
 
         setupBindings()
     }
@@ -108,233 +89,124 @@ class SessionViewModel: ObservableObject {
     // MARK: - Setup
 
     private func setupBindings() {
-        // WebSocket bindings
-        webSocketService.$remainingSeconds
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$remainingSeconds)
-
-        webSocketService.transcriptReceived
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] chunk in
-                self?.currentTranscript = chunk.text
-                // Clear after delay if final
-                if chunk.isFinal {
+        // MARK: - RediWebSocketService Bindings
+        
+        // Audio received from server
+        webSocketService.onAudioReceived = { [weak self] audioData in
+            self?.audioService.playAudio(audioData)
+        }
+        
+        // Transcript received (user or assistant)
+        webSocketService.onTranscriptReceived = { [weak self] text, role in
+            DispatchQueue.main.async {
+                if role == "user" {
+                    self?.currentTranscript = text
+                    // Clear after delay
                     DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        if self?.currentTranscript == chunk.text {
+                        if self?.currentTranscript == text {
                             self?.currentTranscript = nil
+                        }
+                    }
+                } else {
+                    self?.currentAIResponse = text
+                    // Clear after delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                        if self?.currentAIResponse == text {
+                            self?.currentAIResponse = nil
                         }
                     }
                 }
             }
-            .store(in: &cancellables)
-
-        webSocketService.aiResponseReceived
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] response in
-                self?.currentAIResponse = response.text
-                // Clear after delay
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                    if self?.currentAIResponse == response.text {
-                        self?.currentAIResponse = nil
-                    }
+        }
+        
+        // Session ready
+        webSocketService.onSessionReady = { [weak self] in
+            print("[Session] ✅ WebSocket session ready")
+            // Send initial frame immediately when session is ready
+            self?.captureAndSendFrame()
+        }
+        
+        // Mic mute control from server
+        webSocketService.onMicMuteChanged = { [weak self] muted in
+            DispatchQueue.main.async {
+                if muted {
+                    self?.audioService.stopRecording()
+                } else {
+                    self?.audioService.startRecording()
                 }
             }
-            .store(in: &cancellables)
-
-        webSocketService.visualAnalysisReceived
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] analysis in
-                // Show brief summary
-                self?.currentVisualContext = analysis.description.prefix(100).description
-            }
-            .store(in: &cancellables)
-
-        webSocketService.audioReceived
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] audioData in
-                self?.audioService.playAudio(audioData)
-            }
-            .store(in: &cancellables)
-
-        // Audio capture binding
+        }
+        
+        // Stop audio playback (barge-in)
+        webSocketService.onStopAudio = { [weak self] in
+            self?.audioService.stopPlayback()
+        }
+        
+        // Server requests fresh frame - CRITICAL for vision!
+        webSocketService.onRequestFrame = { [weak self] in
+            print("[Session] 📷 Server requested fresh frame")
+            self?.captureAndSendFrame()
+        }
+        
+        // MARK: - Audio Service Bindings
+        
+        // Audio capture -> send to server
         audioService.audioChunkCaptured
             .sink { [weak self] audioData in
-                self?.webSocketService.sendAudioChunk(audioData)
+                self?.webSocketService.sendAudio(audioData)
             }
             .store(in: &cancellables)
 
-        // Camera snapshot binding
+        // MARK: - Camera Service Bindings
+        
+        // Camera snapshot -> send to server (full quality, no downscaling!)
         cameraService.snapshotCaptured
             .sink { [weak self] imageData in
                 guard let self = self else { return }
-                self.webSocketService.sendSnapshot(imageData, width: 720, height: 1280)
+                let sizeKB = imageData.count / 1024
+                print("[Session] 📷 Sending frame: \(sizeKB)KB")
+                self.webSocketService.sendFrame(imageData)
             }
             .store(in: &cancellables)
 
-        // Motion clip binding
+        // Motion clip capture (if needed)
         cameraService.motionClipCaptured
             .sink { [weak self] (frames, duration) in
-                self?.webSocketService.sendMotionClip(frames: frames, duration: duration)
+                // Motion clips not currently used in V7
+                print("[Session] Motion clip captured: \(frames.count) frames")
             }
             .store(in: &cancellables)
 
-        // Motion detection binding
+        // Motion detection -> trigger camera
         motionService.significantMotionDetected
             .sink { [weak self] in
                 self?.cameraService.startMotionClipCapture()
             }
             .store(in: &cancellables)
-
-        // MARK: - Military-Grade Perception Bindings
-
-        // Perception packet → WebSocket (structured data)
-        perceptionService.perceptionCaptured
-            .sink { [weak self] packet in
-                guard let self = self, self.useMilitaryGrade else { return }
-                self.webSocketService.sendPerception(packet)
-            }
-            .store(in: &cancellables)
-
-        // Rep counter updates
-        perceptionService.repCompleted
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] count in
-                self?.repCount = count
-            }
-            .store(in: &cancellables)
-
-        // Movement phase updates
-        perceptionService.$movementPhase
-            .receive(on: DispatchQueue.main)
-            .map { $0.rawValue }
-            .assign(to: &$movementPhase)
-
-        // Form alerts
-        perceptionService.formAlert
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] alertType in
-                // Could show UI alert or just let backend handle it
-                print("[Session] Form alert: \(alertType)")
-            }
-            .store(in: &cancellables)
-
-        // MARK: - Autonomous Mode Detection Bindings
-
-        // Mode changes from perception service
-        perceptionService.modeChanged
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] newMode in
-                guard let self = self, self.isAutonomousMode else { return }
-                self.detectedMode = newMode
-                // Notify backend of mode change
-                self.webSocketService.sendModeChange(newMode)
-                print("[Session] Mode changed to: \(newMode)")
-            }
-            .store(in: &cancellables)
-
-        // Mode confidence updates
-        perceptionService.$modeConfidence
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$modeConfidence)
-
-        // Detected mode updates
-        perceptionService.$currentMode
-            .receive(on: DispatchQueue.main)
-            .assign(to: &$detectedMode)
-
-        // Context hypothesis updates (what user is doing)
-        perceptionService.$contextHypothesis
-            .receive(on: DispatchQueue.main)
-            .compactMap { $0?.activity }
-            .assign(to: &$detectedActivity)
-
-        // MARK: - Audio Classification Bindings
-
-        // Feed audio events to perception service
-        audioClassificationService.audioEventsUpdated
-            .sink { [weak self] events in
-                guard let self = self else { return }
-                self.perceptionService.audioEvents = events.map {
-                    AudioEventData(label: $0.label, confidence: $0.confidence, category: $0.category)
-                }
-            }
-            .store(in: &cancellables)
-
-        audioClassificationService.$dominantSound
-            .assign(to: \.dominantSound, on: perceptionService)
-            .store(in: &cancellables)
-
-        audioClassificationService.$speechDetected
-            .assign(to: \.speechDetected, on: perceptionService)
-            .store(in: &cancellables)
-
-        // Log significant audio events for mode detection
-        audioClassificationService.significantSoundDetected
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] event in
-                print("[Session] Audio event: \(event.label) (\(Int(event.confidence * 100))%)")
-                // Could use for mode detection hints
-                if let suggestedMode = self?.audioClassificationService.getSuggestedMode() {
-                    print("[Session] Audio suggests mode: \(suggestedMode)")
-                }
-            }
-            .store(in: &cancellables)
-
-        // MARK: - Enhanced Motion Bindings
-
-        // Feed motion state to perception service
-        motionService.motionStateUpdated
-            .sink { [weak self] state in
-                guard let self = self else { return }
-                self.perceptionService.motionState = MotionStateData(
-                    isStationary: state.isStationary,
-                    isWalking: state.isWalking,
-                    isExercising: state.isExercising,
-                    phoneOrientation: state.phoneOrientation,
-                    activityLevel: state.activityLevel,
-                    suddenMovement: state.suddenMovement
-                )
-            }
-            .store(in: &cancellables)
-
-        // Sudden movement alerts (potential falls)
-        motionService.suddenMovementDetected
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] in
-                print("[Session] Sudden movement detected - potential safety concern")
-                // Could notify backend for safety monitoring
-            }
-            .store(in: &cancellables)
-
-        // Activity state changes
-        motionService.activityChanged
-            .receive(on: DispatchQueue.main)
-            .sink { activity in
-                print("[Session] Activity changed to: \(activity)")
-            }
-            .store(in: &cancellables)
-
-        // MARK: - Light Level Bindings
-
-        // Feed light level to perception service
-        cameraService.$lightLevel
-            .sink { [weak self] level in
-                self?.perceptionService.lightLevel = level.rawValue
-                self?.perceptionService.lightConfidenceModifier = level.visionConfidenceModifier
-            }
-            .store(in: &cancellables)
+    }
+    
+    // MARK: - Frame Capture
+    
+    /// Capture and send a frame immediately
+    private func captureAndSendFrame() {
+        cameraService.captureSnapshot()
     }
 
     // MARK: - Session Control
 
     func startSession() {
+        print("[Session] 🚀 Starting session...")
+        
         // IMPORTANT: Start countdown timer FIRST (most critical for UX)
         startTimer()
 
-        // Connect WebSocket (async, non-blocking)
+        // Connect WebSocket (to V7 server at redialways.com)
         // Skip WebSocket for test sessions
         if !session.id.hasPrefix("test-") {
-            webSocketService.connect(sessionId: session.id)
+            print("[Session] Connecting to: \(RediConfig.serverURL)")
+            webSocketService.connect()
+        } else {
+            print("[Session] Test session - skipping WebSocket")
         }
 
         // Request camera permission and start
@@ -347,46 +219,22 @@ class SessionViewModel: ObservableObject {
         if session.mode.usesMotionDetection {
             motionService.startMonitoring()
         }
-
-        // Start military-grade perception if enabled
-        if useMilitaryGrade {
-            let deviceId = UIDevice.current.identifierForVendor?.uuidString ?? UUID().uuidString
-
-            // Determine if autonomous mode (user selected "Use Redi for Anything")
-            let autonomous = session.mode == .general
-            isAutonomousMode = autonomous
-            detectedMode = session.mode
-
-            perceptionService.start(
-                sessionId: session.id,
-                deviceId: deviceId,
-                mode: session.mode,
-                autonomous: autonomous,
-                intervalMs: 500  // 2 FPS for perception
-            )
-
-            if autonomous {
-                print("[Session] Military-grade perception started in AUTONOMOUS mode")
-            } else {
-                print("[Session] Military-grade perception started in \(session.mode) mode")
-            }
-        }
     }
 
     private func requestCameraAndStart() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
             guard granted else {
-                print("[Session] Camera permission denied")
+                print("[Session] ❌ Camera permission denied")
                 return
             }
 
             DispatchQueue.main.async {
                 self?.cameraService.start()
 
-                // Setup periodic snapshots if mode uses them
-                if let interval = self?.session.mode.snapshotIntervalMs, interval > 0 {
-                    self?.cameraService.startPeriodicSnapshots(intervalMs: interval)
-                }
+                // Setup periodic snapshots - 5 second interval for background updates
+                // Server will request fresh frames when needed for responses
+                self?.cameraService.startPeriodicSnapshots(intervalMs: 5000)
+                print("[Session] ✅ Camera started with 5s periodic snapshots")
             }
         }
     }
@@ -394,23 +242,20 @@ class SessionViewModel: ObservableObject {
     private func requestMicrophoneAndStart() {
         AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
             guard granted else {
-                print("[Session] Microphone permission denied")
+                print("[Session] ❌ Microphone permission denied")
                 return
             }
 
             DispatchQueue.main.async {
                 self?.audioService.startRecording()
-
-                // Start audio classification for environmental sound detection
-                if let format = self?.audioService.getAudioFormat() {
-                    self?.audioClassificationService.start(audioFormat: format)
-                    print("[Session] Audio classification started")
-                }
+                print("[Session] ✅ Microphone started")
             }
         }
     }
 
     func endSession() {
+        print("[Session] Ending session...")
+        
         // Stop timer
         timer?.invalidate()
         timer = nil
@@ -419,16 +264,11 @@ class SessionViewModel: ObservableObject {
         cameraService.stop()
         audioService.cleanup()
         motionService.stopMonitoring()
-        audioClassificationService.stop()
-
-        // Stop military-grade perception
-        if useMilitaryGrade {
-            perceptionService.stop()
-            print("[Session] Military-grade perception stopped")
-        }
 
         // Disconnect WebSocket
-        webSocketService.endSession()
+        webSocketService.disconnect()
+        
+        print("[Session] Session ended")
     }
 
     func toggleMute() {
@@ -449,10 +289,7 @@ class SessionViewModel: ObservableObject {
             audioService.stopRecording()
             motionService.stopMonitoring()
         } else {
-            let interval = session.mode.snapshotIntervalMs
-            if interval > 0 {
-                cameraService.startPeriodicSnapshots(intervalMs: interval)
-            }
+            cameraService.startPeriodicSnapshots(intervalMs: 5000)
             audioService.startRecording()
             if session.mode.usesMotionDetection {
                 motionService.startMonitoring()
@@ -465,12 +302,7 @@ class SessionViewModel: ObservableObject {
     }
 
     func updateSensitivity() {
-        webSocketService.updateSensitivity(sensitivity)
-    }
-
-    func updateAudioOutputMode(_ mode: AudioOutputMode) {
-        session.audioOutputMode = mode
-        webSocketService.updateAudioOutputMode(mode)
+        webSocketService.sendSensitivity(sensitivity)
     }
 
     // MARK: - Private Methods

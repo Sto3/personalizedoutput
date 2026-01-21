@@ -1,340 +1,295 @@
 /**
  * AudioService.swift
  *
- * Handles microphone capture and audio playback for Redi.
- * Captures audio in PCM format for transcription and plays back TTS responses.
+ * Handles audio recording and playback for Redi.
+ * Records at 24kHz mono PCM16 for OpenAI Realtime API.
  */
 
 import AVFoundation
 import Combine
 
-class AudioService: NSObject, ObservableObject {
+class AudioService: ObservableObject {
     // MARK: - Published Properties
-
-    @Published var isRecording: Bool = false
-    @Published var isPlaying: Bool = false
-    @Published var audioLevel: Float = 0
-    @Published var error: String?
-
+    
+    @Published var isRecording = false
+    @Published var isPlaying = false
+    @Published var audioLevel: Float = 0.0
+    
     // MARK: - Publishers
-
+    
     let audioChunkCaptured = PassthroughSubject<Data, Never>()
-
+    
     // MARK: - Private Properties
-
+    
     private var audioEngine: AVAudioEngine?
-    private var audioPlayer: AVAudioPlayer?
-    private var audioQueue: [Data] = []
-    private let audioSession = AVAudioSession.sharedInstance()
-
-    // Audio format for transcription (16kHz mono PCM)
-    private let sampleRate: Double = 16000
-    private let channels: AVAudioChannelCount = 1
-
-    // Playback engine with audio processing
-    private var playbackEngine: AVAudioEngine?
+    private var inputNode: AVAudioInputNode?
     private var playerNode: AVAudioPlayerNode?
-    private var eqNode: AVAudioUnitEQ?
-    private var reverbNode: AVAudioUnitReverb?
-
-    // Audio processing settings - makes voice feel "in the room"
-    // TEMPORARILY DISABLED - may be causing audio issues
-    private let enableAudioProcessing = false
-    private let warmthBoostDB: Float = 3.0        // Subtle low-mid boost
-    private let reverbWetDryMix: Float = 8.0      // Very subtle room presence (0-100)
-
+    private var audioFormat: AVAudioFormat?
+    
+    // Playback buffer
+    private var playbackBuffer: [Data] = []
+    private var isProcessingPlayback = false
+    private let playbackQueue = DispatchQueue(label: "audio.playback", qos: .userInteractive)
+    
+    // Configuration matching OpenAI Realtime API
+    private let sampleRate: Double = 24000
+    private let channels: AVAudioChannelCount = 1
+    
     // MARK: - Initialization
-
-    override init() {
-        super.init()
+    
+    init() {
         setupAudioSession()
-        if enableAudioProcessing {
-            setupPlaybackEngine()
-        }
     }
-
+    
     // MARK: - Setup
-
+    
     private func setupAudioSession() {
         do {
-            // Use spokenAudio mode for highest quality voice playback
-            // Options: defaultToSpeaker for loudspeaker, allowBluetooth for headphones
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .spokenAudio,
-                options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP]
-            )
-            // Set preferred sample rate for high quality
-            try audioSession.setPreferredSampleRate(44100)
-            try audioSession.setActive(true)
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.setPreferredSampleRate(sampleRate)
+            try session.setActive(true)
+            print("[Audio] Session configured: \(sampleRate)Hz")
         } catch {
-            self.error = "Failed to setup audio session: \(error.localizedDescription)"
+            print("[Audio] ❌ Session setup failed: \(error)")
         }
     }
-
-    /// Setup audio processing engine for warm, natural voice playback
-    private func setupPlaybackEngine() {
-        playbackEngine = AVAudioEngine()
-        playerNode = AVAudioPlayerNode()
-
-        guard let engine = playbackEngine, let player = playerNode else { return }
-
-        // Create EQ for warmth (boost low-mids around 250Hz)
-        eqNode = AVAudioUnitEQ(numberOfBands: 2)
-        if let eq = eqNode {
-            // Band 0: Warmth boost at 250Hz
-            let warmthBand = eq.bands[0]
-            warmthBand.filterType = .parametric
-            warmthBand.frequency = 250
-            warmthBand.bandwidth = 1.5
-            warmthBand.gain = warmthBoostDB
-            warmthBand.bypass = false
-
-            // Band 1: Presence boost at 3kHz (clarity)
-            let presenceBand = eq.bands[1]
-            presenceBand.filterType = .parametric
-            presenceBand.frequency = 3000
-            presenceBand.bandwidth = 1.0
-            presenceBand.gain = 1.5
-            presenceBand.bypass = false
-        }
-
-        // Create reverb for subtle room presence
-        reverbNode = AVAudioUnitReverb()
-        if let reverb = reverbNode {
-            reverb.loadFactoryPreset(.smallRoom)
-            reverb.wetDryMix = reverbWetDryMix  // Very subtle
-        }
-
-        // Attach nodes
-        engine.attach(player)
-        if let eq = eqNode { engine.attach(eq) }
-        if let reverb = reverbNode { engine.attach(reverb) }
-
-        // Connect: player -> EQ -> reverb -> output
-        let format = engine.outputNode.inputFormat(forBus: 0)
-        if let eq = eqNode, let reverb = reverbNode {
-            engine.connect(player, to: eq, format: format)
-            engine.connect(eq, to: reverb, format: format)
-            engine.connect(reverb, to: engine.mainMixerNode, format: format)
-        } else {
-            engine.connect(player, to: engine.mainMixerNode, format: format)
-        }
-
-        do {
-            try engine.start()
-            print("[Audio] Playback engine with processing started")
-        } catch {
-            print("[Audio] Failed to start playback engine: \(error)")
-            // Fall back to simple playback
-            playbackEngine = nil
-        }
-    }
-
+    
     // MARK: - Recording
-
+    
     func startRecording() {
         guard !isRecording else { return }
-
-        audioEngine = AVAudioEngine()
-        guard let audioEngine = audioEngine else { return }
-
-        let inputNode = audioEngine.inputNode
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        // Create conversion format (16kHz mono)
-        guard let outputFormat = AVAudioFormat(commonFormat: .pcmFormatInt16, sampleRate: sampleRate, channels: channels, interleaved: true) else {
-            error = "Failed to create audio format"
-            return
-        }
-
-        // Install tap on input node
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, time in
-            self?.processAudioBuffer(buffer, inputFormat: inputFormat, outputFormat: outputFormat)
-        }
-
+        
         do {
-            try audioEngine.start()
-            isRecording = true
-            print("[Audio] Recording started")
+            audioEngine = AVAudioEngine()
+            guard let engine = audioEngine else { return }
+            
+            inputNode = engine.inputNode
+            guard let input = inputNode else { return }
+            
+            // Create format for 24kHz mono PCM
+            let recordingFormat = AVAudioFormat(
+                commonFormat: .pcmFormatInt16,
+                sampleRate: sampleRate,
+                channels: channels,
+                interleaved: true
+            )!
+            
+            // Get input format
+            let inputFormat = input.outputFormat(forBus: 0)
+            
+            // Install tap with conversion
+            let bufferSize: AVAudioFrameCount = 4800 // 200ms at 24kHz
+            
+            input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, time in
+                self?.processAudioBuffer(buffer, targetFormat: recordingFormat)
+            }
+            
+            try engine.start()
+            
+            DispatchQueue.main.async {
+                self.isRecording = true
+            }
+            
+            print("[Audio] ✅ Recording started")
+            
         } catch {
-            self.error = "Failed to start recording: \(error.localizedDescription)"
+            print("[Audio] ❌ Recording failed: \(error)")
         }
     }
-
+    
     func stopRecording() {
         guard isRecording else { return }
-
-        audioEngine?.inputNode.removeTap(onBus: 0)
+        
+        inputNode?.removeTap(onBus: 0)
         audioEngine?.stop()
-        audioEngine = nil
-        isRecording = false
+        
+        DispatchQueue.main.async {
+            self.isRecording = false
+        }
+        
         print("[Audio] Recording stopped")
     }
-
-    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer, inputFormat: AVAudioFormat, outputFormat: AVAudioFormat) {
-        // Convert to output format if needed
-        guard let converter = AVAudioConverter(from: inputFormat, to: outputFormat) else { return }
-
-        let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * sampleRate / inputFormat.sampleRate)
-        guard let outputBuffer = AVAudioPCMBuffer(pcmFormat: outputFormat, frameCapacity: frameCount) else { return }
-
+    
+    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer, targetFormat: AVAudioFormat) {
+        // Convert to target format if needed
+        guard let converter = AVAudioConverter(from: buffer.format, to: targetFormat) else {
+            return
+        }
+        
+        let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / buffer.format.sampleRate)
+        guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: targetFormat, frameCapacity: frameCount) else {
+            return
+        }
+        
         var error: NSError?
         let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
             outStatus.pointee = .haveData
             return buffer
         }
-
-        converter.convert(to: outputBuffer, error: &error, withInputFrom: inputBlock)
-
+        
+        converter.convert(to: convertedBuffer, error: &error, withInputFrom: inputBlock)
+        
         if let error = error {
             print("[Audio] Conversion error: \(error)")
             return
         }
-
-        // Convert to Data
-        if let channelData = outputBuffer.int16ChannelData {
-            let dataSize = Int(outputBuffer.frameLength) * MemoryLayout<Int16>.size
-            let data = Data(bytes: channelData[0], count: dataSize)
-            audioChunkCaptured.send(data)
+        
+        // Extract PCM data
+        guard let channelData = convertedBuffer.int16ChannelData else { return }
+        let data = Data(bytes: channelData[0], count: Int(convertedBuffer.frameLength) * 2)
+        
+        // Calculate audio level
+        let samples = Array(UnsafeBufferPointer(start: channelData[0], count: Int(convertedBuffer.frameLength)))
+        let rms = sqrt(samples.map { Float($0) * Float($0) }.reduce(0, +) / Float(samples.count))
+        let level = min(1.0, rms / 32768.0 * 10) // Normalize and amplify
+        
+        DispatchQueue.main.async {
+            self.audioLevel = level
         }
-
-        // Update audio level
-        if let floatData = buffer.floatChannelData {
-            var sum: Float = 0
-            for i in 0..<Int(buffer.frameLength) {
-                sum += abs(floatData[0][i])
-            }
-            let average = sum / Float(buffer.frameLength)
-            DispatchQueue.main.async { [weak self] in
-                self?.audioLevel = average
-            }
-        }
+        
+        // Send audio chunk
+        audioChunkCaptured.send(data)
     }
-
+    
     // MARK: - Playback
-
+    
     func playAudio(_ data: Data) {
-        audioQueue.append(data)
-
-        if !isPlaying {
-            playNextInQueue()
+        playbackQueue.async { [weak self] in
+            self?.playbackBuffer.append(data)
+            self?.processPlaybackBuffer()
         }
     }
-
-    private func playNextInQueue() {
-        guard !audioQueue.isEmpty else {
-            isPlaying = false
+    
+    private func processPlaybackBuffer() {
+        guard !isProcessingPlayback, !playbackBuffer.isEmpty else { return }
+        isProcessingPlayback = true
+        
+        // Setup player if needed
+        if playerNode == nil {
+            setupPlayer()
+        }
+        
+        guard let player = playerNode, let engine = audioEngine else {
+            isProcessingPlayback = false
             return
         }
-
-        let data = audioQueue.removeFirst()
-
-        // Try processed playback first, fall back to simple if needed
-        if enableAudioProcessing, let engine = playbackEngine, let player = playerNode {
-            playWithProcessing(data: data, engine: engine, player: player)
-        } else {
-            playSimple(data: data)
+        
+        // Create playback format
+        guard let format = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: sampleRate,
+            channels: channels,
+            interleaved: true
+        ) else {
+            isProcessingPlayback = false
+            return
         }
-    }
-
-    /// Play with audio processing (EQ + reverb for warmth)
-    private func playWithProcessing(data: Data, engine: AVAudioEngine, player: AVAudioPlayerNode) {
-        do {
-            // Convert MP3 data to PCM buffer
-            guard let audioFile = try? AVAudioFile(forReading: createTempFile(from: data)) else {
-                print("[Audio] Failed to create audio file, falling back to simple playback")
-                playSimple(data: data)
-                return
-            }
-
-            let format = audioFile.processingFormat
-            let frameCount = UInt32(audioFile.length)
+        
+        // Process all buffered audio
+        while !playbackBuffer.isEmpty {
+            let data = playbackBuffer.removeFirst()
+            
+            let frameCount = AVAudioFrameCount(data.count / 2)
             guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
-                playSimple(data: data)
-                return
+                continue
             }
-
-            try audioFile.read(into: buffer)
-
-            // Schedule and play with processing
-            player.scheduleBuffer(buffer) { [weak self] in
-                DispatchQueue.main.async {
-                    self?.playNextInQueue()
+            buffer.frameLength = frameCount
+            
+            // Copy data to buffer
+            data.withUnsafeBytes { rawPtr in
+                if let ptr = rawPtr.baseAddress?.assumingMemoryBound(to: Int16.self) {
+                    buffer.int16ChannelData?[0].update(from: ptr, count: Int(frameCount))
                 }
             }
-
-            if !player.isPlaying {
-                player.play()
+            
+            // Schedule buffer for playback
+            player.scheduleBuffer(buffer)
+        }
+        
+        // Start playing if not already
+        if !player.isPlaying {
+            player.play()
+            DispatchQueue.main.async {
+                self.isPlaying = true
             }
-            isPlaying = true
-
-        } catch {
-            print("[Audio] Processed playback error: \(error), falling back to simple")
-            playSimple(data: data)
         }
+        
+        isProcessingPlayback = false
     }
-
-    /// Simple playback without processing (fallback)
-    private func playSimple(data: Data) {
-        do {
-            audioPlayer = try AVAudioPlayer(data: data)
-            audioPlayer?.delegate = self
-            audioPlayer?.prepareToPlay()
-            audioPlayer?.play()
-            isPlaying = true
-        } catch {
-            print("[Audio] Playback error: \(error)")
-            playNextInQueue()
+    
+    private func setupPlayer() {
+        guard let engine = audioEngine else {
+            // Create new engine for playback
+            audioEngine = AVAudioEngine()
+            guard let newEngine = audioEngine else { return }
+            
+            playerNode = AVAudioPlayerNode()
+            guard let player = playerNode else { return }
+            
+            newEngine.attach(player)
+            
+            let format = AVAudioFormat(
+                commonFormat: .pcmFormatInt16,
+                sampleRate: sampleRate,
+                channels: channels,
+                interleaved: true
+            )!
+            
+            newEngine.connect(player, to: newEngine.mainMixerNode, format: format)
+            
+            do {
+                try newEngine.start()
+            } catch {
+                print("[Audio] ❌ Playback engine start failed: \(error)")
+            }
+            return
         }
+        
+        // Use existing engine
+        playerNode = AVAudioPlayerNode()
+        guard let player = playerNode else { return }
+        
+        engine.attach(player)
+        
+        let format = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: sampleRate,
+            channels: channels,
+            interleaved: true
+        )!
+        
+        engine.connect(player, to: engine.mainMixerNode, format: format)
     }
-
-    /// Create temporary file from audio data for AVAudioFile
-    private func createTempFile(from data: Data) -> URL {
-        let tempDir = FileManager.default.temporaryDirectory
-        let tempFile = tempDir.appendingPathComponent(UUID().uuidString + ".mp3")
-        try? data.write(to: tempFile)
-        return tempFile
-    }
-
+    
     func stopPlayback() {
-        audioPlayer?.stop()
-        playerNode?.stop()
-        audioQueue.removeAll()
-        isPlaying = false
+        playbackQueue.async { [weak self] in
+            self?.playbackBuffer.removeAll()
+            self?.playerNode?.stop()
+            DispatchQueue.main.async {
+                self?.isPlaying = false
+            }
+        }
+        print("[Audio] Playback stopped")
     }
-
-    // MARK: - Audio Format Access
-
-    /// Get the audio format used for recording (for audio classification)
-    func getAudioFormat() -> AVAudioFormat? {
-        // Return the format used for capture (16kHz mono)
-        return AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: sampleRate, channels: channels, interleaved: false)
-    }
-
+    
     // MARK: - Cleanup
-
+    
     func cleanup() {
         stopRecording()
         stopPlayback()
-        playbackEngine?.stop()
-        playbackEngine = nil
+        audioEngine?.stop()
+        audioEngine = nil
+        playerNode = nil
+        print("[Audio] Cleaned up")
     }
-}
-
-// MARK: - AVAudioPlayerDelegate
-
-extension AudioService: AVAudioPlayerDelegate {
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        DispatchQueue.main.async { [weak self] in
-            self?.playNextInQueue()
-        }
-    }
-
-    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        print("[Audio] Decode error: \(error?.localizedDescription ?? "unknown")")
-        DispatchQueue.main.async { [weak self] in
-            self?.playNextInQueue()
-        }
+    
+    func getAudioFormat() -> AVAudioFormat? {
+        return AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: sampleRate,
+            channels: channels,
+            interleaved: true
+        )
     }
 }
