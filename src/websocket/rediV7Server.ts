@@ -2,14 +2,11 @@
  * Redi V7 Server - PRODUCTION-GRADE RELIABILITY
  * =============================================
  * 
- * CRITICAL FIX: Image must be part of response.create, not separate conversation item.
- * Previous approach added images as separate messages, which OpenAI didn't associate
- * with the user's question.
- * 
- * NEW APPROACH:
- * 1. When user stops speaking, save the frame
- * 2. When transcript arrives, trigger response with image context
- * 3. Use response.create with modalities including the image
+ * FIXES APPLIED Jan 21 2026:
+ * 1. REMOVED 'modalities' from session.update (causes errors)
+ * 2. Image injection happens AFTER transcript arrives
+ * 3. Proper conversation.item.create format with image_url data URI
+ * 4. Better frame timing - request fresh frame when user starts speaking
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -26,7 +23,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
 
 // Frame settings
-const MAX_FRAME_AGE_MS = 5000;  // 5 seconds - more tolerance
+const MAX_FRAME_AGE_MS = 5000;  // 5 seconds max frame age
 
 // =============================================================================
 // TYPES
@@ -45,7 +42,6 @@ interface Session {
   // Speaking states
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
-  pendingTranscript: string | null;  // Transcript waiting for response
   
   // Stats
   connectionTime: number;
@@ -101,12 +97,13 @@ LANGUAGE: Always respond in English.`;
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 Server - IMAGE WITH RESPONSE FIX');
+  console.log('[Redi V7] 🚀 V7 Server - SESSION CONFIG FIX');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
-  console.log('[Redi V7] Version: Jan 21 2026 - Image With Response');
+  console.log('[Redi V7] Version: Jan 21 2026 - No Modalities Fix');
   console.log('[Redi V7] Features:');
-  console.log('[Redi V7]   ✓ Image included IN response.create');
+  console.log('[Redi V7]   ✓ NO modalities param (was causing errors)');
+  console.log('[Redi V7]   ✓ Image inject after transcript');
   console.log('[Redi V7]   ✓ Fresh frame for EVERY question');
   console.log('[Redi V7]   ✓ Barge-in with response.cancel');
   console.log('[Redi V7] ═══════════════════════════════════════════');
@@ -131,7 +128,6 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       pendingFrame: null,
       isUserSpeaking: false,
       isAssistantSpeaking: false,
-      pendingTranscript: null,
       connectionTime: Date.now(),
       responsesCompleted: 0,
       imagesInjected: 0,
@@ -197,7 +193,8 @@ async function connectToOpenAI(session: Session): Promise<void> {
 
     const ws = new WebSocket(OPENAI_REALTIME_URL, {
       headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'OpenAI-Beta': 'realtime=v1'
       }
     });
 
@@ -225,14 +222,15 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 // =============================================================================
-// SESSION CONFIGURATION
+// SESSION CONFIGURATION - NO MODALITIES (causes errors!)
 // =============================================================================
 
 function configureSession(session: Session): void {
+  // CRITICAL: Do NOT include 'modalities' - it causes "Unknown parameter" errors
+  // This matches the working V6 configuration
   const config = {
     type: 'session.update',
     session: {
-      modalities: ['text', 'audio'],
       instructions: SYSTEM_PROMPT,
       voice: 'alloy',
       input_audio_format: 'pcm16',
@@ -249,7 +247,7 @@ function configureSession(session: Session): void {
     }
   };
 
-  console.log('[Redi V7] 🔧 Configuring session...');
+  console.log('[Redi V7] 🔧 Configuring session (NO modalities param)...');
   sendToOpenAI(session, config);
 }
 
@@ -321,6 +319,14 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         }
         break;
 
+      case 'conversation.item.created':
+        // Log when items are created to verify image injection
+        const contentTypes = event.item?.content?.map((c: any) => c.type) || [];
+        if (contentTypes.length > 0 && !contentTypes.includes('audio')) {
+          console.log(`[Redi V7] 📥 Item created: [${contentTypes.join(', ')}]`);
+        }
+        break;
+
       case 'response.created':
         session.isAssistantSpeaking = true;
         sendToClient(session, { type: 'mute_mic', muted: true });
@@ -352,7 +358,6 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
       case 'rate_limits.updated':
       case 'input_audio_buffer.committed':
       case 'input_audio_buffer.cleared':
-      case 'conversation.item.created':
         break;
     }
   } catch (error) {
@@ -400,8 +405,12 @@ function handleTranscriptReceived(session: Session, transcript: string): void {
   console.log(`[Redi V7] 👤 User: "${transcript}"`);
   sendToClient(session, { type: 'transcript', text: transcript, role: 'user' });
   
-  // Now trigger a response WITH the pending frame
-  triggerResponseWithImage(session, transcript);
+  // Inject image if available, then trigger response
+  maybeInjectImage(session);
+  
+  // Trigger the response
+  console.log(`[Redi V7] 🚀 Triggering response`);
+  sendToOpenAI(session, { type: 'response.create' });
 }
 
 function handleResponseDone(session: Session): void {
@@ -424,7 +433,7 @@ function handleOpenAIError(session: Session, error: any): void {
 }
 
 // =============================================================================
-// IMAGE INJECTION - WITH RESPONSE
+// IMAGE INJECTION - CORRECT FORMAT (same as working V6)
 // =============================================================================
 
 function requestFreshFrame(session: Session): void {
@@ -432,45 +441,50 @@ function requestFreshFrame(session: Session): void {
   console.log('[Redi V7] 📷 Requested fresh frame');
 }
 
-function triggerResponseWithImage(session: Session, transcript: string): void {
-  // Build the input content
-  const inputContent: any[] = [];
-  
-  // Add image if available
-  if (session.pendingFrame) {
-    const cleanBase64 = session.pendingFrame.replace(/[\r\n\s]/g, '');
-    const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
-    
-    console.log(`[Redi V7] 📷 Including image in response: ${sizeKB}KB`);
-    
-    // First add the image as a user message in the conversation
-    const imageMessage = {
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'user',
-        content: [
-          {
-            type: 'input_image',
-            image_url: `data:image/jpeg;base64,${cleanBase64}`
-          },
-          {
-            type: 'input_text',
-            text: `[This is what I'm currently looking at. User's question: "${transcript}"]`
-          }
-        ]
-      }
-    };
-    
-    sendToOpenAI(session, imageMessage);
-    session.imagesInjected++;
-    console.log(`[Redi V7] ✅ Image injected (total: ${session.imagesInjected})`);
+function maybeInjectImage(session: Session): void {
+  // Check if we have a frame
+  if (!session.pendingFrame) {
+    console.log('[Redi V7] 📷 No pending frame to inject');
+    return;
   }
-  
-  // Now trigger the response
-  // The model will use the image + transcript we just added
-  sendToOpenAI(session, { type: 'response.create' });
-  console.log('[Redi V7] 🚀 Response triggered');
+
+  // Check frame age
+  const frameAge = Date.now() - session.frameTimestamp;
+  if (frameAge > MAX_FRAME_AGE_MS) {
+    console.log(`[Redi V7] 📷 Frame too old (${frameAge}ms), skipping`);
+    session.pendingFrame = null;
+    return;
+  }
+
+  // Clean base64 string
+  const cleanBase64 = session.pendingFrame.replace(/[\r\n\s]/g, '');
+  const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
+
+  console.log(`[Redi V7] 📷 Injecting image: ${sizeKB}KB, age ${frameAge}ms`);
+
+  // CORRECT FORMAT - same as working V6
+  // Use input_text context AND input_image with data URI
+  const imageItem = {
+    type: 'conversation.item.create',
+    item: {
+      type: 'message',
+      role: 'user',
+      content: [
+        {
+          type: 'input_text',
+          text: '[Current camera view attached - describe what you see and respond to my question]'
+        },
+        {
+          type: 'input_image',
+          image_url: `data:image/jpeg;base64,${cleanBase64}`
+        }
+      ]
+    }
+  };
+
+  sendToOpenAI(session, imageItem);
+  session.imagesInjected++;
+  console.log(`[Redi V7] ✅ Image injected (total: ${session.imagesInjected})`);
 }
 
 // =============================================================================
