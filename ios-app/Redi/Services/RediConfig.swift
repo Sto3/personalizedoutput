@@ -2,7 +2,7 @@
  * RediConfig.swift
  *
  * Unified configuration for Redi services.
- * NO VERSION NUMBERS - this is the production config.
+ * SPEED OPTIMIZED - Jan 21 2026
  */
 
 import Foundation
@@ -11,11 +11,9 @@ import AVFoundation
 struct RediConfig {
     // MARK: - Server Configuration
     
-    /// Production WebSocket endpoint
-    /// SWITCHED BACK TO V6 - proven working on Jan 20
-    /// V7 has vision staleness issues (10sec frame age)
+    /// Production WebSocket endpoint - V7 with speed optimizations
     static var serverURL: URL {
-        return URL(string: "wss://redialways.com/ws/redi?v=6")!
+        return URL(string: "wss://redialways.com/ws/redi?v=7")!
     }
     
     // MARK: - Audio Configuration
@@ -41,25 +39,26 @@ struct RediConfig {
         static let minPlaybackBuffer = 1200
     }
     
-    // MARK: - Camera Configuration
+    // MARK: - Camera Configuration - SPEED OPTIMIZED
     
     struct Camera {
-        /// Frame interval when scene is static (5 seconds)
-        static let staticFrameInterval: TimeInterval = 5.0
+        /// Frame interval - send frames frequently for freshness!
+        /// 1 second means we always have a recent frame ready
+        static let staticFrameInterval: TimeInterval = 1.0
         
         /// Frame interval during motion (4 fps)
         static let motionFrameInterval: TimeInterval = 0.25
         
         /// Maximum image dimension for transmission
-        /// IMPORTANT: Match CameraService.Config.maxOutputDimension for full quality
-        static let maxDimension: CGFloat = 1440
+        /// 640p is plenty for AI vision and keeps files small
+        static let maxDimension: CGFloat = 640
         
         /// JPEG compression quality (0.0 - 1.0)
-        /// IMPORTANT: Match CameraService.Config.jpegQuality for full quality
-        static let compressionQuality: CGFloat = 0.90
+        /// 50% produces small files that AI can still read well
+        static let compressionQuality: CGFloat = 0.50
         
         /// Maximum age of a frame before requesting fresh (milliseconds)
-        static let maxFrameAge: Int = 2000
+        static let maxFrameAge: Int = 1000
     }
     
     // MARK: - Response Configuration
