@@ -2,9 +2,10 @@
  * RediConfig.swift
  *
  * Unified configuration for Redi services.
- * MAXIMUM FRESHNESS - Jan 21 2026
+ * MILITARY GRADE FRESHNESS - Jan 21 2026
  * 
- * KEY CHANGE: Frames every 500ms for always-fresh vision
+ * KEY: 100ms frame interval = 10fps = maximum freshness
+ * Frames are never more than ~150ms old
  */
 
 import Foundation
@@ -41,27 +42,27 @@ struct RediConfig {
         static let minPlaybackBuffer = 1200
     }
     
-    // MARK: - Camera Configuration - MAXIMUM FRESHNESS
+    // MARK: - Camera Configuration - MILITARY GRADE FRESHNESS
     
     struct Camera {
-        /// Frame interval - FAST! 500ms = 2fps
-        /// This ensures we always have a very recent frame
-        static let staticFrameInterval: TimeInterval = 0.5
+        /// Frame interval - 100ms = 10fps for MAXIMUM freshness
+        /// This ensures frames are never more than ~150ms stale
+        static let staticFrameInterval: TimeInterval = 0.1
         
-        /// Frame interval during motion (4 fps)
-        static let motionFrameInterval: TimeInterval = 0.25
+        /// Frame interval during motion - same as static for consistency
+        static let motionFrameInterval: TimeInterval = 0.1
         
         /// Maximum image dimension for transmission
-        /// 640p is plenty for AI vision and keeps files small
+        /// 640p is plenty for AI vision and keeps files small (~20-30KB)
         static let maxDimension: CGFloat = 640
         
         /// JPEG compression quality (0.0 - 1.0)
-        /// 50% produces small files that AI can still read well
+        /// 50% produces small files (~20-30KB) that AI can still read well
         static let compressionQuality: CGFloat = 0.50
         
         /// Maximum age of a frame before considered stale (milliseconds)
-        /// With 500ms interval, frames should never be older than ~600ms
-        static let maxFrameAge: Int = 800
+        /// With 100ms interval, frames should never be older than ~150ms
+        static let maxFrameAge: Int = 200
     }
     
     // MARK: - Response Configuration
