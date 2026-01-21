@@ -1,15 +1,19 @@
 /**
  * CameraService.swift
  *
- * MAXIMUM QUALITY camera capture for Redi AI vision.
- * Optimized for stability, clarity, and resilience to motion.
+ * OPTIMIZED FOR SPEED - Low latency camera capture for Redi AI vision.
+ * 
+ * SPEED OPTIMIZATIONS (Jan 21 2026):
+ * - Resolution: 1440p → 640p (AI doesn't need more)
+ * - JPEG quality: 90% → 50% (smaller files, faster upload)
+ * - Target frame size: <100KB (was 200-300KB)
+ * - Removed multi-frame sharpness selection (adds latency)
+ * - Direct frame capture without buffering
  *
  * Features:
  * - Optical Image Stabilization (OIS) when available
- * - Multi-frame capture with sharpness selection
  * - Auto-exposure/focus optimization
- * - High quality compression (1440p, 90% quality)
- * - Motion blur detection and mitigation
+ * - Low latency frame delivery
  */
 
 import AVFoundation
@@ -82,34 +86,33 @@ class CameraService: NSObject, ObservableObject {
     private var currentVideoDevice: AVCaptureDevice?
     private var lastPinchScale: CGFloat = 1.0
 
-    // Multi-frame buffer for selecting sharpest image
-    private var frameBuffer: [(image: UIImage, sharpness: Double, timestamp: Date)] = []
-    private let maxFrameBufferSize = 5
+    // Latest frame for immediate capture
+    private var latestFrame: UIImage?
+    private var latestFrameTime: Date = .distantPast
     private var lastSnapshotTime: Date = .distantPast
 
     // Core Image context for processing
     private let ciContext = CIContext(options: [
         .useSoftwareRenderer: false,
-        .highQualityDownsample: true
+        .highQualityDownsample: false  // Speed over quality
     ])
 
-    // MARK: - Configuration Constants
+    // MARK: - Configuration Constants - OPTIMIZED FOR SPEED
 
     private struct Config {
-        // Output resolution - 1440p for excellent detail while manageable size
-        static let maxOutputDimension: CGFloat = 1440
-
-        // JPEG quality - 90% for excellent quality with reasonable size
-        static let jpegQuality: CGFloat = 0.90
-
-        // Minimum sharpness threshold (Laplacian variance)
-        static let minimumSharpness: Double = 100.0
-
-        // Frame selection window (seconds)
-        static let frameSelectionWindow: TimeInterval = 0.5
-
-        // Motion clip frame quality (slightly lower for bandwidth)
-        static let clipFrameQuality: CGFloat = 0.70
+        // Output resolution - 640p is plenty for AI vision
+        // OpenAI's vision works great at this resolution
+        static let maxOutputDimension: CGFloat = 640
+        
+        // JPEG quality - 50% produces small files that AI can still read well
+        // This is the single biggest factor in frame size!
+        static let jpegQuality: CGFloat = 0.50
+        
+        // Motion clip frame quality (even lower for bandwidth)
+        static let clipFrameQuality: CGFloat = 0.40
+        
+        // Target: frames should be <100KB
+        // At 640p and 50% quality, typical frame is 40-80KB
     }
 
     // MARK: - Initialization
@@ -127,13 +130,14 @@ class CameraService: NSObject, ObservableObject {
 
             self.captureSession.beginConfiguration()
 
-            // Use highest available resolution
-            if self.captureSession.canSetSessionPreset(.hd4K3840x2160) {
-                self.captureSession.sessionPreset = .hd4K3840x2160
-                print("[Camera] Using 4K resolution (3840x2160)")
-            } else if self.captureSession.canSetSessionPreset(.hd1920x1080) {
+            // Use 1080p capture, we'll downscale for sending
+            // This gives us good quality for preview while sending small frames
+            if self.captureSession.canSetSessionPreset(.hd1920x1080) {
                 self.captureSession.sessionPreset = .hd1920x1080
-                print("[Camera] Using 1080p resolution (1920x1080)")
+                print("[Camera] Using 1080p capture (will downscale to 640p for AI)")
+            } else if self.captureSession.canSetSessionPreset(.hd1280x720) {
+                self.captureSession.sessionPreset = .hd1280x720
+                print("[Camera] Using 720p capture")
             } else {
                 self.captureSession.sessionPreset = .high
                 print("[Camera] Using 'high' preset")
@@ -153,7 +157,7 @@ class CameraService: NSObject, ObservableObject {
             self.captureSession.addInput(videoInput)
             self.currentVideoDevice = device
 
-            // Configure device for maximum quality
+            // Configure device for quality
             self.configureDeviceForMaxQuality(device)
 
             // Set max zoom based on device capability
@@ -164,7 +168,7 @@ class CameraService: NSObject, ObservableObject {
             // Add video output with optimal settings
             let videoOutput = AVCaptureVideoDataOutput()
             videoOutput.setSampleBufferDelegate(self, queue: self.processingQueue)
-            videoOutput.alwaysDiscardsLateVideoFrames = false // Keep frames for quality selection
+            videoOutput.alwaysDiscardsLateVideoFrames = true  // Always use latest frame
             videoOutput.videoSettings = [
                 kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
             ]
@@ -220,10 +224,6 @@ class CameraService: NSObject, ObservableObject {
         do {
             try device.lockForConfiguration()
 
-            // Note: Optical Image Stabilization (OIS) is hardware-based and
-            // automatically enabled when available. Video stabilization is
-            // handled separately on the AVCaptureConnection.
-
             // Set focus mode for best sharpness
             if device.isFocusModeSupported(.continuousAutoFocus) {
                 device.focusMode = .continuousAutoFocus
@@ -234,10 +234,8 @@ class CameraService: NSObject, ObservableObject {
                 device.exposureMode = .continuousAutoExposure
             }
 
-            // Enable automatic HDR (better dynamic range)
-            // Let the system decide when to use HDR
+            // Enable automatic HDR
             device.automaticallyAdjustsVideoHDREnabled = true
-            print("[Camera] Auto HDR enabled")
 
             // Set white balance
             if device.isWhiteBalanceModeSupported(.continuousAutoWhiteBalance) {
@@ -247,7 +245,6 @@ class CameraService: NSObject, ObservableObject {
             // Low light boost
             if device.isLowLightBoostSupported {
                 device.automaticallyEnablesLowLightBoostWhenAvailable = true
-                print("[Camera] Low light boost enabled")
             }
 
             device.unlockForConfiguration()
@@ -306,8 +303,18 @@ class CameraService: NSObject, ObservableObject {
     }
 
     func captureSnapshot() {
-        // Trigger snapshot selection from frame buffer
-        lastSnapshotTime = Date()
+        // Use the latest frame immediately - no buffering delay
+        guard let frame = latestFrame else { return }
+        
+        if let compressedData = processImage(frame) {
+            let sizeKB = compressedData.count / 1024
+            print("[Camera] Snapshot: \(sizeKB)KB")
+            snapshotCaptured.send(compressedData)
+            
+            DispatchQueue.main.async { [weak self] in
+                self?.lastSnapshot = frame
+            }
+        }
     }
 
     // MARK: - Motion Clip Capture
@@ -408,101 +415,32 @@ class CameraService: NSObject, ObservableObject {
         setZoom(1.0)
     }
 
-    // MARK: - Image Quality Analysis
+    // MARK: - Image Processing - OPTIMIZED FOR SPEED
 
-    /// Calculate image sharpness using Laplacian variance
-    private func calculateSharpness(_ image: UIImage) -> Double {
-        guard let cgImage = image.cgImage else { return 0 }
-
-        let ciImage = CIImage(cgImage: cgImage)
-
-        // Apply Laplacian filter for edge detection
-        guard let laplacianFilter = CIFilter(name: "CIConvolution3X3") else { return 0 }
-
-        laplacianFilter.setValue(ciImage, forKey: kCIInputImageKey)
-        // Laplacian kernel for edge detection
-        laplacianFilter.setValue(CIVector(values: [0, 1, 0, 1, -4, 1, 0, 1, 0], count: 9), forKey: "inputWeights")
-        laplacianFilter.setValue(1.0, forKey: "inputBias")
-
-        guard let outputImage = laplacianFilter.outputImage else { return 0 }
-
-        // Calculate variance of the filtered image
-        var bitmap = [UInt8](repeating: 0, count: 4)
-        let extent = outputImage.extent
-
-        // Sample center region for efficiency
-        let sampleRect = CGRect(
-            x: extent.midX - 50,
-            y: extent.midY - 50,
-            width: 100,
-            height: 100
-        )
-
-        ciContext.render(outputImage, toBitmap: &bitmap, rowBytes: 4, bounds: sampleRect, format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
-
-        // Higher values = sharper image
-        let variance = Double(bitmap[0]) + Double(bitmap[1]) + Double(bitmap[2])
-        return variance
-    }
-
-    /// Assess overall image quality
-    private func assessImageQuality(sharpness: Double) -> ImageQuality {
-        if sharpness > 300 {
-            return .excellent
-        } else if sharpness > 200 {
-            return .good
-        } else if sharpness > 100 {
-            return .fair
-        } else {
-            return .poor
-        }
-    }
-
-    // MARK: - Image Processing
-
-    /// Process and compress image with maximum quality
+    /// Process and compress image for fast transmission
     private func processImage(_ image: UIImage) -> Data? {
         var processedImage = image
         let size = image.size
 
-        // Resize to optimal output dimension while maintaining aspect ratio
+        // Resize to 640p for fast upload
         let maxDim = Config.maxOutputDimension
         if max(size.width, size.height) > maxDim {
             let scale = maxDim / max(size.width, size.height)
             let newSize = CGSize(width: size.width * scale, height: size.height * scale)
 
-            // Use high-quality image context
+            // Fast resize
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1.0
-            format.preferredRange = .automatic
 
             let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
             processedImage = renderer.image { context in
-                // High quality interpolation
-                context.cgContext.interpolationQuality = .high
+                // Use default interpolation for speed
                 image.draw(in: CGRect(origin: .zero, size: newSize))
             }
         }
 
+        // Compress with lower quality for smaller size
         return processedImage.jpegData(compressionQuality: Config.jpegQuality)
-    }
-
-    /// Select the best frame from the buffer
-    private func selectBestFrame() -> (image: UIImage, sharpness: Double)? {
-        guard !frameBuffer.isEmpty else { return nil }
-
-        // Filter frames within the selection window
-        let cutoff = Date().addingTimeInterval(-Config.frameSelectionWindow)
-        let recentFrames = frameBuffer.filter { $0.timestamp > cutoff }
-
-        guard !recentFrames.isEmpty else {
-            // Fall back to most recent frame
-            return frameBuffer.last.map { ($0.image, $0.sharpness) }
-        }
-
-        // Select sharpest frame
-        let best = recentFrames.max { $0.sharpness < $1.sharpness }
-        return best.map { ($0.image, $0.sharpness) }
     }
 
     // MARK: - Ambient Light Detection
@@ -525,7 +463,6 @@ class CameraService: NSObject, ObservableObject {
         }
 
         // Classify light level based on brightness value
-        // Brightness value ranges: negative = dark, 0-5 = normal, 5+ = bright
         let level: LightLevel
         if brightness < -1.0 {
             level = .dark
@@ -569,38 +506,9 @@ extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
         guard let cgImage = ciContext.createCGImage(ciImage, from: ciImage.extent) else { return }
         let image = UIImage(cgImage: cgImage)
 
-        // Calculate sharpness for this frame
-        let sharpness = calculateSharpness(image)
-
-        // Add to frame buffer
-        frameBuffer.append((image: image, sharpness: sharpness, timestamp: Date()))
-        if frameBuffer.count > maxFrameBufferSize {
-            frameBuffer.removeFirst()
-        }
-
-        // Handle periodic snapshot - select best frame when timer fires
-        let timeSinceLastSnapshot = Date().timeIntervalSince(lastSnapshotTime)
-        if snapshotTimer != nil && timeSinceLastSnapshot < Config.frameSelectionWindow {
-            // Within selection window, wait for more frames
-        } else if snapshotTimer != nil && timeSinceLastSnapshot >= Config.frameSelectionWindow && timeSinceLastSnapshot < Config.frameSelectionWindow + 0.1 {
-            // Selection window just ended - pick best frame
-            if let (bestImage, bestSharpness) = selectBestFrame() {
-                let quality = assessImageQuality(sharpness: bestSharpness)
-
-                DispatchQueue.main.async { [weak self] in
-                    self?.lastSnapshot = bestImage
-                    self?.imageQuality = quality
-                }
-
-                if let compressedData = processImage(bestImage) {
-                    snapshotCaptured.send(compressedData)
-                    print("[Camera] Snapshot captured - Sharpness: \(Int(bestSharpness)), Quality: \(quality.rawValue)")
-                }
-
-                // Clear buffer after selection
-                frameBuffer.removeAll()
-            }
-        }
+        // Always keep the latest frame ready for immediate capture
+        latestFrame = image
+        latestFrameTime = Date()
 
         // Handle motion clip capture
         if isCapturingClip, let startTime = clipStartTime {
@@ -609,11 +517,8 @@ extension CameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
             if elapsed < Double(clipDurationMs) {
                 // Capture frame (limit to ~10 fps for clip)
                 if clipFrames.count < Int(Double(clipDurationMs) / 100) {
-                    // Only include reasonably sharp frames
-                    if sharpness > Config.minimumSharpness * 0.5 {
-                        if let frameData = image.jpegData(compressionQuality: Config.clipFrameQuality) {
-                            clipFrames.append(frameData)
-                        }
+                    if let frameData = image.jpegData(compressionQuality: Config.clipFrameQuality) {
+                        clipFrames.append(frameData)
                     }
                 }
             } else {
