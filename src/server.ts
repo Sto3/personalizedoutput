@@ -30,11 +30,12 @@ import supportReplyApi from './api/supportReplyApi';
 import homeworkApi from './api/homeworkApi';
 import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
-// V1/V2 archived - V3, V5, V6, V7 active (OpenAI Realtime API)
+// V1/V2 archived - V3, V5, V6, V7, V8 active
 import { initRediV3 } from './websocket/rediV3Server';
 import { initRediV5 } from './websocket/rediV5Server';
 import { initRediV6, closeRediV6 } from './websocket/rediV6Server';
 import { initRediV7, closeRediV7 } from './websocket/rediV7Server';
+import { initRediV8, closeRediV8 } from './websocket/rediV8Server';
 // Import Homework Rescue pages
 import {
   renderHomeworkRescuePage,
@@ -480,284 +481,9 @@ app.get('/santa-legacy', (req, res) => {
     `);
   }
 
-  // No token - show the order ID capture form with premium dark styling
+  // No token - redirect to main santa page
   trackEvent('page', 'santa-claim');
-  res.send(`
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Start Your Santa Message | Personalized Output</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400;6..96,600;6..96,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    :root {
-      --bg-dark: #1a0a1a;
-      --bg-card: #0a0a10;
-      --coral: #E85A4F;
-      --coral-light: #F08B96;
-      --purple: #7C3AED;
-      --purple-light: #A78BFA;
-      --text-primary: #ffffff;
-      --text-secondary: rgba(255,255,255,0.7);
-      --text-muted: rgba(255,255,255,0.5);
-      --border: rgba(255,255,255,0.1);
-    }
-    body {
-      font-family: 'Inter', -apple-system, sans-serif;
-      background: var(--bg-dark);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      color: var(--text-primary);
-    }
-    .header {
-      background: var(--purple);
-      padding: 16px 24px;
-    }
-    .header-inner {
-      max-width: 600px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .logo {
-      font-family: 'Bodoni Moda', serif;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #fff;
-      text-decoration: none;
-    }
-    .logo span { color: var(--coral); }
-    .back-link {
-      color: rgba(255,255,255,0.8);
-      text-decoration: none;
-      font-size: 0.9rem;
-    }
-    .back-link:hover { color: #fff; }
-    .main {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 40px 24px;
-    }
-    .container {
-      max-width: 480px;
-      width: 100%;
-      text-align: center;
-    }
-    .santa-icon {
-      font-size: 5rem;
-      margin-bottom: 24px;
-      filter: drop-shadow(0 4px 20px rgba(232, 90, 79, 0.3));
-    }
-    h1 {
-      font-family: 'Bodoni Moda', serif;
-      font-size: 2.25rem;
-      font-weight: 700;
-      margin-bottom: 16px;
-      line-height: 1.2;
-    }
-    h1 .highlight {
-      color: var(--coral);
-    }
-    .description {
-      font-size: 1rem;
-      color: var(--text-secondary);
-      margin-bottom: 32px;
-      line-height: 1.7;
-    }
-    .form-card {
-      background: var(--bg-card);
-      padding: 40px;
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      text-align: left;
-    }
-    .form-group {
-      margin-bottom: 24px;
-    }
-    label {
-      display: block;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--purple-light);
-      margin-bottom: 8px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    input {
-      width: 100%;
-      padding: 16px 18px;
-      font-size: 1rem;
-      font-family: 'Inter', sans-serif;
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      transition: all 0.2s;
-      background: rgba(255,255,255,0.05);
-      color: var(--text-primary);
-    }
-    input:focus {
-      outline: none;
-      border-color: var(--purple);
-      background: rgba(124, 58, 237, 0.05);
-    }
-    input::placeholder {
-      color: var(--text-muted);
-    }
-    button {
-      width: 100%;
-      padding: 18px;
-      background: linear-gradient(135deg, var(--coral), var(--coral-light));
-      color: #fff;
-      border: none;
-      border-radius: 12px;
-      font-size: 1.1rem;
-      font-family: 'Inter', sans-serif;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s;
-      box-shadow: 0 4px 20px rgba(232, 90, 79, 0.3);
-    }
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(232, 90, 79, 0.4);
-    }
-    button:disabled {
-      opacity: 0.5;
-      transform: none;
-      cursor: not-allowed;
-    }
-    .help-text {
-      margin-top: 24px;
-      font-size: 0.85rem;
-      color: var(--text-muted);
-      text-align: center;
-      line-height: 1.6;
-    }
-    .error-message {
-      background: rgba(239, 68, 68, 0.15);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #fca5a5;
-      padding: 16px 18px;
-      border-radius: 12px;
-      margin-bottom: 24px;
-      font-size: 0.95rem;
-      display: none;
-    }
-    .secure-badge {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin-top: 24px;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-    .secure-badge svg {
-      width: 16px;
-      height: 16px;
-    }
-    @media (max-width: 600px) {
-      .main { padding: 24px 16px; }
-      h1 { font-size: 1.75rem; }
-      .form-card { padding: 28px 20px; }
-      .santa-icon { font-size: 4rem; }
-    }
-  </style>
-</head>
-<body>
-  <header class="header">
-    <div class="header-inner">
-      <a href="/" class="logo">personalized<span>output</span></a>
-      <a href="/" class="back-link">&larr; Back</a>
-    </div>
-  </header>
-  <main class="main">
-    <div class="container">
-      <div class="santa-icon">🎅</div>
-      <h1>Create Your <span class="highlight">Santa Message</span></h1>
-      <p class="description">Enter your order details below to begin creating a magical, personalized message from Santa.</p>
-
-      <div class="form-card">
-        <form id="claimForm">
-          <div id="errorMessage" class="error-message"></div>
-
-          <div class="form-group">
-            <label for="orderId">Order ID</label>
-            <input type="text" id="orderId" name="orderId" placeholder="Enter your order ID" required>
-          </div>
-
-          <div class="form-group">
-            <label for="email">Email Address</label>
-            <input type="email" id="email" name="email" placeholder="you@example.com" required>
-          </div>
-
-          <button type="submit">Continue to Create Message</button>
-
-          <p class="help-text">You'll find your Order ID in your purchase confirmation email.</p>
-
-          <div class="secure-badge">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-            Secure • One-time use per purchase
-          </div>
-        </form>
-      </div>
-    </div>
-  </main>
-
-  <script>
-    const form = document.getElementById('claimForm');
-    const errorDiv = document.getElementById('errorMessage');
-    const submitBtn = form.querySelector('button[type="submit"]');
-
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      errorDiv.style.display = 'none';
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Verifying...';
-
-      const data = {
-        orderId: document.getElementById('orderId').value,
-        email: document.getElementById('email').value,
-        productId: 'santa_message'
-      };
-
-      try {
-        const response = await fetch('/api/santa/claim', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-
-        if (result.ok && result.redirectUrl) {
-          window.location.href = result.redirectUrl;
-        } else {
-          errorDiv.textContent = result.error || 'Something went wrong. Please try again.';
-          errorDiv.style.display = 'block';
-          submitBtn.disabled = false;
-          submitBtn.textContent = 'Continue to Create Message';
-        }
-      } catch (err) {
-        errorDiv.textContent = 'Unable to connect. Please check your internet and try again.';
-        errorDiv.style.display = 'block';
-        submitBtn.disabled = false;
-        submitBtn.textContent = 'Continue to Create Message';
-      }
-    });
-  </script>
-</body>
-</html>
-  `);
+  res.redirect('/santa');
 });
 
 // Santa Samples page (for Etsy listings - audio previews)
@@ -1571,7 +1297,7 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       </thead>
       <tbody>
         ${summary.daily.length > 0
-          ? summary.daily.map(d => `<tr><td>${d.date}</td><td>${d.total_views}</td><td>${d.unique_visitors}</td></tr>`).join('')
+          ? summary.daily.map((d: any) => `<tr><td>${d.date}</td><td>${d.total_views}</td><td>${d.unique_visitors}</td></tr>`).join('')
           : '<tr><td colspan="3" style="text-align:center;color:#999;">No data yet</td></tr>'
         }
       </tbody>
@@ -1584,7 +1310,7 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
       </thead>
       <tbody>
         ${summary.topPages.length > 0
-          ? summary.topPages.map(p => `<tr><td>${p.path}</td><td>${p.views}</td><td>${p.unique_visitors}</td></tr>`).join('')
+          ? summary.topPages.map((p: any) => `<tr><td>${p.path}</td><td>${p.views}</td><td>${p.unique_visitors}</td></tr>`).join('')
           : '<tr><td colspan="3" style="text-align:center;color:#999;">No data yet</td></tr>'
         }
       </tbody>
@@ -1751,7 +1477,10 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 
 const server = createServer(app);
 
-// Initialize WebSocket servers in order (V7 first for production, then legacy versions)
+// Initialize WebSocket servers in order
+// V8 - Split pipeline (Deepgram STT → Groq Vision → Groq LLM → ElevenLabs TTS)
+initRediV8(server);
+
 // V7 - Production-grade with state machine, barge-in handling, fresh frame requests
 initRediV7(server);
 
@@ -1797,7 +1526,8 @@ server.listen(PORT, () => {
 ║   Server running at: http://localhost:${PORT}                   ║
 ║                                                               ║
 ║   Redi WebSocket Versions:                                    ║
-║   • V7 (Production): /ws/redi?v=7                             ║
+║   • V8 (Split):      /ws/redi?v=8  (Deepgram→Groq→ElevenLabs) ║
+║   • V7 (Production): /ws/redi?v=7  (OpenAI Realtime)          ║
 ║   • V6 (Stable):     /ws/redi?v=6                             ║
 ║   • V5 (Router):     /ws/redi?v=5                             ║
 ║   • V3 (Legacy):     /ws/redi?v=3                             ║
