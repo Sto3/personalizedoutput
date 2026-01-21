@@ -3,6 +3,7 @@
  *
  * SwiftUI wrapper for AVCaptureVideoPreviewLayer.
  * FIXED: Preview layer now properly updates when camera starts.
+ * FIXED: Renamed class to V3CameraPreviewUIView to avoid conflict with SessionView
  */
 
 import SwiftUI
@@ -11,24 +12,25 @@ import AVFoundation
 struct V3CameraPreview: UIViewRepresentable {
     @ObservedObject var cameraService: V3CameraService
 
-    func makeUIView(context: Context) -> CameraPreviewUIView {
-        let view = CameraPreviewUIView()
+    func makeUIView(context: Context) -> V3CameraPreviewUIView {
+        let view = V3CameraPreviewUIView()
         view.backgroundColor = .black
         return view
     }
 
-    func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
+    func updateUIView(_ uiView: V3CameraPreviewUIView, context: Context) {
         // Update preview layer when it becomes available
         uiView.setPreviewLayer(cameraService.previewLayer)
     }
     
-    static func dismantleUIView(_ uiView: CameraPreviewUIView, coordinator: ()) {
+    static func dismantleUIView(_ uiView: V3CameraPreviewUIView, coordinator: ()) {
         uiView.removePreviewLayer()
     }
 }
 
 /// Custom UIView that properly handles AVCaptureVideoPreviewLayer
-class CameraPreviewUIView: UIView {
+/// Named V3CameraPreviewUIView to avoid conflict with CameraPreviewUIView in SessionView
+class V3CameraPreviewUIView: UIView {
     private var currentPreviewLayer: AVCaptureVideoPreviewLayer?
     
     override class var layerClass: AnyClass {
