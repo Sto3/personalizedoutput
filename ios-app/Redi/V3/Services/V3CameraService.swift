@@ -1,9 +1,8 @@
 /**
  * V3CameraService.swift
  *
- * DEPRECATED - This file redirects to CameraService.
- * The version-specific camera services are no longer needed.
- * All camera functionality is now in ios-app/Redi/Services/CameraService.swift
+ * Camera service wrapper for V3 - bridges to main CameraService.
+ * FIXED: Now properly calls setupSnapshotCallback on init.
  */
 
 import AVFoundation
@@ -24,10 +23,15 @@ class V3CameraService: NSObject, ObservableObject {
     // MARK: - V3 Interface Callbacks
     var onFrameCaptured: ((Data) -> Void)?
     
+    // MARK: - Private
+    private var snapshotCancellable: AnyCancellable?
+    private var cancellables = Set<AnyCancellable>()
+    
     // MARK: - Initialization
     override init() {
         super.init()
         setupBridge()
+        setupSnapshotCallback()  // CRITICAL: Must setup callback!
     }
     
     private func setupBridge() {
@@ -38,44 +42,54 @@ class V3CameraService: NSObject, ObservableObject {
         
         cameraService.$previewLayer
             .receive(on: DispatchQueue.main)
-            .assign(to: &$previewLayer)
+            .sink { [weak self] layer in
+                self?.previewLayer = layer
+                if layer != nil {
+                    print("[V3Camera] Preview layer ready")
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
+    /// CRITICAL: Setup callback to forward snapshots to onFrameCaptured
+    private func setupSnapshotCallback() {
+        snapshotCancellable = cameraService.snapshotCaptured
+            .sink { [weak self] data in
+                let sizeKB = data.count / 1024
+                print("[V3Camera] Snapshot captured: \(sizeKB)KB")
+                self?.onFrameCaptured?(data)
+            }
     }
     
     // MARK: - V3 Interface Methods
     
     func startCapture() {
+        print("[V3Camera] Starting capture...")
         cameraService.start()
         // Start periodic snapshots using RediConfig settings
         cameraService.startPeriodicSnapshots(intervalMs: Int(RediConfig.Camera.staticFrameInterval * 1000))
     }
     
     func stopCapture() {
+        print("[V3Camera] Stopping capture...")
         cameraService.stop()
         cameraService.stopSnapshotTimer()
     }
     
     /// Capture a frame immediately and return via callback
     func captureFrameNow(completion: @escaping (Data) -> Void) {
+        print("[V3Camera] Capturing frame NOW...")
         cameraService.captureSnapshot()
-        // The snapshot will be sent via snapshotCaptured publisher
-        // For immediate callback, we store it
-        var cancellable: AnyCancellable?
-        cancellable = cameraService.snapshotCaptured
+        
+        // Wait for the next snapshot from the publisher
+        var oneTimeCancellable: AnyCancellable?
+        oneTimeCancellable = cameraService.snapshotCaptured
             .first()
             .sink { data in
+                let sizeKB = data.count / 1024
+                print("[V3Camera] Immediate frame captured: \(sizeKB)KB")
                 completion(data)
-                cancellable?.cancel()
-            }
-    }
-    
-    // MARK: - Setup Snapshot Callback
-    
-    private var snapshotCancellable: AnyCancellable?
-    
-    func setupSnapshotCallback() {
-        snapshotCancellable = cameraService.snapshotCaptured
-            .sink { [weak self] data in
-                self?.onFrameCaptured?(data)
+                oneTimeCancellable?.cancel()
             }
     }
 }
