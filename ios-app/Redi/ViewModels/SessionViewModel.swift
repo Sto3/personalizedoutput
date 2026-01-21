@@ -25,6 +25,15 @@ class SessionViewModel: ObservableObject {
     @Published var currentTranscript: String?
     @Published var currentAIResponse: String?
     @Published var currentVisualContext: String?
+    
+    // MARK: - Autonomous Mode Properties (required by SessionView)
+    
+    @Published var isAutonomousMode: Bool = false
+    @Published var detectedMode: RediMode = .general
+    @Published var detectedActivity: String? = nil
+    @Published var modeConfidence: Double = 0.0
+    @Published var modeComfort: Double = 0.5
+    @Published var frequencyPreference: Double = 0.5
 
     // MARK: - Services
 
@@ -303,6 +312,17 @@ class SessionViewModel: ObservableObject {
 
     func updateSensitivity() {
         webSocketService.sendSensitivity(sensitivity)
+    }
+    
+    // MARK: - Autonomous Mode Methods (required by SessionView)
+    
+    func updateAudioOutputMode(_ mode: AudioOutputMode) {
+        session.audioOutputMode = mode
+        // TODO: Send to server if needed
+    }
+    
+    func updateAutonomousSettings() {
+        // Stub - autonomous mode settings
     }
 
     // MARK: - Private Methods
