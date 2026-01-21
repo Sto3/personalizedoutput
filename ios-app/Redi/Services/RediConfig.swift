@@ -12,8 +12,10 @@ struct RediConfig {
     // MARK: - Server Configuration
     
     /// Production WebSocket endpoint
+    /// SWITCHED BACK TO V6 - proven working on Jan 20
+    /// V7 has vision staleness issues (10sec frame age)
     static var serverURL: URL {
-        return URL(string: "wss://redialways.com/ws/redi?v=7")!
+        return URL(string: "wss://redialways.com/ws/redi?v=6")!
     }
     
     // MARK: - Audio Configuration
