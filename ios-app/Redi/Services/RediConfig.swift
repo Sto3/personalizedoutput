@@ -2,7 +2,9 @@
  * RediConfig.swift
  *
  * Unified configuration for Redi services.
- * SPEED OPTIMIZED - Jan 21 2026
+ * MAXIMUM FRESHNESS - Jan 21 2026
+ * 
+ * KEY CHANGE: Frames every 500ms for always-fresh vision
  */
 
 import Foundation
@@ -39,12 +41,12 @@ struct RediConfig {
         static let minPlaybackBuffer = 1200
     }
     
-    // MARK: - Camera Configuration - SPEED OPTIMIZED
+    // MARK: - Camera Configuration - MAXIMUM FRESHNESS
     
     struct Camera {
-        /// Frame interval - send frames frequently for freshness!
-        /// 1 second means we always have a recent frame ready
-        static let staticFrameInterval: TimeInterval = 1.0
+        /// Frame interval - FAST! 500ms = 2fps
+        /// This ensures we always have a very recent frame
+        static let staticFrameInterval: TimeInterval = 0.5
         
         /// Frame interval during motion (4 fps)
         static let motionFrameInterval: TimeInterval = 0.25
@@ -57,8 +59,9 @@ struct RediConfig {
         /// 50% produces small files that AI can still read well
         static let compressionQuality: CGFloat = 0.50
         
-        /// Maximum age of a frame before requesting fresh (milliseconds)
-        static let maxFrameAge: Int = 1000
+        /// Maximum age of a frame before considered stale (milliseconds)
+        /// With 500ms interval, frames should never be older than ~600ms
+        static let maxFrameAge: Int = 800
     }
     
     // MARK: - Response Configuration
