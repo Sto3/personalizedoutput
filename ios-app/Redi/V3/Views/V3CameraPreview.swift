@@ -2,30 +2,68 @@
  * Redi V3 CameraPreview
  *
  * SwiftUI wrapper for AVCaptureVideoPreviewLayer.
+ * FIXED: Preview layer now properly updates when camera starts.
  */
 
 import SwiftUI
 import AVFoundation
 
 struct V3CameraPreview: UIViewRepresentable {
-    let cameraService: V3CameraService
+    @ObservedObject var cameraService: V3CameraService
 
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
+    func makeUIView(context: Context) -> CameraPreviewUIView {
+        let view = CameraPreviewUIView()
         view.backgroundColor = .black
         return view
     }
 
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            if let previewLayer = cameraService.previewLayer {
-                // Remove existing sublayers
-                uiView.layer.sublayers?.forEach { $0.removeFromSuperlayer() }
+    func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
+        // Update preview layer when it becomes available
+        uiView.setPreviewLayer(cameraService.previewLayer)
+    }
+    
+    static func dismantleUIView(_ uiView: CameraPreviewUIView, coordinator: ()) {
+        uiView.removePreviewLayer()
+    }
+}
 
-                // Add preview layer
-                previewLayer.frame = uiView.bounds
-                uiView.layer.addSublayer(previewLayer)
-            }
+/// Custom UIView that properly handles AVCaptureVideoPreviewLayer
+class CameraPreviewUIView: UIView {
+    private var currentPreviewLayer: AVCaptureVideoPreviewLayer?
+    
+    override class var layerClass: AnyClass {
+        return AVCaptureVideoPreviewLayer.self
+    }
+    
+    func setPreviewLayer(_ previewLayer: AVCaptureVideoPreviewLayer?) {
+        // Don't do anything if it's the same layer
+        if currentPreviewLayer === previewLayer {
+            // Just update frame
+            currentPreviewLayer?.frame = bounds
+            return
         }
+        
+        // Remove old layer
+        removePreviewLayer()
+        
+        // Add new layer
+        guard let previewLayer = previewLayer else { return }
+        
+        previewLayer.videoGravity = .resizeAspectFill
+        previewLayer.frame = bounds
+        layer.insertSublayer(previewLayer, at: 0)
+        currentPreviewLayer = previewLayer
+        
+        print("[V3CameraPreview] Preview layer set: \(bounds)")
+    }
+    
+    func removePreviewLayer() {
+        currentPreviewLayer?.removeFromSuperlayer()
+        currentPreviewLayer = nil
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        currentPreviewLayer?.frame = bounds
     }
 }
