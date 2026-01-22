@@ -57,6 +57,15 @@ class AppState: ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
     }
+    
+    /// Clear all version flags - call before setting a specific version
+    func clearAllVersionFlags() {
+        useV8 = false
+        useV7 = false
+        useV6 = false
+        useV5 = false
+        useV3 = false
+    }
 }
 
 /// Root content view with navigation
