@@ -49,6 +49,8 @@
 		9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1EEF7931605422AB46F4851 /* V5MainView.swift */; };
 		/* SettingsView */
 		SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SETT1NGS001F001A001B001C /* SettingsView.swift */; };
+		/* RediConfig */
+		RED1C0NF001B001A001B001C /* RediConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = RED1C0NF001F001A001B001C /* RediConfig.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -96,6 +98,8 @@
 		A1EEF7931605422AB46F4851 /* V5MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Views/V5MainView.swift; sourceTree = "<group>"; };
 		/* SettingsView */
 		SETT1NGS001F001A001B001C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		/* RediConfig */
+		RED1C0NF001F001A001B001C /* RediConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediConfig.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -138,6 +142,7 @@
 				A4F172479862AD94B0F25637 /* MotionService.swift */,
 				1BB36CA549D64781F0A73176 /* ObjectDetectionService.swift */,
 				DC474247BC1D787F92786F35 /* PerceptionService.swift */,
+				RED1C0NF001F001A001B001C /* RediConfig.swift */,
 				6F76A72D1B020F9C4758B067 /* SceneUnderstandingService.swift */,
 				BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */,
 				B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */,
@@ -366,6 +371,8 @@
 				9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */,
 				/* SettingsView */
 				SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */,
+				/* RediConfig */
+				RED1C0NF001B001A001B001C /* RediConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
