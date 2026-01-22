@@ -66,32 +66,6 @@ class AppState: ObservableObject {
         useV5 = false
         useV3 = false
     }
-    
-    /// Start a specific version (clears others first)
-    func startVersion(_ version: RediServerVersion) {
-        clearAllVersionFlags()
-        switch version {
-        case .v7:
-            useV7 = true
-        case .v8:
-            useV8 = true
-        }
-        print("[AppState] Starting \(version.displayName)")
-    }
-    
-    /// Start V3 legacy mode
-    func startV3() {
-        clearAllVersionFlags()
-        useV3 = true
-        print("[AppState] Starting V3 Legacy")
-    }
-    
-    /// Start V6 stable mode
-    func startV6() {
-        clearAllVersionFlags()
-        useV6 = true
-        print("[AppState] Starting V6 Stable")
-    }
 }
 
 /// Root content view with navigation
