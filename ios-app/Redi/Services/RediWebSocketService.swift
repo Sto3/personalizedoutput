@@ -38,8 +38,10 @@ class RediWebSocketService: ObservableObject {
     
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession?
-    private let serverURL: URL
-    private let serverVersion: String
+    
+    // NOTE: Do NOT cache serverURL at init time!
+    // User may change RediConfig.serverVersion after init but before connect.
+    // Read RediConfig.serverURL dynamically in connect() instead.
     
     private var reconnectAttempts = 0
     private let maxReconnectAttempts = 5
@@ -47,13 +49,9 @@ class RediWebSocketService: ObservableObject {
     
     // MARK: - Initialization
     
-    init(serverURL: URL = RediConfig.serverURL) {
-        self.serverURL = serverURL
-        self.serverVersion = RediConfig.serverVersion.displayName
-        print("[RediWS] ═══════════════════════════════════════════")
-        print("[RediWS] \(serverVersion)")
-        print("[RediWS] URL: \(serverURL)")
-        print("[RediWS] ═══════════════════════════════════════════")
+    init() {
+        // Don't read config here - user may change version before connecting
+        print("[RediWS] Service initialized (will read config at connect time)")
     }
     
     // MARK: - Connection Management
@@ -63,6 +61,16 @@ class RediWebSocketService: ObservableObject {
             print("[RediWS] Already connecting, ignoring")
             return
         }
+        
+        // CRITICAL: Read serverURL NOW, not at init time
+        // This ensures we use the version the user selected
+        let serverURL = RediConfig.serverURL
+        let serverVersion = RediConfig.serverVersion.displayName
+        
+        print("[RediWS] ═══════════════════════════════════════════")
+        print("[RediWS] \(serverVersion)")
+        print("[RediWS] URL: \(serverURL)")
+        print("[RediWS] ═══════════════════════════════════════════")
         
         isManualDisconnect = false
         connectionState = .connecting
@@ -86,7 +94,7 @@ class RediWebSocketService: ObservableObject {
                     self?.connectionState = .error(error.localizedDescription)
                     self?.attemptReconnect()
                 } else {
-                    print("[RediWS] ✅ Connected to \(self?.serverVersion ?? "server")")
+                    print("[RediWS] ✅ Connected to \(serverVersion)")
                     self?.isConnected = true
                     self?.connectionState = .connected
                     self?.reconnectAttempts = 0
