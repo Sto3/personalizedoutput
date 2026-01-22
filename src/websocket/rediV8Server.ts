@@ -67,6 +67,8 @@ interface Session {
   responsesCompleted: number;
   fastBrainUsed: number;
   deepBrainUsed: number;
+  audioChunksReceived: number;
+  framesReceived: number;
 }
 
 // =============================================================================
@@ -162,6 +164,8 @@ export async function initRediV8(server: HTTPServer): Promise<void> {
       responsesCompleted: 0,
       fastBrainUsed: 0,
       deepBrainUsed: 0,
+      audioChunksReceived: 0,
+      framesReceived: 0,
     };
 
     sessions.set(sessionId, session);
@@ -188,7 +192,7 @@ export async function initRediV8(server: HTTPServer): Promise<void> {
 
     ws.on('close', () => {
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
-      console.log(`[Redi V8] 🔌 Closed: ${sessionId.slice(0,8)} (${duration}s, fast:${session.fastBrainUsed} deep:${session.deepBrainUsed})`);
+      console.log(`[Redi V8] 🔌 Closed: ${sessionId.slice(0,8)} (${duration}s, fast:${session.fastBrainUsed} deep:${session.deepBrainUsed}, audio:${session.audioChunksReceived} frames:${session.framesReceived})`);
       cleanup(sessionId);
     });
 
@@ -214,6 +218,7 @@ export function handleV8Upgrade(request: IncomingMessage, socket: any, head: Buf
 async function connectToDeepgram(session: Session): Promise<void> {
   const deepgram = createClient(DEEPGRAM_API_KEY!);
   
+  // CRITICAL: Match iOS audio format - 24kHz PCM16 mono
   const connection = deepgram.listen.live({
     model: 'nova-2',
     language: 'en',
@@ -221,9 +226,12 @@ async function connectToDeepgram(session: Session): Promise<void> {
     interim_results: true,
     endpointing: 300,
     vad_events: true,
+    encoding: 'linear16',
+    sample_rate: 24000,
+    channels: 1,
   });
 
-  connection.on(LiveTranscriptionEvents.Open, () => console.log(`[Redi V8] ✅ Deepgram connected`));
+  connection.on(LiveTranscriptionEvents.Open, () => console.log(`[Redi V8] ✅ Deepgram connected (24kHz PCM16)`));
 
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const transcript = data.channel?.alternatives?.[0]?.transcript;
@@ -256,6 +264,7 @@ async function connectToDeepgram(session: Session): Promise<void> {
   });
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
+    console.log(`[Redi V8] 🎤 Speech started`);
     session.isUserSpeaking = true;
     session.consecutiveSilentFrames = 0;
     sendToClient(session, { type: 'request_frame' });
@@ -271,7 +280,7 @@ async function connectToDeepgram(session: Session): Promise<void> {
   });
 
   connection.on(LiveTranscriptionEvents.Error, (err: any) => console.error(`[Redi V8] Deepgram error:`, err));
-  connection.on(LiveTranscriptionEvents.Close, () => console.log(`[Redi V8] Deepgram closed`));
+  connection.on(LiveTranscriptionEvents.Close, () => console.log(`[Redi V8] Deepgram closed (audio chunks sent: ${session.audioChunksReceived})`));
 
   session.deepgramConnection = connection;
 }
@@ -541,11 +550,25 @@ async function generateWithDeepBrain(session: Session, transcript: string, image
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      if (message.data) handleAudioData(session, Buffer.from(message.data, 'base64'));
+      if (message.data) {
+        const audioBuffer = Buffer.from(message.data, 'base64');
+        session.audioChunksReceived++;
+        // Log first few audio chunks for debugging
+        if (session.audioChunksReceived <= 3) {
+          console.log(`[Redi V8] 🎵 Audio chunk #${session.audioChunksReceived}: ${audioBuffer.length} bytes`);
+        }
+        handleAudioData(session, audioBuffer);
+      }
       break;
     case 'frame':
       session.latestFrame = message.data;
       session.latestFrameTime = Date.now();
+      session.framesReceived++;
+      // Log first few frames for debugging
+      if (session.framesReceived <= 3) {
+        const sizeKB = Math.round(message.data.length / 1024);
+        console.log(`[Redi V8] 📷 Frame #${session.framesReceived}: ${sizeKB}KB`);
+      }
       break;
     case 'set_mode':
       if (isValidMode(message.mode)) {
