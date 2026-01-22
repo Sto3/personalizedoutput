@@ -29,6 +29,7 @@ class AppState: ObservableObject {
     }
     
     // Version toggles for admin testing
+    @Published var useV8: Bool = false  // V8: Two-Brain - Together AI (fast) + GPT-4o (deep)
     @Published var useV7: Bool = false  // V7: Production - state machine, barge-in handling
     @Published var useV6: Bool = false  // V6: Stable fallback
     @Published var useV5: Bool = false  // V5: Routes to V6/V7 based on config
@@ -64,7 +65,11 @@ struct ContentView: View {
 
     var body: some View {
         Group {
-            if appState.useV7 {
+            if appState.useV8 {
+                // V8: Two-Brain - Together AI for speed, GPT-4o for depth
+                // Uses RediConfig which connects to ?v=8 endpoint
+                V3MainView()
+            } else if appState.useV7 {
                 // V7: Production - state machine, barge-in, fresh frame requests
                 // Uses V5 services which connect to ?v=7 endpoint
                 V3MainView()
