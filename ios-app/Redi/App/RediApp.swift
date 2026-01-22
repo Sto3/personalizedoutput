@@ -41,7 +41,6 @@ class AppState: ObservableObject {
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
 
         // Listen for session started notifications
-        // Note: .rediSessionStarted is defined in HomeViewModel.swift
         sessionObserver = NotificationCenter.default.addObserver(
             forName: .rediSessionStarted,
             object: nil,
@@ -58,15 +57,6 @@ class AppState: ObservableObject {
             NotificationCenter.default.removeObserver(observer)
         }
     }
-    
-    /// Clear all version flags - call before setting a specific version
-    func clearAllVersionFlags() {
-        useV8 = false
-        useV7 = false
-        useV6 = false
-        useV5 = false
-        useV3 = false
-    }
 }
 
 /// Root content view with navigation
@@ -77,12 +67,15 @@ struct ContentView: View {
         Group {
             if appState.useV8 {
                 // V8: Two-Brain - Together AI for speed, GPT-4o for depth
+                // Uses RediConfig which connects to ?v=8 endpoint
                 V3MainView()
             } else if appState.useV7 {
                 // V7: Production - state machine, barge-in, fresh frame requests
+                // Uses V5 services which connect to ?v=7 endpoint
                 V3MainView()
             } else if appState.useV6 {
                 // V6: Stable fallback - correct OpenAI format
+                // Need to temporarily change config to use v=6
                 V3MainView()
             } else if appState.useV5 {
                 // V5: Default path - routes based on V5Config (currently ?v=7)
