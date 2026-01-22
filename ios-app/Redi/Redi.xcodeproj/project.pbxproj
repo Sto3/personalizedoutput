@@ -97,9 +97,9 @@
 		DR1V1NG006F006A006B006C6 /* DrivingRuleEngine.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingRuleEngine.swift; path = Driving/Services/DrivingRuleEngine.swift; sourceTree = "<group>"; };
 		DR1V1NG007F007A007B007C7 /* DrivingTTSService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingTTSService.swift; path = Driving/Services/DrivingTTSService.swift; sourceTree = "<group>"; };
 		DR1V1NG008F008A008B008C8 /* VisualNavigationService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VisualNavigationService.swift; path = Driving/Services/VisualNavigationService.swift; sourceTree = "<group>"; };
-		FD19B055865344E0BF4B29A4 /* V5Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5Config.swift; path = Services/V5/V5Config.swift; sourceTree = "<group>"; };
-		24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5AudioService.swift; path = Services/V5/V5AudioService.swift; sourceTree = "<group>"; };
-		DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5WebSocketService.swift; path = Services/V5/V5WebSocketService.swift; sourceTree = "<group>"; };
+		FD19B055865344E0BF4B29A4 /* V5Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5Config.swift; path = V5/V5Config.swift; sourceTree = "<group>"; };
+		24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5AudioService.swift; path = V5/V5AudioService.swift; sourceTree = "<group>"; };
+		DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5WebSocketService.swift; path = V5/V5WebSocketService.swift; sourceTree = "<group>"; };
 		/* SettingsView */
 		SETT1NGS001F001A001B001C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		/* RediConfig */
