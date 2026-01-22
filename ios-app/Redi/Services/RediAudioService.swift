@@ -2,7 +2,7 @@
  * RediAudioService.swift
  *
  * Production audio service for Redi.
- * Handles audio capture and playback for real-time voice interaction.
+ * Handles audio capture (PCM16) and playback (MP3 from ElevenLabs).
  * NO VERSION NUMBERS - this is the production service.
  */
 
@@ -25,17 +25,17 @@ class RediAudioService: ObservableObject {
     
     private var audioEngine: AVAudioEngine?
     private var inputNode: AVAudioInputNode?
-    private var audioPlayer: AVAudioPlayerNode?
     private var audioFormat: AVAudioFormat?
     
-    // Playback buffer
-    private var playbackBuffer: [Data] = []
+    // MP3 Playback using AVAudioPlayer
+    private var audioPlayer: AVAudioPlayer?
+    private var playbackQueue: [Data] = []
     private var isProcessingPlayback = false
-    private let playbackQueue = DispatchQueue(label: "redi.audio.playback", qos: .userInteractive)
+    private let playbackLock = NSLock()
     
     // MARK: - Configuration
     
-    private let sampleRate = RediConfig.Audio.sampleRate
+    private let sampleRate = RediConfig.Audio.sampleRate  // 24kHz for capture
     private let channels = RediConfig.Audio.channels
     private let bufferSize = RediConfig.Audio.recordingBufferSize
     
@@ -137,121 +137,121 @@ class RediAudioService: ObservableObject {
         audioCaptured.send(data)
     }
     
-    // MARK: - Playback
+    // MARK: - MP3 Playback (for ElevenLabs TTS)
     
+    /// Play MP3 audio data from ElevenLabs
     func playAudio(_ data: Data) {
-        playbackQueue.async { [weak self] in
-            self?.playbackBuffer.append(data)
-            self?.processPlaybackBuffer()
+        playbackLock.lock()
+        playbackQueue.append(data)
+        let shouldProcess = !isProcessingPlayback
+        playbackLock.unlock()
+        
+        if shouldProcess {
+            processNextAudioChunk()
         }
     }
     
-    private func processPlaybackBuffer() {
-        guard !isProcessingPlayback else { return }
-        guard !playbackBuffer.isEmpty else { return }
+    private func processNextAudioChunk() {
+        playbackLock.lock()
+        
+        // Accumulate chunks until we have enough for smooth playback
+        let totalSize = playbackQueue.reduce(0) { $0 + $1.count }
+        
+        // Wait for at least 8KB of MP3 data before starting playback
+        // This prevents choppy audio from tiny chunks
+        guard totalSize >= 8192 || (!playbackQueue.isEmpty && audioPlayer == nil) else {
+            isProcessingPlayback = false
+            playbackLock.unlock()
+            
+            // Check again shortly
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                self?.processNextAudioChunk()
+            }
+            return
+        }
+        
+        guard !playbackQueue.isEmpty else {
+            isProcessingPlayback = false
+            playbackLock.unlock()
+            return
+        }
         
         isProcessingPlayback = true
         
-        // Ensure we have enough data before starting playback
-        let totalBytes = playbackBuffer.reduce(0) { $0 + $1.count }
-        guard totalBytes >= RediConfig.Audio.minPlaybackBuffer else {
-            isProcessingPlayback = false
-            return
-        }
-        
-        // Combine buffered data
+        // Combine all queued chunks into one
         var combinedData = Data()
-        while !playbackBuffer.isEmpty && combinedData.count < RediConfig.Audio.playbackChunkSize {
-            combinedData.append(playbackBuffer.removeFirst())
+        while !playbackQueue.isEmpty {
+            combinedData.append(playbackQueue.removeFirst())
         }
         
-        playPCM16Data(combinedData)
-        isProcessingPlayback = false
+        playbackLock.unlock()
         
-        // Continue processing if more data
-        if !playbackBuffer.isEmpty {
-            playbackQueue.asyncAfter(deadline: .now() + 0.02) { [weak self] in
-                self?.processPlaybackBuffer()
-            }
-        }
-    }
-    
-    private func playPCM16Data(_ data: Data) {
-        guard let format = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: sampleRate,
-            channels: channels,
-            interleaved: true
-        ) else { return }
-        
-        let frameCount = UInt32(data.count / 2)
-        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { return }
-        buffer.frameLength = frameCount
-        
-        data.withUnsafeBytes { rawBuffer in
-            if let baseAddress = rawBuffer.baseAddress {
-                memcpy(buffer.int16ChannelData![0], baseAddress, data.count)
-            }
-        }
-        
+        // Play on main thread
         DispatchQueue.main.async { [weak self] in
-            self?.scheduleBuffer(buffer)
+            self?.playMP3Data(combinedData)
         }
     }
     
-    private func scheduleBuffer(_ buffer: AVAudioPCMBuffer) {
-        if audioPlayer == nil {
-            setupPlayer()
-        }
+    private func playMP3Data(_ data: Data) {
+        print("[RediAudio] 🔊 Playing MP3: \(data.count) bytes")
         
-        audioPlayer?.scheduleBuffer(buffer, completionHandler: nil)
-        
-        if !(audioPlayer?.isPlaying ?? false) {
+        do {
+            // Stop any existing playback
+            audioPlayer?.stop()
+            
+            // Create new player with MP3 data
+            audioPlayer = try AVAudioPlayer(data: data)
+            audioPlayer?.delegate = nil  // We'll handle completion differently
+            audioPlayer?.prepareToPlay()
             audioPlayer?.play()
+            
             isPlaying = true
+            print("[RediAudio] ✅ MP3 playback started")
+            
+            // Check for more audio after this finishes
+            if let duration = audioPlayer?.duration {
+                DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) { [weak self] in
+                    self?.playbackLock.lock()
+                    let hasMore = !self!.playbackQueue.isEmpty
+                    self?.playbackLock.unlock()
+                    
+                    if hasMore {
+                        self?.processNextAudioChunk()
+                    } else {
+                        self?.isPlaying = false
+                        self?.isProcessingPlayback = false
+                    }
+                }
+            }
+            
+        } catch {
+            print("[RediAudio] ❌ MP3 playback failed: \(error)")
+            isPlaying = false
+            isProcessingPlayback = false
+            
+            // Try next chunk if any
+            playbackLock.lock()
+            let hasMore = !playbackQueue.isEmpty
+            playbackLock.unlock()
+            
+            if hasMore {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                    self?.processNextAudioChunk()
+                }
+            }
         }
-    }
-    
-    private func setupPlayer() {
-        guard let engine = audioEngine else {
-            // Create a new engine for playback if recording engine doesn't exist
-            audioEngine = AVAudioEngine()
-            guard let newEngine = audioEngine else { return }
-            
-            audioPlayer = AVAudioPlayerNode()
-            guard let player = audioPlayer else { return }
-            
-            let format = AVAudioFormat(
-                commonFormat: .pcmFormatInt16,
-                sampleRate: sampleRate,
-                channels: channels,
-                interleaved: true
-            )!
-            
-            newEngine.attach(player)
-            newEngine.connect(player, to: newEngine.mainMixerNode, format: format)
-            
-            try? newEngine.start()
-            return
-        }
-        
-        audioPlayer = AVAudioPlayerNode()
-        guard let player = audioPlayer else { return }
-        
-        let format = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
-            sampleRate: sampleRate,
-            channels: channels,
-            interleaved: true
-        )!
-        
-        engine.attach(player)
-        engine.connect(player, to: engine.mainMixerNode, format: format)
     }
     
     func stopPlayback() {
+        print("[RediAudio] Stopping playback")
         audioPlayer?.stop()
-        playbackBuffer.removeAll()
+        audioPlayer = nil
+        
+        playbackLock.lock()
+        playbackQueue.removeAll()
+        isProcessingPlayback = false
+        playbackLock.unlock()
+        
         isPlaying = false
     }
     
@@ -269,6 +269,5 @@ class RediAudioService: ObservableObject {
         stopPlayback()
         audioEngine?.stop()
         audioEngine = nil
-        audioPlayer = nil
     }
 }
