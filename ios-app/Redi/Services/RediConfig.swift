@@ -11,12 +11,55 @@
 import Foundation
 import AVFoundation
 
+// MARK: - Server Version Selection
+
+enum RediServerVersion: String, CaseIterable {
+    case v7 = "7"   // OpenAI Realtime API (current stable)
+    case v8 = "8"   // Two-Brain: Together AI (fast) + GPT-4o (deep)
+    
+    var displayName: String {
+        switch self {
+        case .v7: return "V7 - OpenAI Realtime"
+        case .v8: return "V8 - Two-Brain (Fast+Deep)"
+        }
+    }
+    
+    var description: String {
+        switch self {
+        case .v7: return "Stable. Single OpenAI pipeline. ~1.5s response."
+        case .v8: return "Experimental. Llama for speed (~500ms), GPT-4o for depth."
+        }
+    }
+    
+    var icon: String {
+        switch self {
+        case .v7: return "bolt.fill"
+        case .v8: return "brain.head.profile"
+        }
+    }
+}
+
 struct RediConfig {
+    // MARK: - Server Version
+    
+    /// Current server version - persisted in UserDefaults
+    static var serverVersion: RediServerVersion {
+        get {
+            let stored = UserDefaults.standard.string(forKey: "redi_server_version") ?? "7"
+            return RediServerVersion(rawValue: stored) ?? .v7
+        }
+        set {
+            UserDefaults.standard.set(newValue.rawValue, forKey: "redi_server_version")
+            print("[RediConfig] Server version changed to: \(newValue.displayName)")
+        }
+    }
+    
     // MARK: - Server Configuration
     
-    /// Production WebSocket endpoint - V7 with speed optimizations
+    /// Production WebSocket endpoint - uses selected version
     static var serverURL: URL {
-        return URL(string: "wss://redialways.com/ws/redi?v=7")!
+        let version = serverVersion.rawValue
+        return URL(string: "wss://redialways.com/ws/redi?v=\(version)")!
     }
     
     // MARK: - Audio Configuration
