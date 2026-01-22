@@ -87,7 +87,7 @@ struct SettingsView: View {
                 }
             }
             .listStyle(InsetGroupedListStyle())
-            .scrollContentBackground(.hidden)
+            .modifier(ScrollContentBackgroundModifier())
             .background(Color.black)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
@@ -101,6 +101,17 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+// iOS 15 compatible modifier for hiding scroll background
+struct ScrollContentBackgroundModifier: ViewModifier {
+    func body(content: Content) -> some View {
+        if #available(iOS 16.0, *) {
+            content.scrollContentBackground(.hidden)
+        } else {
+            content
+        }
     }
 }
 
