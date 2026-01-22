@@ -2,8 +2,10 @@
  * RediAudioService.swift
  *
  * Production audio service for Redi.
- * Handles audio capture (PCM16) and playback (MP3 from ElevenLabs).
- * NO VERSION NUMBERS - this is the production service.
+ * Handles audio capture (PCM16) and playback.
+ * 
+ * CRITICAL FIX: V7 uses PCM16, V8 uses MP3
+ * This service auto-detects format and plays correctly.
  */
 
 import Foundation
@@ -27,11 +29,16 @@ class RediAudioService: ObservableObject {
     private var inputNode: AVAudioInputNode?
     private var audioFormat: AVAudioFormat?
     
-    // MP3 Playback using AVAudioPlayer
+    // PCM16 Playback (V7 - OpenAI Realtime)
+    private var playerNode: AVAudioPlayerNode?
+    private var playbackEngine: AVAudioEngine?
+    private var playbackFormat: AVAudioFormat?
+    
+    // MP3 Playback (V8 - ElevenLabs)
     private var audioPlayer: AVAudioPlayer?
     private var playbackQueue: [Data] = []
     private var isProcessingPlayback = false
-    private var audioStreamComplete = false  // Server signals when done
+    private var audioStreamComplete = false
     private let playbackLock = NSLock()
     
     // Debug counter
@@ -39,7 +46,7 @@ class RediAudioService: ObservableObject {
     
     // MARK: - Configuration
     
-    private let sampleRate = RediConfig.Audio.sampleRate  // 24kHz for capture
+    private let sampleRate = RediConfig.Audio.sampleRate  // 24kHz
     private let channels = RediConfig.Audio.channels
     private let bufferSize = RediConfig.Audio.recordingBufferSize
     
@@ -48,6 +55,7 @@ class RediAudioService: ObservableObject {
     init() {
         print("[RediAudio] 🎧 Service initialized")
         setupAudioSession()
+        setupPCMPlayback()  // V7 needs this
     }
     
     deinit {
@@ -61,11 +69,40 @@ class RediAudioService: ObservableObject {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
             try session.setPreferredSampleRate(sampleRate)
-            try session.setPreferredIOBufferDuration(0.02)  // 20ms buffer
+            try session.setPreferredIOBufferDuration(0.02)
             try session.setActive(true)
             print("[RediAudio] ✅ Audio session configured (speaker output)")
         } catch {
             print("[RediAudio] ❌ Audio session setup failed: \(error)")
+        }
+    }
+    
+    private func setupPCMPlayback() {
+        // Create playback engine for PCM16 audio (V7)
+        playbackEngine = AVAudioEngine()
+        playerNode = AVAudioPlayerNode()
+        
+        guard let engine = playbackEngine, let player = playerNode else { return }
+        
+        // PCM16 format at 24kHz mono (matching OpenAI Realtime output)
+        playbackFormat = AVAudioFormat(
+            commonFormat: .pcmFormatInt16,
+            sampleRate: sampleRate,
+            channels: channels,
+            interleaved: true
+        )
+        
+        engine.attach(player)
+        
+        if let format = playbackFormat {
+            engine.connect(player, to: engine.mainMixerNode, format: format)
+        }
+        
+        do {
+            try engine.start()
+            print("[RediAudio] ✅ PCM playback engine ready")
+        } catch {
+            print("[RediAudio] ❌ PCM playback setup failed: \(error)")
         }
     }
     
@@ -81,7 +118,6 @@ class RediAudioService: ObservableObject {
             inputNode = engine.inputNode
             guard let input = inputNode else { return }
             
-            // Get the native format and create our target format
             let nativeFormat = input.outputFormat(forBus: 0)
             audioFormat = AVAudioFormat(
                 commonFormat: .pcmFormatInt16,
@@ -92,7 +128,6 @@ class RediAudioService: ObservableObject {
             
             guard let targetFormat = audioFormat else { return }
             
-            // Install tap to capture audio
             input.installTap(onBus: 0, bufferSize: bufferSize, format: nativeFormat) { [weak self] buffer, _ in
                 self?.processAudioBuffer(buffer, from: nativeFormat, to: targetFormat)
             }
@@ -118,7 +153,6 @@ class RediAudioService: ObservableObject {
     private func processAudioBuffer(_ buffer: AVAudioPCMBuffer, from sourceFormat: AVAudioFormat, to targetFormat: AVAudioFormat) {
         guard !isMuted else { return }
         
-        // Convert if needed
         guard let converter = AVAudioConverter(from: sourceFormat, to: targetFormat) else { return }
         
         let frameCount = AVAudioFrameCount(Double(buffer.frameLength) * targetFormat.sampleRate / sourceFormat.sampleRate)
@@ -135,41 +169,113 @@ class RediAudioService: ObservableObject {
             return
         }
         
-        // Extract PCM16 data
         guard let int16Data = convertedBuffer.int16ChannelData else { return }
         let data = Data(bytes: int16Data[0], count: Int(convertedBuffer.frameLength) * 2)
         
         audioCaptured.send(data)
     }
     
-    // MARK: - MP3 Playback (for ElevenLabs TTS)
+    // MARK: - Smart Playback (Auto-detect PCM16 vs MP3)
     
-    /// Play MP3 audio data from ElevenLabs
+    /// Play audio data - auto-detects format (PCM16 for V7, MP3 for V8)
     func playAudio(_ data: Data) {
         audioChunksReceived += 1
-        print("[RediAudio] 📥 Received audio chunk #\(audioChunksReceived): \(data.count) bytes")
         
-        // Log first few bytes to verify it's MP3
+        // Detect format from header
+        let isMP3 = detectMP3(data)
+        
         if audioChunksReceived == 1 {
             let header = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
-            print("[RediAudio] 📥 First chunk header: \(header)")
+            print("[RediAudio] 📥 Audio chunk #\(audioChunksReceived): \(data.count) bytes, header: \(header), format: \(isMP3 ? "MP3" : "PCM16")")
         }
         
+        if isMP3 {
+            playMP3Audio(data)
+        } else {
+            playPCM16Audio(data)
+        }
+    }
+    
+    /// Detect if data is MP3 format
+    private func detectMP3(_ data: Data) -> Bool {
+        guard data.count >= 3 else { return false }
+        
+        let bytes = [UInt8](data.prefix(3))
+        
+        // ID3 tag
+        if bytes[0] == 0x49 && bytes[1] == 0x44 && bytes[2] == 0x33 {
+            return true
+        }
+        
+        // MP3 frame sync (FF FB, FF FA, FF F3, FF F2, etc.)
+        if bytes[0] == 0xFF && (bytes[1] & 0xE0) == 0xE0 {
+            return true
+        }
+        
+        return false
+    }
+    
+    // MARK: - PCM16 Playback (V7 - OpenAI Realtime)
+    
+    private func playPCM16Audio(_ data: Data) {
+        guard let player = playerNode,
+              let format = playbackFormat,
+              let engine = playbackEngine else {
+            print("[RediAudio] ❌ PCM playback not ready")
+            return
+        }
+        
+        // Ensure engine is running
+        if !engine.isRunning {
+            do {
+                try engine.start()
+            } catch {
+                print("[RediAudio] ❌ Failed to restart playback engine: \(error)")
+                return
+            }
+        }
+        
+        // Create buffer from PCM16 data
+        let frameCount = UInt32(data.count / 2)  // 2 bytes per sample
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
+            print("[RediAudio] ❌ Failed to create buffer")
+            return
+        }
+        
+        buffer.frameLength = frameCount
+        
+        // Copy data to buffer
+        data.withUnsafeBytes { rawBuffer in
+            if let baseAddress = rawBuffer.baseAddress {
+                memcpy(buffer.int16ChannelData![0], baseAddress, data.count)
+            }
+        }
+        
+        // Schedule and play
+        if !player.isPlaying {
+            player.play()
+        }
+        
+        player.scheduleBuffer(buffer, completionHandler: nil)
+        isPlaying = true
+    }
+    
+    // MARK: - MP3 Playback (V8 - ElevenLabs)
+    
+    private func playMP3Audio(_ data: Data) {
         playbackLock.lock()
         playbackQueue.append(data)
-        audioStreamComplete = false  // More data coming
+        audioStreamComplete = false
         let shouldProcess = !isProcessingPlayback
         playbackLock.unlock()
         
         if shouldProcess {
-            processNextAudioChunk()
+            processNextMP3Chunk()
         }
     }
     
-    /// Called when server signals audio stream is complete
-    /// This flushes any remaining audio in the queue
     func flushAudio() {
-        print("[RediAudio] 🔊 Flush requested - playing remaining audio")
+        print("[RediAudio] 🔊 Flush requested")
         
         playbackLock.lock()
         audioStreamComplete = true
@@ -177,18 +283,15 @@ class RediAudioService: ObservableObject {
         playbackLock.unlock()
         
         if shouldProcess {
-            processNextAudioChunk()
+            processNextMP3Chunk()
         }
     }
     
-    private func processNextAudioChunk() {
+    private func processNextMP3Chunk() {
         playbackLock.lock()
         
         let totalSize = playbackQueue.reduce(0) { $0 + $1.count }
         let streamDone = audioStreamComplete
-        
-        // If stream is complete, play whatever we have (even if small)
-        // Otherwise wait for 4KB minimum
         let threshold = streamDone ? 1 : 4096
         
         guard totalSize >= threshold else {
@@ -196,9 +299,8 @@ class RediAudioService: ObservableObject {
             playbackLock.unlock()
             
             if !streamDone {
-                // Check again shortly - more data may be coming
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                    self?.processNextAudioChunk()
+                    self?.processNextMP3Chunk()
                 }
             }
             return
@@ -212,7 +314,6 @@ class RediAudioService: ObservableObject {
         
         isProcessingPlayback = true
         
-        // Combine all queued chunks into one
         var combinedData = Data()
         while !playbackQueue.isEmpty {
             combinedData.append(playbackQueue.removeFirst())
@@ -220,24 +321,14 @@ class RediAudioService: ObservableObject {
         
         playbackLock.unlock()
         
-        print("[RediAudio] 🎵 Playing \(combinedData.count) bytes")
-        
-        // Play on main thread
         DispatchQueue.main.async { [weak self] in
             self?.playMP3Data(combinedData)
         }
     }
     
     private func playMP3Data(_ data: Data) {
-        // Verify it looks like MP3 data
-        let header = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
-        print("[RediAudio] 🔊 Data header: \(header)")
-        
         do {
-            // Stop any existing playback
             audioPlayer?.stop()
-            
-            // Create new player with MP3 data
             audioPlayer = try AVAudioPlayer(data: data)
             audioPlayer?.volume = 1.0
             audioPlayer?.prepareToPlay()
@@ -247,30 +338,28 @@ class RediAudioService: ObservableObject {
             if success {
                 isPlaying = true
                 let duration = audioPlayer?.duration ?? 0
-                print("[RediAudio] ✅ Playing \(String(format: "%.2f", duration))s of audio")
+                print("[RediAudio] ✅ Playing MP3 \(String(format: "%.2f", duration))s")
                 
-                // Check for more audio after this finishes
                 DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) { [weak self] in
                     self?.playbackLock.lock()
                     let hasMore = !(self?.playbackQueue.isEmpty ?? true)
                     self?.playbackLock.unlock()
                     
                     if hasMore {
-                        self?.processNextAudioChunk()
+                        self?.processNextMP3Chunk()
                     } else {
                         self?.isPlaying = false
                         self?.isProcessingPlayback = false
-                        print("[RediAudio] ✅ Playback complete")
                     }
                 }
             } else {
-                print("[RediAudio] ❌ play() returned false!")
+                print("[RediAudio] ❌ MP3 play() failed")
                 isPlaying = false
                 isProcessingPlayback = false
             }
             
         } catch {
-            print("[RediAudio] ❌ MP3 playback failed: \(error)")
+            print("[RediAudio] ❌ MP3 playback error: \(error)")
             isPlaying = false
             isProcessingPlayback = false
         }
@@ -278,6 +367,11 @@ class RediAudioService: ObservableObject {
     
     func stopPlayback() {
         print("[RediAudio] 🛑 Stopping playback")
+        
+        // Stop PCM playback
+        playerNode?.stop()
+        
+        // Stop MP3 playback
         audioPlayer?.stop()
         audioPlayer = nil
         
@@ -305,6 +399,8 @@ class RediAudioService: ObservableObject {
         stopPlayback()
         audioEngine?.stop()
         audioEngine = nil
+        playbackEngine?.stop()
+        playbackEngine = nil
         audioChunksReceived = 0
     }
 }
