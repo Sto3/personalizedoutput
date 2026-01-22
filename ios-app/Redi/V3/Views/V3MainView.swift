@@ -336,6 +336,11 @@ struct V3MainView: View {
         webSocketService.onAudioReceived = { [weak audioService] audioData in
             audioService?.playAudio(audioData)
         }
+        
+        // Server signals audio stream complete → Flush remaining audio
+        webSocketService.onAudioDone = { [weak audioService] in
+            audioService?.flushAudio()
+        }
 
         // Server transcripts → UI
         webSocketService.onTranscriptReceived = { text, role in
