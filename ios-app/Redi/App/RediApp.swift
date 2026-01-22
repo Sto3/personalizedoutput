@@ -6,6 +6,12 @@
 
 import SwiftUI
 
+// MARK: - Notification Names
+extension Notification.Name {
+    static let rediSessionStarted = Notification.Name("rediSessionStarted")
+    static let rediSessionEnded = Notification.Name("rediSessionEnded")
+}
+
 @main
 struct RediApp: App {
     @StateObject private var appState = AppState()
@@ -76,15 +82,12 @@ struct ContentView: View {
         Group {
             if appState.useV8 {
                 // V8: Two-Brain - Together AI for speed, GPT-4o for depth
-                // Uses RediConfig which connects to ?v=8 endpoint
                 V3MainView()
             } else if appState.useV7 {
                 // V7: Production - state machine, barge-in, fresh frame requests
-                // Uses V5 services which connect to ?v=7 endpoint
                 V3MainView()
             } else if appState.useV6 {
                 // V6: Stable fallback - correct OpenAI format
-                // Need to temporarily change config to use v=6
                 V3MainView()
             } else if appState.useV5 {
                 // V5: Default path - routes based on V5Config (currently ?v=7)
