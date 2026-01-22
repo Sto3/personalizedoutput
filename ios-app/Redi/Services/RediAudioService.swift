@@ -31,6 +31,7 @@ class RediAudioService: ObservableObject {
     private var audioPlayer: AVAudioPlayer?
     private var playbackQueue: [Data] = []
     private var isProcessingPlayback = false
+    private var audioStreamComplete = false  // Server signals when done
     private let playbackLock = NSLock()
     
     // Debug counter
@@ -152,17 +153,28 @@ class RediAudioService: ObservableObject {
         if audioChunksReceived == 1 {
             let header = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
             print("[RediAudio] 📥 First chunk header: \(header)")
-            // MP3 starts with FF FB or FF FA or ID3
         }
         
         playbackLock.lock()
         playbackQueue.append(data)
-        let queueSize = playbackQueue.count
-        let totalBytes = playbackQueue.reduce(0) { $0 + $1.count }
+        audioStreamComplete = false  // More data coming
         let shouldProcess = !isProcessingPlayback
         playbackLock.unlock()
         
-        print("[RediAudio] 📥 Queue: \(queueSize) chunks, \(totalBytes) bytes total")
+        if shouldProcess {
+            processNextAudioChunk()
+        }
+    }
+    
+    /// Called when server signals audio stream is complete
+    /// This flushes any remaining audio in the queue
+    func flushAudio() {
+        print("[RediAudio] 🔊 Flush requested - playing remaining audio")
+        
+        playbackLock.lock()
+        audioStreamComplete = true
+        let shouldProcess = !isProcessingPlayback && !playbackQueue.isEmpty
+        playbackLock.unlock()
         
         if shouldProcess {
             processNextAudioChunk()
@@ -172,21 +184,22 @@ class RediAudioService: ObservableObject {
     private func processNextAudioChunk() {
         playbackLock.lock()
         
-        // Accumulate chunks until we have enough for smooth playback
         let totalSize = playbackQueue.reduce(0) { $0 + $1.count }
+        let streamDone = audioStreamComplete
         
-        print("[RediAudio] 🔄 Processing: \(totalSize) bytes queued, isProcessing=\(isProcessingPlayback)")
+        // If stream is complete, play whatever we have (even if small)
+        // Otherwise wait for 4KB minimum
+        let threshold = streamDone ? 1 : 4096
         
-        // Wait for at least 4KB of MP3 data before starting playback (reduced from 8KB)
-        guard totalSize >= 4096 else {
+        guard totalSize >= threshold else {
             isProcessingPlayback = false
             playbackLock.unlock()
             
-            print("[RediAudio] ⏳ Waiting for more data (have \(totalSize), need 4096)")
-            
-            // Check again shortly
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-                self?.processNextAudioChunk()
+            if !streamDone {
+                // Check again shortly - more data may be coming
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
+                    self?.processNextAudioChunk()
+                }
             }
             return
         }
@@ -194,7 +207,6 @@ class RediAudioService: ObservableObject {
         guard !playbackQueue.isEmpty else {
             isProcessingPlayback = false
             playbackLock.unlock()
-            print("[RediAudio] ⚠️ Queue empty, stopping")
             return
         }
         
@@ -208,7 +220,7 @@ class RediAudioService: ObservableObject {
         
         playbackLock.unlock()
         
-        print("[RediAudio] 🎵 Combined \(combinedData.count) bytes for playback")
+        print("[RediAudio] 🎵 Playing \(combinedData.count) bytes")
         
         // Play on main thread
         DispatchQueue.main.async { [weak self] in
@@ -217,8 +229,6 @@ class RediAudioService: ObservableObject {
     }
     
     private func playMP3Data(_ data: Data) {
-        print("[RediAudio] 🔊 Attempting to play \(data.count) bytes of MP3")
-        
         // Verify it looks like MP3 data
         let header = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
         print("[RediAudio] 🔊 Data header: \(header)")
@@ -233,12 +243,11 @@ class RediAudioService: ObservableObject {
             audioPlayer?.prepareToPlay()
             
             let success = audioPlayer?.play() ?? false
-            print("[RediAudio] 🔊 play() returned: \(success)")
             
             if success {
                 isPlaying = true
                 let duration = audioPlayer?.duration ?? 0
-                print("[RediAudio] ✅ MP3 playback started, duration: \(String(format: "%.2f", duration))s")
+                print("[RediAudio] ✅ Playing \(String(format: "%.2f", duration))s of audio")
                 
                 // Check for more audio after this finishes
                 DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) { [weak self] in
@@ -264,17 +273,6 @@ class RediAudioService: ObservableObject {
             print("[RediAudio] ❌ MP3 playback failed: \(error)")
             isPlaying = false
             isProcessingPlayback = false
-            
-            // Try next chunk if any
-            playbackLock.lock()
-            let hasMore = !playbackQueue.isEmpty
-            playbackLock.unlock()
-            
-            if hasMore {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
-                    self?.processNextAudioChunk()
-                }
-            }
         }
     }
     
@@ -286,6 +284,7 @@ class RediAudioService: ObservableObject {
         playbackLock.lock()
         playbackQueue.removeAll()
         isProcessingPlayback = false
+        audioStreamComplete = false
         playbackLock.unlock()
         
         isPlaying = false
