@@ -24,6 +24,7 @@ struct HomeView: View {
     @State private var lastTapTime = Date()
     @State private var showingAdminBypass = false
     @State private var showingHistory = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationView {
@@ -69,6 +70,9 @@ struct HomeView: View {
         .sheet(isPresented: $showingJoinSheet) {
             joinSessionSheet
         }
+        .sheet(isPresented: $showingSettings) {
+            SettingsView()
+        }
         .alert("Admin Test Mode", isPresented: $showingAdminBypass) {
             Button("Start V7 (Production)") {
                 appState.useV7 = true
@@ -104,6 +108,16 @@ struct HomeView: View {
     private var headerSection: some View {
         VStack(spacing: 8) {
             HStack {
+                // Settings button (left side)
+                Button(action: {
+                    showingSettings = true
+                }) {
+                    Image(systemName: "gearshape.fill")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                }
+                .padding(.leading, 8)
+                
                 Spacer()
 
                 Text("Redi")
@@ -125,7 +139,7 @@ struct HomeView: View {
 
                 Spacer()
 
-                // History button
+                // History button (right side)
                 Button(action: {
                     showingHistory = true
                 }) {
@@ -140,6 +154,11 @@ struct HomeView: View {
                 .font(.caption)
                 .tracking(2)
                 .foregroundColor(.gray)
+            
+            // Show current server version
+            Text("Server: \(RediConfig.serverVersion.displayName)")
+                .font(.caption2)
+                .foregroundColor(.cyan.opacity(0.7))
         }
         .padding(.top, 40)
         .sheet(isPresented: $showingHistory) {
