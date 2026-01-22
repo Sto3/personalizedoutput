@@ -6,12 +6,6 @@
 
 import SwiftUI
 
-// MARK: - Notification Names
-extension Notification.Name {
-    static let rediSessionStarted = Notification.Name("rediSessionStarted")
-    static let rediSessionEnded = Notification.Name("rediSessionEnded")
-}
-
 @main
 struct RediApp: App {
     @StateObject private var appState = AppState()
@@ -47,6 +41,7 @@ class AppState: ObservableObject {
         self.hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
 
         // Listen for session started notifications
+        // Note: .rediSessionStarted is defined in HomeViewModel.swift
         sessionObserver = NotificationCenter.default.addObserver(
             forName: .rediSessionStarted,
             object: nil,
