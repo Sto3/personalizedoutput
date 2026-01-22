@@ -46,11 +46,19 @@ struct RediConfig {
     static var serverVersion: RediServerVersion {
         get {
             let stored = UserDefaults.standard.string(forKey: "redi_server_version") ?? "7"
-            return RediServerVersion(rawValue: stored) ?? .v7
+            let version = RediServerVersion(rawValue: stored) ?? .v7
+            print("[RediConfig] GET serverVersion: \(version.displayName) (raw: '\(stored)')")
+            return version
         }
         set {
+            print("[RediConfig] SET serverVersion: \(newValue.displayName) (raw: '\(newValue.rawValue)')")
             UserDefaults.standard.set(newValue.rawValue, forKey: "redi_server_version")
-            print("[RediConfig] Server version changed to: \(newValue.displayName)")
+            // Force synchronize to ensure the value is persisted immediately
+            UserDefaults.standard.synchronize()
+            
+            // Verify the write
+            let verify = UserDefaults.standard.string(forKey: "redi_server_version") ?? "nil"
+            print("[RediConfig] VERIFIED serverVersion stored as: '\(verify)'")
         }
     }
     
@@ -59,7 +67,9 @@ struct RediConfig {
     /// Production WebSocket endpoint - uses selected version
     static var serverURL: URL {
         let version = serverVersion.rawValue
-        return URL(string: "wss://redialways.com/ws/redi?v=\(version)")!
+        let url = URL(string: "wss://redialways.com/ws/redi?v=\(version)")!
+        print("[RediConfig] serverURL computed: \(url.absoluteString)")
+        return url
     }
     
     // MARK: - Audio Configuration
