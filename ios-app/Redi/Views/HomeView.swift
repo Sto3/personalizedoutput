@@ -76,24 +76,24 @@ struct HomeView: View {
         .alert("Admin Test Mode", isPresented: $showingAdminBypass) {
             Button("Start V8 (Two-Brain) ⚡") {
                 RediConfig.serverVersion = .v8
-                appState.useV8 = true
+                appState.startVersion(.v8)
             }
-            Button("Start V7 (Production)") {
+            Button("Start V7 (Production) ✅") {
                 RediConfig.serverVersion = .v7
-                appState.useV7 = true
+                appState.startVersion(.v7)
             }
             Button("Start V6 (Stable)") {
-                appState.useV6 = true
+                appState.startV6()
             }
             Button("Start V3 (Legacy)") {
-                appState.useV3 = true
+                appState.startV3()
             }
             Button("Start Free Session") {
                 startFreeSession()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Select a version to test:\n• V8 = Two-Brain (Llama fast + GPT-4o deep)\n• V7 = Production (OpenAI Realtime)\n• V6 = Stable fallback\n• V3 = Legacy backup")
+            Text("Select a version to test:\n• V8 = Two-Brain (Llama fast + GPT-4o deep)\n• V7 = Production (OpenAI Realtime) ← RECOMMENDED\n• V6 = Stable fallback\n• V3 = Legacy backup")
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },
