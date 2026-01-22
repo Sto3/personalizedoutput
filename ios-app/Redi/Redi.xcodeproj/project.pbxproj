@@ -51,6 +51,12 @@
 		SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SETT1NGS001F001A001B001C /* SettingsView.swift */; };
 		/* RediConfig */
 		RED1C0NF001B001A001B001C /* RediConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = RED1C0NF001F001A001B001C /* RediConfig.swift */; };
+		/* RediAudioService */
+		RED1AUD10001B001A001B001C /* RediAudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = RED1AUD10001F001A001B001C /* RediAudioService.swift */; };
+		/* RediWebSocketService */
+		RED1WEB50001B001A001B001C /* RediWebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = RED1WEB50001F001A001B001C /* RediWebSocketService.swift */; };
+		/* LocalTTSService */
+		L0CALTTS001B001A001B001C /* LocalTTSService.swift in Sources */ = {isa = PBXBuildFile; fileRef = L0CALTTS001F001A001B001C /* LocalTTSService.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -100,6 +106,12 @@
 		SETT1NGS001F001A001B001C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		/* RediConfig */
 		RED1C0NF001F001A001B001C /* RediConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediConfig.swift; sourceTree = "<group>"; };
+		/* RediAudioService */
+		RED1AUD10001F001A001B001C /* RediAudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediAudioService.swift; sourceTree = "<group>"; };
+		/* RediWebSocketService */
+		RED1WEB50001F001A001B001C /* RediWebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediWebSocketService.swift; sourceTree = "<group>"; };
+		/* LocalTTSService */
+		L0CALTTS001F001A001B001C /* LocalTTSService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalTTSService.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -139,10 +151,13 @@
 				150F0DC41592737940795313 /* AudioService.swift */,
 				EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */,
 				6636316D44F600A5FA454913 /* DepthService.swift */,
+				L0CALTTS001F001A001B001C /* LocalTTSService.swift */,
 				A4F172479862AD94B0F25637 /* MotionService.swift */,
 				1BB36CA549D64781F0A73176 /* ObjectDetectionService.swift */,
 				DC474247BC1D787F92786F35 /* PerceptionService.swift */,
+				RED1AUD10001F001A001B001C /* RediAudioService.swift */,
 				RED1C0NF001F001A001B001C /* RediConfig.swift */,
+				RED1WEB50001F001A001B001C /* RediWebSocketService.swift */,
 				6F76A72D1B020F9C4758B067 /* SceneUnderstandingService.swift */,
 				BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */,
 				B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */,
@@ -336,16 +351,21 @@
 				DED19773F5CEE6421A1D38AC /* HistoryView.swift in Sources */,
 				BA0B1E2C9D418685240D4414 /* HomeView.swift in Sources */,
 				8B52A1E276920B500C7052D7 /* HomeViewModel.swift in Sources */,
+				L0CALTTS001B001A001B001C /* LocalTTSService.swift in Sources */,
 				929C224DD38B492B7C9D0330 /* Models.swift in Sources */,
 				48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */,
 				C9C59EBAF783A1FA1B8C5DE5 /* ObjectDetectionService.swift in Sources */,
 				68D158F67F06953BC0A05A34 /* OnboardingView.swift in Sources */,
 				3A0C91300C54AEC7AE37592D /* PerceptionService.swift in Sources */,
 				5DC70DA35688C05D2825B276 /* RediApp.swift in Sources */,
+				RED1AUD10001B001A001B001C /* RediAudioService.swift in Sources */,
+				RED1C0NF001B001A001B001C /* RediConfig.swift in Sources */,
+				RED1WEB50001B001A001B001C /* RediWebSocketService.swift in Sources */,
 				223406C2FD912DDB6018B1F1 /* SceneUnderstandingService.swift in Sources */,
 				082690F2D9C74568BCA66AD6 /* SessionExtensionOverlay.swift in Sources */,
 				A66634CF8EC7740D40897F19 /* SessionView.swift in Sources */,
 				42F4B1A4BF3CDC673F2B6D61 /* SessionViewModel.swift in Sources */,
+				SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */,
 				ED2BF773D000DBF150F17712 /* StoreKitService.swift in Sources */,
 				4A5CC964788FBFBC3147BA44 /* WakeWordService.swift in Sources */,
 				7EF88080B323380BFA82F74F /* WebSocketService.swift in Sources */,
@@ -369,10 +389,6 @@
 				5BDFC5B4D2F84EDC9B83341A /* V5AudioService.swift in Sources */,
 				9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */,
 				9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */,
-				/* SettingsView */
-				SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */,
-				/* RediConfig */
-				RED1C0NF001B001A001B001C /* RediConfig.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
