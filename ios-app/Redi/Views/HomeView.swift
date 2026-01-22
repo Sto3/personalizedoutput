@@ -76,17 +76,21 @@ struct HomeView: View {
         .alert("Admin Test Mode", isPresented: $showingAdminBypass) {
             Button("Start V8 (Two-Brain) ⚡") {
                 RediConfig.serverVersion = .v8
-                appState.startVersion(.v8)
+                appState.clearAllVersionFlags()
+                appState.useV8 = true
             }
             Button("Start V7 (Production) ✅") {
                 RediConfig.serverVersion = .v7
-                appState.startVersion(.v7)
+                appState.clearAllVersionFlags()
+                appState.useV7 = true
             }
             Button("Start V6 (Stable)") {
-                appState.startV6()
+                appState.clearAllVersionFlags()
+                appState.useV6 = true
             }
             Button("Start V3 (Legacy)") {
-                appState.startV3()
+                appState.clearAllVersionFlags()
+                appState.useV3 = true
             }
             Button("Start Free Session") {
                 startFreeSession()
