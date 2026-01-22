@@ -10,6 +10,7 @@
  */
 
 import SwiftUI
+import Combine
 
 struct V3MainView: View {
     @EnvironmentObject var appState: AppState
@@ -23,6 +24,7 @@ struct V3MainView: View {
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
     @State private var isSessionReady = false
+    @State private var cancellables = Set<AnyCancellable>()
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
@@ -306,6 +308,9 @@ struct V3MainView: View {
         isSessionActive = false
         isSessionReady = false
         lastTranscript = ""
+        
+        // Clear subscriptions
+        cancellables.removeAll()
     }
 
     private func exitV3() {
@@ -320,10 +325,12 @@ struct V3MainView: View {
             webSocketService?.sendFrame(frameData)
         }
 
-        // Audio → Server
-        audioService.onAudioCaptured = { [weak webSocketService] audioData in
-            webSocketService?.sendAudio(audioData)
-        }
+        // Audio → Server (using Combine publisher)
+        audioService.audioCaptured
+            .sink { [weak webSocketService] audioData in
+                webSocketService?.sendAudio(audioData)
+            }
+            .store(in: &cancellables)
 
         // Server audio → Speaker
         webSocketService.onAudioReceived = { [weak audioService] audioData in
@@ -361,12 +368,12 @@ struct V3MainView: View {
         // Echo suppression: server tells us when to mute/unmute mic
         // This prevents Redi from hearing its own voice through the speaker
         webSocketService.onMicMuteChanged = { [weak audioService] muted in
-            audioService?.isMicMuted = muted
+            audioService?.setMuted(muted)
         }
 
         // Barge-in: server tells us to stop audio when user interrupts
         webSocketService.onStopAudio = { [weak audioService] in
-            audioService?.stopAudio()
+            audioService?.stopPlayback()
         }
 
         // Fresh frame request: server needs a fresh frame for visual context
