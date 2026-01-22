@@ -2,7 +2,7 @@
  * Redi V8 Server - TWO-BRAIN ARCHITECTURE
  * =======================================
  * 
- * FAST BRAIN: Llama 4 via Together AI (~500ms)
+ * FAST BRAIN: Llama 4 Scout via Together AI (~500ms)
  * - Quick observations, form corrections, hazard alerts
  * - Driving directions, cooking timing, sports coaching
  * 
@@ -27,9 +27,9 @@ const TOGETHER_API_KEY = process.env.TOGETHER_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 
-// Models
-const TOGETHER_VISION_MODEL = 'meta-llama/Llama-Vision-Free';
-const TOGETHER_LLM_MODEL = 'meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo';
+// Models - PAID models for reliability (free tier was unreliable)
+const TOGETHER_VISION_MODEL = 'meta-llama/Llama-4-Scout-17B-16E-Instruct';  // Llama 4 Scout with vision
+const TOGETHER_LLM_MODEL = 'meta-llama/Llama-4-Scout-17B-16E-Instruct';     // Same model for text
 const GPT4O_MODEL = 'gpt-4o';
 const ELEVENLABS_VOICE_ID = 'JBFqnCBsd6RMkjVDRZzb';
 
@@ -122,7 +122,7 @@ const MODE_ADDITIONS: Record<RediMode, string> = {
 export async function initRediV8(server: HTTPServer): Promise<void> {
   console.log('[Redi V8] ═══════════════════════════════════════════');
   console.log('[Redi V8] 🧠 TWO-BRAIN ARCHITECTURE');
-  console.log('[Redi V8] Fast: Llama 4 (Together) | Deep: GPT-4o');
+  console.log('[Redi V8] Fast: Llama 4 Scout (Together) | Deep: GPT-4o');
   console.log('[Redi V8] ═══════════════════════════════════════════');
 
   const missing: string[] = [];
@@ -347,10 +347,16 @@ async function analyzeForInterjection(session: Session): Promise<boolean> {
         temperature: 0.1,
       }),
     });
-    if (!response.ok) return false;
+    if (!response.ok) {
+      console.log(`[Redi V8] ⚠️ Vision API error: ${response.status}`);
+      return false;
+    }
     const data = await response.json() as any;
     return data.choices?.[0]?.message?.content?.toLowerCase().includes('yes');
-  } catch { return false; }
+  } catch (err) {
+    console.log(`[Redi V8] ⚠️ Vision error:`, err);
+    return false;
+  }
 }
 
 // =============================================================================
@@ -392,7 +398,7 @@ async function triggerResponse(session: Session, transcript: string, isAutonomou
     if (session.latestFrame && Date.now() - session.latestFrameTime < MAX_FRAME_AGE_MS) {
       const vStart = Date.now();
       imageContext = await analyzeImageWithTogether(session);
-      console.log(`[Redi V8] 👁️ Vision: ${Date.now() - vStart}ms`);
+      console.log(`[Redi V8] 👁️ Vision: ${Date.now() - vStart}ms - "${imageContext.slice(0, 50)}..."`);
     }
 
     if (!session.isResponding) return;
@@ -440,7 +446,7 @@ async function triggerResponse(session: Session, transcript: string, isAutonomou
 }
 
 // =============================================================================
-// TOGETHER AI (Fast Brain)
+// TOGETHER AI (Fast Brain) - Llama 4 Scout
 // =============================================================================
 
 async function analyzeImageWithTogether(session: Session): Promise<string> {
@@ -472,10 +478,17 @@ async function analyzeImageWithTogether(session: Session): Promise<string> {
         temperature: 0.3,
       }),
     });
-    if (!response.ok) return 'Unable to analyze image';
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.log(`[Redi V8] ⚠️ Vision API ${response.status}: ${errorText.slice(0, 100)}`);
+      return 'Unable to analyze image';
+    }
     const data = await response.json() as any;
     return data.choices?.[0]?.message?.content || 'Unable to analyze image';
-  } catch { return 'Unable to analyze image'; }
+  } catch (err) {
+    console.log(`[Redi V8] ⚠️ Vision error:`, err);
+    return 'Unable to analyze image';
+  }
 }
 
 async function generateWithFastBrain(session: Session, transcript: string, imageContext: string, isAutonomous: boolean): Promise<string> {
