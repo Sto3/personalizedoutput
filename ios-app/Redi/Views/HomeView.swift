@@ -25,6 +25,9 @@ struct HomeView: View {
     @State private var showingAdminBypass = false
     @State private var showingHistory = false
     @State private var showingSettings = false
+    
+    // Track selected version for deferred activation
+    @State private var selectedVersion: String? = nil
 
     var body: some View {
         NavigationView {
@@ -75,29 +78,35 @@ struct HomeView: View {
         }
         .alert("Admin Test Mode", isPresented: $showingAdminBypass) {
             Button("Start V7 (Production) ✅") {
-                appState.clearAllVersionFlags()
-                RediConfig.serverVersion = .v7
-                appState.useV7 = true
+                selectedVersion = "v7"
             }
             Button("Start V8 (Two-Brain) ⚠️") {
-                appState.clearAllVersionFlags()
-                RediConfig.serverVersion = .v8
-                appState.useV8 = true
+                selectedVersion = "v8"
             }
             Button("Start V6 (Stable)") {
-                appState.clearAllVersionFlags()
-                appState.useV6 = true
+                selectedVersion = "v6"
             }
             Button("Start V3 (Legacy)") {
-                appState.clearAllVersionFlags()
-                appState.useV3 = true
+                selectedVersion = "v3"
             }
             Button("Start Free Session") {
                 startFreeSession()
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancel", role: .cancel) {
+                selectedVersion = nil
+            }
         } message: {
             Text("Select a version to test:\n• V7 = Production (OpenAI Realtime) ✅\n• V8 = Two-Brain (BROKEN - bad vision)\n• V6 = Stable fallback\n• V3 = Legacy backup")
+        }
+        .onChange(of: selectedVersion) { version in
+            // Process version selection AFTER alert dismisses
+            guard let version = version else { return }
+            
+            // Use async to ensure alert is fully dismissed first
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                activateVersion(version)
+                selectedVersion = nil
+            }
         }
         .alert("Error", isPresented: .init(
             get: { viewModel.error != nil },
@@ -109,6 +118,35 @@ struct HomeView: View {
         }
         .task {
             await viewModel.loadSubscriptionStatus()
+        }
+    }
+    
+    // MARK: - Version Activation (called after alert dismisses)
+    
+    private func activateVersion(_ version: String) {
+        print("[HomeView] Activating version: \(version)")
+        
+        // Clear all flags first
+        appState.clearAllVersionFlags()
+        
+        // Set the selected version
+        switch version {
+        case "v7":
+            RediConfig.serverVersion = .v7
+            appState.useV7 = true
+            print("[HomeView] ✅ V7 activated, useV7 = \(appState.useV7)")
+        case "v8":
+            RediConfig.serverVersion = .v8
+            appState.useV8 = true
+            print("[HomeView] V8 activated, useV8 = \(appState.useV8)")
+        case "v6":
+            appState.useV6 = true
+            print("[HomeView] V6 activated")
+        case "v3":
+            appState.useV3 = true
+            print("[HomeView] V3 activated")
+        default:
+            break
         }
     }
 
