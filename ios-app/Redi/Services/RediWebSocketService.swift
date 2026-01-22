@@ -27,6 +27,7 @@ class RediWebSocketService: ObservableObject {
     // MARK: - Callbacks
     
     var onAudioReceived: ((Data) -> Void)?
+    var onAudioDone: (() -> Void)?  // Called when server finishes sending audio
     var onTranscriptReceived: ((String, String) -> Void)?  // (text, role)
     var onSessionReady: (() -> Void)?
     var onError: ((Error) -> Void)?
@@ -214,6 +215,12 @@ class RediWebSocketService: ObservableObject {
                let audioData = Data(base64Encoded: b64) {
                 onAudioReceived?(audioData)
             }
+            
+        case "audio_done":
+            // Server sends this when TTS streaming is complete
+            // CRITICAL: This tells iOS to flush any remaining audio
+            print("[RediWS] 🔊 Audio stream complete")
+            onAudioDone?()
             
         case "transcript":
             // Server sends: { type: "transcript", text: "...", role: "user"|"assistant" }
