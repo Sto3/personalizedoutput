@@ -47,6 +47,8 @@
 		5BDFC5B4D2F84EDC9B83341A /* V5AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */; };
 		9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */; };
 		9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1EEF7931605422AB46F4851 /* V5MainView.swift */; };
+		/* SettingsView */
+		SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = SETT1NGS001F001A001B001C /* SettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -92,6 +94,8 @@
 		24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Services/V5AudioService.swift; sourceTree = "<group>"; };
 		DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Services/V5WebSocketService.swift; sourceTree = "<group>"; };
 		A1EEF7931605422AB46F4851 /* V5MainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = V5/Views/V5MainView.swift; sourceTree = "<group>"; };
+		/* SettingsView */
+		SETT1NGS001F001A001B001C /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -111,6 +115,7 @@
 				DA8A2494A90C7565782AB51B /* OnboardingView.swift */,
 				998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */,
 				914EA6EA78E0805AC7676CEA /* SessionView.swift */,
+				SETT1NGS001F001A001B001C /* SettingsView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -358,7 +363,10 @@
 				1DE4D16B4AE14013B5C68DFB /* V5Config.swift in Sources */,
 				5BDFC5B4D2F84EDC9B83341A /* V5AudioService.swift in Sources */,
 				9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */,
-				9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */,);
+				9CEF42D516A64971A63C0EEA /* V5MainView.swift in Sources */,
+				/* SettingsView */
+				SETT1NGS001B001A001B001C /* SettingsView.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
