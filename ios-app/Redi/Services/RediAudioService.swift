@@ -34,7 +34,7 @@ class RediAudioService: ObservableObject {
     // PCM16 Streaming Playback (V7 - OpenAI Realtime)
     private var playbackEngine: AVAudioEngine?
     private var playerNode: AVAudioPlayerNode?
-    private var playbackFormat: AVAudioFormat?
+    private var playbackFormat: AVAudioFormat?  // Float32 format for playback
     private var scheduledBufferCount = 0
     private let bufferLock = NSLock()
     
@@ -61,7 +61,7 @@ class RediAudioService: ObservableObject {
     init() {
         print("[RediAudio] 🎧 Service initialized (STREAMING MODE)")
         setupAudioSession()
-        setupPCMPlayback()
+        // Defer playback setup until actually needed
     }
     
     deinit {
@@ -84,28 +84,33 @@ class RediAudioService: ObservableObject {
     }
     
     private func setupPCMPlayback() {
+        // Skip if already setup
+        guard playbackEngine == nil else { return }
+        
         playbackEngine = AVAudioEngine()
         playerNode = AVAudioPlayerNode()
         
         guard let engine = playbackEngine, let player = playerNode else { return }
         
-        // PCM16 format at 24kHz mono
+        // CRITICAL FIX: Use Float32 format - iOS mixer doesn't support Int16 directly
         playbackFormat = AVAudioFormat(
-            commonFormat: .pcmFormatInt16,
+            commonFormat: .pcmFormatFloat32,
             sampleRate: sampleRate,
             channels: channels,
-            interleaved: true
+            interleaved: false
         )
         
-        engine.attach(player)
-        
-        if let format = playbackFormat {
-            engine.connect(player, to: engine.mainMixerNode, format: format)
+        guard let format = playbackFormat else {
+            print("[RediAudio] ❌ Failed to create playback format")
+            return
         }
+        
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
         
         do {
             try engine.start()
-            print("[RediAudio] ✅ PCM streaming engine ready")
+            print("[RediAudio] ✅ PCM streaming engine ready (Float32 @ \(sampleRate)Hz)")
         } catch {
             print("[RediAudio] ❌ PCM engine failed: \(error)")
         }
@@ -222,6 +227,11 @@ class RediAudioService: ObservableObject {
     // Play IMMEDIATELY as each chunk arrives - no buffering!
     
     private func streamPCM16Audio(_ data: Data) {
+        // Lazy setup of playback engine
+        if playbackEngine == nil {
+            setupPCMPlayback()
+        }
+        
         guard let player = playerNode,
               let format = playbackFormat,
               let engine = playbackEngine else {
@@ -239,7 +249,7 @@ class RediAudioService: ObservableObject {
             }
         }
         
-        // Create buffer from PCM16 data
+        // Convert PCM16 Int16 data to Float32 for playback
         let frameCount = UInt32(data.count / 2)
         guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else {
             print("[RediAudio] ❌ Buffer creation failed")
@@ -248,10 +258,13 @@ class RediAudioService: ObservableObject {
         
         buffer.frameLength = frameCount
         
-        // Copy data directly to buffer
+        // Convert Int16 -> Float32
         data.withUnsafeBytes { rawBuffer in
-            if let baseAddress = rawBuffer.baseAddress {
-                memcpy(buffer.int16ChannelData![0], baseAddress, data.count)
+            let int16Ptr = rawBuffer.bindMemory(to: Int16.self)
+            guard let floatChannel = buffer.floatChannelData?[0] else { return }
+            
+            for i in 0..<Int(frameCount) {
+                floatChannel[i] = Float(int16Ptr[i]) / 32768.0
             }
         }
         
@@ -272,7 +285,6 @@ class RediAudioService: ObservableObject {
         // Schedule buffer immediately
         bufferLock.lock()
         scheduledBufferCount += 1
-        let bufferNum = scheduledBufferCount
         bufferLock.unlock()
         
         player.scheduleBuffer(buffer) { [weak self] in
