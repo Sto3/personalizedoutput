@@ -1,11 +1,11 @@
 /**
  * RediWebSocketService.swift
  *
- * Production WebSocket service for Redi V7 server.
- * Connects to wss://redialways.com/ws/redi?v=7
+ * Production WebSocket service for Redi server.
+ * Connects to wss://redialways.com/ws/redi?v=X where X is selected version (7 or 8).
  *
  * CRITICAL: This is the only WebSocket service that should be used.
- * It sends the correct message format expected by the V7 server.
+ * It sends the correct message format expected by V7/V8 servers.
  */
 
 import Foundation
@@ -39,6 +39,7 @@ class RediWebSocketService: ObservableObject {
     private var webSocket: URLSessionWebSocketTask?
     private var session: URLSession?
     private let serverURL: URL
+    private let serverVersion: String
     
     private var reconnectAttempts = 0
     private let maxReconnectAttempts = 5
@@ -48,8 +49,10 @@ class RediWebSocketService: ObservableObject {
     
     init(serverURL: URL = RediConfig.serverURL) {
         self.serverURL = serverURL
+        self.serverVersion = RediConfig.serverVersion.displayName
         print("[RediWS] ═══════════════════════════════════════════")
-        print("[RediWS] Initialized with URL: \(serverURL)")
+        print("[RediWS] \(serverVersion)")
+        print("[RediWS] URL: \(serverURL)")
         print("[RediWS] ═══════════════════════════════════════════")
     }
     
@@ -83,7 +86,7 @@ class RediWebSocketService: ObservableObject {
                     self?.connectionState = .error(error.localizedDescription)
                     self?.attemptReconnect()
                 } else {
-                    print("[RediWS] ✅ Connected to V7 server")
+                    print("[RediWS] ✅ Connected to \(self?.serverVersion ?? "server")")
                     self?.isConnected = true
                     self?.connectionState = .connected
                     self?.reconnectAttempts = 0
@@ -109,7 +112,7 @@ class RediWebSocketService: ObservableObject {
         let sizeKB = frameData.count / 1024
         print("[RediWS] 📷 Sending frame: \(sizeKB)KB")
         
-        // V7 server expects: { type: "frame", data: "<base64>", timestamp: <number> }
+        // Server expects: { type: "frame", data: "<base64>", timestamp: <number> }
         sendJSON([
             "type": "frame",
             "data": frameData.base64EncodedString(),
@@ -118,7 +121,7 @@ class RediWebSocketService: ObservableObject {
     }
     
     /// Send audio data to the server
-    /// V7 server expects: { type: "audio", data: "<base64>" }
+    /// Server expects: { type: "audio", data: "<base64>" }
     func sendAudio(_ audioData: Data) {
         sendJSON([
             "type": "audio",
@@ -198,14 +201,14 @@ class RediWebSocketService: ObservableObject {
     private func processMessage(type: String, json: [String: Any]) {
         switch type {
         case "audio":
-            // V7 sends: { type: "audio", data: "<base64>" }
+            // Server sends: { type: "audio", data: "<base64>" }
             if let b64 = json["data"] as? String,
                let audioData = Data(base64Encoded: b64) {
                 onAudioReceived?(audioData)
             }
             
         case "transcript":
-            // V7 sends: { type: "transcript", text: "...", role: "user"|"assistant" }
+            // Server sends: { type: "transcript", text: "...", role: "user"|"assistant" }
             if let text = json["text"] as? String,
                let role = json["role"] as? String {
                 print("[RediWS] 📝 Transcript (\(role)): \"\(text)\"")
@@ -213,26 +216,27 @@ class RediWebSocketService: ObservableObject {
             }
             
         case "session_ready":
-            // V7 sends this when OpenAI connection is established
-            print("[RediWS] ✅ Session ready - V7 server connected to OpenAI")
+            // Server sends this when backend AI connection is established
+            let version = json["version"] as? String ?? "unknown"
+            print("[RediWS] ✅ Session ready - \(version)")
             isConnected = true
             connectionState = .connected
             onSessionReady?()
             
         case "mute_mic":
-            // V7 sends: { type: "mute_mic", muted: true|false }
+            // Server sends: { type: "mute_mic", muted: true|false }
             if let muted = json["muted"] as? Bool {
                 print("[RediWS] 🎤 Mic mute: \(muted)")
                 onMicMuteChanged?(muted)
             }
             
         case "stop_audio":
-            // V7 sends this on barge-in
+            // Server sends this on barge-in
             print("[RediWS] 🛑 Stop audio (barge-in)")
             onStopAudio?()
             
         case "request_frame":
-            // V7 sends this when it needs a fresh frame for vision
+            // Server sends this when it needs a fresh frame for vision
             // CRITICAL: This is how the server gets fresh images!
             print("[RediWS] 📷 Server requested fresh frame")
             onRequestFrame?()
