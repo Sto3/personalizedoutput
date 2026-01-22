@@ -33,6 +33,9 @@ class RediAudioService: ObservableObject {
     private var isProcessingPlayback = false
     private let playbackLock = NSLock()
     
+    // Debug counter
+    private var audioChunksReceived = 0
+    
     // MARK: - Configuration
     
     private let sampleRate = RediConfig.Audio.sampleRate  // 24kHz for capture
@@ -42,6 +45,7 @@ class RediAudioService: ObservableObject {
     // MARK: - Initialization
     
     init() {
+        print("[RediAudio] 🎧 Service initialized")
         setupAudioSession()
     }
     
@@ -58,7 +62,7 @@ class RediAudioService: ObservableObject {
             try session.setPreferredSampleRate(sampleRate)
             try session.setPreferredIOBufferDuration(0.02)  // 20ms buffer
             try session.setActive(true)
-            print("[RediAudio] ✅ Audio session configured")
+            print("[RediAudio] ✅ Audio session configured (speaker output)")
         } catch {
             print("[RediAudio] ❌ Audio session setup failed: \(error)")
         }
@@ -141,10 +145,24 @@ class RediAudioService: ObservableObject {
     
     /// Play MP3 audio data from ElevenLabs
     func playAudio(_ data: Data) {
+        audioChunksReceived += 1
+        print("[RediAudio] 📥 Received audio chunk #\(audioChunksReceived): \(data.count) bytes")
+        
+        // Log first few bytes to verify it's MP3
+        if audioChunksReceived == 1 {
+            let header = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
+            print("[RediAudio] 📥 First chunk header: \(header)")
+            // MP3 starts with FF FB or FF FA or ID3
+        }
+        
         playbackLock.lock()
         playbackQueue.append(data)
+        let queueSize = playbackQueue.count
+        let totalBytes = playbackQueue.reduce(0) { $0 + $1.count }
         let shouldProcess = !isProcessingPlayback
         playbackLock.unlock()
+        
+        print("[RediAudio] 📥 Queue: \(queueSize) chunks, \(totalBytes) bytes total")
         
         if shouldProcess {
             processNextAudioChunk()
@@ -157,11 +175,14 @@ class RediAudioService: ObservableObject {
         // Accumulate chunks until we have enough for smooth playback
         let totalSize = playbackQueue.reduce(0) { $0 + $1.count }
         
-        // Wait for at least 8KB of MP3 data before starting playback
-        // This prevents choppy audio from tiny chunks
-        guard totalSize >= 8192 || (!playbackQueue.isEmpty && audioPlayer == nil) else {
+        print("[RediAudio] 🔄 Processing: \(totalSize) bytes queued, isProcessing=\(isProcessingPlayback)")
+        
+        // Wait for at least 4KB of MP3 data before starting playback (reduced from 8KB)
+        guard totalSize >= 4096 else {
             isProcessingPlayback = false
             playbackLock.unlock()
+            
+            print("[RediAudio] ⏳ Waiting for more data (have \(totalSize), need 4096)")
             
             // Check again shortly
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
@@ -173,6 +194,7 @@ class RediAudioService: ObservableObject {
         guard !playbackQueue.isEmpty else {
             isProcessingPlayback = false
             playbackLock.unlock()
+            print("[RediAudio] ⚠️ Queue empty, stopping")
             return
         }
         
@@ -186,6 +208,8 @@ class RediAudioService: ObservableObject {
         
         playbackLock.unlock()
         
+        print("[RediAudio] 🎵 Combined \(combinedData.count) bytes for playback")
+        
         // Play on main thread
         DispatchQueue.main.async { [weak self] in
             self?.playMP3Data(combinedData)
@@ -193,7 +217,11 @@ class RediAudioService: ObservableObject {
     }
     
     private func playMP3Data(_ data: Data) {
-        print("[RediAudio] 🔊 Playing MP3: \(data.count) bytes")
+        print("[RediAudio] 🔊 Attempting to play \(data.count) bytes of MP3")
+        
+        // Verify it looks like MP3 data
+        let header = data.prefix(4).map { String(format: "%02X", $0) }.joined(separator: " ")
+        print("[RediAudio] 🔊 Data header: \(header)")
         
         do {
             // Stop any existing playback
@@ -201,18 +229,21 @@ class RediAudioService: ObservableObject {
             
             // Create new player with MP3 data
             audioPlayer = try AVAudioPlayer(data: data)
-            audioPlayer?.delegate = nil  // We'll handle completion differently
+            audioPlayer?.volume = 1.0
             audioPlayer?.prepareToPlay()
-            audioPlayer?.play()
             
-            isPlaying = true
-            print("[RediAudio] ✅ MP3 playback started")
+            let success = audioPlayer?.play() ?? false
+            print("[RediAudio] 🔊 play() returned: \(success)")
             
-            // Check for more audio after this finishes
-            if let duration = audioPlayer?.duration {
+            if success {
+                isPlaying = true
+                let duration = audioPlayer?.duration ?? 0
+                print("[RediAudio] ✅ MP3 playback started, duration: \(String(format: "%.2f", duration))s")
+                
+                // Check for more audio after this finishes
                 DispatchQueue.main.asyncAfter(deadline: .now() + duration + 0.1) { [weak self] in
                     self?.playbackLock.lock()
-                    let hasMore = !self!.playbackQueue.isEmpty
+                    let hasMore = !(self?.playbackQueue.isEmpty ?? true)
                     self?.playbackLock.unlock()
                     
                     if hasMore {
@@ -220,8 +251,13 @@ class RediAudioService: ObservableObject {
                     } else {
                         self?.isPlaying = false
                         self?.isProcessingPlayback = false
+                        print("[RediAudio] ✅ Playback complete")
                     }
                 }
+            } else {
+                print("[RediAudio] ❌ play() returned false!")
+                isPlaying = false
+                isProcessingPlayback = false
             }
             
         } catch {
@@ -243,7 +279,7 @@ class RediAudioService: ObservableObject {
     }
     
     func stopPlayback() {
-        print("[RediAudio] Stopping playback")
+        print("[RediAudio] 🛑 Stopping playback")
         audioPlayer?.stop()
         audioPlayer = nil
         
@@ -253,13 +289,14 @@ class RediAudioService: ObservableObject {
         playbackLock.unlock()
         
         isPlaying = false
+        audioChunksReceived = 0
     }
     
     // MARK: - Mute Control
     
     func setMuted(_ muted: Bool) {
         isMuted = muted
-        print("[RediAudio] Mute: \(muted)")
+        print("[RediAudio] 🎤 Mute: \(muted)")
     }
     
     // MARK: - Cleanup
@@ -269,5 +306,6 @@ class RediAudioService: ObservableObject {
         stopPlayback()
         audioEngine?.stop()
         audioEngine = nil
+        audioChunksReceived = 0
     }
 }
