@@ -1,22 +1,15 @@
 /**
- * Redi V7 Server - INSTANT RESPONSE AT SPEECH STOP
- * =================================================
+ * Redi V7 Server - OPTIMIZED FOR SPEED
+ * =====================================
  * 
- * THE BREAKTHROUGH:
- * OpenAI's Whisper transcription takes ~1000ms.
- * We CANNOT speed this up.
- * But we CAN respond BEFORE the transcript arrives!
+ * OPTIMIZATIONS APPLIED (Jan 22, 2026):
+ * 1. Semantic VAD with HIGH eagerness (faster turn detection)
+ * 2. Instant response at speech stop (skip Whisper wait)
+ * 3. Fresh frame injection at speech stop
  * 
- * HOW IT WORKS:
- * 1. User speaks "What do you see?"
- * 2. VAD detects speech stopped
- * 3. IMMEDIATELY inject latest frame + trigger response
- * 4. Don't wait for Whisper transcription!
- * 
- * The transcript will arrive ~1000ms later, but we've already
- * sent the image. OpenAI will use the audio + image together.
- * 
- * This saves the ENTIRE Whisper latency (~1000ms)!
+ * STABLE BACKUP: Branch v7-stable-jan22-2026
+ * If this breaks, restore with:
+ *   git checkout v7-stable-jan22-2026 -- src/websocket/rediV7Server.ts
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -56,6 +49,9 @@ interface Session {
   // Stats
   connectionTime: number;
   responsesCompleted: number;
+  
+  // Latency tracking
+  lastResponseTriggerTime: number;
 }
 
 // =============================================================================
@@ -82,14 +78,16 @@ RULES:
 // =============================================================================
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
-  console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 - INSTANT RESPONSE AT SPEECH STOP');
-  console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] BREAKTHROUGH: Skip Whisper latency!');
-  console.log('[Redi V7] Respond at speech_stopped, not transcript');
-  console.log('[Redi V7] Saves ~1000ms of latency!');
+  console.log('[Redi V7] ═══════════════════════════════════════════════════');
+  console.log('[Redi V7] 🚀 V7 OPTIMIZED - SEMANTIC VAD + INSTANT RESPONSE');
+  console.log('[Redi V7] ═══════════════════════════════════════════════════');
+  console.log('[Redi V7] Optimizations:');
+  console.log('[Redi V7]   • Semantic VAD with HIGH eagerness');
+  console.log('[Redi V7]   • Instant response at speech stop');
+  console.log('[Redi V7]   • Skip Whisper transcription wait');
   console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
-  console.log('[Redi V7] ═══════════════════════════════════════════');
+  console.log('[Redi V7] Backup: v7-stable-jan22-2026');
+  console.log('[Redi V7] ═══════════════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
     console.error('[Redi V7] ❌ OPENAI_API_KEY not set!');
@@ -114,6 +112,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       responseTriggeredForTurn: false,
       connectionTime: Date.now(),
       responsesCompleted: 0,
+      lastResponseTriggerTime: 0,
     };
 
     sessions.set(sessionId, session);
@@ -197,6 +196,17 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 function configureSession(session: Session): void {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OPTIMIZATION #1: SEMANTIC VAD with HIGH eagerness
+  // ═══════════════════════════════════════════════════════════════════════════
+  // - semantic_vad: Uses AI to detect when user finishes speaking (not just silence)
+  // - eagerness: "high" = respond faster, don't wait for long pauses
+  // - create_response: true = automatically create response when turn ends
+  // - interrupt_response: true = allow user to interrupt assistant
+  // 
+  // This is FASTER than server_vad because it understands INTENT, not just silence.
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
@@ -206,13 +216,15 @@ function configureSession(session: Session): void {
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
       turn_detection: {
-        type: 'server_vad',
-        threshold: 0.5,
-        prefix_padding_ms: 200,
-        silence_duration_ms: 400  // Fast detection
+        type: 'semantic_vad',      // AI-powered turn detection
+        eagerness: 'high',         // Respond quickly
+        create_response: true,     // Auto-create response
+        interrupt_response: true   // Allow barge-in
       }
     }
   });
+  
+  console.log('[Redi V7] ⚡ Configured: semantic_vad + eagerness=high');
 }
 
 // =============================================================================
@@ -250,7 +262,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
     
     switch (event.type) {
       case 'session.updated':
-        console.log('[Redi V7] ✅ Configured');
+        console.log('[Redi V7] ✅ Session configured');
         break;
 
       case 'error':
@@ -265,10 +277,10 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         session.speechStartTime = Date.now();
         console.log('[Redi V7] 🎤 Speaking...');
         
-        // Request fresh frame
+        // Request fresh frame immediately
         sendToClient(session, { type: 'request_frame' });
         
-        // Barge-in
+        // Barge-in: stop assistant if speaking
         if (session.isAssistantSpeaking) {
           console.log('[Redi V7] 🛑 BARGE-IN');
           sendToClient(session, { type: 'stop_audio' });
@@ -283,26 +295,31 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
         
         // ═══════════════════════════════════════════════════════════
-        // THE KEY CHANGE: Respond NOW, don't wait for transcript!
+        // OPTIMIZATION #2: Instant response with vision at speech stop
+        // Don't wait for Whisper transcription - inject frame NOW!
         // ═══════════════════════════════════════════════════════════
         if (!session.responseTriggeredForTurn) {
           session.responseTriggeredForTurn = true;
+          session.lastResponseTriggerTime = Date.now();
           
-          // Request fresh frame and trigger response immediately
+          // Request fresh frame
           sendToClient(session, { type: 'request_frame' });
           
-          // Small delay to let fresh frame arrive
+          // Inject vision immediately (30ms delay for frame to arrive)
           setTimeout(() => {
-            triggerResponseWithLatestFrame(session);
-          }, 50);
+            injectVisionAndTriggerResponse(session);
+          }, 30);
         }
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        // We still receive this, but we've already triggered the response!
-        // Just log it for debugging
+        // Transcript arrives AFTER we've already triggered response
+        // Just log for debugging
         if (event.transcript) {
-          console.log(`[Redi V7] 📝 (Transcript arrived late): "${event.transcript}"`);
+          const latency = session.lastResponseTriggerTime > 0 
+            ? Date.now() - session.lastResponseTriggerTime 
+            : 0;
+          console.log(`[Redi V7] 📝 "${event.transcript}" (${latency}ms after trigger)`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'user' });
         }
         break;
@@ -320,7 +337,10 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.audio_transcript.done':
         if (event.transcript) {
-          console.log(`[Redi V7] 🤖 "${event.transcript}"`);
+          const totalLatency = session.lastResponseTriggerTime > 0
+            ? Date.now() - session.lastResponseTriggerTime
+            : 0;
+          console.log(`[Redi V7] 🤖 "${event.transcript}" (${totalLatency}ms total)`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'assistant' });
         }
         break;
@@ -329,7 +349,11 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         session.isAssistantSpeaking = false;
         session.responsesCompleted++;
         sendToClient(session, { type: 'mute_mic', muted: false });
-        console.log('[Redi V7] ✅ Done');
+        
+        const responseLatency = session.lastResponseTriggerTime > 0
+          ? Date.now() - session.lastResponseTriggerTime
+          : 0;
+        console.log(`[Redi V7] ✅ Response #${session.responsesCompleted} complete (${responseLatency}ms)`);
         break;
 
       case 'response.cancelled':
@@ -343,17 +367,17 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 }
 
 // =============================================================================
-// RESPONSE TRIGGERING
+// VISION INJECTION + RESPONSE TRIGGER
 // =============================================================================
 
-function triggerResponseWithLatestFrame(session: Session): void {
+function injectVisionAndTriggerResponse(session: Session): void {
   const frameAge = session.latestFrame ? Date.now() - session.latestFrameTime : Infinity;
   
   if (session.latestFrame && frameAge < 1000) {
     const cleanBase64 = session.latestFrame.replace(/[\r\n\s]/g, '');
     const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
     
-    console.log(`[Redi V7] 📷 Injecting ${sizeKB}KB (${frameAge}ms old) at SPEECH STOP`);
+    console.log(`[Redi V7] 📷 Injecting ${sizeKB}KB frame (${frameAge}ms old)`);
     
     // Inject image with context
     sendToOpenAI(session, {
@@ -374,11 +398,12 @@ function triggerResponseWithLatestFrame(session: Session): void {
       }
     });
     
-    console.log(`[Redi V7] 🚀 INSTANT RESPONSE (skipped Whisper wait!)`);
+    console.log(`[Redi V7] 🚀 INSTANT RESPONSE TRIGGERED`);
   } else {
-    console.log(`[Redi V7] ⚠️ No fresh frame - responding without image`);
+    console.log(`[Redi V7] ⚠️ No fresh frame (${frameAge}ms old) - responding without vision`);
   }
   
+  // Trigger response
   sendToOpenAI(session, { type: 'response.create' });
 }
 
