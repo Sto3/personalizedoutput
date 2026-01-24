@@ -7,6 +7,10 @@
  * 2. Instant response at speech stop (skip Whisper wait)
  * 3. Fresh frame injection at speech stop
  * 
+ * ECHO FIX (Jan 24, 2026):
+ * - Clear input audio buffer when assistant starts speaking
+ * - This prevents Redi from hearing itself through the mic
+ * 
  * STABLE BACKUP: Branch v7-stable-jan22-2026
  * If this breaks, restore with:
  *   git checkout v7-stable-jan22-2026 -- src/websocket/rediV7Server.ts
@@ -71,7 +75,10 @@ RULES:
 - Describe ONLY what's in the attached image
 - Be brief: 10-20 words max
 - Never say "I see" - just describe directly
-- The image shows what the user is looking at RIGHT NOW`;
+- The image shows what the user is looking at RIGHT NOW
+- NEVER start your response with "Yes", "Exactly", "That's right" or similar confirmations
+- NEVER repeat or paraphrase what the user just said
+- Give NEW information, not confirmation of existing statements`;
 
 // =============================================================================
 // INITIALIZATION
@@ -85,6 +92,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7]   • Semantic VAD with HIGH eagerness');
   console.log('[Redi V7]   • Instant response at speech stop');
   console.log('[Redi V7]   • Skip Whisper transcription wait');
+  console.log('[Redi V7]   • Echo prevention (clear buffer on response)');
   console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
   console.log('[Redi V7] Backup: v7-stable-jan22-2026');
   console.log('[Redi V7] ═══════════════════════════════════════════════════');
@@ -234,7 +242,9 @@ function configureSession(session: Session): void {
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      if (message.data) {
+      // ECHO FIX: Don't send audio to OpenAI while assistant is speaking
+      // This prevents the mic from picking up Redi's voice and creating feedback
+      if (message.data && !session.isAssistantSpeaking) {
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
           audio: message.data
@@ -326,6 +336,14 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.created':
         session.isAssistantSpeaking = true;
+        
+        // ═══════════════════════════════════════════════════════════
+        // ECHO FIX: Clear the input audio buffer when we start responding
+        // This prevents any echo/feedback from being processed
+        // ═══════════════════════════════════════════════════════════
+        sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+        console.log('[Redi V7] 🔇 Cleared input buffer (echo prevention)');
+        
         sendToClient(session, { type: 'mute_mic', muted: true });
         break;
 

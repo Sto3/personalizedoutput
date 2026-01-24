@@ -3,6 +3,10 @@
  *
  * Manages the active Redi session, coordinating all services.
  * CRITICAL: Uses RediWebSocketService to connect to V7 server.
+ * 
+ * OPTIMIZATION (Jan 24, 2026): Pre-establish WebSocket connection
+ * - Connection starts immediately when SessionViewModel is created
+ * - Saves ~100-200ms on first voice interaction
  */
 
 import Foundation
@@ -93,6 +97,16 @@ class SessionViewModel: ObservableObject {
         print("[Session] Server URL: \(RediConfig.serverURL)")
 
         setupBindings()
+        
+        // ═══════════════════════════════════════════════════════════════════════
+        // OPTIMIZATION: Pre-establish WebSocket connection immediately!
+        // This saves ~100-200ms on first voice interaction by establishing
+        // the TCP connection and OpenAI session BEFORE the user starts speaking.
+        // ═══════════════════════════════════════════════════════════════════════
+        if !session.id.hasPrefix("test-") {
+            print("[Session] 🚀 PRE-ESTABLISHING connection to: \(RediConfig.serverURL)")
+            webSocketService.connect()
+        }
     }
 
     // MARK: - Setup
@@ -209,13 +223,15 @@ class SessionViewModel: ObservableObject {
         // IMPORTANT: Start countdown timer FIRST (most critical for UX)
         startTimer()
 
-        // Connect WebSocket (to V7 server at redialways.com)
-        // Skip WebSocket for test sessions
-        if !session.id.hasPrefix("test-") {
-            print("[Session] Connecting to: \(RediConfig.serverURL)")
+        // WebSocket should already be connected (pre-established in init)
+        // But reconnect if not connected
+        if !webSocketService.isConnected && !session.id.hasPrefix("test-") {
+            print("[Session] WebSocket not connected, reconnecting...")
             webSocketService.connect()
-        } else {
+        } else if session.id.hasPrefix("test-") {
             print("[Session] Test session - skipping WebSocket")
+        } else {
+            print("[Session] ✅ WebSocket already connected (pre-established)")
         }
 
         // Request camera permission and start
