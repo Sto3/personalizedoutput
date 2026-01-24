@@ -1,14 +1,12 @@
 /**
- * Redi V7 Server - OPTIMIZED STABLE VERSION
- * ==========================================
+ * Redi V7 Server - STABLE WITH ECHO FIX
+ * ======================================
  * 
  * BASE: Restored from v7-stable-jan22-2026 (full capability)
  * 
- * SAFE OPTIMIZATIONS ADDED:
- * 1. Semantic VAD with HIGH eagerness (faster turn detection, ~200-400ms saved)
- * 2. Echo Fix: Clear input buffer when assistant speaks (prevents self-response)
- * 3. Noise reduction: near_field mode for better VAD accuracy
- * 4. Don't send audio while assistant is speaking (echo prevention)
+ * FIXES APPLIED:
+ * 1. Echo Fix: Clear input buffer when assistant speaks (prevents self-response)
+ * 2. Audio Gate: Don't send audio while assistant is speaking
  * 
  * PRESERVED (full capability):
  * - Model: gpt-realtime (FULL, not mini)
@@ -16,6 +14,7 @@
  * - Max Tokens: Default (full responses)
  * - Transcription: Whisper-1 enabled
  * - System Prompt: Full RULES
+ * - Server VAD: Working configuration (NOT semantic VAD - was breaking responses)
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -82,14 +81,11 @@ RULES:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 OPTIMIZED STABLE VERSION');
+  console.log('[Redi V7] 🚀 V7 STABLE + ECHO FIX');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-realtime (FULL capability)');
-  console.log('[Redi V7] Optimizations:');
-  console.log('[Redi V7]   • Semantic VAD (high eagerness)');
-  console.log('[Redi V7]   • Echo fix (clear buffer on response)');
-  console.log('[Redi V7]   • Noise reduction (near_field)');
-  console.log('[Redi V7]   • Audio gate (mute during playback)');
+  console.log('[Redi V7] VAD: server_vad (stable, working)');
+  console.log('[Redi V7] Echo Fix: Clear buffer + audio gate');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -198,14 +194,8 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 function configureSession(session: Session): void {
-  // ═══════════════════════════════════════════════════════════════════════════
-  // OPTIMIZED CONFIGURATION
-  // ═══════════════════════════════════════════════════════════════════════════
-  // Safe optimizations that don't sacrifice intelligence:
-  // 1. Semantic VAD with high eagerness - AI understands when user finishes
-  // 2. Noise reduction - Better accuracy in noisy environments
-  // ═══════════════════════════════════════════════════════════════════════════
-  
+  // Use PROVEN WORKING configuration from v7-stable
+  // DO NOT use semantic_vad - it was breaking responses!
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
@@ -214,25 +204,16 @@ function configureSession(session: Session): void {
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
-      
-      // OPTIMIZATION: Noise reduction for better VAD accuracy
-      input_audio_noise_reduction: {
-        type: 'near_field'
-      },
-      
-      // OPTIMIZATION: Semantic VAD with high eagerness
-      // Uses AI to understand when user finishes speaking
-      // High eagerness = responds faster without waiting for long pauses
       turn_detection: {
-        type: 'semantic_vad',
-        eagerness: 'high',
-        create_response: true,
-        interrupt_response: true
+        type: 'server_vad',
+        threshold: 0.5,
+        prefix_padding_ms: 200,
+        silence_duration_ms: 400  // Fast detection
       }
     }
   });
   
-  console.log('[Redi V7] ⚡ Configured with semantic VAD + noise reduction');
+  console.log('[Redi V7] ⚡ Configured with server_vad + echo fix');
 }
 
 // =============================================================================
@@ -272,13 +253,11 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
     
     switch (event.type) {
       case 'session.updated':
-        console.log('[Redi V7] ✅ Configured');
+        console.log('[Redi V7] ✅ Session configured');
         break;
 
       case 'error':
-        if (event.error?.code !== 'conversation_already_has_active_response') {
-          console.error(`[Redi V7] ❌ ${event.error?.message}`);
-        }
+        console.error(`[Redi V7] ❌ OpenAI error: ${event.error?.message || JSON.stringify(event.error)}`);
         break;
 
       case 'input_audio_buffer.speech_started':
