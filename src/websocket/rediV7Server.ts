@@ -7,6 +7,11 @@
  * 2. Instant response at speech stop (skip Whisper wait)
  * 3. Fresh frame injection at speech stop
  * 
+ * SPEED OPTIMIZATIONS (Jan 24, 2026):
+ * 4. speed: 1.2 - Faster TTS output (1.5 max, but 1.2 is more natural)
+ * 5. input_audio_noise_reduction - Better VAD accuracy, fewer false triggers
+ * 6. max_response_output_tokens: 150 - Shorter = faster
+ * 
  * ECHO FIX (Jan 24, 2026):
  * - Clear input audio buffer when assistant starts speaking
  * - This prevents Redi from hearing itself through the mic
@@ -86,13 +91,16 @@ RULES:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 OPTIMIZED - SEMANTIC VAD + INSTANT RESPONSE');
+  console.log('[Redi V7] 🚀 V7 SPEED OPTIMIZED - Jan 24 2026');
   console.log('[Redi V7] ═══════════════════════════════════════════════════');
   console.log('[Redi V7] Optimizations:');
   console.log('[Redi V7]   • Semantic VAD with HIGH eagerness');
   console.log('[Redi V7]   • Instant response at speech stop');
   console.log('[Redi V7]   • Skip Whisper transcription wait');
   console.log('[Redi V7]   • Echo prevention (clear buffer on response)');
+  console.log('[Redi V7]   • TTS speed: 1.2x (faster output)');
+  console.log('[Redi V7]   • Noise reduction: ON (better VAD)');
+  console.log('[Redi V7]   • Max tokens: 150 (shorter = faster)');
   console.log('[Redi V7] Model: gpt-realtime (GA with VISION)');
   console.log('[Redi V7] Backup: v7-stable-jan22-2026');
   console.log('[Redi V7] ═══════════════════════════════════════════════════');
@@ -205,14 +213,12 @@ async function connectToOpenAI(session: Session): Promise<void> {
 
 function configureSession(session: Session): void {
   // ═══════════════════════════════════════════════════════════════════════════
-  // OPTIMIZATION #1: SEMANTIC VAD with HIGH eagerness
+  // SPEED OPTIMIZATIONS - Jan 24, 2026
   // ═══════════════════════════════════════════════════════════════════════════
-  // - semantic_vad: Uses AI to detect when user finishes speaking (not just silence)
-  // - eagerness: "high" = respond faster, don't wait for long pauses
-  // - create_response: true = automatically create response when turn ends
-  // - interrupt_response: true = allow user to interrupt assistant
-  // 
-  // This is FASTER than server_vad because it understands INTENT, not just silence.
+  // 1. semantic_vad with HIGH eagerness - responds faster
+  // 2. speed: 1.2 - TTS speaks 20% faster (max is 1.5)
+  // 3. input_audio_noise_reduction - reduces false VAD triggers
+  // 4. max_response_output_tokens: 150 - shorter responses = less generation time
   // ═══════════════════════════════════════════════════════════════════════════
   
   sendToOpenAI(session, {
@@ -223,6 +229,18 @@ function configureSession(session: Session): void {
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
+      
+      // SPEED: Faster TTS output (1.0 default, 1.5 max)
+      speed: 1.2,
+      
+      // SPEED: Limit response length for faster generation
+      max_response_output_tokens: 150,
+      
+      // SPEED: Noise reduction for better VAD accuracy
+      input_audio_noise_reduction: {
+        type: 'near_field'  // Optimized for close-mic (phone)
+      },
+      
       turn_detection: {
         type: 'semantic_vad',      // AI-powered turn detection
         eagerness: 'high',         // Respond quickly
@@ -232,7 +250,7 @@ function configureSession(session: Session): void {
     }
   });
   
-  console.log('[Redi V7] ⚡ Configured: semantic_vad + eagerness=high');
+  console.log('[Redi V7] ⚡ Configured: semantic_vad + eagerness=high + speed=1.2x + noise_reduction');
 }
 
 // =============================================================================
