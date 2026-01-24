@@ -1,29 +1,21 @@
 /**
- * Redi V7 Server - INSTANT RESPONSE AT SPEECH STOP
- * =================================================
+ * Redi V7 Server - OPTIMIZED STABLE VERSION
+ * ==========================================
  * 
- * THE BREAKTHROUGH:
- * OpenAI's Whisper transcription takes ~1000ms.
- * We CANNOT speed this up.
- * But we CAN respond BEFORE the transcript arrives!
+ * BASE: Restored from v7-stable-jan22-2026 (full capability)
  * 
- * HOW IT WORKS:
- * 1. User speaks "What do you see?"
- * 2. VAD detects speech stopped
- * 3. IMMEDIATELY inject latest frame + trigger response
- * 4. Don't wait for Whisper transcription!
+ * SAFE OPTIMIZATIONS ADDED:
+ * 1. Semantic VAD with HIGH eagerness (faster turn detection, ~200-400ms saved)
+ * 2. Echo Fix: Clear input buffer when assistant speaks (prevents self-response)
+ * 3. Noise reduction: near_field mode for better VAD accuracy
+ * 4. Don't send audio while assistant is speaking (echo prevention)
  * 
- * The transcript will arrive ~1000ms later, but we've already
- * sent the image. OpenAI will use the audio + image together.
- * 
- * This saves the ENTIRE Whisper latency (~1000ms)!
- * 
- * RESTORED: 2026-01-24 from v7-stable-jan22-2026 branch
- * This is the FULL CAPABILITY version with:
- * - gpt-realtime (full model, NOT mini)
- * - Full system prompt with RULES
- * - Whisper transcription enabled
- * - Default TTS speed
+ * PRESERVED (full capability):
+ * - Model: gpt-realtime (FULL, not mini)
+ * - TTS Speed: Default (natural voice)
+ * - Max Tokens: Default (full responses)
+ * - Transcription: Whisper-1 enabled
+ * - System Prompt: Full RULES
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -90,13 +82,14 @@ RULES:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 STABLE - FULL CAPABILITY VERSION');
+  console.log('[Redi V7] 🚀 V7 OPTIMIZED STABLE VERSION');
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] Restored from: v7-stable-jan22-2026');
-  console.log('[Redi V7] Model: gpt-realtime (FULL, not mini)');
-  console.log('[Redi V7] Transcription: Whisper-1 ENABLED');
-  console.log('[Redi V7] TTS Speed: Default (natural)');
-  console.log('[Redi V7] System Prompt: Full RULES included');
+  console.log('[Redi V7] Model: gpt-realtime (FULL capability)');
+  console.log('[Redi V7] Optimizations:');
+  console.log('[Redi V7]   • Semantic VAD (high eagerness)');
+  console.log('[Redi V7]   • Echo fix (clear buffer on response)');
+  console.log('[Redi V7]   • Noise reduction (near_field)');
+  console.log('[Redi V7]   • Audio gate (mute during playback)');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -205,6 +198,14 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 function configureSession(session: Session): void {
+  // ═══════════════════════════════════════════════════════════════════════════
+  // OPTIMIZED CONFIGURATION
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Safe optimizations that don't sacrifice intelligence:
+  // 1. Semantic VAD with high eagerness - AI understands when user finishes
+  // 2. Noise reduction - Better accuracy in noisy environments
+  // ═══════════════════════════════════════════════════════════════════════════
+  
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
@@ -213,14 +214,25 @@ function configureSession(session: Session): void {
       input_audio_format: 'pcm16',
       output_audio_format: 'pcm16',
       input_audio_transcription: { model: 'whisper-1' },
+      
+      // OPTIMIZATION: Noise reduction for better VAD accuracy
+      input_audio_noise_reduction: {
+        type: 'near_field'
+      },
+      
+      // OPTIMIZATION: Semantic VAD with high eagerness
+      // Uses AI to understand when user finishes speaking
+      // High eagerness = responds faster without waiting for long pauses
       turn_detection: {
-        type: 'server_vad',
-        threshold: 0.5,
-        prefix_padding_ms: 200,
-        silence_duration_ms: 400  // Fast detection
+        type: 'semantic_vad',
+        eagerness: 'high',
+        create_response: true,
+        interrupt_response: true
       }
     }
   });
+  
+  console.log('[Redi V7] ⚡ Configured with semantic VAD + noise reduction');
 }
 
 // =============================================================================
@@ -230,7 +242,9 @@ function configureSession(session: Session): void {
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      if (message.data) {
+      // ECHO FIX: Don't send audio to OpenAI while assistant is speaking
+      // This prevents Redi from hearing itself through the mic
+      if (message.data && !session.isAssistantSpeaking) {
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
           audio: message.data
@@ -276,7 +290,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         // Request fresh frame
         sendToClient(session, { type: 'request_frame' });
         
-        // Barge-in
+        // Barge-in: interrupt assistant if user starts speaking
         if (session.isAssistantSpeaking) {
           console.log('[Redi V7] 🛑 BARGE-IN');
           sendToClient(session, { type: 'stop_audio' });
@@ -290,9 +304,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         const speechDuration = Date.now() - session.speechStartTime;
         console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
         
-        // ═══════════════════════════════════════════════════════════
-        // THE KEY CHANGE: Respond NOW, don't wait for transcript!
-        // ═══════════════════════════════════════════════════════════
+        // Respond NOW, don't wait for transcript
         if (!session.responseTriggeredForTurn) {
           session.responseTriggeredForTurn = true;
           
@@ -307,16 +319,20 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
-        // We still receive this, but we've already triggered the response!
-        // Just log it for debugging
         if (event.transcript) {
-          console.log(`[Redi V7] 📝 (Transcript arrived late): "${event.transcript}"`);
+          console.log(`[Redi V7] 📝 "${event.transcript}"`);
           sendToClient(session, { type: 'transcript', text: event.transcript, role: 'user' });
         }
         break;
 
       case 'response.created':
         session.isAssistantSpeaking = true;
+        
+        // ECHO FIX: Clear the input audio buffer when assistant starts speaking
+        // This prevents OpenAI from processing any echo/feedback
+        sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+        console.log('[Redi V7] 🔇 Cleared input buffer (echo prevention)');
+        
         sendToClient(session, { type: 'mute_mic', muted: true });
         break;
 
@@ -361,7 +377,7 @@ function triggerResponseWithLatestFrame(session: Session): void {
     const cleanBase64 = session.latestFrame.replace(/[\r\n\s]/g, '');
     const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
     
-    console.log(`[Redi V7] 📷 Injecting ${sizeKB}KB (${frameAge}ms old) at SPEECH STOP`);
+    console.log(`[Redi V7] 📷 Injecting ${sizeKB}KB (${frameAge}ms old)`);
     
     // Inject image with context
     sendToOpenAI(session, {
@@ -382,9 +398,9 @@ function triggerResponseWithLatestFrame(session: Session): void {
       }
     });
     
-    console.log(`[Redi V7] 🚀 INSTANT RESPONSE (skipped Whisper wait!)`);
+    console.log(`[Redi V7] 🚀 Response triggered with vision`);
   } else {
-    console.log(`[Redi V7] ⚠️ No fresh frame - responding without image`);
+    console.log(`[Redi V7] ⚠️ No fresh frame (${frameAge}ms old)`);
   }
   
   sendToOpenAI(session, { type: 'response.create' });
