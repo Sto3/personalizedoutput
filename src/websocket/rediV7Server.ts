@@ -1,12 +1,14 @@
 /**
- * Redi V7 Server - STABLE WITH ECHO FIX
- * ======================================
+ * Redi V7 Server - STABLE WITH AGGRESSIVE ECHO FIX
+ * =================================================
  * 
  * BASE: Restored from v7-stable-jan22-2026 (full capability)
  * 
- * FIXES APPLIED:
- * 1. Echo Fix: Clear input buffer when assistant speaks (prevents self-response)
- * 2. Audio Gate: Don't send audio while assistant is speaking
+ * ECHO FIX (aggressive):
+ * 1. Stop sending audio IMMEDIATELY when response triggers (not when OpenAI confirms)
+ * 2. Clear input buffer when response starts
+ * 3. Add 500ms cooldown after response ends before accepting new audio
+ * 4. Don't respond to speech detected during cooldown period
  * 
  * PRESERVED (full capability):
  * - Model: gpt-realtime (FULL, not mini)
@@ -14,7 +16,7 @@
  * - Max Tokens: Default (full responses)
  * - Transcription: Whisper-1 enabled
  * - System Prompt: Full RULES
- * - Server VAD: Working configuration (NOT semantic VAD - was breaking responses)
+ * - Server VAD: Working configuration
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -29,6 +31,9 @@ import { randomUUID } from 'crypto';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
+
+// Echo prevention: cooldown period after response ends (ms)
+const ECHO_COOLDOWN_MS = 500;
 
 // =============================================================================
 // TYPES
@@ -47,6 +52,9 @@ interface Session {
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
   speechStartTime: number;
+  
+  // Echo prevention
+  lastResponseEndTime: number;  // When the last response finished
   
   // Prevent double responses
   responseTriggeredForTurn: boolean;
@@ -81,11 +89,12 @@ RULES:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 STABLE + ECHO FIX');
+  console.log('[Redi V7] 🚀 V7 STABLE + AGGRESSIVE ECHO FIX');
   console.log('[Redi V7] ═══════════════════════════════════════════');
   console.log('[Redi V7] Model: gpt-realtime (FULL capability)');
-  console.log('[Redi V7] VAD: server_vad (stable, working)');
-  console.log('[Redi V7] Echo Fix: Clear buffer + audio gate');
+  console.log('[Redi V7] VAD: server_vad (stable)');
+  console.log('[Redi V7] Echo Fix: Early mute + cooldown + buffer clear');
+  console.log(`[Redi V7] Cooldown: ${ECHO_COOLDOWN_MS}ms after response`);
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -108,6 +117,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       isUserSpeaking: false,
       isAssistantSpeaking: false,
       speechStartTime: 0,
+      lastResponseEndTime: 0,
       responseTriggeredForTurn: false,
       connectionTime: Date.now(),
       responsesCompleted: 0,
@@ -194,8 +204,6 @@ async function connectToOpenAI(session: Session): Promise<void> {
 }
 
 function configureSession(session: Session): void {
-  // Use PROVEN WORKING configuration from v7-stable
-  // DO NOT use semantic_vad - it was breaking responses!
   sendToOpenAI(session, {
     type: 'session.update',
     session: {
@@ -208,12 +216,29 @@ function configureSession(session: Session): void {
         type: 'server_vad',
         threshold: 0.5,
         prefix_padding_ms: 200,
-        silence_duration_ms: 400  // Fast detection
+        silence_duration_ms: 400
       }
     }
   });
   
-  console.log('[Redi V7] ⚡ Configured with server_vad + echo fix');
+  console.log('[Redi V7] ⚡ Configured with server_vad + aggressive echo fix');
+}
+
+// =============================================================================
+// ECHO PREVENTION HELPERS
+// =============================================================================
+
+function isInCooldown(session: Session): boolean {
+  if (session.lastResponseEndTime === 0) return false;
+  const timeSinceResponse = Date.now() - session.lastResponseEndTime;
+  return timeSinceResponse < ECHO_COOLDOWN_MS;
+}
+
+function shouldBlockAudio(session: Session): boolean {
+  // Block audio if:
+  // 1. Assistant is currently speaking
+  // 2. We're in the cooldown period after a response
+  return session.isAssistantSpeaking || isInCooldown(session);
 }
 
 // =============================================================================
@@ -223,9 +248,8 @@ function configureSession(session: Session): void {
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      // ECHO FIX: Don't send audio to OpenAI while assistant is speaking
-      // This prevents Redi from hearing itself through the mic
-      if (message.data && !session.isAssistantSpeaking) {
+      // AGGRESSIVE ECHO FIX: Block audio during speaking AND cooldown
+      if (message.data && !shouldBlockAudio(session)) {
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
           audio: message.data
@@ -261,8 +285,17 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'input_audio_buffer.speech_started':
+        // Check if this is likely echo (speech detected during cooldown)
+        if (isInCooldown(session)) {
+          const cooldownRemaining = ECHO_COOLDOWN_MS - (Date.now() - session.lastResponseEndTime);
+          console.log(`[Redi V7] 🔇 Ignoring speech during cooldown (${cooldownRemaining}ms left)`);
+          // Clear buffer to discard the echo
+          sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+          return;
+        }
+        
         session.isUserSpeaking = true;
-        session.responseTriggeredForTurn = false;  // New turn
+        session.responseTriggeredForTurn = false;
         session.speechStartTime = Date.now();
         console.log('[Redi V7] 🎤 Speaking...');
         
@@ -279,6 +312,12 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'input_audio_buffer.speech_stopped':
+        // Ignore if we were in cooldown (this was echo)
+        if (!session.isUserSpeaking) {
+          console.log('[Redi V7] 🔇 Ignoring speech_stopped (was in cooldown)');
+          return;
+        }
+        
         session.isUserSpeaking = false;
         const speechDuration = Date.now() - session.speechStartTime;
         console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
@@ -287,10 +326,17 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         if (!session.responseTriggeredForTurn) {
           session.responseTriggeredForTurn = true;
           
-          // Request fresh frame and trigger response immediately
+          // IMMEDIATELY mark as speaking to block further audio
+          session.isAssistantSpeaking = true;
+          sendToClient(session, { type: 'mute_mic', muted: true });
+          
+          // Clear any audio that snuck in
+          sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+          console.log('[Redi V7] 🔇 Pre-cleared buffer before response');
+          
+          // Request fresh frame and trigger response
           sendToClient(session, { type: 'request_frame' });
           
-          // Small delay to let fresh frame arrive
           setTimeout(() => {
             triggerResponseWithLatestFrame(session);
           }, 50);
@@ -305,14 +351,10 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'response.created':
+        // Already set isAssistantSpeaking = true earlier, but ensure it's set
         session.isAssistantSpeaking = true;
-        
-        // ECHO FIX: Clear the input audio buffer when assistant starts speaking
-        // This prevents OpenAI from processing any echo/feedback
+        // Clear buffer again just in case
         sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
-        console.log('[Redi V7] 🔇 Cleared input buffer (echo prevention)');
-        
-        sendToClient(session, { type: 'mute_mic', muted: true });
         break;
 
       case 'response.audio.delta':
@@ -331,12 +373,24 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
       case 'response.done':
         session.isAssistantSpeaking = false;
         session.responsesCompleted++;
-        sendToClient(session, { type: 'mute_mic', muted: false });
-        console.log('[Redi V7] ✅ Done');
+        
+        // Start cooldown period
+        session.lastResponseEndTime = Date.now();
+        console.log(`[Redi V7] ✅ Done (cooldown ${ECHO_COOLDOWN_MS}ms)`);
+        
+        // Clear buffer to remove any echo that was captured
+        sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+        
+        // Unmute after cooldown
+        setTimeout(() => {
+          sendToClient(session, { type: 'mute_mic', muted: false });
+          console.log('[Redi V7] 🎤 Cooldown ended, mic unmuted');
+        }, ECHO_COOLDOWN_MS);
         break;
 
       case 'response.cancelled':
         session.isAssistantSpeaking = false;
+        session.lastResponseEndTime = Date.now();
         sendToClient(session, { type: 'mute_mic', muted: false });
         break;
     }
@@ -358,7 +412,6 @@ function triggerResponseWithLatestFrame(session: Session): void {
     
     console.log(`[Redi V7] 📷 Injecting ${sizeKB}KB (${frameAge}ms old)`);
     
-    // Inject image with context
     sendToOpenAI(session, {
       type: 'conversation.item.create',
       item: {
