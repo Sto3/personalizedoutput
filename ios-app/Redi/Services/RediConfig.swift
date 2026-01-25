@@ -2,12 +2,13 @@
  * RediConfig.swift
  *
  * Unified configuration for Redi services.
- * MILITARY GRADE FRESHNESS - Jan 21 2026
  * 
- * KEY: 100ms frame interval = 10fps = maximum freshness
- * Frames are never more than ~150ms old
+ * VERSIONS:
+ * - V7: WebSocket → Server → OpenAI (stable, but has echo issues)
+ * - V9: WebRTC direct to OpenAI (NEW - solves echo, lower latency)
+ * - V8: Experimental (broken, do not use)
  * 
- * CRITICAL: V7 is the stable working version. V8 is experimental and broken.
+ * Jan 25, 2026: Added WebRTC (V9) option for direct OpenAI connection
  */
 
 import Foundation
@@ -16,44 +17,55 @@ import AVFoundation
 // MARK: - Server Version Selection
 
 enum RediServerVersion: String, CaseIterable {
-    case v7 = "7"   // OpenAI Realtime API (STABLE - WORKING)
-    case v8 = "8"   // Two-Brain: EXPERIMENTAL - BROKEN (no audio, bad vision)
+    case v9 = "webrtc"  // WebRTC direct to OpenAI (NEW - RECOMMENDED)
+    case v7 = "7"       // WebSocket via server (stable fallback)
+    case v8 = "8"       // Two-Brain: EXPERIMENTAL - BROKEN
     
     var displayName: String {
         switch self {
-        case .v7: return "V7 - OpenAI Realtime"
-        case .v8: return "V8 - Two-Brain (Experimental)"
+        case .v9: return "V9 - WebRTC Direct"
+        case .v7: return "V7 - WebSocket (Fallback)"
+        case .v8: return "V8 - Experimental"
         }
     }
     
     var description: String {
         switch self {
-        case .v7: return "Stable. Single OpenAI pipeline. Working audio."
+        case .v9: return "Direct connection to OpenAI. Best echo cancellation. Lowest latency."
+        case .v7: return "Stable. Routes through server. May have echo."
         case .v8: return "BROKEN. Do not use."
         }
     }
     
     var icon: String {
         switch self {
-        case .v7: return "bolt.fill"
+        case .v9: return "bolt.fill"
+        case .v7: return "server.rack"
         case .v8: return "exclamationmark.triangle"
         }
+    }
+    
+    var isWebRTC: Bool {
+        return self == .v9
     }
 }
 
 struct RediConfig {
     // MARK: - Server Version
     
-    /// Current server version - FORCED TO V7 until V8 is fixed
+    /// Current server version
+    /// Default to V9 (WebRTC) for best echo cancellation
     static var serverVersion: RediServerVersion {
         get {
-            // FORCED TO V7 - V8 is broken (no audio, bad vision accuracy)
-            // When V8 is fixed, restore UserDefaults logic
-            return .v7
+            if let stored = UserDefaults.standard.string(forKey: "redi_server_version"),
+               let version = RediServerVersion(rawValue: stored) {
+                return version
+            }
+            // Default to WebRTC (V9) for best echo cancellation
+            return .v9
         }
         set {
-            // Still allow setting for future when V8 is fixed
-            print("[RediConfig] SET serverVersion: \(newValue.displayName) (raw: '\(newValue.rawValue)')")
+            print("[RediConfig] SET serverVersion: \(newValue.displayName)")
             UserDefaults.standard.set(newValue.rawValue, forKey: "redi_server_version")
             UserDefaults.standard.synchronize()
         }
@@ -62,11 +74,22 @@ struct RediConfig {
     // MARK: - Server Configuration
     
     /// Production WebSocket endpoint - uses selected version
+    /// Only used for V7/V8 (WebSocket modes)
     static var serverURL: URL {
         let version = serverVersion.rawValue
         let url = URL(string: "wss://redialways.com/ws/redi?v=\(version)")!
         print("[RediConfig] serverURL computed: \(url.absoluteString)")
         return url
+    }
+    
+    /// WebRTC token endpoint
+    static var webrtcTokenURL: URL {
+        return URL(string: "https://redialways.com/api/redi/webrtc/token")!
+    }
+    
+    /// Check if current version uses WebRTC
+    static var isWebRTCEnabled: Bool {
+        return serverVersion.isWebRTC
     }
     
     // MARK: - Audio Configuration
@@ -92,26 +115,22 @@ struct RediConfig {
         static let minPlaybackBuffer = 1200
     }
     
-    // MARK: - Camera Configuration - MILITARY GRADE FRESHNESS
+    // MARK: - Camera Configuration
     
     struct Camera {
-        /// Frame interval - 100ms = 10fps for MAXIMUM freshness
-        /// This ensures frames are never more than ~150ms stale
+        /// Frame interval - 100ms = 10fps for freshness
         static let staticFrameInterval: TimeInterval = 0.1
         
         /// Frame interval during motion - same as static for consistency
         static let motionFrameInterval: TimeInterval = 0.1
         
         /// Maximum image dimension for transmission
-        /// 640p is plenty for AI vision and keeps files small (~20-30KB)
         static let maxDimension: CGFloat = 640
         
         /// JPEG compression quality (0.0 - 1.0)
-        /// 50% produces small files (~20-30KB) that AI can still read well
         static let compressionQuality: CGFloat = 0.50
         
         /// Maximum age of a frame before considered stale (milliseconds)
-        /// With 100ms interval, frames should never be older than ~150ms
         static let maxFrameAge: Int = 200
     }
     
