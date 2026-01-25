@@ -265,13 +265,13 @@ class RediWebRTCService: NSObject, ObservableObject {
         )
         
         let audioSource = Self.factory.audioSource(with: audioConstraints)
-        let audioTrack = Self.factory.audioTrack(with: audioSource, trackId: "audio0")
-        audioTrack.isEnabled = true
+        let newAudioTrack = Self.factory.audioTrack(with: audioSource, trackId: "audio0")
+        newAudioTrack.isEnabled = true
         
-        self.localAudioTrack = audioTrack
+        self.localAudioTrack = newAudioTrack
         
         // Add track to peer connection
-        peerConnection?.add(audioTrack, streamIds: ["stream0"])
+        peerConnection?.add(newAudioTrack, streamIds: ["stream0"])
     }
     
     // MARK: - Data Channel
@@ -427,9 +427,9 @@ extension RediWebRTCService: RTCPeerConnectionDelegate {
         print("[RediWebRTC] 🔊 Remote stream added")
         
         // Handle incoming audio
-        if let audioTrack = stream.audioTracks.first {
-            self.audioTrack = audioTrack
-            audioTrack.isEnabled = true
+        if let remoteAudioTrack = stream.audioTracks.first {
+            self.audioTrack = remoteAudioTrack
+            remoteAudioTrack.isEnabled = true
             print("[RediWebRTC] ✅ Remote audio track enabled")
         }
     }
@@ -463,7 +463,6 @@ extension RediWebRTCService: RTCPeerConnectionDelegate {
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
-        // ICE candidates are typically trickled, but OpenAI handles this internally
         print("[RediWebRTC] ICE candidate generated")
     }
     
@@ -471,10 +470,10 @@ extension RediWebRTCService: RTCPeerConnectionDelegate {
         print("[RediWebRTC] ICE candidates removed")
     }
     
-    func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {
-        print("[RediWebRTC] 📡 Data channel opened: \(dataChannel.label)")
-        dataChannel.delegate = self
-        self.dataChannel = dataChannel
+    func peerConnection(_ peerConnection: RTCPeerConnection, didOpen remoteDataChannel: RTCDataChannel) {
+        print("[RediWebRTC] 📡 Data channel opened: \(remoteDataChannel.label)")
+        remoteDataChannel.delegate = self
+        self.dataChannel = remoteDataChannel
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCPeerConnectionState) {
@@ -539,7 +538,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         case "input_audio_buffer.speech_stopped":
             print("[RediWebRTC] 🎤 User stopped")
-            onRequestFrame?()  // Request fresh frame when speech stops
+            onRequestFrame?()
             
         case "error":
             if let errorInfo = message["error"] as? [String: Any],
@@ -549,7 +548,6 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             }
             
         default:
-            // Log unknown message types for debugging
             if type.hasPrefix("response.") || type.hasPrefix("conversation.") {
                 print("[RediWebRTC] 📨 \(type)")
             }
