@@ -1,16 +1,9 @@
 /**
- * Redi V7 Server - Echo Prevention + Local Barge-In
- * ==================================================
+ * Redi V7 Server - Echo Prevention + Barge-In
+ * ============================================
  * 
- * ARCHITECTURE:
- * - iOS blocks audio during playback (prevents echo)
- * - iOS detects loud speech locally and sends "interrupt" message
- * - Server cancels response and tells iOS to stop playback
- * 
- * This gives us:
- * - No echo (audio blocked during playback)
- * - Barge-in works (local detection, no echo-prone audio sent)
- * - Zero added latency
+ * iOS blocks audio during playback to prevent echo.
+ * iOS can send "interrupt" for barge-in when user speaks loudly.
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -19,68 +12,40 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server as HTTPServer, IncomingMessage } from 'http';
 import { randomUUID } from 'crypto';
 
-// =============================================================================
-// CONFIGURATION
-// =============================================================================
-
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const OPENAI_REALTIME_URL = 'wss://api.openai.com/v1/realtime?model=gpt-realtime';
-
-// =============================================================================
-// TYPES
-// =============================================================================
 
 interface Session {
   id: string;
   clientWs: WebSocket;
   openaiWs: WebSocket | null;
   
-  // Frame management
   latestFrame: string | null;
   latestFrameTime: number;
+  lastFrameRequestTime: number;  // Throttle frame requests
   
-  // State tracking
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
   speechStartTime: number;
   responseTriggeredForTurn: boolean;
   
-  // Stats
   connectionTime: number;
   responsesCompleted: number;
 }
 
-// =============================================================================
-// STATE
-// =============================================================================
-
 const sessions = new Map<string, Session>();
 let wss: WebSocketServer | null = null;
 
-// =============================================================================
-// SYSTEM PROMPT
-// =============================================================================
-
-const SYSTEM_PROMPT = `You are Redi. You see through a phone camera in real-time.
+const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time camera vision.
 
 RULES:
-- Describe ONLY what's in the attached image
-- Be brief: 10-20 words max
-- Never say "I see" - just describe directly
-- The image shows what the user is looking at RIGHT NOW`;
-
-// =============================================================================
-// INITIALIZATION
-// =============================================================================
+- Respond naturally to what the user asks
+- If they ask what you see, describe the image briefly (10-20 words)
+- Be conversational and helpful
+- Don't say "I see" - describe directly`;
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
-  console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 - Echo Prevention + Local Barge-In');
-  console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] • Audio blocked during playback (no echo)');
-  console.log('[Redi V7] • iOS detects loud speech → sends interrupt');
-  console.log('[Redi V7] • Zero added latency');
-  console.log('[Redi V7] ═══════════════════════════════════════════');
+  console.log('[Redi V7] Starting - Audio blocked during playback');
 
   if (!OPENAI_API_KEY) {
     console.error('[Redi V7] ❌ OPENAI_API_KEY not set!');
@@ -91,7 +56,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
 
   wss.on('connection', async (ws: WebSocket, req: IncomingMessage) => {
     const sessionId = randomUUID();
-    console.log(`[Redi V7] 🔌 New connection: ${sessionId.slice(0,8)}`);
+    console.log(`[Redi V7] 🔌 Connected: ${sessionId.slice(0,8)}`);
 
     const session: Session = {
       id: sessionId,
@@ -99,6 +64,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       openaiWs: null,
       latestFrame: null,
       latestFrameTime: 0,
+      lastFrameRequestTime: 0,
       isUserSpeaking: false,
       isAssistantSpeaking: false,
       speechStartTime: 0,
@@ -112,9 +78,8 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
     try {
       await connectToOpenAI(session);
       sendToClient(session, { type: 'session_ready', sessionId });
-      console.log(`[Redi V7] ✅ Session ready`);
     } catch (error) {
-      console.error(`[Redi V7] ❌ OpenAI connection failed:`, error);
+      console.error(`[Redi V7] ❌ OpenAI failed:`, error);
       ws.close(1011, 'OpenAI connection failed');
       return;
     }
@@ -124,7 +89,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
         const message = JSON.parse(data.toString());
         handleClientMessage(session, message);
       } catch (error) {
-        console.error(`[Redi V7] Parse error:`, error);
+        // Ignore parse errors
       }
     });
 
@@ -134,30 +99,17 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       cleanup(sessionId);
     });
 
-    ws.on('error', (error) => {
-      console.error(`[Redi V7] Client error:`, error);
-      cleanup(sessionId);
-    });
+    ws.on('error', () => cleanup(sessionId));
   });
-
-  console.log('[Redi V7] WebSocket server initialized on /ws/redi?v=7');
 }
 
 export function handleV7Upgrade(request: IncomingMessage, socket: any, head: Buffer): boolean {
-  if (!wss) {
-    console.error('[Redi V7] ❌ WSS not initialized');
-    return false;
-  }
-
+  if (!wss) return false;
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss!.emit('connection', ws, request);
   });
   return true;
 }
-
-// =============================================================================
-// OPENAI CONNECTION
-// =============================================================================
 
 async function connectToOpenAI(session: Session): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -169,21 +121,14 @@ async function connectToOpenAI(session: Session): Promise<void> {
     });
 
     ws.on('open', () => {
-      console.log(`[Redi V7] ✅ OpenAI connected`);
       session.openaiWs = ws;
       configureSession(session);
       resolve();
     });
 
-    ws.on('message', (data: Buffer) => {
-      handleOpenAIMessage(session, data);
-    });
-
+    ws.on('message', (data: Buffer) => handleOpenAIMessage(session, data));
     ws.on('error', reject);
-
-    ws.on('close', (code) => {
-      console.log(`[Redi V7] OpenAI closed: ${code}`);
-    });
+    ws.on('close', (code) => console.log(`[Redi V7] OpenAI closed: ${code}`));
   });
 }
 
@@ -200,22 +145,15 @@ function configureSession(session: Session): void {
         type: 'server_vad',
         threshold: 0.5,
         prefix_padding_ms: 200,
-        silence_duration_ms: 400
+        silence_duration_ms: 500  // Slightly longer to reduce false triggers
       }
     }
   });
-  
-  console.log('[Redi V7] ⚡ Configured');
 }
-
-// =============================================================================
-// CLIENT MESSAGE HANDLING
-// =============================================================================
 
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      // Forward audio to OpenAI (iOS only sends when not playing)
       if (message.data) {
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
@@ -225,52 +163,31 @@ function handleClientMessage(session: Session, message: any): void {
       break;
 
     case 'interrupt':
-      // iOS detected loud speech during playback - trigger barge-in
       if (session.isAssistantSpeaking) {
-        console.log('[Redi V7] 🛑 INTERRUPT received from iOS');
-        
-        // Cancel the current response
+        console.log('[Redi V7] 🛑 BARGE-IN');
         sendToOpenAI(session, { type: 'response.cancel' });
-        
-        // Clear OpenAI's audio buffer
         sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
-        
-        // Tell iOS to stop playback (it may have already, but confirm)
         sendToClient(session, { type: 'stop_audio' });
-        
-        // Update state
         session.isAssistantSpeaking = false;
         session.responseTriggeredForTurn = false;
-        
-        console.log('[Redi V7] 🛑 Barge-in complete - ready for user input');
       }
       break;
 
     case 'frame':
       session.latestFrame = message.data;
       session.latestFrameTime = Date.now();
-      
-      const sizeKB = Math.round((message.data?.length || 0) * 0.75 / 1024);
-      console.log(`[Redi V7] 📷 ${sizeKB}KB`);
+      // Don't log every frame - too noisy
       break;
   }
 }
-
-// =============================================================================
-// OPENAI MESSAGE HANDLING
-// =============================================================================
 
 function handleOpenAIMessage(session: Session, data: Buffer): void {
   try {
     const event = JSON.parse(data.toString());
     
     switch (event.type) {
-      case 'session.updated':
-        console.log('[Redi V7] ✅ Session configured');
-        break;
-
       case 'error':
-        console.error(`[Redi V7] ❌ OpenAI error: ${event.error?.message || JSON.stringify(event.error)}`);
+        console.error(`[Redi V7] ❌ ${event.error?.message}`);
         break;
 
       case 'input_audio_buffer.speech_started':
@@ -278,27 +195,26 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         session.speechStartTime = Date.now();
         session.responseTriggeredForTurn = false;
         console.log('[Redi V7] 🎤 Speaking...');
-        
-        // Request fresh frame for upcoming response
-        sendToClient(session, { type: 'request_frame' });
+        // Don't request frame here - wait for speech_stopped
         break;
 
       case 'input_audio_buffer.speech_stopped':
         session.isUserSpeaking = false;
-        const speechDuration = Date.now() - session.speechStartTime;
-        console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
+        const duration = Date.now() - session.speechStartTime;
+        console.log(`[Redi V7] 🎤 Stopped (${duration}ms)`);
         
-        // Trigger response if not already triggered
         if (!session.responseTriggeredForTurn && !session.isAssistantSpeaking) {
           session.responseTriggeredForTurn = true;
           
-          // Request fresh frame
-          sendToClient(session, { type: 'request_frame' });
+          // Request frame only if we haven't recently (throttle to 1 per second)
+          const now = Date.now();
+          if (now - session.lastFrameRequestTime > 1000) {
+            session.lastFrameRequestTime = now;
+            sendToClient(session, { type: 'request_frame' });
+          }
           
-          // Small delay to let frame arrive
-          setTimeout(() => {
-            triggerResponseWithLatestFrame(session);
-          }, 50);
+          // Trigger response after brief delay for frame
+          setTimeout(() => triggerResponse(session), 100);
         }
         break;
 
@@ -311,7 +227,6 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.created':
         session.isAssistantSpeaking = true;
-        // Tell iOS playback is starting (it will block outgoing audio)
         sendToClient(session, { type: 'playback_started' });
         break;
 
@@ -331,40 +246,29 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
       case 'response.done':
         session.isAssistantSpeaking = false;
         session.responsesCompleted++;
-        // Tell iOS playback finished
         sendToClient(session, { type: 'playback_ended' });
         console.log('[Redi V7] ✅ Done');
         break;
 
       case 'response.cancelled':
         session.isAssistantSpeaking = false;
-        // Don't send playback_ended - stop_audio already sent during interrupt
-        console.log('[Redi V7] ⚡ Response cancelled');
         break;
     }
   } catch (error) {
-    console.error(`[Redi V7] Parse error:`, error);
+    // Ignore parse errors
   }
 }
 
-// =============================================================================
-// RESPONSE TRIGGERING
-// =============================================================================
-
-function triggerResponseWithLatestFrame(session: Session): void {
-  // Don't trigger if assistant started speaking
+function triggerResponse(session: Session): void {
   if (session.isAssistantSpeaking) {
-    console.log('[Redi V7] ⚠️ Skipping response - assistant already speaking');
+    console.log('[Redi V7] ⚠️ Skipping - already speaking');
     return;
   }
   
   const frameAge = session.latestFrame ? Date.now() - session.latestFrameTime : Infinity;
   
-  if (session.latestFrame && frameAge < 1000) {
+  if (session.latestFrame && frameAge < 2000) {
     const cleanBase64 = session.latestFrame.replace(/[\r\n\s]/g, '');
-    const sizeKB = Math.round(cleanBase64.length * 0.75 / 1024);
-    
-    console.log(`[Redi V7] 📷 Injecting ${sizeKB}KB (${frameAge}ms old)`);
     
     sendToOpenAI(session, {
       type: 'conversation.item.create',
@@ -372,29 +276,15 @@ function triggerResponseWithLatestFrame(session: Session): void {
         type: 'message',
         role: 'user',
         content: [
-          {
-            type: 'input_text',
-            text: '[User just asked about this - describe what you see:]'
-          },
-          {
-            type: 'input_image',
-            image_url: `data:image/jpeg;base64,${cleanBase64}`
-          }
+          { type: 'input_text', text: '[Describe what you see if relevant to the conversation:]' },
+          { type: 'input_image', image_url: `data:image/jpeg;base64,${cleanBase64}` }
         ]
       }
     });
-    
-    console.log(`[Redi V7] 🚀 Response triggered with vision`);
-  } else {
-    console.log(`[Redi V7] ⚠️ No fresh frame (${frameAge}ms old)`);
   }
   
   sendToOpenAI(session, { type: 'response.create' });
 }
-
-// =============================================================================
-// HELPERS
-// =============================================================================
 
 function sendToOpenAI(session: Session, message: any): void {
   if (session.openaiWs?.readyState === WebSocket.OPEN) {
