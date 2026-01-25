@@ -15,19 +15,25 @@
  * 3. Audio flows directly between iOS and OpenAI (no server in the middle)
  * 4. Data channel used for events (transcripts, session control)
  *
+ * IMPORTANT: After running `pod install`, open Redi.xcworkspace (NOT .xcodeproj)
+ *
  * Created: Jan 25, 2026
  */
 
 import Foundation
-import WebRTC
+import AVFoundation
 import Combine
+
+// Conditionally import WebRTC - the pod is named GoogleWebRTC
+#if canImport(WebRTC)
+import WebRTC
+#endif
 
 class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Published Properties
     
     @Published var isConnected = false
     @Published var isConnecting = false
-    @Published var connectionState: RTCPeerConnectionState = .new
     @Published var error: String?
     
     // MARK: - Callbacks
@@ -42,10 +48,12 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     // MARK: - WebRTC Components
     
+    #if canImport(WebRTC)
     private var peerConnection: RTCPeerConnection?
     private var dataChannel: RTCDataChannel?
     private var audioTrack: RTCAudioTrack?
     private var localAudioTrack: RTCAudioTrack?
+    @Published var connectionState: RTCPeerConnectionState = .new
     
     // WebRTC factory (singleton)
     private static let factory: RTCPeerConnectionFactory = {
@@ -57,6 +65,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             decoderFactory: videoDecoderFactory
         )
     }()
+    #endif
     
     // MARK: - Configuration
     
@@ -74,7 +83,11 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        print("[RediWebRTC] 🚀 Service initialized")
+        #if canImport(WebRTC)
+        print("[RediWebRTC] 🚀 Service initialized (WebRTC available)")
+        #else
+        print("[RediWebRTC] ⚠️ Service initialized (WebRTC NOT available - run pod install)")
+        #endif
     }
     
     deinit {
@@ -84,14 +97,8 @@ class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Connection Management
     
     /// Connect to OpenAI via WebRTC
-    /// Steps:
-    /// 1. Get ephemeral token from our server
-    /// 2. Create peer connection
-    /// 3. Add audio track
-    /// 4. Create data channel
-    /// 5. Create and send SDP offer to OpenAI
-    /// 6. Set remote SDP answer
     func connect(mode: String = "general") async throws {
+        #if canImport(WebRTC)
         guard !isConnecting else {
             print("[RediWebRTC] Already connecting, ignoring")
             return
@@ -157,11 +164,17 @@ class RediWebRTCService: NSObject, ObservableObject {
             }
             throw error
         }
+        #else
+        // WebRTC not available
+        print("[RediWebRTC] ❌ WebRTC not available - please run 'pod install' and open .xcworkspace")
+        throw WebRTCError.webrtcNotAvailable
+        #endif
     }
     
     func disconnect() {
         print("[RediWebRTC] 🔌 Disconnecting...")
         
+        #if canImport(WebRTC)
         dataChannel?.close()
         dataChannel = nil
         
@@ -170,12 +183,13 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         localAudioTrack = nil
         audioTrack = nil
+        #endif
+        
         ephemeralToken = nil
         
         DispatchQueue.main.async {
             self.isConnected = false
             self.isConnecting = false
-            self.connectionState = .closed
         }
     }
     
@@ -224,6 +238,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[RediWebRTC] ✅ Audio session configured with echo cancellation")
     }
     
+    #if canImport(WebRTC)
     // MARK: - Peer Connection
     
     private func createPeerConnection() throws {
@@ -343,11 +358,13 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         return RTCSessionDescription(type: .answer, sdp: sdpString)
     }
+    #endif
     
     // MARK: - Sending Data
     
     /// Send a message through the data channel
     func send(message: [String: Any]) {
+        #if canImport(WebRTC)
         guard let dc = dataChannel,
               dc.readyState == .open else {
             print("[RediWebRTC] ⚠️ Data channel not ready")
@@ -355,13 +372,16 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
         
         guard let jsonData = try? JSONSerialization.data(withJSONObject: message),
-              let jsonString = String(data: jsonData, encoding: .utf8) else {
+              let _ = String(data: jsonData, encoding: .utf8) else {
             print("[RediWebRTC] ⚠️ Failed to serialize message")
             return
         }
         
         let buffer = RTCDataBuffer(data: jsonData, isBinary: false)
         dc.sendData(buffer)
+        #else
+        print("[RediWebRTC] ⚠️ WebRTC not available")
+        #endif
     }
     
     /// Send a camera frame to OpenAI
@@ -385,13 +405,16 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     /// Mute/unmute microphone
     func setMicMuted(_ muted: Bool) {
+        #if canImport(WebRTC)
         localAudioTrack?.isEnabled = !muted
         print("[RediWebRTC] 🎤 Mic \(muted ? "muted" : "unmuted")")
+        #endif
     }
     
     // MARK: - Error Types
     
     enum WebRTCError: Error, LocalizedError {
+        case webrtcNotAvailable
         case tokenFetchFailed
         case peerConnectionFailed
         case offerCreationFailed
@@ -402,6 +425,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         var errorDescription: String? {
             switch self {
+            case .webrtcNotAvailable: return "WebRTC not available - run 'pod install' and open .xcworkspace"
             case .tokenFetchFailed: return "Failed to get ephemeral token"
             case .peerConnectionFailed: return "Failed to create peer connection"
             case .offerCreationFailed: return "Failed to create SDP offer"
@@ -416,6 +440,7 @@ class RediWebRTCService: NSObject, ObservableObject {
 
 // MARK: - RTCPeerConnectionDelegate
 
+#if canImport(WebRTC)
 extension RediWebRTCService: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
         print("[RediWebRTC] Signaling state: \(stateChanged.rawValue)")
@@ -556,3 +581,4 @@ extension RediWebRTCService: RTCDataChannelDelegate {
         }
     }
 }
+#endif
