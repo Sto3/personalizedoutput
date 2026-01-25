@@ -9,7 +9,7 @@
  * - Lower latency
  * - Better audio quality
  * 
- * Jan 25, 2026: Added WebRTC support
+ * Jan 25, 2026: WebRTC ENABLED!
  */
 
 import SwiftUI
@@ -26,8 +26,7 @@ struct RediSessionView: View {
     @StateObject private var webSocketService = RediWebSocketService()
     
     // WebRTC service (V9 - preferred)
-    // Note: Uncomment when GoogleWebRTC is installed
-    // @StateObject private var webRTCService = RediWebRTCService()
+    @StateObject private var webRTCService = RediWebRTCService()
     
     // MARK: - State
     
@@ -184,69 +183,69 @@ struct RediSessionView: View {
     }
     
     private func startWebRTCSession() {
-        print("[RediSession] Starting WebRTC session...")
+        print("[RediSession] 🚀 Starting WebRTC session...")
         
-        // TODO: Uncomment when GoogleWebRTC is installed
-        /*
         isConnecting = true
         
-        Task {
-            do {
-                try await webRTCService.connect(mode: currentMode.rawValue)
-                
-                await MainActor.run {
-                    isConnected = true
-                    isConnecting = false
-                }
-            } catch {
-                await MainActor.run {
-                    errorMessage = error.localizedDescription
-                    isConnecting = false
-                    
-                    // Fall back to WebSocket if WebRTC fails
-                    print("[RediSession] WebRTC failed, falling back to WebSocket")
-                    useWebRTC = false
-                    startWebSocketSession()
-                }
-            }
-        }
-        
-        // Setup WebRTC callbacks
-        webRTCService.onSessionReady = { [self] in
+        // Setup WebRTC callbacks BEFORE connecting
+        webRTCService.onSessionReady = {
             DispatchQueue.main.async {
-                isConnected = true
-                isConnecting = false
+                self.isConnected = true
+                self.isConnecting = false
+                self.errorMessage = nil
+                print("[RediSession] ✅ WebRTC session ready!")
             }
         }
         
-        webRTCService.onTranscriptReceived = { [self] text, role in
-            handleTranscript(text: text, role: role)
+        webRTCService.onTranscriptReceived = { text, role in
+            self.handleTranscript(text: text, role: role)
         }
         
-        webRTCService.onPlaybackStarted = { [self] in
-            // WebRTC handles echo cancellation internally
+        webRTCService.onPlaybackStarted = {
+            // WebRTC handles echo cancellation internally - no need to mute mic
+            print("[RediSession] 🔊 WebRTC playback started")
         }
         
-        webRTCService.onPlaybackEnded = { [self] in
-            // WebRTC handles this internally
+        webRTCService.onPlaybackEnded = {
+            print("[RediSession] 🔇 WebRTC playback ended")
         }
         
-        webRTCService.onRequestFrame = { [self] in
-            cameraService.captureSnapshot()
+        webRTCService.onRequestFrame = {
+            self.cameraService.captureSnapshot()
         }
         
-        // Camera -> WebRTC
+        webRTCService.onError = { error in
+            DispatchQueue.main.async {
+                self.errorMessage = error.localizedDescription
+                print("[RediSession] ❌ WebRTC error: \(error.localizedDescription)")
+            }
+        }
+        
+        // Camera -> WebRTC (for vision)
         cameraService.snapshotCaptured
             .sink { [weak webRTCService] data in
                 webRTCService?.sendFrame(data)
             }
             .store(in: &cancellables)
-        */
         
-        // TEMPORARY: WebRTC not yet available, fall back to WebSocket
-        print("[RediSession] ⚠️ WebRTC not yet installed, using WebSocket")
-        useWebRTC = false
-        startWebSocketSession()
+        // Connect!
+        Task {
+            do {
+                try await webRTCService.connect(mode: currentMode.rawValue)
+                print("[RediSession] ✅ WebRTC connected!")
+            } catch {
+                await MainActor.run {
+                    print("[RediSession] ❌ WebRTC failed: \(error.localizedDescription)")
+                    errorMessage = "WebRTC failed, trying WebSocket..."
+                    isConnecting = false
+                    
+                    // Fall back to WebSocket if WebRTC fails
+                    print("[RediSession] 🔄 Falling back to WebSocket")
+                    useWebRTC = false
+                    startWebSocketSession()
+                }
+            }
+        }
     }
     
     private func startWebSocketSession() {
@@ -270,7 +269,7 @@ struct RediSessionView: View {
         print("[RediSession] Ending session...")
         
         if useWebRTC {
-            // webRTCService.disconnect()
+            webRTCService.disconnect()
         } else {
             webSocketService.disconnect()
             audioService.cleanup()
@@ -280,7 +279,7 @@ struct RediSessionView: View {
     }
     
     private func setupWebSocketCallbacks() {
-        webSocketService.onSessionReady = { [self] in
+        webSocketService.onSessionReady = {
             DispatchQueue.main.async {
                 self.isConnected = true
                 self.isConnecting = false
@@ -288,28 +287,28 @@ struct RediSessionView: View {
             }
         }
         
-        webSocketService.onAudioReceived = { [self] data in
+        webSocketService.onAudioReceived = { data in
             self.audioService.playAudio(data)
         }
         
-        webSocketService.onTranscriptReceived = { [self] text, role in
-            handleTranscript(text: text, role: role)
+        webSocketService.onTranscriptReceived = { text, role in
+            self.handleTranscript(text: text, role: role)
         }
         
-        webSocketService.onMicMuteChanged = { [self] muted in
+        webSocketService.onMicMuteChanged = { muted in
             self.audioService.setMuted(muted)
         }
         
-        webSocketService.onStopAudio = { [self] in
+        webSocketService.onStopAudio = {
             self.audioService.stopPlayback()
         }
         
-        webSocketService.onRequestFrame = { [self] in
+        webSocketService.onRequestFrame = {
             // Server requested a fresh frame
             self.cameraService.captureSnapshot()
         }
         
-        webSocketService.onError = { [self] error in
+        webSocketService.onError = { error in
             DispatchQueue.main.async {
                 self.errorMessage = error.localizedDescription
                 self.isConnected = false
@@ -364,7 +363,7 @@ struct RediSessionView: View {
         isMuted.toggle()
         
         if useWebRTC {
-            // webRTCService.setMicMuted(isMuted)
+            webRTCService.setMicMuted(isMuted)
         } else {
             audioService.setMuted(isMuted)
         }
@@ -374,8 +373,9 @@ struct RediSessionView: View {
         currentMode = mode
         
         if useWebRTC {
-            // WebRTC: Would need to update session
-            // For now, mode is set at connection time
+            // WebRTC: Mode is set at connection time
+            // Would need to reconnect to change mode
+            print("[RediSession] Mode change requires reconnect in WebRTC mode")
         } else {
             webSocketService.sendMode(mode.rawValue)
         }
