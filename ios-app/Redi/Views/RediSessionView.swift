@@ -2,8 +2,14 @@
  * RediSessionView.swift
  *
  * Main session view for Redi.
- * Uses production services (RediWebSocketService, RediAudioService).
- * NO VERSION NUMBERS - this is the production view.
+ * Supports both WebRTC (V9) and WebSocket (V7) connections.
+ * 
+ * WebRTC is preferred for:
+ * - Built-in echo cancellation
+ * - Lower latency
+ * - Better audio quality
+ * 
+ * Jan 25, 2026: Added WebRTC support
  */
 
 import SwiftUI
@@ -15,7 +21,13 @@ struct RediSessionView: View {
     
     @StateObject private var cameraService = CameraService()
     @StateObject private var audioService = RediAudioService()
+    
+    // WebSocket service (V7 fallback)
     @StateObject private var webSocketService = RediWebSocketService()
+    
+    // WebRTC service (V9 - preferred)
+    // Note: Uncomment when GoogleWebRTC is installed
+    // @StateObject private var webRTCService = RediWebRTCService()
     
     // MARK: - State
     
@@ -27,6 +39,7 @@ struct RediSessionView: View {
     @State private var isMuted = false
     @State private var currentMode: RediMode = .general
     @State private var cancellables = Set<AnyCancellable>()
+    @State private var useWebRTC = false  // Will be set based on config
     
     // MARK: - Environment
     
@@ -52,14 +65,19 @@ struct RediSessionView: View {
                     
                     Spacer()
                     
-                    // Connection status
+                    // Connection status with mode indicator
                     HStack(spacing: 8) {
                         Circle()
                             .fill(isConnected ? Color.green : (isConnecting ? Color.yellow : Color.red))
                             .frame(width: 12, height: 12)
-                        Text(isConnected ? "Connected" : (isConnecting ? "Connecting..." : "Disconnected"))
-                            .font(.caption)
-                            .foregroundColor(.white)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(isConnected ? "Connected" : (isConnecting ? "Connecting..." : "Disconnected"))
+                                .font(.caption)
+                                .foregroundColor(.white)
+                            Text(useWebRTC ? "WebRTC" : "WebSocket")
+                                .font(.caption2)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -150,6 +168,90 @@ struct RediSessionView: View {
     private func startSession() {
         print("[RediSession] Starting session...")
         
+        // Check if WebRTC is enabled in config
+        useWebRTC = RediConfig.isWebRTCEnabled
+        print("[RediSession] Using \(useWebRTC ? "WebRTC (V9)" : "WebSocket (V7)")")
+        
+        if useWebRTC {
+            startWebRTCSession()
+        } else {
+            startWebSocketSession()
+        }
+        
+        // Start camera (same for both modes)
+        cameraService.start()
+        cameraService.startPeriodicSnapshots(intervalMs: Int(RediConfig.Camera.staticFrameInterval * 1000))
+    }
+    
+    private func startWebRTCSession() {
+        print("[RediSession] Starting WebRTC session...")
+        
+        // TODO: Uncomment when GoogleWebRTC is installed
+        /*
+        isConnecting = true
+        
+        Task {
+            do {
+                try await webRTCService.connect(mode: currentMode.rawValue)
+                
+                await MainActor.run {
+                    isConnected = true
+                    isConnecting = false
+                }
+            } catch {
+                await MainActor.run {
+                    errorMessage = error.localizedDescription
+                    isConnecting = false
+                    
+                    // Fall back to WebSocket if WebRTC fails
+                    print("[RediSession] WebRTC failed, falling back to WebSocket")
+                    useWebRTC = false
+                    startWebSocketSession()
+                }
+            }
+        }
+        
+        // Setup WebRTC callbacks
+        webRTCService.onSessionReady = { [self] in
+            DispatchQueue.main.async {
+                isConnected = true
+                isConnecting = false
+            }
+        }
+        
+        webRTCService.onTranscriptReceived = { [self] text, role in
+            handleTranscript(text: text, role: role)
+        }
+        
+        webRTCService.onPlaybackStarted = { [self] in
+            // WebRTC handles echo cancellation internally
+        }
+        
+        webRTCService.onPlaybackEnded = { [self] in
+            // WebRTC handles this internally
+        }
+        
+        webRTCService.onRequestFrame = { [self] in
+            cameraService.captureSnapshot()
+        }
+        
+        // Camera -> WebRTC
+        cameraService.snapshotCaptured
+            .sink { [weak webRTCService] data in
+                webRTCService?.sendFrame(data)
+            }
+            .store(in: &cancellables)
+        */
+        
+        // TEMPORARY: WebRTC not yet available, fall back to WebSocket
+        print("[RediSession] ⚠️ WebRTC not yet installed, using WebSocket")
+        useWebRTC = false
+        startWebSocketSession()
+    }
+    
+    private func startWebSocketSession() {
+        print("[RediSession] Starting WebSocket session...")
+        
         // Setup WebSocket callbacks
         setupWebSocketCallbacks()
         
@@ -157,11 +259,7 @@ struct RediSessionView: View {
         isConnecting = true
         webSocketService.connect()
         
-        // Start camera
-        cameraService.start()
-        cameraService.startPeriodicSnapshots(intervalMs: Int(RediConfig.Camera.staticFrameInterval * 1000))
-        
-        // Start audio
+        // Start audio (WebSocket needs explicit audio handling)
         audioService.startRecording()
         
         // Setup bindings
@@ -170,9 +268,15 @@ struct RediSessionView: View {
     
     private func endSession() {
         print("[RediSession] Ending session...")
-        webSocketService.disconnect()
+        
+        if useWebRTC {
+            // webRTCService.disconnect()
+        } else {
+            webSocketService.disconnect()
+            audioService.cleanup()
+        }
+        
         cameraService.stop()
-        audioService.cleanup()
     }
     
     private func setupWebSocketCallbacks() {
@@ -189,25 +293,7 @@ struct RediSessionView: View {
         }
         
         webSocketService.onTranscriptReceived = { [self] text, role in
-            DispatchQueue.main.async {
-                if role == "user" {
-                    self.currentTranscript = text
-                    // Clear after delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                        if self.currentTranscript == text {
-                            self.currentTranscript = nil
-                        }
-                    }
-                } else {
-                    self.currentResponse = text
-                    // Clear after delay
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                        if self.currentResponse == text {
-                            self.currentResponse = nil
-                        }
-                    }
-                }
-            }
+            handleTranscript(text: text, role: role)
         }
         
         webSocketService.onMicMuteChanged = { [self] muted in
@@ -248,16 +334,51 @@ struct RediSessionView: View {
             .store(in: &cancellables)
     }
     
+    // MARK: - Shared Handlers
+    
+    private func handleTranscript(text: String, role: String) {
+        DispatchQueue.main.async {
+            if role == "user" {
+                self.currentTranscript = text
+                // Clear after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    if self.currentTranscript == text {
+                        self.currentTranscript = nil
+                    }
+                }
+            } else {
+                self.currentResponse = text
+                // Clear after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                    if self.currentResponse == text {
+                        self.currentResponse = nil
+                    }
+                }
+            }
+        }
+    }
+    
     // MARK: - Actions
     
     private func toggleMute() {
         isMuted.toggle()
-        audioService.setMuted(isMuted)
+        
+        if useWebRTC {
+            // webRTCService.setMicMuted(isMuted)
+        } else {
+            audioService.setMuted(isMuted)
+        }
     }
     
     private func changeMode(_ mode: RediMode) {
         currentMode = mode
-        webSocketService.sendMode(mode.rawValue)
+        
+        if useWebRTC {
+            // WebRTC: Would need to update session
+            // For now, mode is set at connection time
+        } else {
+            webSocketService.sendMode(mode.rawValue)
+        }
     }
 }
 
