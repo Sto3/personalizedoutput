@@ -1,9 +1,15 @@
 /**
- * Redi V7 Server - Echo Prevention + Barge-In
- * ============================================
+ * Redi V7 Server - ECHO-FREE Architecture
+ * ========================================
  * 
- * iOS blocks audio during playback to prevent echo.
- * iOS can send "interrupt" for barge-in when user speaks loudly.
+ * THREE LAYERS OF ECHO PROTECTION:
+ * 1. Server-side audio blocking (don't forward audio during playback)
+ * 2. Clear OpenAI's input buffer when response starts
+ * 3. iOS-side audio blocking (backup)
+ * 
+ * BARGE-IN:
+ * - iOS detects loud speech locally → sends "interrupt"
+ * - Server cancels response, clears buffer, unblocks
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -22,12 +28,15 @@ interface Session {
   
   latestFrame: string | null;
   latestFrameTime: number;
-  lastFrameRequestTime: number;  // Throttle frame requests
+  lastFrameRequestTime: number;
   
   isUserSpeaking: boolean;
   isAssistantSpeaking: boolean;
   speechStartTime: number;
   responseTriggeredForTurn: boolean;
+  
+  // Track last assistant response to detect echo
+  lastAssistantText: string;
   
   connectionTime: number;
   responsesCompleted: number;
@@ -45,7 +54,10 @@ RULES:
 - Don't say "I see" - describe directly`;
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
-  console.log('[Redi V7] Starting - Audio blocked during playback');
+  console.log('[Redi V7] Starting - ECHO-FREE Architecture');
+  console.log('[Redi V7] • Server blocks audio during playback');
+  console.log('[Redi V7] • Clears OpenAI buffer on response start');
+  console.log('[Redi V7] • iOS sends interrupt for barge-in');
 
   if (!OPENAI_API_KEY) {
     console.error('[Redi V7] ❌ OPENAI_API_KEY not set!');
@@ -69,6 +81,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       isAssistantSpeaking: false,
       speechStartTime: 0,
       responseTriggeredForTurn: false,
+      lastAssistantText: '',
       connectionTime: Date.now(),
       responsesCompleted: 0,
     };
@@ -77,7 +90,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
 
     try {
       await connectToOpenAI(session);
-      sendToClient(session, { type: 'session_ready', sessionId });
+      sendToClient(session, { type: 'session_ready', sessionId, version: 'V7-EchoFree' });
     } catch (error) {
       console.error(`[Redi V7] ❌ OpenAI failed:`, error);
       ws.close(1011, 'OpenAI connection failed');
@@ -143,9 +156,9 @@ function configureSession(session: Session): void {
       input_audio_transcription: { model: 'whisper-1' },
       turn_detection: {
         type: 'server_vad',
-        threshold: 0.5,
-        prefix_padding_ms: 200,
-        silence_duration_ms: 500  // Slightly longer to reduce false triggers
+        threshold: 0.6,           // Higher threshold to reduce false triggers
+        prefix_padding_ms: 300,   // More padding before speech
+        silence_duration_ms: 700  // Longer silence required to end turn
       }
     }
   });
@@ -154,6 +167,15 @@ function configureSession(session: Session): void {
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
+      // ═══════════════════════════════════════════════════════════════
+      // CRITICAL ECHO PREVENTION: Block audio at server level
+      // Do NOT forward audio to OpenAI while assistant is speaking!
+      // ═══════════════════════════════════════════════════════════════
+      if (session.isAssistantSpeaking) {
+        // Silently drop - this prevents echo!
+        return;
+      }
+      
       if (message.data) {
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
@@ -163,20 +185,30 @@ function handleClientMessage(session: Session, message: any): void {
       break;
 
     case 'interrupt':
+      // iOS detected loud speech during playback - trigger barge-in
       if (session.isAssistantSpeaking) {
-        console.log('[Redi V7] 🛑 BARGE-IN');
+        console.log('[Redi V7] 🛑 BARGE-IN from iOS');
+        
+        // Cancel the response
         sendToOpenAI(session, { type: 'response.cancel' });
+        
+        // Clear any buffered audio (critical!)
         sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+        
+        // Tell iOS to stop playback
         sendToClient(session, { type: 'stop_audio' });
+        
+        // Reset state - ready for new input
         session.isAssistantSpeaking = false;
         session.responseTriggeredForTurn = false;
+        
+        console.log('[Redi V7] ✅ Barge-in complete');
       }
       break;
 
     case 'frame':
       session.latestFrame = message.data;
       session.latestFrameTime = Date.now();
-      // Don't log every frame - too noisy
       break;
   }
 }
@@ -191,42 +223,64 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'input_audio_buffer.speech_started':
-        session.isUserSpeaking = true;
-        session.speechStartTime = Date.now();
-        session.responseTriggeredForTurn = false;
-        console.log('[Redi V7] 🎤 Speaking...');
-        // Don't request frame here - wait for speech_stopped
+        // Only log if we're not in playback (real user speech)
+        if (!session.isAssistantSpeaking) {
+          session.isUserSpeaking = true;
+          session.speechStartTime = Date.now();
+          session.responseTriggeredForTurn = false;
+          console.log('[Redi V7] 🎤 Speaking...');
+        }
         break;
 
       case 'input_audio_buffer.speech_stopped':
-        session.isUserSpeaking = false;
-        const duration = Date.now() - session.speechStartTime;
-        console.log(`[Redi V7] 🎤 Stopped (${duration}ms)`);
-        
-        if (!session.responseTriggeredForTurn && !session.isAssistantSpeaking) {
-          session.responseTriggeredForTurn = true;
+        if (!session.isAssistantSpeaking) {
+          session.isUserSpeaking = false;
+          const duration = Date.now() - session.speechStartTime;
+          console.log(`[Redi V7] 🎤 Stopped (${duration}ms)`);
           
-          // Request frame only if we haven't recently (throttle to 1 per second)
-          const now = Date.now();
-          if (now - session.lastFrameRequestTime > 1000) {
-            session.lastFrameRequestTime = now;
-            sendToClient(session, { type: 'request_frame' });
+          if (!session.responseTriggeredForTurn) {
+            session.responseTriggeredForTurn = true;
+            
+            // Request frame (throttled)
+            const now = Date.now();
+            if (now - session.lastFrameRequestTime > 1000) {
+              session.lastFrameRequestTime = now;
+              sendToClient(session, { type: 'request_frame' });
+            }
+            
+            setTimeout(() => triggerResponse(session), 100);
           }
-          
-          // Trigger response after brief delay for frame
-          setTimeout(() => triggerResponse(session), 100);
         }
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
         if (event.transcript) {
-          console.log(`[Redi V7] 📝 "${event.transcript}"`);
-          sendToClient(session, { type: 'transcript', text: event.transcript, role: 'user' });
+          const text = event.transcript.trim();
+          
+          // ═══════════════════════════════════════════════════════════════
+          // ECHO DETECTION: Check if this is Redi's own voice
+          // If the transcript matches what we just said, it's echo - ignore it
+          // ═══════════════════════════════════════════════════════════════
+          if (session.lastAssistantText && isEcho(text, session.lastAssistantText)) {
+            console.log(`[Redi V7] 🔇 Echo detected, ignoring: "${text.substring(0, 30)}..."`);
+            return;
+          }
+          
+          console.log(`[Redi V7] 📝 "${text}"`);
+          sendToClient(session, { type: 'transcript', text, role: 'user' });
         }
         break;
 
       case 'response.created':
         session.isAssistantSpeaking = true;
+        
+        // ═══════════════════════════════════════════════════════════════
+        // CRITICAL: Clear OpenAI's input buffer when response starts
+        // This removes any echo audio that might have been buffered
+        // ═══════════════════════════════════════════════════════════════
+        sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+        
+        // Tell iOS playback is starting (iOS will also block audio)
         sendToClient(session, { type: 'playback_started' });
         break;
 
@@ -238,8 +292,10 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.audio_transcript.done':
         if (event.transcript) {
-          console.log(`[Redi V7] 🤖 "${event.transcript}"`);
-          sendToClient(session, { type: 'transcript', text: event.transcript, role: 'assistant' });
+          const text = event.transcript;
+          session.lastAssistantText = text;  // Store for echo detection
+          console.log(`[Redi V7] 🤖 "${text}"`);
+          sendToClient(session, { type: 'transcript', text, role: 'assistant' });
         }
         break;
 
@@ -252,11 +308,37 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.cancelled':
         session.isAssistantSpeaking = false;
+        console.log('[Redi V7] ⚡ Cancelled');
         break;
     }
   } catch (error) {
     // Ignore parse errors
   }
+}
+
+/**
+ * Check if user transcript is likely an echo of the assistant's response
+ * Uses fuzzy matching to detect partial matches
+ */
+function isEcho(userText: string, assistantText: string): boolean {
+  const user = userText.toLowerCase().trim();
+  const assistant = assistantText.toLowerCase().trim();
+  
+  // Check if user text is contained in assistant text (or vice versa)
+  if (assistant.includes(user) || user.includes(assistant)) {
+    return true;
+  }
+  
+  // Check word overlap - if more than 60% of words match, it's likely echo
+  const userWords = user.split(/\s+/).filter(w => w.length > 2);
+  const assistantWords = assistant.split(/\s+/).filter(w => w.length > 2);
+  
+  if (userWords.length === 0) return false;
+  
+  const matchingWords = userWords.filter(word => assistantWords.includes(word));
+  const overlapRatio = matchingWords.length / userWords.length;
+  
+  return overlapRatio > 0.6;
 }
 
 function triggerResponse(session: Session): void {
