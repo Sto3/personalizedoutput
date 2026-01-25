@@ -23,17 +23,14 @@
 import Foundation
 import AVFoundation
 import Combine
-
-// Conditionally import WebRTC - the pod is named GoogleWebRTC
-#if canImport(WebRTC)
 import WebRTC
-#endif
 
 class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Published Properties
     
     @Published var isConnected = false
     @Published var isConnecting = false
+    @Published var connectionState: RTCPeerConnectionState = .new
     @Published var error: String?
     
     // MARK: - Callbacks
@@ -48,12 +45,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     // MARK: - WebRTC Components
     
-    #if canImport(WebRTC)
     private var peerConnection: RTCPeerConnection?
     private var dataChannel: RTCDataChannel?
     private var audioTrack: RTCAudioTrack?
     private var localAudioTrack: RTCAudioTrack?
-    @Published var connectionState: RTCPeerConnectionState = .new
     
     // WebRTC factory (singleton)
     private static let factory: RTCPeerConnectionFactory = {
@@ -65,7 +60,6 @@ class RediWebRTCService: NSObject, ObservableObject {
             decoderFactory: videoDecoderFactory
         )
     }()
-    #endif
     
     // MARK: - Configuration
     
@@ -83,11 +77,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     override init() {
         super.init()
-        #if canImport(WebRTC)
-        print("[RediWebRTC] 🚀 Service initialized (WebRTC available)")
-        #else
-        print("[RediWebRTC] ⚠️ Service initialized (WebRTC NOT available - run pod install)")
-        #endif
+        print("[RediWebRTC] 🚀 Service initialized")
     }
     
     deinit {
@@ -98,7 +88,6 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     /// Connect to OpenAI via WebRTC
     func connect(mode: String = "general") async throws {
-        #if canImport(WebRTC)
         guard !isConnecting else {
             print("[RediWebRTC] Already connecting, ignoring")
             return
@@ -138,7 +127,10 @@ class RediWebRTCService: NSObject, ObservableObject {
             let offer = try await createOffer()
             
             // Step 7: Set local description
-            try await peerConnection?.setLocalDescription(offer)
+            guard let pc = peerConnection else {
+                throw WebRTCError.peerConnectionFailed
+            }
+            try await pc.setLocalDescription(offer)
             
             // Step 8: Send offer to OpenAI and get answer
             print("[RediWebRTC] 📨 Sending offer to OpenAI...")
@@ -146,7 +138,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             
             // Step 9: Set remote description
             print("[RediWebRTC] 📥 Setting remote description...")
-            try await peerConnection?.setRemoteDescription(answer)
+            try await pc.setRemoteDescription(answer)
             
             print("[RediWebRTC] ✅ WebRTC connection established!")
             
@@ -164,17 +156,11 @@ class RediWebRTCService: NSObject, ObservableObject {
             }
             throw error
         }
-        #else
-        // WebRTC not available
-        print("[RediWebRTC] ❌ WebRTC not available - please run 'pod install' and open .xcworkspace")
-        throw WebRTCError.webrtcNotAvailable
-        #endif
     }
     
     func disconnect() {
         print("[RediWebRTC] 🔌 Disconnecting...")
         
-        #if canImport(WebRTC)
         dataChannel?.close()
         dataChannel = nil
         
@@ -183,13 +169,12 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         localAudioTrack = nil
         audioTrack = nil
-        #endif
-        
         ephemeralToken = nil
         
         DispatchQueue.main.async {
             self.isConnected = false
             self.isConnecting = false
+            self.connectionState = .closed
         }
     }
     
@@ -238,7 +223,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[RediWebRTC] ✅ Audio session configured with echo cancellation")
     }
     
-    #if canImport(WebRTC)
     // MARK: - Peer Connection
     
     private func createPeerConnection() throws {
@@ -311,6 +295,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - SDP Offer/Answer
     
     private func createOffer() async throws -> RTCSessionDescription {
+        guard let pc = peerConnection else {
+            throw WebRTCError.peerConnectionFailed
+        }
+        
         let constraints = RTCMediaConstraints(
             mandatoryConstraints: [
                 "OfferToReceiveAudio": "true",
@@ -320,7 +308,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         )
         
         return try await withCheckedThrowingContinuation { continuation in
-            peerConnection?.offer(for: constraints) { sdp, error in
+            pc.offer(for: constraints) { sdp, error in
                 if let error = error {
                     continuation.resume(throwing: error)
                 } else if let sdp = sdp {
@@ -358,30 +346,24 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         return RTCSessionDescription(type: .answer, sdp: sdpString)
     }
-    #endif
     
     // MARK: - Sending Data
     
     /// Send a message through the data channel
     func send(message: [String: Any]) {
-        #if canImport(WebRTC)
         guard let dc = dataChannel,
               dc.readyState == .open else {
             print("[RediWebRTC] ⚠️ Data channel not ready")
             return
         }
         
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: message),
-              let _ = String(data: jsonData, encoding: .utf8) else {
+        guard let jsonData = try? JSONSerialization.data(withJSONObject: message) else {
             print("[RediWebRTC] ⚠️ Failed to serialize message")
             return
         }
         
         let buffer = RTCDataBuffer(data: jsonData, isBinary: false)
         dc.sendData(buffer)
-        #else
-        print("[RediWebRTC] ⚠️ WebRTC not available")
-        #endif
     }
     
     /// Send a camera frame to OpenAI
@@ -405,16 +387,13 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     /// Mute/unmute microphone
     func setMicMuted(_ muted: Bool) {
-        #if canImport(WebRTC)
         localAudioTrack?.isEnabled = !muted
         print("[RediWebRTC] 🎤 Mic \(muted ? "muted" : "unmuted")")
-        #endif
     }
     
     // MARK: - Error Types
     
     enum WebRTCError: Error, LocalizedError {
-        case webrtcNotAvailable
         case tokenFetchFailed
         case peerConnectionFailed
         case offerCreationFailed
@@ -425,7 +404,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         var errorDescription: String? {
             switch self {
-            case .webrtcNotAvailable: return "WebRTC not available - run 'pod install' and open .xcworkspace"
             case .tokenFetchFailed: return "Failed to get ephemeral token"
             case .peerConnectionFailed: return "Failed to create peer connection"
             case .offerCreationFailed: return "Failed to create SDP offer"
@@ -440,7 +418,6 @@ class RediWebRTCService: NSObject, ObservableObject {
 
 // MARK: - RTCPeerConnectionDelegate
 
-#if canImport(WebRTC)
 extension RediWebRTCService: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {
         print("[RediWebRTC] Signaling state: \(stateChanged.rawValue)")
@@ -525,9 +502,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
     
     func dataChannel(_ dataChannel: RTCDataChannel, didReceiveMessageWith buffer: RTCDataBuffer) {
         guard !buffer.isBinary,
-              let jsonString = String(data: buffer.data, encoding: .utf8),
-              let jsonData = jsonString.data(using: .utf8),
-              let message = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any],
+              let message = try? JSONSerialization.jsonObject(with: buffer.data) as? [String: Any],
               let type = message["type"] as? String else {
             return
         }
@@ -581,4 +556,3 @@ extension RediWebRTCService: RTCDataChannelDelegate {
         }
     }
 }
-#endif
