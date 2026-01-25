@@ -30,6 +30,7 @@ import supportReplyApi from './api/supportReplyApi';
 import homeworkApi from './api/homeworkApi';
 import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
+import rediWebRTCApi from './api/rediWebRTCApi';
 // V1/V2 archived - V3, V5, V6, V7, V8 active
 import { initRediV3 } from './websocket/rediV3Server';
 import { initRediV5 } from './websocket/rediV5Server';
@@ -803,6 +804,7 @@ app.use('/api/support', supportReplyApi);
 app.use('/api/homework-rescue', homeworkApi);
 app.use('/api/analytics', analyticsApi);
 app.use('/api/redi', rediApi);
+app.use('/api/redi/webrtc', rediWebRTCApi);
 
 // ============================================================
 // STRIPE WEBHOOK
@@ -1531,6 +1533,8 @@ server.listen(PORT, () => {
 ║   • V6 (Stable):     /ws/redi?v=6                             ║
 ║   • V5 (Router):     /ws/redi?v=5                             ║
 ║   • V3 (Legacy):     /ws/redi?v=3                             ║
+║                                                               ║
+║   Redi WebRTC:       POST /api/redi/webrtc/token              ║
 ║                                                               ║
 ║   API Usage Monitoring: ACTIVE (checks every 4 hours)         ║
 ║                                                               ║
