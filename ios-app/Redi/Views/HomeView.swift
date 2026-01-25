@@ -77,10 +77,13 @@ struct HomeView: View {
             SettingsView()
         }
         .alert("Admin Test Mode", isPresented: $showingAdminBypass) {
-            Button("Start V7 (Production) ✅") {
+            Button("Start V7 WebRTC (No Echo!) 🚀") {
+                selectedVersion = "v7webrtc"
+            }
+            Button("Start V7 WebSocket ⚠️") {
                 selectedVersion = "v7"
             }
-            Button("Start V8 (Two-Brain) ⚠️") {
+            Button("Start V8 (Two-Brain) ❌") {
                 selectedVersion = "v8"
             }
             Button("Start V6 (Stable)") {
@@ -96,7 +99,7 @@ struct HomeView: View {
                 selectedVersion = nil
             }
         } message: {
-            Text("Select a version to test:\n• V7 = Production (OpenAI Realtime) ✅\n• V8 = Two-Brain (BROKEN - bad vision)\n• V6 = Stable fallback\n• V3 = Legacy backup")
+            Text("Select a version to test:\n• V7 WebRTC = BEST (no echo!) 🚀\n• V7 WebSocket = Has echo issues ⚠️\n• V8 = BROKEN ❌\n• V6 = Stable fallback\n• V3 = Legacy backup")
         }
         .onChange(of: selectedVersion) { version in
             // Process version selection AFTER alert dismisses
@@ -131,10 +134,14 @@ struct HomeView: View {
         
         // Set the selected version
         switch version {
+        case "v7webrtc":
+            RediConfig.serverVersion = .v7webrtc
+            appState.useV7 = true
+            print("[HomeView] ✅ V7 WebRTC activated (direct to OpenAI, no echo)")
         case "v7":
             RediConfig.serverVersion = .v7
             appState.useV7 = true
-            print("[HomeView] ✅ V7 activated, useV7 = \(appState.useV7)")
+            print("[HomeView] V7 WebSocket activated (may have echo)")
         case "v8":
             RediConfig.serverVersion = .v8
             appState.useV8 = true
@@ -205,7 +212,7 @@ struct HomeView: View {
             // Show current server version
             Text("Server: \(RediConfig.serverVersion.displayName)")
                 .font(.caption2)
-                .foregroundColor(.cyan.opacity(0.7))
+                .foregroundColor(RediConfig.serverVersion.isWebRTC ? .green : .cyan.opacity(0.7))
         }
         .padding(.top, 40)
         .sheet(isPresented: $showingHistory) {
