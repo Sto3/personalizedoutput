@@ -7,6 +7,9 @@
  * - Sensitivity slider
  * - Transcript display
  * - ~500ms voice-to-voice latency
+ * 
+ * Jan 25, 2026: Added WebRTC support for echo-free audio!
+ * When V7 WebRTC is selected, uses direct connection to OpenAI.
  */
 
 import SwiftUI
@@ -17,6 +20,7 @@ struct V3MainView: View {
     @StateObject private var cameraService = V3CameraService()
     @StateObject private var audioService = V5AudioService()
     @StateObject private var webSocketService = V5WebSocketService()
+    @StateObject private var webRTCService = RediWebRTCService()
 
     @State private var isSessionActive = false
     @State private var lastTranscript = ""
@@ -25,6 +29,7 @@ struct V3MainView: View {
     @State private var isConnecting = false
     @State private var isSessionReady = false
     @State private var cancellables = Set<AnyCancellable>()
+    @State private var useWebRTC = false  // Determined at session start
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
@@ -55,9 +60,9 @@ struct V3MainView: View {
                             .fontWeight(.bold)
                             .foregroundColor(.white)
 
-                        Text("OpenAI Realtime API")
+                        Text(RediConfig.serverVersion.displayName)
                             .font(.subheadline)
-                            .foregroundColor(.gray)
+                            .foregroundColor(RediConfig.isWebRTCEnabled ? .green : .gray)
                     }
                 }
 
@@ -73,7 +78,7 @@ struct V3MainView: View {
             setupCallbacks()
         }
         .onChange(of: sensitivity) { newValue in
-            if isSessionActive {
+            if isSessionActive && !useWebRTC {
                 webSocketService.sendSensitivity(newValue)
             }
         }
@@ -146,13 +151,15 @@ struct V3MainView: View {
             Spacer()
 
             if isSessionActive && isSessionReady {
-                Text("V3 Active")
-                    .font(.caption)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.green.opacity(0.3))
-                    .cornerRadius(8)
-                    .foregroundColor(.green)
+                HStack(spacing: 4) {
+                    Text(useWebRTC ? "WebRTC" : "WebSocket")
+                        .font(.caption)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(useWebRTC ? Color.green.opacity(0.3) : Color.orange.opacity(0.3))
+                        .cornerRadius(8)
+                        .foregroundColor(useWebRTC ? .green : .orange)
+                }
             }
         }
         .padding()
@@ -244,29 +251,45 @@ struct V3MainView: View {
     }
 
     private var statusColor: Color {
-        switch webSocketService.connectionState {
-        case .connected:
-            return isSessionReady ? .green : .yellow
-        case .connecting:
-            return .yellow
-        case .disconnected:
-            return .gray
-        case .error:
-            return .red
+        if useWebRTC {
+            // WebRTC status
+            return isSessionReady ? .green : (isConnecting ? .yellow : .gray)
+        } else {
+            // WebSocket status
+            switch webSocketService.connectionState {
+            case .connected:
+                return isSessionReady ? .green : .yellow
+            case .connecting:
+                return .yellow
+            case .disconnected:
+                return .gray
+            case .error:
+                return .red
+            }
         }
     }
 
     private var statusText: String {
-        switch webSocketService.connectionState {
-        case .connected:
-            return isSessionReady ? "Ready" : "Initializing..."
-        case .connecting:
-            return "Connecting..."
-        case .disconnected:
-            return "Not connected"
-        case .error:
-            // Suppress error details in UI - just show reconnecting
-            return "Reconnecting..."
+        if useWebRTC {
+            if isSessionReady {
+                return "WebRTC Ready"
+            } else if isConnecting {
+                return "Connecting WebRTC..."
+            } else {
+                return "Not connected"
+            }
+        } else {
+            switch webSocketService.connectionState {
+            case .connected:
+                return isSessionReady ? "Ready" : "Initializing..."
+            case .connecting:
+                return "Connecting..."
+            case .disconnected:
+                return "Not connected"
+            case .error:
+                // Suppress error details in UI - just show reconnecting
+                return "Reconnecting..."
+            }
         }
     }
 
@@ -283,16 +306,109 @@ struct V3MainView: View {
         print("[V3MainView] Starting session...")
         isConnecting = true
         isSessionReady = false
+        
+        // Check if WebRTC is enabled
+        useWebRTC = RediConfig.isWebRTCEnabled
+        print("[V3MainView] Using \(useWebRTC ? "WebRTC 🚀" : "WebSocket")")
 
+        if useWebRTC {
+            startWebRTCSession()
+        } else {
+            startWebSocketSession()
+        }
+
+        // Start camera (same for both modes)
+        cameraService.startCapture()
+        
+        isSessionActive = true
+    }
+    
+    private func startWebRTCSession() {
+        print("[V3MainView] 🚀 Starting WebRTC session...")
+        
+        // Setup WebRTC callbacks BEFORE connecting
+        webRTCService.onSessionReady = {
+            DispatchQueue.main.async {
+                self.isSessionReady = true
+                self.isConnecting = false
+                print("[V3MainView] ✅ WebRTC session ready!")
+            }
+        }
+        
+        webRTCService.onTranscriptReceived = { text, role in
+            self.handleTranscript(text: text, role: role)
+        }
+        
+        webRTCService.onPlaybackStarted = {
+            // WebRTC handles echo cancellation internally - no need to mute mic!
+            print("[V3MainView] 🔊 WebRTC playback started (AEC active)")
+        }
+        
+        webRTCService.onPlaybackEnded = {
+            print("[V3MainView] 🔇 WebRTC playback ended")
+        }
+        
+        webRTCService.onRequestFrame = {
+            self.cameraService.captureFrameNow { frameData in
+                self.webRTCService.sendFrame(frameData)
+            }
+        }
+        
+        webRTCService.onError = { error in
+            print("[V3MainView] ❌ WebRTC error: \(error.localizedDescription)")
+            DispatchQueue.main.async {
+                // Fall back to WebSocket if WebRTC fails
+                print("[V3MainView] 🔄 Falling back to WebSocket...")
+                self.useWebRTC = false
+                self.startWebSocketSession()
+            }
+        }
+        
+        // Camera frames -> WebRTC (for vision)
+        cameraService.onFrameCaptured = { [weak webRTCService] frameData in
+            webRTCService?.sendFrame(frameData)
+        }
+        
+        // Connect!
+        Task {
+            do {
+                try await webRTCService.connect(mode: "general")
+                print("[V3MainView] ✅ WebRTC connected!")
+            } catch {
+                print("[V3MainView] ❌ WebRTC connection failed: \(error.localizedDescription)")
+                await MainActor.run {
+                    // Fall back to WebSocket
+                    self.useWebRTC = false
+                    self.startWebSocketSession()
+                }
+            }
+        }
+    }
+    
+    private func startWebSocketSession() {
+        print("[V3MainView] Starting WebSocket session...")
+        
+        // Setup WebSocket callbacks
+        setupWebSocketCallbacks()
+        
         // Connect to server
         webSocketService.connect()
 
-        // Start camera and audio
-        cameraService.startCapture()
+        // Start audio (WebSocket needs explicit audio handling)
         audioService.startRecording()
-
-        isSessionActive = true
-        isConnecting = false
+        
+        // Audio -> Server (using Combine publisher)
+        audioService.audioCaptured
+            .sink { [weak webSocketService] audioData in
+                webSocketService?.sendAudio(audioData)
+            }
+            .store(in: &cancellables)
+        
+        // Camera frames -> Server
+        cameraService.onFrameCaptured = { [weak webSocketService] frameData in
+            print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
+            webSocketService?.sendFrame(frameData)
+        }
     }
 
     private func stopSession() {
@@ -301,13 +417,19 @@ struct V3MainView: View {
         Thread.callStackSymbols.prefix(10).forEach { print("  \($0)") }
 
         cameraService.stopCapture()
-        audioService.stopRecording()
-        webSocketService.disconnect()
-        audioService.cleanup()
+        
+        if useWebRTC {
+            webRTCService.disconnect()
+        } else {
+            audioService.stopRecording()
+            webSocketService.disconnect()
+            audioService.cleanup()
+        }
 
         isSessionActive = false
         isSessionReady = false
         lastTranscript = ""
+        useWebRTC = false
         
         // Clear subscriptions
         cancellables.removeAll()
@@ -317,20 +439,35 @@ struct V3MainView: View {
         stopSession()
         appState.useV3 = false
     }
+    
+    private func handleTranscript(text: String, role: String) {
+        DispatchQueue.main.async {
+            withAnimation {
+                self.lastTranscript = text
+                self.lastRole = role
+            }
+
+            // Clear transcript after 5 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                if self.lastTranscript == text {
+                    withAnimation {
+                        self.lastTranscript = ""
+                    }
+                }
+            }
+        }
+    }
 
     private func setupCallbacks() {
+        // Only setup WebSocket callbacks here - WebRTC callbacks are setup in startWebRTCSession
+    }
+    
+    private func setupWebSocketCallbacks() {
         // Camera frames → Server
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
             print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
         }
-
-        // Audio → Server (using Combine publisher)
-        audioService.audioCaptured
-            .sink { [weak webSocketService] audioData in
-                webSocketService?.sendAudio(audioData)
-            }
-            .store(in: &cancellables)
 
         // Server audio → Speaker
         webSocketService.onAudioReceived = { [weak audioService] audioData in
@@ -344,24 +481,13 @@ struct V3MainView: View {
 
         // Server transcripts → UI
         webSocketService.onTranscriptReceived = { text, role in
-            withAnimation {
-                lastTranscript = text
-                lastRole = role
-            }
-
-            // Clear transcript after 5 seconds
-            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-                if lastTranscript == text {
-                    withAnimation {
-                        lastTranscript = ""
-                    }
-                }
-            }
+            self.handleTranscript(text: text, role: role)
         }
 
         // Session ready
         webSocketService.onSessionReady = {
-            isSessionReady = true
+            self.isSessionReady = true
+            self.isConnecting = false
             print("[V3MainView] Session ready - OpenAI connected!")
         }
 
