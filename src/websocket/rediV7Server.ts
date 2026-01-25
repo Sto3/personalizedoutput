@@ -1,15 +1,16 @@
 /**
- * Redi V7 Server - ECHO-FREE Architecture
- * ========================================
+ * Redi V7 Server - BULLETPROOF ECHO-FREE Architecture
+ * ====================================================
  * 
- * THREE LAYERS OF ECHO PROTECTION:
- * 1. Server-side audio blocking (don't forward audio during playback)
- * 2. Clear OpenAI's input buffer when response starts
- * 3. iOS-side audio blocking (backup)
+ * CRITICAL FIX: Block audio from the moment we trigger a response,
+ * NOT just when response.created fires. This prevents the race condition
+ * where echo audio reaches OpenAI before we can block it.
  * 
- * BARGE-IN:
- * - iOS detects loud speech locally → sends "interrupt"
- * - Server cancels response, clears buffer, unblocks
+ * FOUR LAYERS OF ECHO PROTECTION:
+ * 1. Block audio when we trigger response (immediate)
+ * 2. Block audio while assistant is speaking
+ * 3. Clear OpenAI's input buffer on response.created
+ * 4. Echo text detection as final fallback
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -31,15 +32,19 @@ interface Session {
   lastFrameRequestTime: number;
   
   isUserSpeaking: boolean;
-  isAssistantSpeaking: boolean;
+  
+  // CRITICAL: Two flags for audio blocking
+  isWaitingForResponse: boolean;  // Set TRUE when we trigger response.create
+  isAssistantSpeaking: boolean;   // Set TRUE when response.created arrives
+  
   speechStartTime: number;
   responseTriggeredForTurn: boolean;
   
-  // Track last assistant response to detect echo
   lastAssistantText: string;
   
   connectionTime: number;
   responsesCompleted: number;
+  audioBlockedCount: number;
 }
 
 const sessions = new Map<string, Session>();
@@ -51,13 +56,14 @@ RULES:
 - Respond naturally to what the user asks
 - If they ask what you see, describe the image briefly (10-20 words)
 - Be conversational and helpful
-- Don't say "I see" - describe directly`;
+- Don't say "I see" - describe directly
+- Keep responses SHORT - under 30 words unless asked for more`;
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
-  console.log('[Redi V7] Starting - ECHO-FREE Architecture');
-  console.log('[Redi V7] • Server blocks audio during playback');
-  console.log('[Redi V7] • Clears OpenAI buffer on response start');
-  console.log('[Redi V7] • iOS sends interrupt for barge-in');
+  console.log('[Redi V7] Starting - BULLETPROOF ECHO-FREE');
+  console.log('[Redi V7] • Block audio immediately when response triggered');
+  console.log('[Redi V7] • Clear OpenAI buffer on response.created');
+  console.log('[Redi V7] • Echo text detection as fallback');
 
   if (!OPENAI_API_KEY) {
     console.error('[Redi V7] ❌ OPENAI_API_KEY not set!');
@@ -78,19 +84,21 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
       latestFrameTime: 0,
       lastFrameRequestTime: 0,
       isUserSpeaking: false,
+      isWaitingForResponse: false,
       isAssistantSpeaking: false,
       speechStartTime: 0,
       responseTriggeredForTurn: false,
       lastAssistantText: '',
       connectionTime: Date.now(),
       responsesCompleted: 0,
+      audioBlockedCount: 0,
     };
 
     sessions.set(sessionId, session);
 
     try {
       await connectToOpenAI(session);
-      sendToClient(session, { type: 'session_ready', sessionId, version: 'V7-EchoFree' });
+      sendToClient(session, { type: 'session_ready', sessionId, version: 'V7-Bulletproof' });
     } catch (error) {
       console.error(`[Redi V7] ❌ OpenAI failed:`, error);
       ws.close(1011, 'OpenAI connection failed');
@@ -108,7 +116,7 @@ export async function initRediV7(server: HTTPServer): Promise<void> {
 
     ws.on('close', () => {
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
-      console.log(`[Redi V7] 🔌 Disconnected: ${sessionId.slice(0,8)} (${duration}s, ${session.responsesCompleted} responses)`);
+      console.log(`[Redi V7] 🔌 Disconnected: ${sessionId.slice(0,8)} (${duration}s, ${session.responsesCompleted} responses, ${session.audioBlockedCount} audio blocked)`);
       cleanup(sessionId);
     });
 
@@ -156,23 +164,34 @@ function configureSession(session: Session): void {
       input_audio_transcription: { model: 'whisper-1' },
       turn_detection: {
         type: 'server_vad',
-        threshold: 0.6,           // Higher threshold to reduce false triggers
-        prefix_padding_ms: 300,   // More padding before speech
-        silence_duration_ms: 700  // Longer silence required to end turn
+        threshold: 0.7,           // Even higher threshold
+        prefix_padding_ms: 400,   // More padding
+        silence_duration_ms: 800  // Longer silence required
       }
     }
   });
+}
+
+/**
+ * Check if we should block audio
+ * Block when: waiting for response OR assistant is speaking
+ */
+function shouldBlockAudio(session: Session): boolean {
+  return session.isWaitingForResponse || session.isAssistantSpeaking;
 }
 
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
       // ═══════════════════════════════════════════════════════════════
-      // CRITICAL ECHO PREVENTION: Block audio at server level
-      // Do NOT forward audio to OpenAI while assistant is speaking!
+      // BULLETPROOF ECHO PREVENTION: Block audio during ENTIRE response cycle
       // ═══════════════════════════════════════════════════════════════
-      if (session.isAssistantSpeaking) {
-        // Silently drop - this prevents echo!
+      if (shouldBlockAudio(session)) {
+        session.audioBlockedCount++;
+        // Log periodically so we know it's working
+        if (session.audioBlockedCount % 100 === 0) {
+          console.log(`[Redi V7] 🔇 Blocked ${session.audioBlockedCount} audio chunks`);
+        }
         return;
       }
       
@@ -185,21 +204,16 @@ function handleClientMessage(session: Session, message: any): void {
       break;
 
     case 'interrupt':
-      // iOS detected loud speech during playback - trigger barge-in
-      if (session.isAssistantSpeaking) {
+      if (session.isAssistantSpeaking || session.isWaitingForResponse) {
         console.log('[Redi V7] 🛑 BARGE-IN from iOS');
         
-        // Cancel the response
         sendToOpenAI(session, { type: 'response.cancel' });
-        
-        // Clear any buffered audio (critical!)
         sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
-        
-        // Tell iOS to stop playback
         sendToClient(session, { type: 'stop_audio' });
         
-        // Reset state - ready for new input
+        // Reset all blocking flags
         session.isAssistantSpeaking = false;
+        session.isWaitingForResponse = false;
         session.responseTriggeredForTurn = false;
         
         console.log('[Redi V7] ✅ Barge-in complete');
@@ -223,17 +237,19 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         break;
 
       case 'input_audio_buffer.speech_started':
-        // Only log if we're not in playback (real user speech)
-        if (!session.isAssistantSpeaking) {
+        // Only process if NOT blocking (real user speech)
+        if (!shouldBlockAudio(session)) {
           session.isUserSpeaking = true;
           session.speechStartTime = Date.now();
           session.responseTriggeredForTurn = false;
           console.log('[Redi V7] 🎤 Speaking...');
         }
+        // If blocking, this is echo - ignore silently
         break;
 
       case 'input_audio_buffer.speech_stopped':
-        if (!session.isAssistantSpeaking) {
+        // Only process if NOT blocking (real user speech)
+        if (!shouldBlockAudio(session)) {
           session.isUserSpeaking = false;
           const duration = Date.now() - session.speechStartTime;
           console.log(`[Redi V7] 🎤 Stopped (${duration}ms)`);
@@ -248,21 +264,20 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
               sendToClient(session, { type: 'request_frame' });
             }
             
+            // Trigger response after small delay for frame
             setTimeout(() => triggerResponse(session), 100);
           }
         }
+        // If blocking, this is echo - ignore silently
         break;
 
       case 'conversation.item.input_audio_transcription.completed':
         if (event.transcript) {
           const text = event.transcript.trim();
           
-          // ═══════════════════════════════════════════════════════════════
-          // ECHO DETECTION: Check if this is Redi's own voice
-          // If the transcript matches what we just said, it's echo - ignore it
-          // ═══════════════════════════════════════════════════════════════
+          // Echo detection as final fallback
           if (session.lastAssistantText && isEcho(text, session.lastAssistantText)) {
-            console.log(`[Redi V7] 🔇 Echo detected, ignoring: "${text.substring(0, 30)}..."`);
+            console.log(`[Redi V7] 🔇 Echo text ignored: "${text.substring(0, 30)}..."`);
             return;
           }
           
@@ -273,14 +288,11 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.created':
         session.isAssistantSpeaking = true;
+        // isWaitingForResponse stays true until response ends
         
-        // ═══════════════════════════════════════════════════════════════
-        // CRITICAL: Clear OpenAI's input buffer when response starts
-        // This removes any echo audio that might have been buffered
-        // ═══════════════════════════════════════════════════════════════
+        // Clear any buffered audio that might contain echo
         sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
         
-        // Tell iOS playback is starting (iOS will also block audio)
         sendToClient(session, { type: 'playback_started' });
         break;
 
@@ -293,7 +305,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
       case 'response.audio_transcript.done':
         if (event.transcript) {
           const text = event.transcript;
-          session.lastAssistantText = text;  // Store for echo detection
+          session.lastAssistantText = text;
           console.log(`[Redi V7] 🤖 "${text}"`);
           sendToClient(session, { type: 'transcript', text, role: 'assistant' });
         }
@@ -301,6 +313,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.done':
         session.isAssistantSpeaking = false;
+        session.isWaitingForResponse = false;  // NOW we can accept audio again
         session.responsesCompleted++;
         sendToClient(session, { type: 'playback_ended' });
         console.log('[Redi V7] ✅ Done');
@@ -308,6 +321,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.cancelled':
         session.isAssistantSpeaking = false;
+        session.isWaitingForResponse = false;
         console.log('[Redi V7] ⚡ Cancelled');
         break;
     }
@@ -316,20 +330,14 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
   }
 }
 
-/**
- * Check if user transcript is likely an echo of the assistant's response
- * Uses fuzzy matching to detect partial matches
- */
 function isEcho(userText: string, assistantText: string): boolean {
   const user = userText.toLowerCase().trim();
   const assistant = assistantText.toLowerCase().trim();
   
-  // Check if user text is contained in assistant text (or vice versa)
   if (assistant.includes(user) || user.includes(assistant)) {
     return true;
   }
   
-  // Check word overlap - if more than 60% of words match, it's likely echo
   const userWords = user.split(/\s+/).filter(w => w.length > 2);
   const assistantWords = assistant.split(/\s+/).filter(w => w.length > 2);
   
@@ -338,14 +346,21 @@ function isEcho(userText: string, assistantText: string): boolean {
   const matchingWords = userWords.filter(word => assistantWords.includes(word));
   const overlapRatio = matchingWords.length / userWords.length;
   
-  return overlapRatio > 0.6;
+  return overlapRatio > 0.5;  // 50% match is echo
 }
 
 function triggerResponse(session: Session): void {
-  if (session.isAssistantSpeaking) {
-    console.log('[Redi V7] ⚠️ Skipping - already speaking');
-    return;
-  }
+  // ═══════════════════════════════════════════════════════════════
+  // CRITICAL: Set isWaitingForResponse BEFORE sending response.create
+  // This blocks any incoming audio immediately
+  // ═══════════════════════════════════════════════════════════════
+  session.isWaitingForResponse = true;
+  
+  // Tell iOS to start blocking audio NOW (don't wait for playback_started)
+  sendToClient(session, { type: 'playback_started' });
+  
+  // Clear any audio that might have been buffered
+  sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
   
   const frameAge = session.latestFrame ? Date.now() - session.latestFrameTime : Infinity;
   
@@ -358,7 +373,7 @@ function triggerResponse(session: Session): void {
         type: 'message',
         role: 'user',
         content: [
-          { type: 'input_text', text: '[Describe what you see if relevant to the conversation:]' },
+          { type: 'input_text', text: '[Describe briefly if relevant:]' },
           { type: 'input_image', image_url: `data:image/jpeg;base64,${cleanBase64}` }
         ]
       }
@@ -366,6 +381,7 @@ function triggerResponse(session: Session): void {
   }
   
   sendToOpenAI(session, { type: 'response.create' });
+  console.log('[Redi V7] 🚀 Response triggered (audio blocked)');
 }
 
 function sendToOpenAI(session: Session, message: any): void {
