@@ -1,9 +1,18 @@
 /**
- * Redi V7 Server - NO COOLDOWN (awaiting iOS echo cancellation fix)
- * ==================================================================
+ * Redi V7 Server - Echo Prevention + Barge-In
+ * ============================================
  * 
- * TEMPORARY: Removed cooldown to eliminate latency.
- * Echo issue will be fixed on iOS side with proper audio handling.
+ * ARCHITECTURE:
+ * - iOS sends ALL audio (even during playback)
+ * - During playback, audio is tagged with interruption:true
+ * - Server forwards all audio to OpenAI for VAD
+ * - If OpenAI detects speech during playback → BARGE-IN
+ * - Barge-in: cancel response, tell iOS to stop audio, clear buffer
+ * 
+ * This gives us:
+ * - Echo prevention (OpenAI's VAD ignores low-level playback audio)
+ * - Barge-in (user can interrupt by speaking loudly)
+ * - Zero added latency
  * 
  * Endpoint: /ws/redi?v=7
  */
@@ -68,10 +77,11 @@ RULES:
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] 🚀 V7 - NO COOLDOWN (awaiting iOS fix)');
+  console.log('[Redi V7] 🚀 V7 - Echo Prevention + Barge-In');
   console.log('[Redi V7] ═══════════════════════════════════════════');
-  console.log('[Redi V7] Model: gpt-realtime (FULL capability)');
-  console.log('[Redi V7] Note: Echo fix pending on iOS side');
+  console.log('[Redi V7] • Audio always forwarded to OpenAI');
+  console.log('[Redi V7] • Interruption during playback → barge-in');
+  console.log('[Redi V7] • Zero added latency');
   console.log('[Redi V7] ═══════════════════════════════════════════');
 
   if (!OPENAI_API_KEY) {
@@ -190,14 +200,14 @@ function configureSession(session: Session): void {
       input_audio_transcription: { model: 'whisper-1' },
       turn_detection: {
         type: 'server_vad',
-        threshold: 0.5,
+        threshold: 0.6,  // Slightly higher threshold to reduce false triggers
         prefix_padding_ms: 200,
         silence_duration_ms: 400
       }
     }
   });
   
-  console.log('[Redi V7] ⚡ Configured');
+  console.log('[Redi V7] ⚡ Configured (VAD threshold: 0.6)');
 }
 
 // =============================================================================
@@ -207,7 +217,8 @@ function configureSession(session: Session): void {
 function handleClientMessage(session: Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      // Send all audio - no blocking (iOS will handle echo cancellation)
+      // ALWAYS forward audio to OpenAI - let its VAD decide
+      // This enables barge-in detection during playback
       if (message.data) {
         sendToOpenAI(session, {
           type: 'input_audio_buffer.append',
@@ -245,20 +256,35 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'input_audio_buffer.speech_started':
         session.isUserSpeaking = true;
-        session.responseTriggeredForTurn = false;
         session.speechStartTime = Date.now();
-        console.log('[Redi V7] 🎤 Speaking...');
         
-        // Request fresh frame
-        sendToClient(session, { type: 'request_frame' });
-        
-        // Barge-in: interrupt assistant if user starts speaking
+        // BARGE-IN: If assistant is speaking when user starts, interrupt!
         if (session.isAssistantSpeaking) {
-          console.log('[Redi V7] 🛑 BARGE-IN');
-          sendToClient(session, { type: 'stop_audio' });
+          console.log('[Redi V7] 🛑 BARGE-IN detected!');
+          
+          // 1. Cancel the current response
           sendToOpenAI(session, { type: 'response.cancel' });
+          
+          // 2. Clear any buffered audio on OpenAI side
+          sendToOpenAI(session, { type: 'input_audio_buffer.clear' });
+          
+          // 3. Tell iOS to stop playing audio
+          sendToClient(session, { type: 'stop_audio' });
+          
+          // 4. Update state
           session.isAssistantSpeaking = false;
+          session.responseTriggeredForTurn = false;
+          
+          console.log('[Redi V7] 🛑 Barge-in complete - listening to user');
+        } else {
+          console.log('[Redi V7] 🎤 Speaking...');
         }
+        
+        // Reset for new turn
+        session.responseTriggeredForTurn = false;
+        
+        // Request fresh frame for upcoming response
+        sendToClient(session, { type: 'request_frame' });
         break;
 
       case 'input_audio_buffer.speech_stopped':
@@ -266,12 +292,14 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
         const speechDuration = Date.now() - session.speechStartTime;
         console.log(`[Redi V7] 🎤 Stopped (${speechDuration}ms)`);
         
-        // Trigger response
-        if (!session.responseTriggeredForTurn) {
+        // Only trigger response if not already triggered and assistant isn't speaking
+        if (!session.responseTriggeredForTurn && !session.isAssistantSpeaking) {
           session.responseTriggeredForTurn = true;
           
+          // Request fresh frame
           sendToClient(session, { type: 'request_frame' });
           
+          // Small delay to let frame arrive
           setTimeout(() => {
             triggerResponseWithLatestFrame(session);
           }, 50);
@@ -287,7 +315,7 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.created':
         session.isAssistantSpeaking = true;
-        // Tell iOS to handle echo (stop sending audio while playing)
+        // Tell iOS playback is starting (it will tag audio as interruption-capable)
         sendToClient(session, { type: 'playback_started' });
         break;
 
@@ -314,7 +342,8 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 
       case 'response.cancelled':
         session.isAssistantSpeaking = false;
-        sendToClient(session, { type: 'playback_ended' });
+        // Don't send playback_ended here - stop_audio already sent during barge-in
+        console.log('[Redi V7] ⚡ Response cancelled');
         break;
     }
   } catch (error) {
@@ -327,6 +356,12 @@ function handleOpenAIMessage(session: Session, data: Buffer): void {
 // =============================================================================
 
 function triggerResponseWithLatestFrame(session: Session): void {
+  // Don't trigger if assistant started speaking (e.g., barge-in happened)
+  if (session.isAssistantSpeaking) {
+    console.log('[Redi V7] ⚠️ Skipping response - assistant already speaking');
+    return;
+  }
+  
   const frameAge = session.latestFrame ? Date.now() - session.latestFrameTime : Infinity;
   
   if (session.latestFrame && frameAge < 1000) {
