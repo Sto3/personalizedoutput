@@ -6,6 +6,10 @@
  *
  * CRITICAL: This is the only WebSocket service that should be used.
  * It sends the correct message format expected by V7/V8 servers.
+ * 
+ * ECHO PREVENTION (Jan 25, 2026):
+ * - Handles playback_started/playback_ended to block mic during AI speech
+ * - Prevents Redi from hearing its own audio output
  */
 
 import Foundation
@@ -16,6 +20,7 @@ class RediWebSocketService: ObservableObject {
     
     @Published var isConnected = false
     @Published var connectionState: ConnectionState = .disconnected
+    @Published var isPlaybackActive = false  // NEW: Track when AI is speaking
     
     enum ConnectionState: Equatable {
         case disconnected
@@ -34,6 +39,8 @@ class RediWebSocketService: ObservableObject {
     var onMicMuteChanged: ((Bool) -> Void)?
     var onStopAudio: (() -> Void)?
     var onRequestFrame: (() -> Void)?
+    var onPlaybackStarted: (() -> Void)?  // NEW: Server started AI response
+    var onPlaybackEnded: (() -> Void)?    // NEW: Server finished AI response
     
     // MARK: - Private Properties
     
@@ -111,6 +118,7 @@ class RediWebSocketService: ObservableObject {
         webSocket = nil
         isConnected = false
         connectionState = .disconnected
+        isPlaybackActive = false
     }
     
     // MARK: - Sending Messages
@@ -130,8 +138,14 @@ class RediWebSocketService: ObservableObject {
     }
     
     /// Send audio data to the server
-    /// Server expects: { type: "audio", data: "<base64>" }
+    /// CRITICAL: Don't send audio while AI is speaking (echo prevention)
     func sendAudio(_ audioData: Data) {
+        // ECHO PREVENTION: Don't send audio while playback is active
+        guard !isPlaybackActive else {
+            // Silently drop audio during playback to prevent echo
+            return
+        }
+        
         sendJSON([
             "type": "audio",
             "data": audioData.base64EncodedString()
@@ -148,6 +162,12 @@ class RediWebSocketService: ObservableObject {
     func sendSensitivity(_ value: Double) {
         print("[RediWS] 📊 Sending sensitivity: \(value)")
         sendJSON(["type": "sensitivity", "value": value])
+    }
+    
+    /// Send interrupt signal (barge-in)
+    func sendInterrupt() {
+        print("[RediWS] ⚡ Sending interrupt")
+        sendJSON(["type": "interrupt"])
     }
     
     // MARK: - Private Methods
@@ -248,6 +268,7 @@ class RediWebSocketService: ObservableObject {
         case "stop_audio":
             // Server sends this on barge-in
             print("[RediWS] 🛑 Stop audio (barge-in)")
+            isPlaybackActive = false  // Also reset playback state
             onStopAudio?()
             
         case "request_frame":
@@ -255,6 +276,24 @@ class RediWebSocketService: ObservableObject {
             // CRITICAL: This is how the server gets fresh images!
             print("[RediWS] 📷 Server requested fresh frame")
             onRequestFrame?()
+            
+        // ═══════════════════════════════════════════════════════════════
+        // CRITICAL: Echo prevention - block audio during AI playback
+        // ═══════════════════════════════════════════════════════════════
+            
+        case "playback_started":
+            // Server sends this IMMEDIATELY when triggering a response
+            // MUST block audio to prevent echo
+            print("[RediWS] 🔇 Playback started - BLOCKING audio")
+            isPlaybackActive = true
+            onPlaybackStarted?()
+            
+        case "playback_ended":
+            // Server sends this when response is complete
+            // Can resume sending audio
+            print("[RediWS] 🔊 Playback ended - resuming audio")
+            isPlaybackActive = false
+            onPlaybackEnded?()
             
         case "error":
             if let msg = json["message"] as? String {
