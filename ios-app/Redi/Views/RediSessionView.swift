@@ -8,6 +8,7 @@
 
 import SwiftUI
 import AVFoundation
+import Combine
 
 struct RediSessionView: View {
     // MARK: - Services
@@ -25,6 +26,7 @@ struct RediSessionView: View {
     @State private var errorMessage: String?
     @State private var isMuted = false
     @State private var currentMode: RediMode = .general
+    @State private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Environment
     
@@ -35,7 +37,7 @@ struct RediSessionView: View {
     var body: some View {
         ZStack {
             // Camera preview
-            CameraPreviewView(previewLayer: cameraService.previewLayer)
+            RediCameraPreviewView(previewLayer: cameraService.previewLayer)
                 .ignoresSafeArea()
             
             // Overlay content
@@ -125,7 +127,7 @@ struct RediSessionView: View {
                         }
                     } label: {
                         VStack {
-                            Image(systemName: currentMode.iconName)
+                            Image(systemName: currentMode.icon)
                                 .font(.title2)
                             Text(currentMode.displayName)
                                 .font(.caption)
@@ -246,8 +248,6 @@ struct RediSessionView: View {
             .store(in: &cancellables)
     }
     
-    @State private var cancellables = Set<AnyCancellable>()
-    
     // MARK: - Actions
     
     private func toggleMute() {
@@ -261,9 +261,9 @@ struct RediSessionView: View {
     }
 }
 
-// MARK: - Camera Preview
+// MARK: - Redi Camera Preview (unique name to avoid conflict with SessionView)
 
-struct CameraPreviewView: UIViewRepresentable {
+struct RediCameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer?
     
     func makeUIView(context: Context) -> UIView {
@@ -280,38 +280,6 @@ struct CameraPreviewView: UIViewRepresentable {
                 layer.frame = uiView.bounds
                 uiView.layer.addSublayer(layer)
             }
-        }
-    }
-}
-
-// MARK: - Mode Extension
-
-extension RediMode {
-    var displayName: String {
-        switch self {
-        case .general: return "General"
-        case .cooking: return "Cooking"
-        case .studying: return "Studying"
-        case .meeting: return "Meeting"
-        case .sports: return "Sports"
-        case .music: return "Music"
-        case .assembly: return "Assembly"
-        case .monitoring: return "Monitoring"
-        case .driving: return "Driving"
-        }
-    }
-    
-    var iconName: String {
-        switch self {
-        case .general: return "sparkles"
-        case .cooking: return "fork.knife"
-        case .studying: return "book"
-        case .meeting: return "person.3"
-        case .sports: return "sportscourt"
-        case .music: return "music.note"
-        case .assembly: return "wrench.and.screwdriver"
-        case .monitoring: return "eye"
-        case .driving: return "car"
         }
     }
 }
