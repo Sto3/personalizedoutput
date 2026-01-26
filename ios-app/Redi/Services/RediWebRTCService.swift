@@ -1,13 +1,10 @@
 /**
  * RediWebRTCService.swift
  *
- * REDI FOR ANYTHING
+ * REDI FOR ANYTHING - Production Version
  * 
- * FIXED: Single camera session shared between preview and WebRTC
- * - Uses RTCCameraVideoCapturer as the ONLY camera source
- * - Preview layer connects to same session
- * - Higher FPS (5) for smoother experience
- * - No more camera conflicts
+ * Camera Preview: Uses RTCVideoRenderer to display the SAME frames
+ * that get sent to OpenAI. No conflicts, user sees what Redi sees.
  *
  * Updated: Jan 26, 2026
  */
@@ -16,6 +13,58 @@ import Foundation
 import AVFoundation
 import Combine
 import WebRTC
+
+// MARK: - Video Frame Renderer (displays WebRTC frames)
+
+class RediVideoView: UIView, RTCVideoRenderer {
+    private var videoSize: CGSize = .zero
+    private var currentFrame: RTCVideoFrame?
+    private let renderQueue = DispatchQueue(label: "redi.render", qos: .userInteractive)
+    
+    // Metal rendering
+    #if arch(arm64)
+    private var metalView: RTCMTLVideoView?
+    #endif
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupMetalView()
+    }
+    
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupMetalView()
+    }
+    
+    private func setupMetalView() {
+        #if arch(arm64)
+        let metal = RTCMTLVideoView(frame: bounds)
+        metal.videoContentMode = .scaleAspectFill
+        metal.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(metal)
+        metalView = metal
+        #endif
+        backgroundColor = .black
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        #if arch(arm64)
+        metalView?.frame = bounds
+        #endif
+    }
+    
+    // RTCVideoRenderer protocol
+    func setSize(_ size: CGSize) {
+        videoSize = size
+    }
+    
+    func renderFrame(_ frame: RTCVideoFrame?) {
+        #if arch(arm64)
+        metalView?.renderFrame(frame)
+        #endif
+    }
+}
 
 class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -29,13 +78,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     @Published var isActivated = false
     @Published var memoryEnabled = true
     
-    // MARK: - Camera Preview (uses RTCCameraVideoCapturer's internal session)
+    // MARK: - Video Preview
     
-    private var _previewLayer: AVCaptureVideoPreviewLayer?
-    var previewLayer: AVCaptureVideoPreviewLayer? { _previewLayer }
-    
-    // Legacy property for compatibility
-    var captureSession: AVCaptureSession? { nil }
+    private var _videoView: RediVideoView?
+    var videoView: RediVideoView? { _videoView }
     
     // MARK: - Latency Tracking
     
@@ -62,11 +108,6 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     private static var factoryInitialized = false
     private var factory: RTCPeerConnectionFactory?
-    
-    // MARK: - Camera Session (single source for both preview and WebRTC)
-    
-    private var cameraSession: AVCaptureSession?
-    private var cameraInput: AVCaptureDeviceInput?
     
     // MARK: - Session State
     
@@ -153,7 +194,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             
             setupPeerConnection()
             setupLocalAudio()
-            setupCamera()  // Single camera setup
+            setupCamera()
             
             guard let pc = peerConnection else {
                 throw WebRTCError.peerConnectionFailed
@@ -209,7 +250,6 @@ class RediWebRTCService: NSObject, ObservableObject {
                 isVideoEnabled = true
             }
             
-            // Start camera capture (both preview and WebRTC)
             startCamera()
             
         } catch {
@@ -228,6 +268,12 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         stopProactiveTimer()
         stopCamera()
+        
+        // Remove renderer from video track
+        if let view = _videoView {
+            localVideoTrack?.remove(view)
+        }
+        _videoView = nil
         
         dataChannel?.close()
         dataChannel = nil
@@ -252,46 +298,27 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Single Camera Setup (Preview + WebRTC)
+    // MARK: - Camera Setup
     
     private func setupCamera() {
         guard let pc = peerConnection, let factory = factory else { return }
         
-        // Create video source and capturer
         let source = factory.videoSource()
         self.videoSource = source
         
         let capturer = RTCCameraVideoCapturer(delegate: source)
         self.videoCapturer = capturer
         
-        // Add video track to peer connection
         let videoTrack = factory.videoTrack(with: source, trackId: "local_video")
         pc.add(videoTrack, streamIds: ["local_stream"])
         localVideoTrack = videoTrack
         
-        // Create a shared AVCaptureSession for preview
-        let session = AVCaptureSession()
-        session.sessionPreset = .hd1280x720
+        // Create video view and attach it as renderer
+        let view = RediVideoView(frame: .zero)
+        _videoView = view
+        videoTrack.add(view)
         
-        guard let camera = findCamera(position: .back),
-              let input = try? AVCaptureDeviceInput(device: camera) else {
-            print("[Redi] No camera available")
-            return
-        }
-        
-        if session.canAddInput(input) {
-            session.addInput(input)
-        }
-        
-        cameraSession = session
-        cameraInput = input
-        
-        // Create preview layer from this session
-        let layer = AVCaptureVideoPreviewLayer(session: session)
-        layer.videoGravity = .resizeAspectFill
-        _previewLayer = layer
-        
-        print("[Redi] Camera setup complete")
+        print("[Redi] Camera setup complete with preview renderer")
     }
     
     private func startCamera() {
@@ -301,26 +328,15 @@ class RediWebRTCService: NSObject, ObservableObject {
             return
         }
         
-        // Start the preview session
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.cameraSession?.startRunning()
-        }
-        
-        // Start WebRTC capture at 5 FPS (smooth enough, not too much bandwidth)
         let format = selectFormat(for: camera, targetWidth: 1280)
-        capturer.startCapture(with: camera, format: format, fps: 5)
+        capturer.startCapture(with: camera, format: format, fps: 15)
         
-        print("[Redi] Camera started: 1280x720 @ 5 FPS")
+        print("[Redi] Camera started: 1280x720 @ 15 FPS")
     }
     
     private func stopCamera() {
         videoCapturer?.stopCapture()
         videoCapturer = nil
-        
-        cameraSession?.stopRunning()
-        cameraSession = nil
-        cameraInput = nil
-        _previewLayer = nil
     }
     
     // MARK: - Camera Helpers

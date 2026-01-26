@@ -3,11 +3,14 @@
  *
  * REDI FOR ANYTHING - Production UI
  * 
- * Updated: Jan 26, 2026 - Fixed camera preview rendering
+ * Camera preview uses RTCVideoRenderer - shows exactly what Redi sees.
+ *
+ * Updated: Jan 26, 2026
  */
 
 import SwiftUI
 import AVFoundation
+import WebRTC
 
 struct V3MainView: View {
     @StateObject private var webrtcService = RediWebRTCService()
@@ -17,13 +20,12 @@ struct V3MainView: View {
     @State private var statusText = "Ready"
     @State private var transcriptLines: [(String, String)] = []
     @State private var latency: Int = 0
-    @State private var previewReady = false
     
     var body: some View {
         ZStack {
-            // Camera Preview
-            if isActive, let layer = webrtcService.previewLayer {
-                RediPreviewView(previewLayer: layer)
+            // Camera Preview - uses RTCVideoRenderer
+            if isActive, let videoView = webrtcService.videoView {
+                RediVideoPreview(videoView: videoView)
                     .ignoresSafeArea()
             } else {
                 Color.black
@@ -61,13 +63,6 @@ struct V3MainView: View {
             }
         }
         .onAppear { setupCallbacks() }
-        .onChange(of: webrtcService.isConnected) { connected in
-            if connected {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    previewReady = webrtcService.previewLayer != nil
-                }
-            }
-        }
     }
     
     // MARK: - Top Bar
@@ -89,7 +84,7 @@ struct V3MainView: View {
             
             Spacer()
             
-            if isActive && webrtcService.previewLayer != nil {
+            if isActive && webrtcService.videoView != nil {
                 HStack(spacing: 4) {
                     Image(systemName: "video.fill")
                         .foregroundColor(.green)
@@ -276,7 +271,6 @@ struct V3MainView: View {
             isActive = false
             statusText = "Ready"
             transcriptLines = []
-            previewReady = false
         } else {
             Task {
                 do {
@@ -304,43 +298,22 @@ struct V3MainView: View {
     }
 }
 
-// MARK: - Redi Preview View (unique name to avoid conflict with SessionView)
+// MARK: - Redi Video Preview (wraps RediVideoView for SwiftUI)
 
-struct RediPreviewView: UIViewRepresentable {
-    let previewLayer: AVCaptureVideoPreviewLayer
+struct RediVideoPreview: UIViewRepresentable {
+    let videoView: RediVideoView
     
-    func makeUIView(context: Context) -> RediPreviewUIView {
-        let view = RediPreviewUIView()
-        view.backgroundColor = .black
-        view.previewLayer = previewLayer
-        return view
+    func makeUIView(context: Context) -> UIView {
+        let container = UIView()
+        container.backgroundColor = .black
+        videoView.frame = container.bounds
+        videoView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        container.addSubview(videoView)
+        return container
     }
     
-    func updateUIView(_ uiView: RediPreviewUIView, context: Context) {
-        uiView.previewLayer = previewLayer
-    }
-}
-
-class RediPreviewUIView: UIView {
-    var previewLayer: AVCaptureVideoPreviewLayer? {
-        didSet {
-            setupPreview()
-        }
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        previewLayer?.frame = bounds
-    }
-    
-    private func setupPreview() {
-        layer.sublayers?.filter { $0 is AVCaptureVideoPreviewLayer }.forEach { $0.removeFromSuperlayer() }
-        
-        guard let previewLayer = previewLayer else { return }
-        
-        previewLayer.videoGravity = .resizeAspectFill
-        previewLayer.frame = bounds
-        layer.insertSublayer(previewLayer, at: 0)
+    func updateUIView(_ uiView: UIView, context: Context) {
+        videoView.frame = uiView.bounds
     }
 }
 
