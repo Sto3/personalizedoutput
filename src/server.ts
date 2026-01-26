@@ -793,7 +793,8 @@ app.post('/api/santa/claim', (req, res) => {
   }
 });
 
-// API routers
+// API routers - ORDER MATTERS!
+// More specific routes MUST come before less specific ones
 app.use('/api/santa', santaApiDeep);
 app.use('/api/planner', plannerApi);
 app.use('/api/thought-chat', thoughtChatApi);
@@ -803,8 +804,10 @@ app.use('/api/refund', refundApi);
 app.use('/api/support', supportReplyApi);
 app.use('/api/homework-rescue', homeworkApi);
 app.use('/api/analytics', analyticsApi);
-app.use('/api/redi', rediApi);
-app.use('/api/redi/webrtc', rediWebRTCApi);
+
+// REDI API routes - WebRTC MUST come BEFORE generic redi route!
+app.use('/api/redi/webrtc', rediWebRTCApi);  // More specific - handles /api/redi/webrtc/*
+app.use('/api/redi', rediApi);                // Less specific - handles /api/redi/*
 
 // ============================================================
 // STRIPE WEBHOOK
