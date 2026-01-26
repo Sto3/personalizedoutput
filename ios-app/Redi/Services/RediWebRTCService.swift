@@ -7,7 +7,7 @@
  * - Audio track with AEC for voice
  * - Video track at 1 FPS for vision (OpenAI takes snapshots)
  * - Data channel for events only (NOT for images!)
- * - Sentinel timer for proactive interjection
+ * - Proactive check timer for autonomous interjection
  *
  * LATENCY OPTIMIZATIONS (targeting sub-800ms voice-to-voice):
  * 1. Server in Virginia (us-east) - closest to OpenAI
@@ -18,7 +18,7 @@
  * 6. Streaming audio - no buffering
  *
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Comprehensive latency optimizations
+ * Updated: Jan 26, 2026 - Fixed prompt leak, added proactive coaching
  */
 
 import Foundation
@@ -70,10 +70,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var userRecentlySpeaking = false
     private var lastUserSpeechTime: Date = .distantPast
     
-    // MARK: - Sentinel Timer (for proactive interjection)
+    // MARK: - Proactive Check Timer (for autonomous interjection)
     
-    private var sentinelTimer: Timer?
-    private var sentinelIntervalSeconds: TimeInterval = 5.0
+    private var proactiveTimer: Timer?
+    private var proactiveIntervalSeconds: TimeInterval = 5.0
     private var currentMode: String = "general"
     
     // MARK: - Configuration
@@ -123,7 +123,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             currentMode = mode
         }
         
-        print("[RediWebRTC] 🔗 Starting LATENCY-OPTIMIZED WebRTC connection...")
+        print("[RediWebRTC] 🔗 Starting WebRTC connection (mode: \(mode))...")
         
         do {
             // Step 1: Configure audio session FIRST
@@ -155,22 +155,20 @@ class RediWebRTCService: NSObject, ObservableObject {
             // Step 6: Create data channel
             print("[RediWebRTC] 📡 Creating data channel...")
             let dcConfig = RTCDataChannelConfiguration()
-            dcConfig.isOrdered = true  // Ensure ordered delivery
+            dcConfig.isOrdered = true
             if let dc = pc.dataChannel(forLabel: "oai-events", configuration: dcConfig) {
                 dataChannel = dc
                 dc.delegate = self
             }
             
-            // Step 7: Create SDP offer with latency-optimized constraints
+            // Step 7: Create SDP offer
             print("[RediWebRTC] 📤 Creating SDP offer...")
             let offerConstraints = RTCMediaConstraints(
                 mandatoryConstraints: [
                     "OfferToReceiveAudio": "true",
-                    "OfferToReceiveVideo": "false"  // We send video, don't receive
+                    "OfferToReceiveVideo": "false"
                 ],
-                optionalConstraints: [
-                    "IceRestart": "false"
-                ]
+                optionalConstraints: ["IceRestart": "false"]
             )
             
             let offer = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<RTCSessionDescription, Error>) in
@@ -244,7 +242,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     func disconnect() {
         print("[RediWebRTC] 🔌 Disconnecting...")
         
-        stopSentinelTimer()
+        stopProactiveTimer()
         videoCapturer?.stopCapture()
         videoCapturer = nil
         dataChannel?.close()
@@ -322,64 +320,54 @@ class RediWebRTCService: NSObject, ObservableObject {
         return selectedFormat
     }
     
-    // MARK: - Sentinel Timer
+    // MARK: - Proactive Check Timer (Autonomous Interjection)
     
-    func startSentinelTimer() {
-        stopSentinelTimer()
-        sentinelIntervalSeconds = getSentinelInterval(for: currentMode)
+    func startProactiveTimer() {
+        stopProactiveTimer()
+        proactiveIntervalSeconds = getProactiveInterval(for: currentMode)
         
-        print("[RediWebRTC] ⏱️ Sentinel timer: every \(sentinelIntervalSeconds)s")
+        print("[RediWebRTC] ⏱️ Proactive timer: every \(proactiveIntervalSeconds)s (\(currentMode) mode)")
         
         DispatchQueue.main.async { [weak self] in
-            self?.sentinelTimer = Timer.scheduledTimer(withTimeInterval: self?.sentinelIntervalSeconds ?? 5.0, repeats: true) { [weak self] _ in
-                self?.performSentinelCheck()
+            self?.proactiveTimer = Timer.scheduledTimer(withTimeInterval: self?.proactiveIntervalSeconds ?? 5.0, repeats: true) { [weak self] _ in
+                self?.performProactiveCheck()
             }
         }
     }
     
-    func stopSentinelTimer() {
-        sentinelTimer?.invalidate()
-        sentinelTimer = nil
+    func stopProactiveTimer() {
+        proactiveTimer?.invalidate()
+        proactiveTimer = nil
     }
     
-    private func getSentinelInterval(for mode: String) -> TimeInterval {
+    private func getProactiveInterval(for mode: String) -> TimeInterval {
         switch mode {
-        case "driving": return 3.0
-        case "cooking": return 4.0
-        case "meeting": return 10.0
-        case "studying": return 6.0
-        default: return 5.0
+        case "driving": return 3.0   // Safety critical
+        case "cooking": return 4.0   // Food can burn
+        case "sports", "workout": return 2.0  // Form feedback during reps
+        case "meeting": return 10.0  // Minimal interruption
+        case "studying": return 6.0  // Let them think
+        default: return 5.0          // General
         }
     }
     
-    private func performSentinelCheck() {
+    /// Perform a proactive check - model will speak if it sees something noteworthy
+    private func performProactiveCheck() {
+        // Don't check if user recently spoke or response in progress
         let timeSinceUserSpoke = Date().timeIntervalSince(lastUserSpeechTime)
         guard timeSinceUserSpoke > 2.0 && !responseInProgress else { return }
         
-        let sentinelPrompt = getSentinelPrompt(for: currentMode)
-        
+        // Send proactive check prompt - model knows to stay silent if nothing noteworthy
+        // This is a hidden prompt that the model will NOT read aloud
         send(message: [
             "type": "conversation.item.create",
             "item": [
                 "type": "message",
                 "role": "user",
-                "content": [["type": "input_text", "text": sentinelPrompt]]
+                "content": [["type": "input_text", "text": "[PROACTIVE_CHECK]"]]
             ]
         ])
         send(message: ["type": "response.create"])
-    }
-    
-    private func getSentinelPrompt(for mode: String) -> String {
-        switch mode {
-        case "driving":
-            return "[SENTINEL] Hazards? Speak brief or silent."
-        case "cooking":
-            return "[SENTINEL] Burning/overflow? Speak brief or silent."
-        case "studying":
-            return "[SENTINEL] User stuck? Speak brief or silent."
-        default:
-            return "[SENTINEL] Noteworthy? Speak brief or silent."
-        }
     }
     
     // MARK: - Session Configuration
@@ -395,8 +383,8 @@ class RediWebRTCService: NSObject, ObservableObject {
                 "turn_detection": [
                     "type": "server_vad",
                     "threshold": 0.5,
-                    "prefix_padding_ms": 200,      // Reduced from 300ms
-                    "silence_duration_ms": 300,    // Reduced from 500ms - FASTER!
+                    "prefix_padding_ms": 200,
+                    "silence_duration_ms": 300,  // Fast turn detection
                     "create_response": true,
                     "interrupt_response": true
                 ],
@@ -406,9 +394,9 @@ class RediWebRTCService: NSObject, ObservableObject {
             ]
         ])
         
-        print("[RediWebRTC] 🔧 Session configured with optimized VAD (300ms silence)")
+        print("[RediWebRTC] 🔧 Session configured (VAD: 300ms silence)")
         sessionConfigured = true
-        startSentinelTimer()
+        startProactiveTimer()
     }
     
     // MARK: - Token Fetching
@@ -430,7 +418,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         var request = URLRequest(url: tokenURL)
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.timeoutInterval = 5  // Fast timeout
+        request.timeoutInterval = 5
         
         let body = ["mode": mode]
         request.httpBody = try JSONEncoder().encode(body)
@@ -451,20 +439,18 @@ class RediWebRTCService: NSObject, ObservableObject {
         do {
             let audioSession = AVAudioSession.sharedInstance()
             
-            // Use voiceChat mode for aggressive AEC
             try audioSession.setCategory(
                 .playAndRecord,
                 mode: .voiceChat,
                 options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
             )
             
-            // LATENCY OPTIMIZATION: Use lowest possible buffer
             try audioSession.setPreferredSampleRate(48000)
-            try audioSession.setPreferredIOBufferDuration(0.005)  // 5ms buffer - MINIMUM!
+            try audioSession.setPreferredIOBufferDuration(0.005)  // 5ms buffer
             
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             
-            print("[RediWebRTC] ✅ Audio session: \(audioSession.ioBufferDuration * 1000)ms buffer")
+            print("[RediWebRTC] ✅ Audio: \(audioSession.ioBufferDuration * 1000)ms buffer")
             
         } catch {
             print("[RediWebRTC] ⚠️ Audio session error: \(error)")
@@ -484,9 +470,9 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         let config = RTCConfiguration()
         config.sdpSemantics = .unifiedPlan
-        config.continualGatheringPolicy = .gatherContinually  // Faster ICE
-        config.bundlePolicy = .maxBundle  // Reduce connections
-        config.rtcpMuxPolicy = .require   // Reduce ports
+        config.continualGatheringPolicy = .gatherContinually
+        config.bundlePolicy = .maxBundle
+        config.rtcpMuxPolicy = .require
         
         let constraints = RTCMediaConstraints(
             mandatoryConstraints: nil,
@@ -494,7 +480,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         )
         
         peerConnection = factory?.peerConnection(with: config, constraints: constraints, delegate: self)
-        print("[RediWebRTC] ✅ Peer connection created (optimized)")
+        print("[RediWebRTC] ✅ Peer connection created")
     }
     
     // MARK: - Audio Track
@@ -537,7 +523,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         request.setValue("application/sdp", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.httpBody = localSdp.data(using: .utf8)
-        request.timeoutInterval = 10  // Fast timeout
+        request.timeoutInterval = 10
         
         let (data, response) = try await URLSession.shared.data(for: request)
         
@@ -677,7 +663,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             responseInProgress = true
             lastResponseStartTime = Date()
             
-            // Measure latency from speech end to response start
+            // Measure latency
             if let speechEnd = lastSpeechEndTime {
                 let latencyMs = Int(Date().timeIntervalSince(speechEnd) * 1000)
                 print("[RediWebRTC] ⚡ LATENCY: \(latencyMs)ms")
@@ -709,7 +695,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         case "input_audio_buffer.speech_stopped":
             userRecentlySpeaking = false
-            lastSpeechEndTime = Date()  // Mark for latency measurement
+            lastSpeechEndTime = Date()
             
         case "error":
             if let errorInfo = eventDict["error"] as? [String: Any],
