@@ -53,6 +53,9 @@ class RediWebRTCService: NSObject, ObservableObject {
     // Track if session is configured
     private var sessionConfigured = false
     
+    // Track if response is in progress (to avoid spamming response.create)
+    private var responseInProgress = false
+    
     // WebRTC factory (singleton)
     private static let factory: RTCPeerConnectionFactory = {
         RTCInitializeSSL()
@@ -100,6 +103,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             isConnecting = true
             error = nil
             sessionConfigured = false
+            responseInProgress = false
         }
         
         print("[RediWebRTC] 🔗 Starting WebRTC connection...")
@@ -175,6 +179,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         audioTrack = nil
         ephemeralToken = nil
         sessionConfigured = false
+        responseInProgress = false
         
         DispatchQueue.main.async {
             self.isConnected = false
@@ -416,8 +421,13 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
     }
     
-    /// Send a camera frame to OpenAI
+    /// Send a camera frame to OpenAI (no response.create - VAD handles that)
     func sendFrame(_ frameData: Data) {
+        // Don't send frames if response is in progress
+        guard !responseInProgress else {
+            return
+        }
+        
         let base64 = frameData.base64EncodedString()
         
         send(message: [
@@ -434,10 +444,8 @@ class RediWebRTCService: NSObject, ObservableObject {
             ]
         ])
         
-        // After sending image, trigger a response
-        send(message: [
-            "type": "response.create"
-        ])
+        // DON'T send response.create here!
+        // VAD with create_response: true handles automatic responses
     }
     
     /// Mute/unmute microphone
@@ -580,10 +588,12 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         case "response.created":
             print("[RediWebRTC] 🎙️ Response started")
+            responseInProgress = true
             onPlaybackStarted?()
             
         case "response.done":
             print("[RediWebRTC] ✅ Response complete")
+            responseInProgress = false
             onPlaybackEnded?()
             
         case "response.audio_transcript.done":
