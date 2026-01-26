@@ -3,7 +3,7 @@
  *
  * REDI FOR ANYTHING - Production UI
  * 
- * Updated: Jan 26, 2026 - Camera preview fix
+ * Updated: Jan 26, 2026 - Fixed camera preview rendering
  */
 
 import SwiftUI
@@ -17,11 +17,12 @@ struct V3MainView: View {
     @State private var statusText = "Ready"
     @State private var transcriptLines: [(String, String)] = []
     @State private var latency: Int = 0
+    @State private var previewReady = false
     
     var body: some View {
         ZStack {
-            // Camera Preview - show when active and layer is ready
-            if isActive && webrtcService.previewLayerReady, let layer = webrtcService.previewLayer {
+            // Camera Preview
+            if isActive, let layer = webrtcService.previewLayer {
                 RediPreviewView(previewLayer: layer)
                     .ignoresSafeArea()
             } else {
@@ -60,6 +61,13 @@ struct V3MainView: View {
             }
         }
         .onAppear { setupCallbacks() }
+        .onChange(of: webrtcService.isConnected) { connected in
+            if connected {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    previewReady = webrtcService.previewLayer != nil
+                }
+            }
+        }
     }
     
     // MARK: - Top Bar
@@ -81,7 +89,7 @@ struct V3MainView: View {
             
             Spacer()
             
-            if isActive && webrtcService.previewLayerReady {
+            if isActive && webrtcService.previewLayer != nil {
                 HStack(spacing: 4) {
                     Image(systemName: "video.fill")
                         .foregroundColor(.green)
@@ -268,6 +276,7 @@ struct V3MainView: View {
             isActive = false
             statusText = "Ready"
             transcriptLines = []
+            previewReady = false
         } else {
             Task {
                 do {
@@ -295,7 +304,7 @@ struct V3MainView: View {
     }
 }
 
-// MARK: - Redi Preview View
+// MARK: - Redi Preview View (unique name to avoid conflict with SessionView)
 
 struct RediPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer
