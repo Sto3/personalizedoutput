@@ -48,7 +48,12 @@ router.post('/token', async (req: Request, res: Response) => {
     console.log(`[Redi WebRTC] Requesting token for mode: ${mode}`);
 
     // Request ephemeral token from OpenAI
-    // IMPORTANT: Include video in modalities for vision support
+    // NOTE: The GA /v1/realtime/client_secrets endpoint has a simpler schema
+    // than the beta endpoint. Only these fields are valid:
+    // - session.type
+    // - session.model
+    // - session.instructions
+    // - session.audio.output (voice)
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -60,30 +65,11 @@ router.post('/token', async (req: Request, res: Response) => {
           type: 'realtime',
           model: 'gpt-realtime',
           instructions: systemInstructions,
-          // CRITICAL: Include video in modalities for vision
-          modalities: ['text', 'audio'],
           audio: {
-            input: {
-              format: { type: 'audio/pcm', rate: 24000 },
-              transcription: { model: 'whisper-1' },
-              turn_detection: {
-                type: 'server_vad',
-                threshold: 0.5,
-                prefix_padding_ms: 300,
-                silence_duration_ms: 500,
-                create_response: true,
-                interrupt_response: true
-              }
-            },
             output: {
-              format: { type: 'audio/pcm', rate: 24000 },
               voice: voice
             }
           }
-        },
-        expires_after: {
-          anchor: 'created_at',
-          seconds: 120  // 2 minutes (tokens auto-expire)
         }
       })
     });
@@ -91,7 +77,7 @@ router.post('/token', async (req: Request, res: Response) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[Redi WebRTC] OpenAI token error:', errorText);
-      res.status(500).json({ error: 'Failed to get ephemeral token' });
+      res.status(500).json({ error: 'Failed to get ephemeral token', details: errorText });
       return;
     }
 
