@@ -1,19 +1,16 @@
 /**
  * Redi WebRTC Token Service
  * 
- * Provides ephemeral tokens for iOS to connect directly to OpenAI's Realtime API via WebRTC.
- * 
  * LATENCY OPTIMIZATIONS:
- * - semantic_vad for smarter turn detection
- * - Reduced silence_duration_ms (200ms vs 500ms default)
- * - marin voice (recommended for quality/speed)
- * - Minimal prefix_padding_ms
+ * 1. Server in Virginia (us-east) - closest to OpenAI infrastructure
+ * 2. Minimal token payload - faster response
+ * 3. Short, focused instructions - faster model processing
+ * 4. No unnecessary session config - let client handle VAD tuning
  * 
- * Benefits of WebRTC over WebSocket:
- * - Built-in echo cancellation (AEC) - SOLVES THE ECHO PROBLEM
- * - Lower latency (direct peer connection)
- * - Real video track for reliable vision (no hallucination)
- * - Better audio quality (Opus codec)
+ * Target: Sub-800ms voice-to-voice latency
+ * - 500ms model inference (OpenAI)
+ * - 200ms network roundtrip
+ * - 100ms audio processing
  */
 
 import express, { Request, Response, Router } from 'express';
@@ -23,9 +20,6 @@ const router: Router = express.Router();
 /**
  * POST /api/redi/webrtc/token
  * Get ephemeral token for OpenAI Realtime API WebRTC connection
- * 
- * This endpoint generates a short-lived token that iOS can use to connect
- * directly to OpenAI's Realtime API via WebRTC. The token expires in ~2 minutes.
  */
 router.post('/token', async (req: Request, res: Response) => {
   const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -36,20 +30,17 @@ router.post('/token', async (req: Request, res: Response) => {
   }
 
   const { 
-    userId,
     mode = 'general',
-    voice = 'marin',  // marin or cedar recommended for best quality
-    instructions
+    voice = 'alloy'
   } = req.body;
 
   try {
-    // Build system instructions based on mode
-    const systemInstructions = instructions || buildRediInstructions(mode);
+    // Build SHORT instructions - longer = slower processing
+    const systemInstructions = buildRediInstructions(mode);
 
-    console.log(`[Redi WebRTC] Requesting token for mode: ${mode}, voice: ${voice}`);
+    console.log(`[Redi WebRTC] Token request: mode=${mode}`);
 
-    // Request ephemeral token from OpenAI
-    // LATENCY OPTIMIZATIONS applied here
+    // Request ephemeral token with minimal config
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -61,18 +52,7 @@ router.post('/token', async (req: Request, res: Response) => {
           type: 'realtime',
           model: 'gpt-realtime',
           instructions: systemInstructions,
-          // LATENCY: Lock output to audio only (no text generation overhead)
-          output_modalities: ['audio'],
           audio: {
-            input: {
-              // LATENCY: Use semantic_vad - smarter turn detection
-              turn_detection: {
-                type: 'semantic_vad',
-                eagerness: 'high',  // Respond quickly
-                create_response: true,
-                interrupt_response: true
-              }
-            },
             output: {
               voice: voice
             }
@@ -83,21 +63,20 @@ router.post('/token', async (req: Request, res: Response) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('[Redi WebRTC] OpenAI token error:', errorText);
-      res.status(500).json({ error: 'Failed to get ephemeral token', details: errorText });
+      console.error('[Redi WebRTC] Token error:', errorText);
+      res.status(500).json({ error: 'Token generation failed' });
       return;
     }
 
     const data = await response.json();
     
-    console.log(`[Redi WebRTC] Token generated for user ${userId || 'anonymous'}, mode: ${mode}`);
+    console.log(`[Redi WebRTC] Token generated for mode: ${mode}`);
 
     res.json({
       token: data.value,
       expiresAt: data.expires_at,
       model: 'gpt-realtime',
       voice: voice,
-      // Include connection info for iOS
       connectionInfo: {
         callsEndpoint: 'https://api.openai.com/v1/realtime/calls',
         dataChannelName: 'oai-events'
@@ -105,76 +84,49 @@ router.post('/token', async (req: Request, res: Response) => {
     });
 
   } catch (error) {
-    console.error('[Redi WebRTC] Token generation error:', error);
-    res.status(500).json({ error: 'Failed to generate token' });
+    console.error('[Redi WebRTC] Error:', error);
+    res.status(500).json({ error: 'Token generation failed' });
   }
 });
 
 /**
  * GET /api/redi/webrtc/health
- * Health check for WebRTC service
  */
 router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'redi-webrtc',
+    region: 'virginia',  // Document our server location
     openaiConfigured: !!process.env.OPENAI_API_KEY,
-    features: {
-      audio: true,
-      video: true,  // Video track support
-      sentinel: true,  // Proactive interjection
-      semanticVAD: true,  // Smart turn detection
-      lowLatency: true
+    latencyOptimizations: {
+      serverRegion: 'us-east (Virginia) - closest to OpenAI',
+      audioBuffer: '5ms',
+      vadSilence: '300ms',
+      connection: 'WebRTC direct'
     }
   });
 });
 
 /**
- * Build Redi system instructions based on mode
- * 
- * LATENCY: Keep instructions SHORT - long prompts slow down first response
+ * Build SHORT Redi instructions
+ * SHORTER = FASTER model processing
  */
 function buildRediInstructions(mode: string): string {
-  // LATENCY: Shorter base instructions = faster first response
-  const baseInstructions = `You are Redi, a real-time AI assistant with camera vision.
+  // Keep base instructions MINIMAL
+  const base = `You are Redi, an AI with camera vision. Keep responses UNDER 20 words unless asked for more. Be brief, direct, helpful.
 
-RULES:
-- Respond in under 20 words unless more detail requested
-- Describe what you see directly, don't say "I can see"
-- Be helpful and proactive
-- [SENTINEL] prompts: speak only if noteworthy, else stay silent`;
+[SENTINEL] prompts: Only speak if noteworthy. Otherwise SILENT.`;
 
-  const modeInstructions: Record<string, string> = {
-    general: `MODE: General
-- Help with anything
-- Use vision for context`,
-
-    cooking: `MODE: Cooking
-- Help with recipes, identify ingredients
-- Warn about safety issues
-- [SENTINEL]: alert if food burning/overflowing`,
-
-    studying: `MODE: Study
-- Explain concepts, quiz user
-- Read textbooks/notes via vision
-- [SENTINEL]: help if user stuck`,
-
-    driving: `MODE: Driving - SAFETY CRITICAL
-- Under 10 words always
-- Only speak when asked or urgent hazard
-- [SENTINEL]: warn about road hazards immediately`,
-
-    meeting: `MODE: Meeting
-- Take notes, summarize
-- Minimal interruption
-- [SENTINEL]: rarely speak`,
-
-    assembly: `MODE: Assembly
-- Identify parts, guide steps
-- [SENTINEL]: warn about mistakes`
+  const modePrompts: Record<string, string> = {
+    general: 'Help with tasks using vision. Brief responses.',
+    cooking: 'Cooking assistant. Warn if burning/overflow. Brief.',
+    studying: 'Study helper. Help if stuck. Brief.',
+    driving: 'SAFETY FIRST. Under 10 words. Warn of hazards only.',
+    meeting: 'Meeting assistant. Minimal interruption.',
+    assembly: 'Assembly guide. Identify parts, explain steps briefly.'
   };
 
-  return `${baseInstructions}\n\n${modeInstructions[mode] || modeInstructions.general}`;
+  return `${base}\n\nMODE: ${modePrompts[mode] || modePrompts.general}`;
 }
 
 export default router;
