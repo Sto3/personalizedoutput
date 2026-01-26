@@ -4,7 +4,7 @@
  * REDI FOR ANYTHING - One adaptive AI, no modes needed
  * 
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Fix camera performance, audio volume, thinking phrases
+ * Updated: Jan 26, 2026 - Fix video: remove conflicting AVCaptureSession
  */
 
 import Foundation
@@ -22,10 +22,9 @@ class RediWebRTCService: NSObject, ObservableObject {
     @Published var isVideoEnabled = false
     @Published var sensitivity: Int = 5  // 1-10 scale
     
-    // MARK: - Video Preview
-    
-    /// The capture session - used for preview layer
-    private(set) var captureSession: AVCaptureSession?
+    // MARK: - Video Preview (placeholder - RTCCameraVideoCapturer doesn't expose session)
+    // For now, no preview - priority is Redi actually seeing
+    var captureSession: AVCaptureSession? { nil }
     
     // MARK: - Latency Tracking
     
@@ -223,7 +222,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         videoCapturer?.stopCapture()
         videoCapturer = nil
-        captureSession = nil
         
         dataChannel?.close()
         dataChannel = nil
@@ -245,7 +243,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Video Setup (RTCCameraVideoCapturer - native WebRTC, better performance)
+    // MARK: - Video Setup (RTCCameraVideoCapturer only - no conflicting AVCaptureSession)
     
     private func setupLocalVideo() {
         guard let pc = peerConnection, let factory = factory else { return }
@@ -257,45 +255,29 @@ class RediWebRTCService: NSObject, ObservableObject {
         let videoTrack = factory.videoTrack(with: videoSource, trackId: "local_video")
         pc.add(videoTrack, streamIds: ["local_stream"])
         localVideoTrack = videoTrack
+        
+        print("[Redi] \u{1F4F9} Video track added to peer connection")
     }
     
     private func startVideoCapture() {
         guard let capturer = videoCapturer else {
-            print("[Redi] \u{26A0}\u{FE0F} No video capturer")
+            print("[Redi] \u{274C} No video capturer")
             return
         }
         
         guard let camera = findBackCamera() else {
-            print("[Redi] \u{26A0}\u{FE0F} No camera available")
+            print("[Redi] \u{274C} No camera available")
             return
         }
         
-        // Create AVCaptureSession for preview
-        let session = AVCaptureSession()
-        session.sessionPreset = .hd1280x720  // Lower res for smoother preview
-        
-        do {
-            let input = try AVCaptureDeviceInput(device: camera)
-            if session.canAddInput(input) {
-                session.addInput(input)
-            }
-        } catch {
-            print("[Redi] \u{274C} Camera input error: \(error)")
-        }
-        
-        // Store for preview
-        captureSession = session
-        
-        // Start preview session
-        DispatchQueue.global(qos: .userInitiated).async {
-            session.startRunning()
-        }
-        
-        // Start WebRTC capture separately (1 FPS for OpenAI)
+        // ONLY use RTCCameraVideoCapturer - no separate AVCaptureSession
+        // This ensures video actually gets sent to OpenAI
         let format = selectCameraFormat(for: camera)
-        capturer.startCapture(with: camera, format: format, fps: 1)
         
-        print("[Redi] \u{1F4F9} Camera active (preview + WebRTC)")
+        // Use 2 FPS - enough for OpenAI to see, not too much bandwidth
+        capturer.startCapture(with: camera, format: format, fps: 2)
+        
+        print("[Redi] \u{2705} Camera streaming to OpenAI (2 FPS)")
     }
     
     private func findBackCamera() -> AVCaptureDevice? {

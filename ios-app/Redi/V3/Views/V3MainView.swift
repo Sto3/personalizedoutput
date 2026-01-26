@@ -2,7 +2,7 @@
  * V3MainView.swift
  *
  * REDI FOR ANYTHING - Production UI
- * WebRTC mode with camera preview
+ * No camera preview for now - priority is Redi actually seeing
  *
  * Updated: Jan 26, 2026
  */
@@ -20,15 +20,9 @@ struct V3MainView: View {
     
     var body: some View {
         ZStack {
-            // Camera Preview - WebRTC mode
-            WebRTCCameraPreview(captureSession: webrtcService.captureSession)
+            // Dark background (no preview - Redi is seeing via WebRTC)
+            Color.black
                 .ignoresSafeArea()
-            
-            // Dark overlay when inactive
-            if !isActive {
-                Color.black.opacity(0.7)
-                    .ignoresSafeArea()
-            }
             
             // UI Overlay
             VStack {
@@ -50,6 +44,23 @@ struct V3MainView: View {
                     
                     Spacer()
                     
+                    // Vision indicator when active
+                    if isActive {
+                        HStack(spacing: 4) {
+                            Image(systemName: "eye.fill")
+                                .foregroundColor(.green)
+                            Text("Redi can see")
+                                .font(.caption2)
+                                .foregroundColor(.green)
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.green.opacity(0.2))
+                        .cornerRadius(10)
+                    }
+                    
+                    Spacer()
+                    
                     // Latency (when active)
                     if isActive && latency > 0 {
                         Text("\(latency)ms")
@@ -63,6 +74,21 @@ struct V3MainView: View {
                 }
                 .padding(.horizontal)
                 .padding(.top, 60)
+                
+                Spacer()
+                
+                // Visual indicator that Redi is watching
+                if isActive {
+                    VStack(spacing: 16) {
+                        Image(systemName: "eye.circle.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.cyan.opacity(0.5))
+                        
+                        Text("Point camera at what you want Redi to see")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                }
                 
                 Spacer()
                 
@@ -204,54 +230,6 @@ struct V3MainView: View {
         webrtcService.onPlaybackEnded = {
             statusText = "Listening..."
         }
-    }
-}
-
-// MARK: - WebRTC Camera Preview (separate from SessionView's CameraPreviewView)
-
-struct WebRTCCameraPreview: UIViewRepresentable {
-    let captureSession: AVCaptureSession?
-    
-    func makeUIView(context: Context) -> WebRTCPreviewUIView {
-        let view = WebRTCPreviewUIView()
-        view.backgroundColor = .black
-        return view
-    }
-    
-    func updateUIView(_ uiView: WebRTCPreviewUIView, context: Context) {
-        uiView.captureSession = captureSession
-    }
-}
-
-class WebRTCPreviewUIView: UIView {
-    private var previewLayer: AVCaptureVideoPreviewLayer?
-    
-    var captureSession: AVCaptureSession? {
-        didSet {
-            setupPreviewLayer()
-        }
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        previewLayer?.frame = bounds
-    }
-    
-    private func setupPreviewLayer() {
-        // Remove old layer
-        previewLayer?.removeFromSuperlayer()
-        previewLayer = nil
-        
-        // Create new layer if we have a session
-        guard let session = captureSession else { return }
-        
-        let newLayer = AVCaptureVideoPreviewLayer(session: session)
-        newLayer.videoGravity = .resizeAspectFill
-        newLayer.frame = bounds
-        layer.insertSublayer(newLayer, at: 0)
-        previewLayer = newLayer
-        
-        print("[WebRTCPreview] Preview layer set: \(bounds)")
     }
 }
 
