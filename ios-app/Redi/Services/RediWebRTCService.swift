@@ -2,24 +2,21 @@
  * RediWebRTCService.swift
  *
  * WebRTC-based connection to OpenAI Realtime API for Redi.
- * Based on working example: https://github.com/PallavAg/VoiceModeWebRTCSwift
+ * 
+ * ARCHITECTURE (matches ChatGPT per webrtcHacks research):
+ * - Audio track with AEC for voice
+ * - Video track at 1 FPS for vision (OpenAI takes snapshots)
+ * - Data channel for events only (NOT for images!)
+ * - Sentinel timer for proactive interjection
  *
  * BENEFITS OVER WEBSOCKET:
- * 1. Built-in echo cancellation (Google's WebRTC AEC) - SOLVES ECHO PROBLEM
+ * 1. Built-in echo cancellation (Google's WebRTC AEC) - SOLVES ECHO
  * 2. Lower latency (direct peer connection, no server relay)
- * 3. Better audio quality (Opus codec support)
- * 4. More reliable turn detection
- *
- * ARCHITECTURE:
- * 1. iOS requests ephemeral token from our server
- * 2. iOS establishes WebRTC peer connection directly to OpenAI
- * 3. Audio flows directly between iOS and OpenAI (no server in the middle)
- * 4. Data channel used for events (transcripts, session control)
- *
- * IMPORTANT: After running `pod install`, open Redi.xcworkspace (NOT .xcodeproj)
+ * 3. Real video track for reliable vision (no hallucination)
+ * 4. Better audio quality (Opus codec)
  *
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Fixed endpoint to use /v1/realtime/calls
+ * Updated: Jan 26, 2026 - Added video track support
  */
 
 import Foundation
@@ -34,6 +31,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     @Published var isConnecting = false
     @Published var connectionState: RTCPeerConnectionState = .new
     @Published var error: String?
+    @Published var isVideoEnabled = false
     
     // MARK: - Callbacks
     
@@ -42,7 +40,6 @@ class RediWebRTCService: NSObject, ObservableObject {
     var onTranscriptReceived: ((String, String) -> Void)?  // (text, role)
     var onPlaybackStarted: (() -> Void)?
     var onPlaybackEnded: (() -> Void)?
-    var onRequestFrame: (() -> Void)?
     var onError: ((Error) -> Void)?
     
     // MARK: - WebRTC Components
@@ -50,29 +47,41 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var peerConnection: RTCPeerConnection?
     private var dataChannel: RTCDataChannel?
     private var localAudioTrack: RTCAudioTrack?
+    private var localVideoTrack: RTCVideoTrack?
+    private var videoCapturer: RTCCameraVideoCapturer?
     
-    // Track if session is configured
-    private var sessionConfigured = false
-    
-    // Track if response is in progress (to throttle frames)
-    private var responseInProgress = false
-    
-    // WebRTC factory - create fresh each time like the working example
+    // WebRTC factory - shared instance
     private var factory: RTCPeerConnectionFactory?
+    
+    // MARK: - Session State
+    
+    private var sessionConfigured = false
+    private var responseInProgress = false
+    private var userRecentlySpeaking = false
+    private var lastUserSpeechTime: Date = .distantPast
+    
+    // MARK: - Sentinel Timer (for proactive interjection)
+    
+    private var sentinelTimer: Timer?
+    private var sentinelIntervalSeconds: TimeInterval = 5.0  // Default: check every 5 seconds
+    private var currentMode: String = "general"
     
     // MARK: - Configuration
     
     private var ephemeralToken: String?
     private let tokenURL = URL(string: "https://redialways.com/api/redi/webrtc/token")!
-    
-    // OpenAI WebRTC endpoint - use /calls for ephemeral tokens
     private let openAICallsURL = URL(string: "https://api.openai.com/v1/realtime/calls")!
+    
+    // Video configuration - per webrtcHacks, 1 FPS is enough (OpenAI takes snapshots)
+    private let videoWidth: Int32 = 1920
+    private let videoHeight: Int32 = 1080
+    private let videoFPS: Int = 1  // Low FPS saves bandwidth, OpenAI snapshots anyway
     
     // MARK: - Initialization
     
     override init() {
         super.init()
-        print("[RediWebRTC] 🚀 Service initialized")
+        print("[RediWebRTC] 🚀 Service initialized with video support")
     }
     
     deinit {
@@ -81,7 +90,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     // MARK: - Connection Management
     
-    /// Connect to OpenAI via WebRTC
+    /// Connect to OpenAI via WebRTC with audio AND video
     func connect(mode: String = "general") async throws {
         guard !isConnecting else {
             print("[RediWebRTC] Already connecting, ignoring")
@@ -93,9 +102,10 @@ class RediWebRTCService: NSObject, ObservableObject {
             error = nil
             sessionConfigured = false
             responseInProgress = false
+            currentMode = mode
         }
         
-        print("[RediWebRTC] 🔗 Starting WebRTC connection...")
+        print("[RediWebRTC] 🔗 Starting WebRTC connection with VIDEO...")
         
         do {
             // Step 1: Get ephemeral token from our server
@@ -108,11 +118,15 @@ class RediWebRTCService: NSObject, ObservableObject {
             print("[RediWebRTC] 🔧 Creating peer connection...")
             setupPeerConnection()
             
-            // Step 3: Setup local audio
-            print("[RediWebRTC] 🎤 Setting up local audio...")
+            // Step 3: Setup local audio with AEC
+            print("[RediWebRTC] 🎤 Setting up local audio with AEC...")
             setupLocalAudio()
             
-            // Step 4: Configure audio session for WebRTC
+            // Step 4: Setup local video from camera
+            print("[RediWebRTC] 📹 Setting up video track from camera...")
+            try await setupLocalVideo()
+            
+            // Step 5: Configure audio session for WebRTC
             print("[RediWebRTC] 🔊 Configuring audio session...")
             configureAudioSession()
             
@@ -120,7 +134,7 @@ class RediWebRTCService: NSObject, ObservableObject {
                 throw WebRTCError.peerConnectionFailed
             }
             
-            // Step 5: Create data channel for events
+            // Step 6: Create data channel for events (NOT images!)
             print("[RediWebRTC] 📡 Creating data channel...")
             let dcConfig = RTCDataChannelConfiguration()
             if let dc = pc.dataChannel(forLabel: "oai-events", configuration: dcConfig) {
@@ -128,7 +142,7 @@ class RediWebRTCService: NSObject, ObservableObject {
                 dc.delegate = self
             }
             
-            // Step 6: Create SDP offer
+            // Step 7: Create SDP offer
             print("[RediWebRTC] 📤 Creating SDP offer...")
             let constraints = RTCMediaConstraints(
                 mandatoryConstraints: nil,
@@ -147,7 +161,7 @@ class RediWebRTCService: NSObject, ObservableObject {
                 }
             }
             
-            // Step 7: Set local description
+            // Step 8: Set local description
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                 pc.setLocalDescription(offer) { error in
                     if let error = error {
@@ -158,16 +172,19 @@ class RediWebRTCService: NSObject, ObservableObject {
                 }
             }
             
-            // Step 8: Get the local SDP (may have ICE candidates added)
+            // Step 9: Get the local SDP
             guard let localSdp = pc.localDescription?.sdp else {
                 throw WebRTCError.offerCreationFailed
             }
             
-            // Step 9: Send offer to OpenAI and get answer
+            // Debug: Print SDP to verify video is included
+            print("[RediWebRTC] 📄 SDP contains video: \(localSdp.contains("m=video"))")
+            
+            // Step 10: Send offer to OpenAI and get answer
             print("[RediWebRTC] 📨 Sending offer to OpenAI /v1/realtime/calls...")
             let answerSdp = try await sendOfferToOpenAI(localSdp: localSdp)
             
-            // Step 10: Set remote description
+            // Step 11: Set remote description
             print("[RediWebRTC] 📥 Setting remote description...")
             let answer = RTCSessionDescription(type: .answer, sdp: answerSdp)
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -180,12 +197,16 @@ class RediWebRTCService: NSObject, ObservableObject {
                 }
             }
             
-            print("[RediWebRTC] ✅ WebRTC connection established!")
+            print("[RediWebRTC] ✅ WebRTC connection established with VIDEO!")
             
             await MainActor.run {
                 isConnecting = false
                 isConnected = true
+                isVideoEnabled = true
             }
+            
+            // Start video capture
+            startVideoCapture()
             
         } catch {
             print("[RediWebRTC] ❌ Connection failed: \(error)")
@@ -201,6 +222,13 @@ class RediWebRTCService: NSObject, ObservableObject {
     func disconnect() {
         print("[RediWebRTC] 🔌 Disconnecting...")
         
+        // Stop sentinel timer
+        stopSentinelTimer()
+        
+        // Stop video capture
+        videoCapturer?.stopCapture()
+        videoCapturer = nil
+        
         dataChannel?.close()
         dataChannel = nil
         
@@ -208,6 +236,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         peerConnection = nil
         
         localAudioTrack = nil
+        localVideoTrack = nil
         factory = nil
         ephemeralToken = nil
         sessionConfigured = false
@@ -216,14 +245,177 @@ class RediWebRTCService: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.isConnected = false
             self.isConnecting = false
+            self.isVideoEnabled = false
             self.connectionState = .closed
+        }
+    }
+    
+    // MARK: - Video Setup
+    
+    private func setupLocalVideo() async throws {
+        guard let pc = peerConnection, let factory = factory else { return }
+        
+        // Create video source
+        let videoSource = factory.videoSource()
+        
+        // Create camera capturer
+        let capturer = RTCCameraVideoCapturer(delegate: videoSource)
+        self.videoCapturer = capturer
+        
+        // Find back camera (wide angle preferred)
+        guard let camera = findBackCamera() else {
+            print("[RediWebRTC] ⚠️ No back camera found, continuing without video")
+            return
+        }
+        
+        // Find best format for our target resolution
+        let format = selectCameraFormat(for: camera)
+        
+        // Create video track
+        let videoTrack = factory.videoTrack(with: videoSource, trackId: "local_video")
+        
+        // Add video track to peer connection
+        pc.add(videoTrack, streamIds: ["local_stream"])
+        localVideoTrack = videoTrack
+        
+        print("[RediWebRTC] ✅ Video track added (will start at \(videoFPS) FPS)")
+    }
+    
+    private func startVideoCapture() {
+        guard let capturer = videoCapturer,
+              let camera = findBackCamera() else {
+            print("[RediWebRTC] ⚠️ Cannot start video capture")
+            return
+        }
+        
+        let format = selectCameraFormat(for: camera)
+        
+        capturer.startCapture(with: camera, format: format, fps: videoFPS) { error in
+            if let error = error {
+                print("[RediWebRTC] ❌ Video capture error: \(error)")
+            } else {
+                print("[RediWebRTC] 📹 Video capture started at \(self.videoFPS) FPS")
+            }
+        }
+    }
+    
+    private func findBackCamera() -> AVCaptureDevice? {
+        // Try to get wide angle camera (best for general vision)
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTripleCamera],
+            mediaType: .video,
+            position: .back
+        )
+        
+        return discoverySession.devices.first
+    }
+    
+    private func selectCameraFormat(for device: AVCaptureDevice) -> AVCaptureDevice.Format {
+        // Find format closest to our target resolution
+        let formats = RTCCameraVideoCapturer.supportedFormats(for: device)
+        
+        var selectedFormat = formats.first!
+        var currentDiff = Int.max
+        
+        for format in formats {
+            let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+            let diff = abs(Int(dimensions.width) - Int(videoWidth)) + abs(Int(dimensions.height) - Int(videoHeight))
+            
+            if diff < currentDiff {
+                selectedFormat = format
+                currentDiff = diff
+            }
+        }
+        
+        let dims = CMVideoFormatDescriptionGetDimensions(selectedFormat.formatDescription)
+        print("[RediWebRTC] 📹 Selected camera format: \(dims.width)x\(dims.height)")
+        
+        return selectedFormat
+    }
+    
+    // MARK: - Sentinel Timer (Proactive Interjection)
+    
+    /// Start the sentinel timer for proactive vision checks
+    func startSentinelTimer() {
+        stopSentinelTimer()
+        
+        // Set interval based on mode
+        sentinelIntervalSeconds = getSentinelInterval(for: currentMode)
+        
+        print("[RediWebRTC] ⏱️ Starting sentinel timer (every \(sentinelIntervalSeconds)s for \(currentMode) mode)")
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.sentinelTimer = Timer.scheduledTimer(withTimeInterval: self?.sentinelIntervalSeconds ?? 5.0, repeats: true) { [weak self] _ in
+                self?.performSentinelCheck()
+            }
+        }
+    }
+    
+    func stopSentinelTimer() {
+        sentinelTimer?.invalidate()
+        sentinelTimer = nil
+    }
+    
+    private func getSentinelInterval(for mode: String) -> TimeInterval {
+        switch mode {
+        case "driving":
+            return 3.0  // More frequent for safety
+        case "cooking":
+            return 4.0
+        case "meeting":
+            return 10.0  // Less frequent to avoid interruption
+        case "studying":
+            return 6.0
+        default:
+            return 5.0  // General mode
+        }
+    }
+    
+    /// Perform a sentinel check - ask the model to speak if it sees something noteworthy
+    private func performSentinelCheck() {
+        // Don't check if user recently spoke or response in progress
+        let timeSinceUserSpoke = Date().timeIntervalSince(lastUserSpeechTime)
+        guard timeSinceUserSpoke > 2.0 && !responseInProgress else {
+            return
+        }
+        
+        print("[RediWebRTC] 🔍 Sentinel check...")
+        
+        // Send a text prompt asking the model to evaluate what it sees
+        // The video track provides the visual context automatically
+        let sentinelPrompt = getSentinelPrompt(for: currentMode)
+        
+        send(message: [
+            "type": "conversation.item.create",
+            "item": [
+                "type": "message",
+                "role": "user",
+                "content": [[
+                    "type": "input_text",
+                    "text": sentinelPrompt
+                ]]
+            ]
+        ])
+        
+        // Trigger response
+        send(message: ["type": "response.create"])
+    }
+    
+    private func getSentinelPrompt(for mode: String) -> String {
+        switch mode {
+        case "driving":
+            return "[SENTINEL] Look at the road. If you see any hazards, obstacles, or important landmarks, speak briefly. Otherwise stay completely silent."
+        case "cooking":
+            return "[SENTINEL] Check the cooking. If you see anything burning, overflowing, or needing attention, speak briefly. Otherwise stay silent."
+        case "studying":
+            return "[SENTINEL] If you notice the user seems stuck or the material has something interesting to point out, speak briefly. Otherwise stay silent."
+        default:
+            return "[SENTINEL] If you see anything noteworthy, interesting, or that the user should know about, speak briefly. Otherwise stay completely silent."
         }
     }
     
     // MARK: - Session Configuration
     
-    /// Configure the OpenAI session - called when data channel opens
-    /// Note: Session is pre-configured via the token, but we can update it here
     private func configureSession() {
         guard !sessionConfigured else {
             print("[RediWebRTC] Session already configured")
@@ -238,8 +430,8 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[RediWebRTC] 🔧 Session ready (pre-configured via token)")
         sessionConfigured = true
         
-        // The session is already configured via the token endpoint
-        // We just need to wait for it to be ready
+        // Start sentinel timer for proactive interjection
+        startSentinelTimer()
     }
     
     // MARK: - Token Fetching
@@ -280,9 +472,9 @@ class RediWebRTCService: NSObject, ObservableObject {
     private func configureAudioSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            // Use videoChat mode like the working example - better for WebRTC
+            // videoChat mode is KEY for WebRTC echo cancellation
             try audioSession.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setMode(.videoChat)  // Key for WebRTC!
+            try audioSession.setMode(.videoChat)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             print("[RediWebRTC] ✅ Audio session configured (videoChat mode)")
         } catch {
@@ -294,7 +486,6 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     private func setupPeerConnection() {
         let config = RTCConfiguration()
-        // Simple config like the working example
         let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
         
         // Create factory fresh
@@ -308,7 +499,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     private func setupLocalAudio() {
         guard let pc = peerConnection, let factory = factory else { return }
         
-        // Put echo cancellation in MANDATORY constraints like working example
+        // MANDATORY echo cancellation constraints
         let constraints = RTCMediaConstraints(
             mandatoryConstraints: [
                 "googEchoCancellation": "true",
@@ -325,7 +516,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         pc.add(audioTrack, streamIds: ["local_stream"])
         localAudioTrack = audioTrack
         
-        print("[RediWebRTC] ✅ Local audio track added")
+        print("[RediWebRTC] ✅ Audio track added with AEC enabled")
     }
     
     // MARK: - SDP Exchange
@@ -350,7 +541,6 @@ class RediWebRTCService: NSObject, ObservableObject {
             throw WebRTCError.sdpExchangeFailed
         }
         
-        // Log response details for debugging
         print("[RediWebRTC] Response status: \(httpResponse.statusCode)")
         
         if !(200...299).contains(httpResponse.statusCode) {
@@ -363,6 +553,9 @@ class RediWebRTCService: NSObject, ObservableObject {
         guard let answerSdp = String(data: data, encoding: .utf8) else {
             throw WebRTCError.invalidSDP
         }
+        
+        // Verify video was accepted
+        print("[RediWebRTC] 📄 Answer contains video: \(answerSdp.contains("m=video"))")
         
         return answerSdp
     }
@@ -386,38 +579,33 @@ class RediWebRTCService: NSObject, ObservableObject {
         dc.sendData(buffer)
         
         if let type = message["type"] as? String {
-            print("[RediWebRTC] 📤 Sent: \(type)")
+            // Don't log sentinel checks to reduce noise
+            if !type.contains("conversation.item.create") {
+                print("[RediWebRTC] 📤 Sent: \(type)")
+            }
         }
-    }
-    
-    /// Send a camera frame to OpenAI
-    func sendFrame(_ frameData: Data) {
-        // Throttle frames during response
-        guard !responseInProgress else {
-            return
-        }
-        
-        let base64 = frameData.base64EncodedString()
-        
-        send(message: [
-            "type": "conversation.item.create",
-            "item": [
-                "type": "message",
-                "role": "user",
-                "content": [
-                    [
-                        "type": "input_image",
-                        "image_url": "data:image/jpeg;base64,\(base64)"
-                    ]
-                ]
-            ]
-        ])
     }
     
     /// Mute/unmute microphone
     func setMicMuted(_ muted: Bool) {
         localAudioTrack?.isEnabled = !muted
         print("[RediWebRTC] 🎤 Mic \(muted ? "muted" : "unmuted")")
+    }
+    
+    /// Enable/disable video
+    func setVideoEnabled(_ enabled: Bool) {
+        localVideoTrack?.isEnabled = enabled
+        
+        if enabled {
+            startVideoCapture()
+        } else {
+            videoCapturer?.stopCapture()
+        }
+        
+        DispatchQueue.main.async {
+            self.isVideoEnabled = enabled
+        }
+        print("[RediWebRTC] 📹 Video \(enabled ? "enabled" : "disabled")")
     }
     
     // MARK: - Error Types
@@ -430,6 +618,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         case sdpExchangeFailed
         case invalidSDP
         case dataChannelFailed
+        case noCameraAvailable
         
         var errorDescription: String? {
             switch self {
@@ -440,6 +629,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             case .sdpExchangeFailed: return "SDP exchange with OpenAI failed"
             case .invalidSDP: return "Invalid SDP response from OpenAI"
             case .dataChannelFailed: return "Data channel creation failed"
+            case .noCameraAvailable: return "No camera available for video"
             }
         }
     }
@@ -558,22 +748,28 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         case "response.audio_transcript.done":
             if let transcript = eventDict["transcript"] as? String {
-                print("[RediWebRTC] 🤖 \"\(transcript)\"")
-                onTranscriptReceived?(transcript, "assistant")
+                // Don't log empty sentinel responses
+                if !transcript.isEmpty {
+                    print("[RediWebRTC] 🤖 \"\(transcript)\"")
+                    onTranscriptReceived?(transcript, "assistant")
+                }
             }
             
         case "conversation.item.input_audio_transcription.completed":
             if let transcript = eventDict["transcript"] as? String {
                 print("[RediWebRTC] 📝 \"\(transcript)\"")
                 onTranscriptReceived?(transcript, "user")
+                lastUserSpeechTime = Date()
             }
             
         case "input_audio_buffer.speech_started":
             print("[RediWebRTC] 🎤 User speaking...")
+            userRecentlySpeaking = true
+            lastUserSpeechTime = Date()
             
         case "input_audio_buffer.speech_stopped":
             print("[RediWebRTC] 🎤 User stopped")
-            onRequestFrame?()
+            userRecentlySpeaking = false
             
         case "error":
             if let errorInfo = eventDict["error"] as? [String: Any],
@@ -583,9 +779,13 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             }
             
         case "conversation.item.created":
-            // Log but don't spam
+            // Only log non-sentinel items
             if let item = eventDict["item"] as? [String: Any],
-               let role = item["role"] as? String {
+               let role = item["role"] as? String,
+               let content = item["content"] as? [[String: Any]],
+               let firstContent = content.first,
+               let text = firstContent["text"] as? String,
+               !text.hasPrefix("[SENTINEL]") {
                 print("[RediWebRTC] 📨 Item created (role: \(role))")
             }
             
