@@ -19,7 +19,7 @@
  * IMPORTANT: After running `pod install`, open Redi.xcworkspace (NOT .xcodeproj)
  *
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Fixed audio based on working example
+ * Updated: Jan 26, 2026 - Fixed endpoint to use /v1/realtime/calls
  */
 
 import Foundation
@@ -65,6 +65,9 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var ephemeralToken: String?
     private let tokenURL = URL(string: "https://redialways.com/api/redi/webrtc/token")!
     
+    // OpenAI WebRTC endpoint - use /calls for ephemeral tokens
+    private let openAICallsURL = URL(string: "https://api.openai.com/v1/realtime/calls")!
+    
     // MARK: - Initialization
     
     override init() {
@@ -95,7 +98,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[RediWebRTC] 🔗 Starting WebRTC connection...")
         
         do {
-            // Step 1: Get ephemeral token
+            // Step 1: Get ephemeral token from our server
             print("[RediWebRTC] 📝 Requesting ephemeral token...")
             let tokenResponse = try await fetchEphemeralToken(mode: mode)
             self.ephemeralToken = tokenResponse.token
@@ -128,7 +131,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             // Step 6: Create SDP offer
             print("[RediWebRTC] 📤 Creating SDP offer...")
             let constraints = RTCMediaConstraints(
-                mandatoryConstraints: ["levelControl": "true"],
+                mandatoryConstraints: nil,
                 optionalConstraints: nil
             )
             
@@ -161,7 +164,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             }
             
             // Step 9: Send offer to OpenAI and get answer
-            print("[RediWebRTC] 📨 Sending offer to OpenAI...")
+            print("[RediWebRTC] 📨 Sending offer to OpenAI /v1/realtime/calls...")
             let answerSdp = try await sendOfferToOpenAI(localSdp: localSdp)
             
             // Step 10: Set remote description
@@ -220,6 +223,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Session Configuration
     
     /// Configure the OpenAI session - called when data channel opens
+    /// Note: Session is pre-configured via the token, but we can update it here
     private func configureSession() {
         guard !sessionConfigured else {
             print("[RediWebRTC] Session already configured")
@@ -231,45 +235,11 @@ class RediWebRTCService: NSObject, ObservableObject {
             return
         }
         
-        print("[RediWebRTC] 🔧 Configuring session...")
-        
-        // Match the working example's session config
-        let sessionConfig: [String: Any] = [
-            "type": "session.update",
-            "session": [
-                "modalities": ["text", "audio"],
-                "instructions": """
-                    You are Redi, a helpful AI assistant with vision capabilities.
-                    You can see through the user's camera and hear them speak.
-                    Keep responses concise and natural - under 30 words unless asked for more.
-                    Be friendly, helpful, and conversational.
-                    """,
-                "voice": "alloy",
-                "input_audio_format": "pcm16",
-                "output_audio_format": "pcm16",
-                "input_audio_transcription": [
-                    "model": "whisper-1"
-                ],
-                "turn_detection": [
-                    "type": "server_vad",
-                    "threshold": 0.5,
-                    "prefix_padding_ms": 300,
-                    "silence_duration_ms": 500,
-                    "create_response": true  // Let OpenAI auto-respond!
-                ],
-                "max_response_output_tokens": "inf"
-            ]
-        ]
-        
-        if let jsonData = try? JSONSerialization.data(withJSONObject: sessionConfig),
-           let jsonString = String(data: jsonData, encoding: .utf8) {
-            let buffer = RTCDataBuffer(data: jsonData, isBinary: false)
-            dc.sendData(buffer)
-            print("[RediWebRTC] 📤 Sent session.update")
-        }
-        
+        print("[RediWebRTC] 🔧 Session ready (pre-configured via token)")
         sessionConfigured = true
-        print("[RediWebRTC] ✅ Session configured!")
+        
+        // The session is already configured via the token endpoint
+        // We just need to wait for it to be ready
     }
     
     // MARK: - Token Fetching
@@ -312,7 +282,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             let audioSession = AVAudioSession.sharedInstance()
             // Use videoChat mode like the working example - better for WebRTC
             try audioSession.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setMode(.videoChat)  // Key difference!
+            try audioSession.setMode(.videoChat)  // Key for WebRTC!
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             print("[RediWebRTC] ✅ Audio session configured (videoChat mode)")
         } catch {
@@ -365,24 +335,25 @@ class RediWebRTCService: NSObject, ObservableObject {
             throw WebRTCError.noToken
         }
         
-        // Use the model parameter in URL like working example
-        let model = "gpt-4o-realtime-preview-2024-12-17"
-        guard let url = URL(string: "https://api.openai.com/v1/realtime?model=\(model)") else {
-            throw WebRTCError.sdpExchangeFailed
-        }
-        
-        var request = URLRequest(url: url)
+        // Use /v1/realtime/calls endpoint with ephemeral token
+        var request = URLRequest(url: openAICallsURL)
         request.httpMethod = "POST"
         request.setValue("application/sdp", forHTTPHeaderField: "Content-Type")
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         request.httpBody = localSdp.data(using: .utf8)
         
+        print("[RediWebRTC] 📤 POST to \(openAICallsURL.absoluteString)")
+        
         let (data, response) = try await URLSession.shared.data(for: request)
         
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            let statusCode = (response as? HTTPURLResponse)?.statusCode ?? 0
-            print("[RediWebRTC] ❌ OpenAI returned status: \(statusCode)")
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw WebRTCError.sdpExchangeFailed
+        }
+        
+        // Log response details for debugging
+        print("[RediWebRTC] Response status: \(httpResponse.statusCode)")
+        
+        if !(200...299).contains(httpResponse.statusCode) {
             if let errorBody = String(data: data, encoding: .utf8) {
                 print("[RediWebRTC] Error body: \(errorBody)")
             }
