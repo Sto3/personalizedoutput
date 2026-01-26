@@ -2,7 +2,7 @@
  * V3MainView.swift
  *
  * REDI FOR ANYTHING - Production UI
- * Camera preview now works with WebRTC
+ * WebRTC mode with camera preview
  *
  * Updated: Jan 26, 2026
  */
@@ -20,8 +20,8 @@ struct V3MainView: View {
     
     var body: some View {
         ZStack {
-            // Camera Preview
-            CameraPreviewView(session: webrtcService.captureSession)
+            // Camera Preview - WebRTC mode
+            WebRTCCameraPreview(captureSession: webrtcService.captureSession)
                 .ignoresSafeArea()
             
             // Dark overlay when inactive
@@ -207,31 +207,51 @@ struct V3MainView: View {
     }
 }
 
-// MARK: - Camera Preview View
+// MARK: - WebRTC Camera Preview (separate from SessionView's CameraPreviewView)
 
-struct CameraPreviewView: UIViewRepresentable {
-    let session: AVCaptureSession?
+struct WebRTCCameraPreview: UIViewRepresentable {
+    let captureSession: AVCaptureSession?
     
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView(frame: .zero)
+    func makeUIView(context: Context) -> WebRTCPreviewUIView {
+        let view = WebRTCPreviewUIView()
         view.backgroundColor = .black
         return view
     }
     
-    func updateUIView(_ uiView: UIView, context: Context) {
-        // Remove old preview layers
-        uiView.layer.sublayers?.filter { $0 is AVCaptureVideoPreviewLayer }.forEach { $0.removeFromSuperlayer() }
+    func updateUIView(_ uiView: WebRTCPreviewUIView, context: Context) {
+        uiView.captureSession = captureSession
+    }
+}
+
+class WebRTCPreviewUIView: UIView {
+    private var previewLayer: AVCaptureVideoPreviewLayer?
+    
+    var captureSession: AVCaptureSession? {
+        didSet {
+            setupPreviewLayer()
+        }
+    }
+    
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        previewLayer?.frame = bounds
+    }
+    
+    private func setupPreviewLayer() {
+        // Remove old layer
+        previewLayer?.removeFromSuperlayer()
+        previewLayer = nil
         
-        guard let session = session else { return }
+        // Create new layer if we have a session
+        guard let session = captureSession else { return }
         
-        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        previewLayer.frame = uiView.bounds
+        let newLayer = AVCaptureVideoPreviewLayer(session: session)
+        newLayer.videoGravity = .resizeAspectFill
+        newLayer.frame = bounds
+        layer.insertSublayer(newLayer, at: 0)
+        previewLayer = newLayer
         
-        // Auto-resize with view
-        previewLayer.frame = UIScreen.main.bounds
-        
-        uiView.layer.insertSublayer(previewLayer, at: 0)
+        print("[WebRTCPreview] Preview layer set: \(bounds)")
     }
 }
 
