@@ -53,8 +53,11 @@ class RediWebRTCService: NSObject, ObservableObject {
     // Track if session is configured
     private var sessionConfigured = false
     
-    // Track if response is in progress (to avoid spamming response.create)
+    // Track if response is in progress
     private var responseInProgress = false
+    
+    // Track if we already triggered response for this turn
+    private var responseTriggeredForTurn = false
     
     // WebRTC factory (singleton)
     private static let factory: RTCPeerConnectionFactory = {
@@ -104,6 +107,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             error = nil
             sessionConfigured = false
             responseInProgress = false
+            responseTriggeredForTurn = false
         }
         
         print("[RediWebRTC] 🔗 Starting WebRTC connection...")
@@ -180,6 +184,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         ephemeralToken = nil
         sessionConfigured = false
         responseInProgress = false
+        responseTriggeredForTurn = false
         
         DispatchQueue.main.async {
             self.isConnected = false
@@ -199,6 +204,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         print("[RediWebRTC] 🔧 Configuring session...")
         
+        // Match V7 server config - NO create_response, we trigger manually
         let sessionConfig: [String: Any] = [
             "type": "session.update",
             "session": [
@@ -206,11 +212,10 @@ class RediWebRTCService: NSObject, ObservableObject {
                 "instructions": """
                     You are Redi, a helpful AI assistant with vision capabilities.
                     You can see through the user's camera and hear them speak.
-                    Keep responses concise and natural - this is a real-time conversation.
-                    If you see something interesting, feel free to comment on it.
+                    Keep responses concise and natural - under 30 words unless asked for more.
                     Be friendly, helpful, and conversational.
                     """,
-                "voice": "shimmer",
+                "voice": "alloy",
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
                 "input_audio_transcription": [
@@ -218,10 +223,10 @@ class RediWebRTCService: NSObject, ObservableObject {
                 ],
                 "turn_detection": [
                     "type": "server_vad",
-                    "threshold": 0.5,
-                    "prefix_padding_ms": 300,
-                    "silence_duration_ms": 500,
-                    "create_response": true
+                    "threshold": 0.7,
+                    "prefix_padding_ms": 400,
+                    "silence_duration_ms": 800
+                    // NO create_response - we trigger manually like V7
                 ]
             ]
         ]
@@ -229,6 +234,27 @@ class RediWebRTCService: NSObject, ObservableObject {
         send(message: sessionConfig)
         sessionConfigured = true
         print("[RediWebRTC] ✅ Session configured!")
+    }
+    
+    // MARK: - Response Triggering
+    
+    /// Trigger a response from OpenAI (called when user stops speaking)
+    private func triggerResponse() {
+        guard !responseTriggeredForTurn else {
+            print("[RediWebRTC] Response already triggered for this turn")
+            return
+        }
+        
+        responseTriggeredForTurn = true
+        responseInProgress = true
+        
+        print("[RediWebRTC] 🚀 Triggering response...")
+        
+        // Clear any echo that might be in the buffer
+        send(message: ["type": "input_audio_buffer.clear"])
+        
+        // Trigger the response
+        send(message: ["type": "response.create"])
     }
     
     // MARK: - Token Fetching
@@ -421,7 +447,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
     }
     
-    /// Send a camera frame to OpenAI (no response.create - VAD handles that)
+    /// Send a camera frame to OpenAI
     func sendFrame(_ frameData: Data) {
         // Don't send frames if response is in progress
         guard !responseInProgress else {
@@ -443,9 +469,6 @@ class RediWebRTCService: NSObject, ObservableObject {
                 ]
             ]
         ])
-        
-        // DON'T send response.create here!
-        // VAD with create_response: true handles automatic responses
     }
     
     /// Mute/unmute microphone
@@ -594,6 +617,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
         case "response.done":
             print("[RediWebRTC] ✅ Response complete")
             responseInProgress = false
+            responseTriggeredForTurn = false  // Reset for next turn
             onPlaybackEnded?()
             
         case "response.audio_transcript.done":
@@ -610,10 +634,18 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         case "input_audio_buffer.speech_started":
             print("[RediWebRTC] 🎤 User speaking...")
+            responseTriggeredForTurn = false  // New speech, allow new response
             
         case "input_audio_buffer.speech_stopped":
             print("[RediWebRTC] 🎤 User stopped")
+            
+            // Request frame for vision context
             onRequestFrame?()
+            
+            // Trigger response after short delay (like V7 does)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                self?.triggerResponse()
+            }
             
         case "error":
             if let errorInfo = message["error"] as? [String: Any],
