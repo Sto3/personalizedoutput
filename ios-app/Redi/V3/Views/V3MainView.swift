@@ -2,10 +2,7 @@
  * V3MainView.swift
  *
  * REDI FOR ANYTHING - Production UI
- * - Live camera preview
- * - Memory toggle
- * - Sensitivity slider
- * - Activation state
+ * Uses AVCaptureVideoPreviewLayer from the service
  *
  * Updated: Jan 26, 2026
  */
@@ -24,8 +21,8 @@ struct V3MainView: View {
     
     var body: some View {
         ZStack {
-            // Camera Preview
-            RediCameraPreview(session: webrtcService.captureSession)
+            // Camera Preview (uses preview layer from service)
+            RediCameraPreview(previewLayer: webrtcService.previewLayer)
                 .ignoresSafeArea()
             
             // Dark overlay when not active
@@ -36,32 +33,25 @@ struct V3MainView: View {
             
             // UI
             VStack {
-                // Top bar
                 topBar
                 
                 Spacer()
                 
-                // Center content
                 if isActive && !webrtcService.isActivated {
                     waitingForActivation
                 }
                 
                 Spacer()
                 
-                // Transcript
                 if !transcriptLines.isEmpty {
                     transcriptView
                 }
                 
-                // Controls (when not active)
                 if !isActive {
                     controlsPanel
                 }
                 
-                // Main button
                 mainButton
-                
-                // Branding
                 branding
             }
         }
@@ -72,7 +62,6 @@ struct V3MainView: View {
     
     private var topBar: some View {
         HStack {
-            // Status
             HStack(spacing: 8) {
                 Circle()
                     .fill(isActive ? (webrtcService.isActivated ? Color.green : Color.yellow) : Color.gray)
@@ -88,7 +77,6 @@ struct V3MainView: View {
             
             Spacer()
             
-            // Memory indicator
             if memoryEnabled {
                 HStack(spacing: 4) {
                     Image(systemName: "brain")
@@ -105,7 +93,6 @@ struct V3MainView: View {
             
             Spacer()
             
-            // Latency
             if isActive && latency > 0 {
                 Text("\(latency)ms")
                     .font(.caption)
@@ -119,8 +106,6 @@ struct V3MainView: View {
         .padding(.horizontal)
         .padding(.top, 60)
     }
-    
-    // MARK: - Waiting State
     
     private var waitingForActivation: some View {
         VStack(spacing: 16) {
@@ -136,8 +121,6 @@ struct V3MainView: View {
         .background(Color.black.opacity(0.5))
         .cornerRadius(20)
     }
-    
-    // MARK: - Transcript
     
     private var transcriptView: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -162,11 +145,8 @@ struct V3MainView: View {
         .padding(.horizontal)
     }
     
-    // MARK: - Controls Panel
-    
     private var controlsPanel: some View {
         VStack(spacing: 16) {
-            // Memory toggle
             HStack {
                 Image(systemName: "brain")
                     .foregroundColor(.purple)
@@ -184,7 +164,6 @@ struct V3MainView: View {
             
             Divider().background(Color.white.opacity(0.3))
             
-            // Sensitivity
             VStack(spacing: 8) {
                 HStack {
                     Text("How often should Redi speak up?")
@@ -229,8 +208,6 @@ struct V3MainView: View {
         }
     }
     
-    // MARK: - Main Button
-    
     private var mainButton: some View {
         Button(action: toggleSession) {
             ZStack {
@@ -252,8 +229,6 @@ struct V3MainView: View {
         .padding(.bottom, 20)
     }
     
-    // MARK: - Branding
-    
     private var branding: some View {
         VStack(spacing: 4) {
             Text("Redi for Anything")
@@ -268,8 +243,6 @@ struct V3MainView: View {
         }
         .padding(.bottom, 40)
     }
-    
-    // MARK: - Actions
     
     private func toggleSession() {
         if isActive {
@@ -297,19 +270,17 @@ struct V3MainView: View {
         }
         
         webrtcService.onLatencyMeasured = { ms in latency = ms }
-        
         webrtcService.onPlaybackStarted = { statusText = "Speaking..." }
-        
         webrtcService.onPlaybackEnded = {
             statusText = webrtcService.isActivated ? "Listening..." : "Say 'Hey Redi'"
         }
     }
 }
 
-// MARK: - Redi Camera Preview (renamed to avoid conflict with SessionView)
+// MARK: - Camera Preview (uses AVCaptureVideoPreviewLayer)
 
 struct RediCameraPreview: UIViewRepresentable {
-    let session: AVCaptureSession?
+    let previewLayer: AVCaptureVideoPreviewLayer?
     
     func makeUIView(context: Context) -> UIView {
         let view = UIView(frame: .zero)
@@ -321,12 +292,11 @@ struct RediCameraPreview: UIViewRepresentable {
         // Remove old preview layers
         uiView.layer.sublayers?.filter { $0 is AVCaptureVideoPreviewLayer }.forEach { $0.removeFromSuperlayer() }
         
-        guard let session = session else { return }
+        guard let layer = previewLayer else { return }
         
-        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        previewLayer.frame = UIScreen.main.bounds
-        uiView.layer.addSublayer(previewLayer)
+        layer.frame = UIScreen.main.bounds
+        layer.videoGravity = .resizeAspectFill
+        uiView.layer.addSublayer(layer)
     }
 }
 
