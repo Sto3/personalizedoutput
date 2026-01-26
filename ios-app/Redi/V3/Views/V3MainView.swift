@@ -17,16 +17,15 @@ struct V3MainView: View {
     @State private var statusText = "Ready"
     @State private var transcriptLines: [(String, String)] = []
     @State private var latency: Int = 0
-    @State private var previewReady = false  // Track when preview is available
+    @State private var previewReady = false
     
     var body: some View {
         ZStack {
             // Camera Preview
             if isActive, let layer = webrtcService.previewLayer {
-                CameraPreviewContainer(previewLayer: layer)
+                RediPreviewView(previewLayer: layer)
                     .ignoresSafeArea()
             } else {
-                // Black background when no preview
                 Color.black
                     .ignoresSafeArea()
             }
@@ -63,7 +62,6 @@ struct V3MainView: View {
         }
         .onAppear { setupCallbacks() }
         .onChange(of: webrtcService.isConnected) { connected in
-            // Force UI refresh when connection state changes
             if connected {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     previewReady = webrtcService.previewLayer != nil
@@ -91,7 +89,6 @@ struct V3MainView: View {
             
             Spacer()
             
-            // Video indicator
             if isActive && webrtcService.previewLayer != nil {
                 HStack(spacing: 4) {
                     Image(systemName: "video.fill")
@@ -307,24 +304,24 @@ struct V3MainView: View {
     }
 }
 
-// MARK: - Camera Preview Container (UIViewRepresentable)
+// MARK: - Redi Preview View (unique name to avoid conflict with SessionView)
 
-struct CameraPreviewContainer: UIViewRepresentable {
+struct RediPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer
     
-    func makeUIView(context: Context) -> CameraPreviewUIView {
-        let view = CameraPreviewUIView()
+    func makeUIView(context: Context) -> RediPreviewUIView {
+        let view = RediPreviewUIView()
         view.backgroundColor = .black
         view.previewLayer = previewLayer
         return view
     }
     
-    func updateUIView(_ uiView: CameraPreviewUIView, context: Context) {
+    func updateUIView(_ uiView: RediPreviewUIView, context: Context) {
         uiView.previewLayer = previewLayer
     }
 }
 
-class CameraPreviewUIView: UIView {
+class RediPreviewUIView: UIView {
     var previewLayer: AVCaptureVideoPreviewLayer? {
         didSet {
             setupPreview()
@@ -337,7 +334,6 @@ class CameraPreviewUIView: UIView {
     }
     
     private func setupPreview() {
-        // Remove existing preview layers
         layer.sublayers?.filter { $0 is AVCaptureVideoPreviewLayer }.forEach { $0.removeFromSuperlayer() }
         
         guard let previewLayer = previewLayer else { return }
@@ -347,8 +343,6 @@ class CameraPreviewUIView: UIView {
         layer.insertSublayer(previewLayer, at: 0)
     }
 }
-
-// MARK: - Preview
 
 #Preview {
     V3MainView()
