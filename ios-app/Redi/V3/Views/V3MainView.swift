@@ -1,18 +1,17 @@
 /**
  * Redi V3 MainView
  *
- * Primary UI for Redi V3 (OpenAI Realtime API):
- * - Full screen camera preview (landscape + portrait)
- * - Start/Stop session button
- * - Sensitivity slider
+ * Primary UI for Redi - "Redi for Anything"
+ * 
+ * - Full screen camera preview
+ * - Start/Stop session button  
+ * - Sensitivity slider (1-10)
  * - Transcript display
- * - ~500ms voice-to-voice latency
- * 
- * Jan 25, 2026: Added WebRTC support for echo-free audio!
- * When V7 WebRTC is selected, uses direct connection to OpenAI.
- * 
- * Jan 26, 2026: Updated for video track - no more data channel images!
- * Video is streamed directly via WebRTC video track.
+ *
+ * Jan 26, 2026: 
+ * - "Redi for Anything" - no more modes, one adaptive AI
+ * - Fixed camera freeze by not starting V3CameraService in WebRTC mode
+ * - WebRTC uses its own camera via RTCCameraVideoCapturer
  */
 
 import SwiftUI
@@ -28,11 +27,11 @@ struct V3MainView: View {
     @State private var isSessionActive = false
     @State private var lastTranscript = ""
     @State private var lastRole = ""
-    @State private var sensitivity: Double = 0.5
+    @State private var sensitivity: Double = 5.0  // 1-10 scale, default balanced
     @State private var isConnecting = false
     @State private var isSessionReady = false
     @State private var cancellables = Set<AnyCancellable>()
-    @State private var useWebRTC = false  // Determined at session start
+    @State private var useWebRTC = false
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.verticalSizeClass) var verticalSizeClass
@@ -44,11 +43,41 @@ struct V3MainView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Camera preview (full screen background)
-                // NOTE: For WebRTC, video goes directly to OpenAI via video track
-                // The preview here is just for the user to see what Redi sees
-                V3CameraPreview(cameraService: cameraService)
-                    .ignoresSafeArea()
+                // Camera preview
+                // For WebRTC: Shows black initially, but Redi still sees via WebRTC video track
+                // TODO: Route WebRTC video to preview for visual feedback
+                if !useWebRTC {
+                    V3CameraPreview(cameraService: cameraService)
+                        .ignoresSafeArea()
+                } else {
+                    // WebRTC mode - show dark background
+                    // (Redi can still see via the WebRTC video track)
+                    Color.black
+                        .ignoresSafeArea()
+                    
+                    // Show "Redi is watching" indicator
+                    if isSessionActive && webRTCService.isVideoEnabled {
+                        VStack {
+                            Spacer()
+                            HStack {
+                                Spacer()
+                                HStack(spacing: 6) {
+                                    Circle()
+                                        .fill(Color.green)
+                                        .frame(width: 8, height: 8)
+                                    Text("Redi can see")
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.8))
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(Color.black.opacity(0.6))
+                                .cornerRadius(16)
+                                .padding()
+                            }
+                        }
+                    }
+                }
 
                 // Dark overlay when not active
                 if !isSessionActive {
@@ -56,22 +85,22 @@ struct V3MainView: View {
                         .ignoresSafeArea()
 
                     VStack(spacing: 20) {
-                        Image(systemName: "waveform.circle.fill")
+                        Image(systemName: "eye.circle.fill")
                             .font(.system(size: isLandscape ? 50 : 80))
                             .foregroundColor(.green.opacity(0.8))
 
-                        Text("Redi V3")
+                        Text("Redi")
                             .font(isLandscape ? .title : .largeTitle)
                             .fontWeight(.bold)
                             .foregroundColor(.white)
 
-                        Text(RediConfig.serverVersion.displayName)
-                            .font(.subheadline)
-                            .foregroundColor(RediConfig.isWebRTCEnabled ? .green : .gray)
+                        Text("for Anything")
+                            .font(.title2)
+                            .foregroundColor(.green)
                     }
                 }
 
-                // Main UI overlay - adapts to orientation
+                // Main UI overlay
                 if isLandscape {
                     landscapeLayout(geometry: geometry)
                 } else {
@@ -80,11 +109,15 @@ struct V3MainView: View {
             }
         }
         .onAppear {
-            setupCallbacks()
+            // No callbacks to setup initially - done at session start
         }
         .onChange(of: sensitivity) { newValue in
-            if isSessionActive && !useWebRTC {
-                webSocketService.sendSensitivity(newValue)
+            // Update sensitivity in real-time
+            let intValue = Int(newValue)
+            if isSessionActive && useWebRTC {
+                webRTCService.setSensitivity(intValue)
+            } else if isSessionActive {
+                webSocketService.sendSensitivity(newValue / 10.0)  // Convert to 0-1 for legacy
             }
         }
         .animation(.easeInOut(duration: 0.3), value: lastTranscript)
@@ -108,7 +141,6 @@ struct V3MainView: View {
     @ViewBuilder
     private func landscapeLayout(geometry: GeometryProxy) -> some View {
         HStack {
-            // Left side - transcript
             VStack {
                 Spacer()
                 transcriptView
@@ -119,7 +151,6 @@ struct V3MainView: View {
 
             Spacer()
 
-            // Right side - controls
             VStack {
                 statusBar
                 Spacer()
@@ -134,14 +165,12 @@ struct V3MainView: View {
 
     private var statusBar: some View {
         HStack {
-            // Back button to exit V3 - using onTapGesture to avoid SwiftUI auto-trigger bug
             Image(systemName: "xmark.circle.fill")
                 .font(.system(size: 28))
                 .foregroundColor(.white.opacity(0.8))
-                .frame(width: 44, height: 44)  // Larger tap target
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
                 .onTapGesture {
-                    print("[V3MainView] X button tapped")
                     exitV3()
                 }
 
@@ -157,20 +186,19 @@ struct V3MainView: View {
 
             if isSessionActive && isSessionReady {
                 HStack(spacing: 4) {
-                    // Show video indicator for WebRTC
                     if useWebRTC && webRTCService.isVideoEnabled {
                         Image(systemName: "video.fill")
                             .foregroundColor(.green)
                             .font(.caption)
                     }
                     
-                    Text(useWebRTC ? "WebRTC" : "WebSocket")
+                    Text("Sensitivity: \(Int(sensitivity))")
                         .font(.caption)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(useWebRTC ? Color.green.opacity(0.3) : Color.orange.opacity(0.3))
+                        .background(Color.green.opacity(0.3))
                         .cornerRadius(8)
-                        .foregroundColor(useWebRTC ? .green : .orange)
+                        .foregroundColor(.green)
                 }
             }
         }
@@ -182,7 +210,7 @@ struct V3MainView: View {
         if !lastTranscript.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    Image(systemName: lastRole == "user" ? "person.fill" : "waveform")
+                    Image(systemName: lastRole == "user" ? "person.fill" : "eye.fill")
                         .foregroundColor(lastRole == "user" ? .blue : .green)
 
                     Text(lastRole == "user" ? "You" : "Redi")
@@ -192,7 +220,7 @@ struct V3MainView: View {
 
                 Text(lastTranscript)
                     .font(.body)
-                    .lineLimit(3)
+                    .lineLimit(4)  // Allow slightly longer transcripts
             }
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -207,31 +235,33 @@ struct V3MainView: View {
     @ViewBuilder
     private func controlsView(compact: Bool) -> some View {
         VStack(spacing: compact ? 12 : 20) {
-            // Sensitivity slider (only shown when active)
+            // Sensitivity slider
             if isSessionActive && !compact {
                 VStack(spacing: 8) {
-                    Text("Sensitivity")
+                    Text("Sensitivity: \(Int(sensitivity))")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.7))
 
                     HStack {
-                        Image(systemName: "speaker.fill")
-                            .foregroundColor(.white.opacity(0.5))
+                        Text("🤫")
                             .font(.caption)
 
-                        Slider(value: $sensitivity, in: 0...1)
+                        Slider(value: $sensitivity, in: 1...10, step: 1)
                             .accentColor(.green)
                             .frame(maxWidth: 200)
 
-                        Image(systemName: "speaker.wave.3.fill")
-                            .foregroundColor(.white.opacity(0.5))
+                        Text("💬")
                             .font(.caption)
                     }
+                    
+                    Text(sensitivityLabel)
+                        .font(.caption2)
+                        .foregroundColor(.white.opacity(0.5))
                 }
                 .padding(.horizontal, 40)
             }
 
-            // Start/Stop button - using onTapGesture to avoid SwiftUI button re-render triggers
+            // Start/Stop button
             ZStack {
                 Circle()
                     .fill(isSessionActive ? Color.red.opacity(0.6) : Color.green)
@@ -239,7 +269,6 @@ struct V3MainView: View {
                     .shadow(color: (isSessionActive ? Color.red : Color.green).opacity(0.5), radius: 10)
 
                 if isConnecting {
-                    // Only show loading during initial connection
                     ProgressView()
                         .progressViewStyle(CircularProgressViewStyle(tint: .white))
                 } else {
@@ -255,19 +284,29 @@ struct V3MainView: View {
             }
 
             if !compact {
-                Text(isSessionActive ? "Tap to stop" : "Tap to start")
+                Text(isSessionActive ? "Tap to stop" : "Redi for Anything")
                     .font(.caption)
                     .foregroundColor(.white.opacity(0.7))
             }
         }
     }
+    
+    private var sensitivityLabel: String {
+        let level = Int(sensitivity)
+        switch level {
+        case 1...2: return "Minimal - only critical"
+        case 3...4: return "Reserved - significant only"
+        case 5...6: return "Balanced - helpful engagement"
+        case 7...8: return "Engaged - active coaching"
+        case 9...10: return "Maximum - constant companion"
+        default: return ""
+        }
+    }
 
     private var statusColor: Color {
         if useWebRTC {
-            // WebRTC status
             return isSessionReady ? .green : (isConnecting ? .yellow : .gray)
         } else {
-            // WebSocket status
             switch webSocketService.connectionState {
             case .connected:
                 return isSessionReady ? .green : .yellow
@@ -284,9 +323,9 @@ struct V3MainView: View {
     private var statusText: String {
         if useWebRTC {
             if isSessionReady {
-                return webRTCService.isVideoEnabled ? "WebRTC + Video Ready" : "WebRTC Ready"
+                return webRTCService.isVideoEnabled ? "Redi is watching" : "Ready"
             } else if isConnecting {
-                return "Connecting WebRTC..."
+                return "Connecting..."
             } else {
                 return "Not connected"
             }
@@ -299,14 +338,12 @@ struct V3MainView: View {
             case .disconnected:
                 return "Not connected"
             case .error:
-                // Suppress error details in UI - just show reconnecting
                 return "Reconnecting..."
             }
         }
     }
 
     private func toggleSession() {
-        print("[V3MainView] Toggle: isSessionActive=\(isSessionActive)")
         if isSessionActive {
             stopSession()
         } else {
@@ -315,38 +352,35 @@ struct V3MainView: View {
     }
 
     private func startSession() {
-        print("[V3MainView] Starting session...")
+        print("[Redi] Starting session (sensitivity: \(Int(sensitivity)))...")
         isConnecting = true
         isSessionReady = false
         
-        // Check if WebRTC is enabled
         useWebRTC = RediConfig.isWebRTCEnabled
-        print("[V3MainView] Using \(useWebRTC ? "WebRTC 🚀" : "WebSocket")")
+        print("[Redi] Using \(useWebRTC ? "WebRTC 🚀" : "WebSocket")")
 
         if useWebRTC {
             startWebRTCSession()
         } else {
             startWebSocketSession()
+            // Only start preview camera for WebSocket mode
+            cameraService.startCapture()
         }
-
-        // Start camera for local preview
-        // NOTE: For WebRTC, the actual video sent to OpenAI comes from
-        // RTCCameraVideoCapturer, not from this preview camera.
-        // This is just so the user can see what Redi sees.
-        cameraService.startCapture()
         
         isSessionActive = true
     }
     
     private func startWebRTCSession() {
-        print("[V3MainView] 🚀 Starting WebRTC session with VIDEO TRACK...")
+        print("[Redi] 🚀 Starting WebRTC session...")
         
-        // Setup WebRTC callbacks BEFORE connecting
+        // Set initial sensitivity
+        webRTCService.setSensitivity(Int(sensitivity))
+        
         webRTCService.onSessionReady = {
             DispatchQueue.main.async {
                 self.isSessionReady = true
                 self.isConnecting = false
-                print("[V3MainView] ✅ WebRTC session ready with video!")
+                print("[Redi] ✅ WebRTC ready - Redi is watching!")
             }
         }
         
@@ -355,38 +389,36 @@ struct V3MainView: View {
         }
         
         webRTCService.onPlaybackStarted = {
-            // WebRTC handles echo cancellation internally - no need to mute mic!
-            print("[V3MainView] 🔊 WebRTC playback started (AEC active)")
+            print("[Redi] 🔊 Speaking (AEC active)")
         }
         
         webRTCService.onPlaybackEnded = {
-            print("[V3MainView] 🔇 WebRTC playback ended")
+            print("[Redi] 🔇 Done speaking")
         }
         
-        // NOTE: We no longer use onRequestFrame or sendFrame for WebRTC!
-        // Video is sent directly via the WebRTC video track.
-        // The Sentinel timer in RediWebRTCService handles proactive interjection.
+        webRTCService.onLatencyMeasured = { ms in
+            print("[Redi] ⚡ Latency: \(ms)ms")
+        }
         
         webRTCService.onError = { error in
-            print("[V3MainView] ❌ WebRTC error: \(error.localizedDescription)")
+            print("[Redi] ❌ Error: \(error.localizedDescription)")
             DispatchQueue.main.async {
-                // Fall back to WebSocket if WebRTC fails
-                print("[V3MainView] 🔄 Falling back to WebSocket...")
+                // Fall back to WebSocket
                 self.useWebRTC = false
+                self.cameraService.startCapture()
                 self.startWebSocketSession()
             }
         }
         
-        // Connect!
         Task {
             do {
-                try await webRTCService.connect(mode: "general")
-                print("[V3MainView] ✅ WebRTC connected with video track!")
+                try await webRTCService.connect()
+                print("[Redi] ✅ Connected!")
             } catch {
-                print("[V3MainView] ❌ WebRTC connection failed: \(error.localizedDescription)")
+                print("[Redi] ❌ Connection failed: \(error)")
                 await MainActor.run {
-                    // Fall back to WebSocket
                     self.useWebRTC = false
+                    self.cameraService.startCapture()
                     self.startWebSocketSession()
                 }
             }
@@ -394,41 +426,30 @@ struct V3MainView: View {
     }
     
     private func startWebSocketSession() {
-        print("[V3MainView] Starting WebSocket session...")
+        print("[Redi] Starting WebSocket session...")
         
-        // Setup WebSocket callbacks
         setupWebSocketCallbacks()
-        
-        // Connect to server
         webSocketService.connect()
-
-        // Start audio (WebSocket needs explicit audio handling)
         audioService.startRecording()
         
-        // Audio -> Server (using Combine publisher)
         audioService.audioCaptured
             .sink { [weak webSocketService] audioData in
                 webSocketService?.sendAudio(audioData)
             }
             .store(in: &cancellables)
         
-        // Camera frames -> Server (WebSocket needs continuous frames for V7 fresh-frame logic)
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
-            print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
         }
     }
 
     private func stopSession() {
-        // DEBUG: Print stack trace to find what's calling stopSession
-        print("[V3MainView] Stopping session... STACK TRACE:")
-        Thread.callStackSymbols.prefix(10).forEach { print("  \($0)") }
+        print("[Redi] Stopping session...")
 
-        cameraService.stopCapture()
-        
         if useWebRTC {
             webRTCService.disconnect()
         } else {
+            cameraService.stopCapture()
             audioService.stopRecording()
             webSocketService.disconnect()
             audioService.cleanup()
@@ -438,8 +459,6 @@ struct V3MainView: View {
         isSessionReady = false
         lastTranscript = ""
         useWebRTC = false
-        
-        // Clear subscriptions
         cancellables.removeAll()
     }
 
@@ -455,7 +474,6 @@ struct V3MainView: View {
                 self.lastRole = role
             }
 
-            // Clear transcript after 5 seconds
             DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
                 if self.lastTranscript == text {
                     withAnimation {
@@ -465,57 +483,41 @@ struct V3MainView: View {
             }
         }
     }
-
-    private func setupCallbacks() {
-        // Only setup WebSocket callbacks here - WebRTC callbacks are setup in startWebRTCSession
-    }
     
     private func setupWebSocketCallbacks() {
-        // Camera frames -> Server
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
-            print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
         }
 
-        // Server audio -> Speaker
         webSocketService.onAudioReceived = { [weak audioService] audioData in
             audioService?.playAudio(audioData)
         }
         
-        // Server signals audio stream complete -> Flush remaining audio
         webSocketService.onAudioDone = { [weak audioService] in
             audioService?.flushAudio()
         }
 
-        // Server transcripts -> UI
         webSocketService.onTranscriptReceived = { text, role in
             self.handleTranscript(text: text, role: role)
         }
 
-        // Session ready
         webSocketService.onSessionReady = {
             self.isSessionReady = true
             self.isConnecting = false
-            print("[V3MainView] Session ready - OpenAI connected!")
         }
 
-        // Errors - log but don't show to user (handled gracefully)
         webSocketService.onError = { error in
-            print("[V3MainView] Error (suppressed): \(error.localizedDescription)")
+            print("[Redi] WebSocket error: \(error.localizedDescription)")
         }
 
-        // Echo suppression: server tells us when to mute/unmute mic
-        // This prevents Redi from hearing its own voice through the speaker
         webSocketService.onMicMuteChanged = { [weak audioService] muted in
             audioService?.setMuted(muted)
         }
 
-        // Barge-in: server tells us to stop audio when user interrupts
         webSocketService.onStopAudio = { [weak audioService] in
             audioService?.stopPlayback()
         }
 
-        // Fresh frame request: server needs a fresh frame for visual context
         webSocketService.onRequestFrame = { [weak cameraService, weak webSocketService] in
             cameraService?.captureFrameNow { frameData in
                 webSocketService?.sendFrame(frameData)
