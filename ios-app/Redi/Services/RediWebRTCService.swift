@@ -4,7 +4,7 @@
  * REDI FOR ANYTHING - One adaptive AI, no modes needed
  * 
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Fix video: remove conflicting AVCaptureSession
+ * Updated: Jan 26, 2026 - Fix: Don't go proactive until user activates
  */
 
 import Foundation
@@ -21,10 +21,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     @Published var error: String?
     @Published var isVideoEnabled = false
     @Published var sensitivity: Int = 5  // 1-10 scale
+    @Published var isActivated = false   // Has user said "Hey Redi"?
     
-    // MARK: - Video Preview (placeholder - RTCCameraVideoCapturer doesn't expose session)
-    // For now, no preview - priority is Redi actually seeing
-    var captureSession: AVCaptureSession? { nil }
+    // MARK: - Video Preview
+    var captureSession: AVCaptureSession? { nil }  // No preview for now
     
     // MARK: - Latency Tracking
     
@@ -57,6 +57,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var responseInProgress = false
     private var lastUserSpeechTime: Date = .distantPast
     private var sessionStartTime: Date?
+    private var userHasSpoken = false  // Track if user has spoken at all
     
     // MARK: - Proactive Check Timer
     
@@ -99,7 +100,8 @@ class RediWebRTCService: NSObject, ObservableObject {
         let clamped = max(1, min(10, newValue))
         sensitivity = clamped
         
-        if isConnected {
+        // Only restart timer if already activated
+        if isActivated {
             startProactiveTimer()
         }
         
@@ -119,12 +121,13 @@ class RediWebRTCService: NSObject, ObservableObject {
             error = nil
             sessionConfigured = false
             responseInProgress = false
+            isActivated = false
+            userHasSpoken = false
         }
         
         print("[Redi] \u{1F517} Connecting...")
         
         do {
-            // Configure audio FIRST (before WebRTC factory)
             configureAudioSession()
             
             let tokenResponse = try await fetchEphemeralToken()
@@ -234,16 +237,18 @@ class RediWebRTCService: NSObject, ObservableObject {
         sessionConfigured = false
         responseInProgress = false
         sessionStartTime = nil
+        userHasSpoken = false
         
         DispatchQueue.main.async {
             self.isConnected = false
             self.isConnecting = false
             self.isVideoEnabled = false
+            self.isActivated = false
             self.connectionState = .closed
         }
     }
     
-    // MARK: - Video Setup (RTCCameraVideoCapturer only - no conflicting AVCaptureSession)
+    // MARK: - Video Setup
     
     private func setupLocalVideo() {
         guard let pc = peerConnection, let factory = factory else { return }
@@ -256,7 +261,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         pc.add(videoTrack, streamIds: ["local_stream"])
         localVideoTrack = videoTrack
         
-        print("[Redi] \u{1F4F9} Video track added to peer connection")
+        print("[Redi] \u{1F4F9} Video track added")
     }
     
     private func startVideoCapture() {
@@ -270,14 +275,10 @@ class RediWebRTCService: NSObject, ObservableObject {
             return
         }
         
-        // ONLY use RTCCameraVideoCapturer - no separate AVCaptureSession
-        // This ensures video actually gets sent to OpenAI
         let format = selectCameraFormat(for: camera)
-        
-        // Use 2 FPS - enough for OpenAI to see, not too much bandwidth
         capturer.startCapture(with: camera, format: format, fps: 2)
         
-        print("[Redi] \u{2705} Camera streaming to OpenAI (2 FPS)")
+        print("[Redi] \u{2705} Camera streaming (2 FPS)")
     }
     
     private func findBackCamera() -> AVCaptureDevice? {
@@ -293,7 +294,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         let formats = RTCCameraVideoCapturer.supportedFormats(for: device)
         var selectedFormat = formats.first!
         
-        // Find 1280x720 format for good quality without too much bandwidth
         for format in formats {
             let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
             if dimensions.width == 1280 && dimensions.height == 720 {
@@ -326,6 +326,9 @@ class RediWebRTCService: NSObject, ObservableObject {
     }
     
     private func performProactiveCheck() {
+        // DON'T do proactive checks until user has activated Redi
+        guard isActivated else { return }
+        
         let timeSinceUserSpoke = Date().timeIntervalSince(lastUserSpeechTime)
         guard timeSinceUserSpoke > 2.0 && !responseInProgress else { return }
         
@@ -363,9 +366,25 @@ class RediWebRTCService: NSObject, ObservableObject {
             ]
         ])
         
-        print("[Redi] \u{2705} Session configured")
+        print("[Redi] \u{2705} Session configured (waiting for user to activate)")
         sessionConfigured = true
+        
+        // DON'T start proactive timer here - wait for user activation
+    }
+    
+    // MARK: - Activation (called when user speaks for the first time)
+    
+    private func activateRedi() {
+        guard !isActivated else { return }
+        
+        DispatchQueue.main.async {
+            self.isActivated = true
+        }
+        
+        // NOW start proactive timer
         startProactiveTimer()
+        
+        print("[Redi] \u{2705} Activated! Proactive mode enabled.")
     }
     
     // MARK: - Token Fetching
@@ -402,30 +421,27 @@ class RediWebRTCService: NSObject, ObservableObject {
         return try JSONDecoder().decode(TokenResponse.self, from: data)
     }
     
-    // MARK: - Audio Session (LOUD output)
+    // MARK: - Audio Session
     
     private func configureAudioSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
             
-            // Use videoChat mode for better AEC, defaultToSpeaker for LOUD output
             try audioSession.setCategory(
                 .playAndRecord,
                 mode: .videoChat,
                 options: [.defaultToSpeaker, .allowBluetooth]
             )
             
-            // Max out the output volume route
             try audioSession.overrideOutputAudioPort(.speaker)
-            
             try audioSession.setPreferredSampleRate(48000)
             try audioSession.setPreferredIOBufferDuration(0.005)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
             
-            print("[Redi] \u{1F50A} Audio: speaker mode, volume maximized")
+            print("[Redi] \u{1F50A} Audio ready")
             
         } catch {
-            print("[Redi] \u{26A0}\u{FE0F} Audio session error: \(error)")
+            print("[Redi] \u{26A0}\u{FE0F} Audio error: \(error)")
         }
     }
     
@@ -592,7 +608,7 @@ extension RediWebRTCService: RTCPeerConnectionDelegate {
 extension RediWebRTCService: RTCDataChannelDelegate {
     func dataChannelDidChangeState(_ dataChannel: RTCDataChannel) {
         if dataChannel.readyState == .open {
-            print("[Redi] \u{2705} Ready")
+            print("[Redi] \u{2705} Ready (waiting for 'Hey Redi')")
             configureSession()
             DispatchQueue.main.async { self.onSessionReady?() }
         }
@@ -626,10 +642,15 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         case "response.audio_transcript.done":
             if let transcript = eventDict["transcript"] as? String {
-                // Filter out silent responses (just ".")
                 if !transcript.isEmpty && transcript != "." {
                     print("[Redi] \u{1F916} \"\(transcript)\"")
                     onTranscriptReceived?(transcript, "assistant")
+                    
+                    // If Redi responded with activation phrase, mark as activated
+                    let lower = transcript.lowercased()
+                    if lower.contains("ready to help") || lower.contains("here to help") {
+                        activateRedi()
+                    }
                 }
             }
             
@@ -638,6 +659,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
                 print("[Redi] \u{1F4DD} \"\(transcript)\"")
                 onTranscriptReceived?(transcript, "user")
                 lastUserSpeechTime = Date()
+                userHasSpoken = true
             }
             
         case "input_audio_buffer.speech_started":
