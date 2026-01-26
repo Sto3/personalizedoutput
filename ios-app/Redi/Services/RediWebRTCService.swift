@@ -4,19 +4,13 @@
  * REDI FOR ANYTHING - One adaptive AI, no modes needed
  * 
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Camera preview fix + balanced instructions
+ * Updated: Jan 26, 2026 - Fix camera performance, audio volume, thinking phrases
  */
 
 import Foundation
 import AVFoundation
 import Combine
 import WebRTC
-
-// MARK: - Video Frame Delegate Protocol
-
-protocol RediVideoFrameDelegate: AnyObject {
-    func didCaptureVideoFrame(_ sampleBuffer: CMSampleBuffer)
-}
 
 class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -30,10 +24,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     // MARK: - Video Preview
     
-    /// Delegate to receive video frames for preview
-    weak var videoFrameDelegate: RediVideoFrameDelegate?
-    
-    /// The capture session - can be used for preview layer
+    /// The capture session - used for preview layer
     private(set) var captureSession: AVCaptureSession?
     
     // MARK: - Latency Tracking
@@ -56,16 +47,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var dataChannel: RTCDataChannel?
     private var localAudioTrack: RTCAudioTrack?
     private var localVideoTrack: RTCVideoTrack?
-    private var videoSource: RTCVideoSource?
+    private var videoCapturer: RTCCameraVideoCapturer?
     
     private static var factoryInitialized = false
     private var factory: RTCPeerConnectionFactory?
-    
-    // MARK: - Camera Capture
-    
-    private var captureDevice: AVCaptureDevice?
-    private var videoOutput: AVCaptureVideoDataOutput?
-    private let captureQueue = DispatchQueue(label: "com.redi.capture", qos: .userInteractive)
     
     // MARK: - Session State
     
@@ -83,10 +68,6 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var ephemeralToken: String?
     private let tokenURL = URL(string: "https://redialways.com/api/redi/webrtc/token")!
     private let openAICallsURL = URL(string: "https://api.openai.com/v1/realtime/calls")!
-    
-    private let videoWidth: Int32 = 1920
-    private let videoHeight: Int32 = 1080
-    private let videoFPS: Int = 1  // Low FPS for OpenAI (they take snapshots)
     
     // MARK: - Initialization
     
@@ -144,6 +125,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[Redi] \u{1F517} Connecting...")
         
         do {
+            // Configure audio FIRST (before WebRTC factory)
             configureAudioSession()
             
             let tokenResponse = try await fetchEphemeralToken()
@@ -221,7 +203,7 @@ class RediWebRTCService: NSObject, ObservableObject {
                 isVideoEnabled = true
             }
             
-            startCameraCapture()
+            startVideoCapture()
             
         } catch {
             print("[Redi] \u{274C} Connection failed: \(error)")
@@ -238,7 +220,10 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[Redi] \u{1F50C} Disconnecting...")
         
         stopProactiveTimer()
-        stopCameraCapture()
+        
+        videoCapturer?.stopCapture()
+        videoCapturer = nil
+        captureSession = nil
         
         dataChannel?.close()
         dataChannel = nil
@@ -246,7 +231,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         peerConnection = nil
         localAudioTrack = nil
         localVideoTrack = nil
-        videoSource = nil
         factory = nil
         ephemeralToken = nil
         sessionConfigured = false
@@ -261,77 +245,57 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Camera Setup (Unified for Preview + WebRTC)
+    // MARK: - Video Setup (RTCCameraVideoCapturer - native WebRTC, better performance)
     
     private func setupLocalVideo() {
         guard let pc = peerConnection, let factory = factory else { return }
         
-        // Create video source for WebRTC
-        videoSource = factory.videoSource()
+        let videoSource = factory.videoSource()
+        let capturer = RTCCameraVideoCapturer(delegate: videoSource)
+        self.videoCapturer = capturer
         
-        guard let source = videoSource else { return }
-        
-        let videoTrack = factory.videoTrack(with: source, trackId: "local_video")
+        let videoTrack = factory.videoTrack(with: videoSource, trackId: "local_video")
         pc.add(videoTrack, streamIds: ["local_stream"])
         localVideoTrack = videoTrack
     }
     
-    private func startCameraCapture() {
-        // Create AVCaptureSession that feeds BOTH preview AND WebRTC
-        let session = AVCaptureSession()
-        session.sessionPreset = .hd1920x1080
+    private func startVideoCapture() {
+        guard let capturer = videoCapturer else {
+            print("[Redi] \u{26A0}\u{FE0F} No video capturer")
+            return
+        }
         
-        // Find back camera
         guard let camera = findBackCamera() else {
             print("[Redi] \u{26A0}\u{FE0F} No camera available")
             return
         }
-        captureDevice = camera
+        
+        // Create AVCaptureSession for preview
+        let session = AVCaptureSession()
+        session.sessionPreset = .hd1280x720  // Lower res for smoother preview
         
         do {
             let input = try AVCaptureDeviceInput(device: camera)
             if session.canAddInput(input) {
                 session.addInput(input)
             }
-            
-            // Video output - feeds frames to WebRTC and preview delegate
-            let output = AVCaptureVideoDataOutput()
-            output.videoSettings = [
-                kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
-            ]
-            output.setSampleBufferDelegate(self, queue: captureQueue)
-            output.alwaysDiscardsLateVideoFrames = true
-            
-            if session.canAddOutput(output) {
-                session.addOutput(output)
-            }
-            videoOutput = output
-            
-            // Configure frame rate
-            try camera.lockForConfiguration()
-            camera.activeVideoMinFrameDuration = CMTime(value: 1, timescale: Int32(videoFPS))
-            camera.activeVideoMaxFrameDuration = CMTime(value: 1, timescale: Int32(videoFPS))
-            camera.unlockForConfiguration()
-            
         } catch {
-            print("[Redi] \u{274C} Camera setup error: \(error)")
-            return
+            print("[Redi] \u{274C} Camera input error: \(error)")
         }
         
+        // Store for preview
         captureSession = session
         
-        // Start capture on background thread
+        // Start preview session
         DispatchQueue.global(qos: .userInitiated).async {
             session.startRunning()
-            print("[Redi] \u{1F4F9} Camera active")
         }
-    }
-    
-    private func stopCameraCapture() {
-        captureSession?.stopRunning()
-        captureSession = nil
-        videoOutput = nil
-        captureDevice = nil
+        
+        // Start WebRTC capture separately (1 FPS for OpenAI)
+        let format = selectCameraFormat(for: camera)
+        capturer.startCapture(with: camera, format: format, fps: 1)
+        
+        print("[Redi] \u{1F4F9} Camera active (preview + WebRTC)")
     }
     
     private func findBackCamera() -> AVCaptureDevice? {
@@ -341,6 +305,22 @@ class RediWebRTCService: NSObject, ObservableObject {
             position: .back
         )
         return discoverySession.devices.first
+    }
+    
+    private func selectCameraFormat(for device: AVCaptureDevice) -> AVCaptureDevice.Format {
+        let formats = RTCCameraVideoCapturer.supportedFormats(for: device)
+        var selectedFormat = formats.first!
+        
+        // Find 1280x720 format for good quality without too much bandwidth
+        for format in formats {
+            let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+            if dimensions.width == 1280 && dimensions.height == 720 {
+                selectedFormat = format
+                break
+            }
+        }
+        
+        return selectedFormat
     }
     
     // MARK: - Proactive Check Timer
@@ -440,21 +420,27 @@ class RediWebRTCService: NSObject, ObservableObject {
         return try JSONDecoder().decode(TokenResponse.self, from: data)
     }
     
-    // MARK: - Audio Session
+    // MARK: - Audio Session (LOUD output)
     
     private func configureAudioSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
             
+            // Use videoChat mode for better AEC, defaultToSpeaker for LOUD output
             try audioSession.setCategory(
                 .playAndRecord,
-                mode: .voiceChat,
-                options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
+                mode: .videoChat,
+                options: [.defaultToSpeaker, .allowBluetooth]
             )
+            
+            // Max out the output volume route
+            try audioSession.overrideOutputAudioPort(.speaker)
             
             try audioSession.setPreferredSampleRate(48000)
             try audioSession.setPreferredIOBufferDuration(0.005)
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+            
+            print("[Redi] \u{1F50A} Audio: speaker mode, volume maximized")
             
         } catch {
             print("[Redi] \u{26A0}\u{FE0F} Audio session error: \(error)")
@@ -582,31 +568,6 @@ class RediWebRTCService: NSObject, ObservableObject {
             case .noCameraAvailable: return "No camera"
             }
         }
-    }
-}
-
-// MARK: - AVCaptureVideoDataOutputSampleBufferDelegate
-
-extension RediWebRTCService: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        // Send frame to preview delegate
-        videoFrameDelegate?.didCaptureVideoFrame(sampleBuffer)
-        
-        // Convert to RTCVideoFrame and send to WebRTC
-        guard let videoSource = videoSource,
-              let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        
-        let timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
-        let timestampNs = Int64(CMTimeGetSeconds(timestamp) * 1_000_000_000)
-        
-        let rtcPixelBuffer = RTCCVPixelBuffer(pixelBuffer: pixelBuffer)
-        let rtcFrame = RTCVideoFrame(
-            buffer: rtcPixelBuffer,
-            rotation: ._90,  // Portrait orientation
-            timeStampNs: timestampNs
-        )
-        
-        videoSource.capturer(RTCVideoCapturer(), didCapture: rtcFrame)
     }
 }
 
