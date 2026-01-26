@@ -240,13 +240,12 @@ class RediWebRTCService: NSObject, ObservableObject {
             optionalConstraints: ["DtlsSrtpKeyAgreement": "true"]
         )
         
-        guard let pc = Self.factory.peerConnection(
+        // GoogleWebRTC's peerConnection returns non-optional RTCPeerConnection
+        let pc = Self.factory.peerConnection(
             with: config,
             constraints: constraints,
             delegate: self
-        ) else {
-            throw WebRTCError.peerConnectionFailed
-        }
+        )
         
         self.peerConnection = pc
     }
@@ -280,10 +279,8 @@ class RediWebRTCService: NSObject, ObservableObject {
         let config = RTCDataChannelConfiguration()
         config.isOrdered = true
         
-        guard let dc = peerConnection?.dataChannel(
-            forLabel: "oai-events",
-            configuration: config
-        ) else {
+        guard let pc = peerConnection,
+              let dc = pc.dataChannel(forLabel: "oai-events", configuration: config) else {
             print("[RediWebRTC] ⚠️ Failed to create data channel")
             return
         }
@@ -308,9 +305,9 @@ class RediWebRTCService: NSObject, ObservableObject {
         )
         
         return try await withCheckedThrowingContinuation { continuation in
-            pc.offer(for: constraints) { sdp, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
+            pc.offer(for: constraints) { sdp, offerError in
+                if let offerError = offerError {
+                    continuation.resume(throwing: offerError)
                 } else if let sdp = sdp {
                     continuation.resume(returning: sdp)
                 } else {
