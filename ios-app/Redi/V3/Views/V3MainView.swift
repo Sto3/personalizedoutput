@@ -3,7 +3,7 @@
  *
  * REDI FOR ANYTHING - Production UI
  * 
- * Camera preview uses RTCVideoRenderer - shows exactly what Redi sees.
+ * Camera preview uses RTCEAGLVideoView (OpenGL) - shows what Redi sees.
  *
  * Updated: Jan 26, 2026
  */
@@ -23,9 +23,9 @@ struct V3MainView: View {
     
     var body: some View {
         ZStack {
-            // Camera Preview - uses RTCVideoRenderer
-            if isActive, let videoView = webrtcService.videoView {
-                RediVideoPreview(videoView: videoView)
+            // Camera Preview
+            if isActive && webrtcService.hasVideoPreview, let view = webrtcService.previewView {
+                RTCVideoViewWrapper(rtcView: view)
                     .ignoresSafeArea()
             } else {
                 Color.black
@@ -84,7 +84,7 @@ struct V3MainView: View {
             
             Spacer()
             
-            if isActive && webrtcService.videoView != nil {
+            if isActive && webrtcService.hasVideoPreview {
                 HStack(spacing: 4) {
                     Image(systemName: "video.fill")
                         .foregroundColor(.green)
@@ -298,22 +298,30 @@ struct V3MainView: View {
     }
 }
 
-// MARK: - Redi Video Preview (wraps RediVideoView for SwiftUI)
+// MARK: - RTC Video View Wrapper
 
-struct RediVideoPreview: UIViewRepresentable {
-    let videoView: RediVideoView
+struct RTCVideoViewWrapper: UIViewRepresentable {
+    let rtcView: RTCEAGLVideoView
     
     func makeUIView(context: Context) -> UIView {
         let container = UIView()
         container.backgroundColor = .black
-        videoView.frame = container.bounds
-        videoView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        container.addSubview(videoView)
+        
+        rtcView.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(rtcView)
+        
+        NSLayoutConstraint.activate([
+            rtcView.topAnchor.constraint(equalTo: container.topAnchor),
+            rtcView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            rtcView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            rtcView.trailingAnchor.constraint(equalTo: container.trailingAnchor)
+        ])
+        
         return container
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {
-        videoView.frame = uiView.bounds
+        // Frame updates handled by constraints
     }
 }
 

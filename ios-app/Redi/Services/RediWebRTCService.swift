@@ -3,8 +3,8 @@
  *
  * REDI FOR ANYTHING - Production Version
  * 
- * Camera Preview: Uses RTCVideoRenderer to display the SAME frames
- * that get sent to OpenAI. No conflicts, user sees what Redi sees.
+ * Camera Preview: Uses RTCEAGLVideoView (OpenGL) to display frames.
+ * Simpler and more compatible than Metal approach.
  *
  * Updated: Jan 26, 2026
  */
@@ -13,58 +13,6 @@ import Foundation
 import AVFoundation
 import Combine
 import WebRTC
-
-// MARK: - Video Frame Renderer (displays WebRTC frames)
-
-class RediVideoView: UIView, RTCVideoRenderer {
-    private var videoSize: CGSize = .zero
-    private var currentFrame: RTCVideoFrame?
-    private let renderQueue = DispatchQueue(label: "redi.render", qos: .userInteractive)
-    
-    // Metal rendering
-    #if arch(arm64)
-    private var metalView: RTCMTLVideoView?
-    #endif
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        setupMetalView()
-    }
-    
-    required init?(coder: NSCoder) {
-        super.init(coder: coder)
-        setupMetalView()
-    }
-    
-    private func setupMetalView() {
-        #if arch(arm64)
-        let metal = RTCMTLVideoView(frame: bounds)
-        metal.videoContentMode = .scaleAspectFill
-        metal.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-        addSubview(metal)
-        metalView = metal
-        #endif
-        backgroundColor = .black
-    }
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        #if arch(arm64)
-        metalView?.frame = bounds
-        #endif
-    }
-    
-    // RTCVideoRenderer protocol
-    func setSize(_ size: CGSize) {
-        videoSize = size
-    }
-    
-    func renderFrame(_ frame: RTCVideoFrame?) {
-        #if arch(arm64)
-        metalView?.renderFrame(frame)
-        #endif
-    }
-}
 
 class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -77,11 +25,12 @@ class RediWebRTCService: NSObject, ObservableObject {
     @Published var sensitivity: Int = 5
     @Published var isActivated = false
     @Published var memoryEnabled = true
+    @Published var hasVideoPreview = false
     
-    // MARK: - Video Preview
+    // MARK: - Video Preview (OpenGL-based)
     
-    private var _videoView: RediVideoView?
-    var videoView: RediVideoView? { _videoView }
+    private var _previewView: RTCEAGLVideoView?
+    var previewView: RTCEAGLVideoView? { _previewView }
     
     // MARK: - Latency Tracking
     
@@ -269,11 +218,11 @@ class RediWebRTCService: NSObject, ObservableObject {
         stopProactiveTimer()
         stopCamera()
         
-        // Remove renderer from video track
-        if let view = _videoView {
+        // Remove renderer
+        if let view = _previewView {
             localVideoTrack?.remove(view)
         }
-        _videoView = nil
+        _previewView = nil
         
         dataChannel?.close()
         dataChannel = nil
@@ -295,6 +244,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             self.isVideoEnabled = false
             self.isActivated = false
             self.connectionState = .closed
+            self.hasVideoPreview = false
         }
     }
     
@@ -313,12 +263,18 @@ class RediWebRTCService: NSObject, ObservableObject {
         pc.add(videoTrack, streamIds: ["local_stream"])
         localVideoTrack = videoTrack
         
-        // Create video view and attach it as renderer
-        let view = RediVideoView(frame: .zero)
-        _videoView = view
-        videoTrack.add(view)
+        // Create preview view on main thread
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let view = RTCEAGLVideoView(frame: CGRect(x: 0, y: 0, width: 1, height: 1))
+            view.delegate = self
+            self._previewView = view
+            videoTrack.add(view)
+            self.hasVideoPreview = true
+            print("[Redi] Preview view created and attached")
+        }
         
-        print("[Redi] Camera setup complete with preview renderer")
+        print("[Redi] Camera setup complete")
     }
     
     private func startCamera() {
@@ -650,5 +606,13 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             
         default: break
         }
+    }
+}
+
+// MARK: - RTCVideoViewDelegate
+
+extension RediWebRTCService: RTCVideoViewDelegate {
+    func videoView(_ videoView: RTCVideoRenderer, didChangeVideoSize size: CGSize) {
+        print("[Redi] Video size changed: \(size)")
     }
 }
