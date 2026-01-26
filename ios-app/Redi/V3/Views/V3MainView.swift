@@ -25,7 +25,7 @@ struct V3MainView: View {
     var body: some View {
         ZStack {
             // Camera Preview
-            CameraPreviewView(session: webrtcService.captureSession)
+            RediCameraPreview(session: webrtcService.captureSession)
                 .ignoresSafeArea()
             
             // Dark overlay when not active
@@ -306,9 +306,9 @@ struct V3MainView: View {
     }
 }
 
-// MARK: - Camera Preview
+// MARK: - Redi Camera Preview (renamed to avoid conflict with SessionView)
 
-struct CameraPreviewView: UIViewRepresentable {
+struct RediCameraPreview: UIViewRepresentable {
     let session: AVCaptureSession?
     
     func makeUIView(context: Context) -> UIView {
@@ -318,7 +318,7 @@ struct CameraPreviewView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UIView, context: Context) {
-        // Remove old layers
+        // Remove old preview layers
         uiView.layer.sublayers?.filter { $0 is AVCaptureVideoPreviewLayer }.forEach { $0.removeFromSuperlayer() }
         
         guard let session = session else { return }
