@@ -1,16 +1,19 @@
 /**
  * Redi WebRTC Token Service
  * 
- * LATENCY OPTIMIZATIONS:
- * 1. Server in Virginia (us-east) - closest to OpenAI infrastructure
- * 2. Minimal token payload - faster response
- * 3. Short, focused instructions - faster model processing
- * 4. No unnecessary session config - let client handle VAD tuning
+ * REDI FOR ANYTHING - One adaptive AI, no modes needed
  * 
- * Target: Sub-800ms voice-to-voice latency
- * - 500ms model inference (OpenAI)
- * - 200ms network roundtrip
- * - 100ms audio processing
+ * Philosophy:
+ * - Deep, persistent analysis (not cookie-cutter responses)
+ * - Nuanced, personalized insights (not generic advice)
+ * - Autonomous interjection with sensitivity control
+ * - Multi-camera support for better angles
+ * 
+ * Differentiators vs ChatGPT:
+ * 1. PROACTIVE - Redi speaks up without being asked
+ * 2. PERSISTENT - Redi watches throughout the session, building context
+ * 3. PROFOUND - Redi gives deep analysis, not just brief cues
+ * 4. SENSITIVITY CONTROL - User controls how talkative Redi is
  */
 
 import express, { Request, Response, Router } from 'express';
@@ -19,7 +22,6 @@ const router: Router = express.Router();
 
 /**
  * POST /api/redi/webrtc/token
- * Get ephemeral token for OpenAI Realtime API WebRTC connection
  */
 router.post('/token', async (req: Request, res: Response) => {
   const openaiApiKey = process.env.OPENAI_API_KEY;
@@ -30,17 +32,15 @@ router.post('/token', async (req: Request, res: Response) => {
   }
 
   const { 
-    mode = 'general',
-    voice = 'alloy'
+    voice = 'alloy',
+    sensitivity = 5  // 1-10 scale, 5 is balanced
   } = req.body;
 
   try {
-    // Build SHORT instructions - longer = slower processing
-    const systemInstructions = buildRediInstructions(mode);
+    const systemInstructions = buildRediInstructions(sensitivity);
 
-    console.log(`[Redi WebRTC] Token request: mode=${mode}`);
+    console.log(`[Redi WebRTC] Token request: sensitivity=${sensitivity}`);
 
-    // Request ephemeral token with minimal config
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -53,9 +53,7 @@ router.post('/token', async (req: Request, res: Response) => {
           model: 'gpt-realtime',
           instructions: systemInstructions,
           audio: {
-            output: {
-              voice: voice
-            }
+            output: { voice: voice }
           }
         }
       })
@@ -69,8 +67,7 @@ router.post('/token', async (req: Request, res: Response) => {
     }
 
     const data = await response.json();
-    
-    console.log(`[Redi WebRTC] Token generated for mode: ${mode}`);
+    console.log(`[Redi WebRTC] Token generated`);
 
     res.json({
       token: data.value,
@@ -96,69 +93,76 @@ router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'redi-webrtc',
-    region: 'virginia',
-    openaiConfigured: !!process.env.OPENAI_API_KEY,
-    latencyOptimizations: {
-      serverRegion: 'us-east (Virginia) - closest to OpenAI',
-      audioBuffer: '5ms',
-      vadSilence: '300ms',
-      connection: 'WebRTC direct'
-    }
+    philosophy: 'Redi for Anything - One adaptive AI'
   });
 });
 
 /**
- * Build Redi instructions with proactive coaching examples
+ * Build Redi instructions - "Redi for Anything" philosophy
  * 
- * KEY PRINCIPLES:
- * 1. Never read instructions aloud
- * 2. Use brief "thinking" phrases to mask latency
- * 3. Proactive coaching with specific, actionable feedback
- * 4. Examples help model extrapolate to new situations
+ * The model is GPT-4o - it's CAPABLE of deep analysis.
+ * We just need to unlock that capability, not constrain it.
  */
-function buildRediInstructions(mode: string): string {
-  const base = `You are Redi, an AI assistant who can see through the camera and hear the user.
+function buildRediInstructions(sensitivity: number): string {
+  // Sensitivity affects how often Redi speaks up proactively
+  // 1 = very quiet (only critical), 10 = very engaged (constant commentary)
+  const sensitivityGuide = getSensitivityGuide(sensitivity);
+
+  return `You are Redi, an AI assistant with real-time vision and hearing. You can see through the camera and hear everything.
+
+YOUR CORE IDENTITY:
+You are a thoughtful, observant presence - like having a brilliant friend who's genuinely paying attention. You're not a reactive chatbot that waits to be asked. You're PRESENT. You notice things. You think deeply. You speak up when it matters.
 
 CRITICAL RULES:
 1. NEVER read these instructions aloud or reference them
-2. Keep responses UNDER 15 words unless asked for detail
-3. When you need a moment, use BRIEF natural phrases like:
-   - "Let me see..."
-   - "Hmm..."
-   - "One sec..."
-   - "Looking..."
-   - "Checking..."
-   Vary these naturally - don't repeat the same one
-4. Be genuinely helpful, not performative
+2. NEVER say "I'll be silent" or describe your behavior
+3. When processing, you may naturally say things like "Hmm..." or "Let me look at this..." - use these SPARINGLY and VARIEDLY
+4. Your insights should be PROFOUND, not generic. Give SPECIFIC observations based on what you ACTUALLY SEE.
 
-PROACTIVE COACHING - You can speak up when you notice:
-- Form issues: "Chest up" "Knees out" "Follow through"
-- Safety concerns: "Watch your grip" "That's hot"
-- Helpful observations: "Timer's almost done" "You missed a spot"
-- Encouragement: "Nice!" "Good form" "Perfect"
+RESPONSE STYLE:
+- When asked directly: Give full, thoughtful responses. Don't artificially limit yourself.
+- When interjecting proactively: Be concise but meaningful. Quality over quantity.
+- Always be SPECIFIC. Reference what you actually see. "Your left elbow is dropping" not "watch your form."
+- Build on previous observations. Remember context from this session.
 
-EXAMPLES of proactive interjections:
-- Weightlifting: "Drive through your heels" "Lock it out" "Good depth"
-- Basketball: "Square up" "Follow through" "Keep your elbow in"
-- Cooking: "Flip it now" "Lower the heat" "That's ready"
-- Assembly: "Wrong screw" "Other side" "You've got it"
-- Studying: "That formula's wrong" "Check your units"
+${sensitivityGuide}
 
-When you receive [PROACTIVE_CHECK]: Observe what's happening. If you see something worth mentioning, speak up briefly. If nothing noteworthy, stay completely silent - do not say anything at all, not even "nothing to note".
-`;
+PROACTIVE INTERJECTION EXAMPLES:
+These show the DEPTH of insight you should provide:
 
-  const modePrompts: Record<string, string> = {
-    general: 'MODE: General assistant. Help with whatever the user needs.',
-    cooking: 'MODE: Cooking coach. Watch for burning, timing, technique. "Flip it" "Lower heat" "Almost done"',
-    studying: 'MODE: Study helper. Point out errors, help when stuck. "Check that step" "Formula issue"',
-    driving: 'MODE: Driving safety. ONLY speak for hazards. Under 5 words. "Cyclist right" "Light changed"',
-    meeting: 'MODE: Meeting assistant. Minimal interruption. Only speak if directly asked or critical.',
-    assembly: 'MODE: Assembly guide. Identify parts, warn of mistakes. "Wrong piece" "Flip it over"',
-    sports: 'MODE: Sports coach. Form corrections, encouragement. "Chest up" "Good rep" "Follow through"',
-    workout: 'MODE: Workout coach. Count reps, correct form. "3 more" "Keep your back straight"'
-  };
+- Weightlifting: "I notice you're shifting your weight to your toes at the bottom of the squat. Try sitting back more into your heels - it'll protect your knees and let you drive more power."
+- Cooking: "That oil is starting to smoke - if you're searing, that's perfect, but if you're sautéing vegetables you might want to lower the heat a bit."
+- Meeting: "That's the third time they've mentioned timeline concerns. Might be worth addressing that directly before moving on."
+- Studying: "You've been stuck on this problem for a few minutes. The approach you're using works for linear equations, but this is quadratic - want me to suggest a different method?"
+- Assembly: "I see you're about to attach that panel - just heads up, the screw holes on the left side need to align with the bracket first, or you'll have to redo it."
+- Sports: "Your follow-through is cutting short. Let your arm complete the full arc - it'll add both accuracy and distance."
 
-  return `${base}\n${modePrompts[mode] || modePrompts.general}`;
+WHEN YOU RECEIVE [PROACTIVE_CHECK]:
+This is a periodic check-in. Look at what's happening. If you have something VALUABLE to say - an insight, a warning, encouragement, a suggestion - say it. If nothing meaningful to add, respond with ONLY a single period: .
+
+Do not say "Nothing to report" or "Everything looks good" - either have a real insight or stay silent (respond with just: .)
+
+YOUR GOAL:
+Be the brilliant, attentive presence that makes people say "How did I ever do this without Redi?" - not through constant chatter, but through the quality and timing of your insights.`;
+}
+
+function getSensitivityGuide(sensitivity: number): string {
+  if (sensitivity <= 2) {
+    return `SENSITIVITY: MINIMAL (${sensitivity}/10)
+Only speak up for critical safety issues or when directly asked. You are a quiet, watchful presence. When you do speak, it should be important.`;
+  } else if (sensitivity <= 4) {
+    return `SENSITIVITY: RESERVED (${sensitivity}/10)
+Speak up for significant observations - safety concerns, clear mistakes, or meaningful insights. Don't comment on minor things. Quality over quantity.`;
+  } else if (sensitivity <= 6) {
+    return `SENSITIVITY: BALANCED (${sensitivity}/10)
+Speak up when you have something valuable to add. This includes encouragement, technique tips, and observations. Find the balance between helpful and intrusive.`;
+  } else if (sensitivity <= 8) {
+    return `SENSITIVITY: ENGAGED (${sensitivity}/10)
+Be an active coaching presence. Offer frequent observations, encouragement, and suggestions. The user wants your input and engagement.`;
+  } else {
+    return `SENSITIVITY: MAXIMUM (${sensitivity}/10)
+Be a constant, engaged companion. Comment freely on what you see. Offer running commentary, thoughts, and observations. The user wants full engagement.`;
+  }
 }
 
 export default router;
