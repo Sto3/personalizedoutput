@@ -124,7 +124,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             
             // Step 4: Setup local video from camera
             print("[RediWebRTC] 📹 Setting up video track from camera...")
-            try await setupLocalVideo()
+            setupLocalVideo()
             
             // Step 5: Configure audio session for WebRTC
             print("[RediWebRTC] 🔊 Configuring audio session...")
@@ -252,7 +252,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     // MARK: - Video Setup
     
-    private func setupLocalVideo() async throws {
+    private func setupLocalVideo() {
         guard let pc = peerConnection, let factory = factory else { return }
         
         // Create video source
@@ -261,15 +261,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         // Create camera capturer
         let capturer = RTCCameraVideoCapturer(delegate: videoSource)
         self.videoCapturer = capturer
-        
-        // Find back camera (wide angle preferred)
-        guard let camera = findBackCamera() else {
-            print("[RediWebRTC] ⚠️ No back camera found, continuing without video")
-            return
-        }
-        
-        // Find best format for our target resolution
-        let format = selectCameraFormat(for: camera)
         
         // Create video track
         let videoTrack = factory.videoTrack(with: videoSource, trackId: "local_video")
@@ -284,19 +275,14 @@ class RediWebRTCService: NSObject, ObservableObject {
     private func startVideoCapture() {
         guard let capturer = videoCapturer,
               let camera = findBackCamera() else {
-            print("[RediWebRTC] ⚠️ Cannot start video capture")
+            print("[RediWebRTC] ⚠️ Cannot start video capture - no camera")
             return
         }
         
         let format = selectCameraFormat(for: camera)
         
-        capturer.startCapture(with: camera, format: format, fps: videoFPS) { error in
-            if let error = error {
-                print("[RediWebRTC] ❌ Video capture error: \(error)")
-            } else {
-                print("[RediWebRTC] 📹 Video capture started at \(self.videoFPS) FPS")
-            }
-        }
+        capturer.startCapture(with: camera, format: format, fps: videoFPS)
+        print("[RediWebRTC] 📹 Video capture started at \(self.videoFPS) FPS")
     }
     
     private func findBackCamera() -> AVCaptureDevice? {

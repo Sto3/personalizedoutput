@@ -11,7 +11,8 @@
  * Jan 25, 2026: Added WebRTC support for echo-free audio!
  * When V7 WebRTC is selected, uses direct connection to OpenAI.
  * 
- * Jan 26, 2026: Fixed frame flooding - only send ONE frame when user stops speaking
+ * Jan 26, 2026: Updated for video track - no more data channel images!
+ * Video is streamed directly via WebRTC video track.
  */
 
 import SwiftUI
@@ -44,6 +45,8 @@ struct V3MainView: View {
         GeometryReader { geometry in
             ZStack {
                 // Camera preview (full screen background)
+                // NOTE: For WebRTC, video goes directly to OpenAI via video track
+                // The preview here is just for the user to see what Redi sees
                 V3CameraPreview(cameraService: cameraService)
                     .ignoresSafeArea()
 
@@ -154,6 +157,13 @@ struct V3MainView: View {
 
             if isSessionActive && isSessionReady {
                 HStack(spacing: 4) {
+                    // Show video indicator for WebRTC
+                    if useWebRTC && webRTCService.isVideoEnabled {
+                        Image(systemName: "video.fill")
+                            .foregroundColor(.green)
+                            .font(.caption)
+                    }
+                    
                     Text(useWebRTC ? "WebRTC" : "WebSocket")
                         .font(.caption)
                         .padding(.horizontal, 8)
@@ -274,7 +284,7 @@ struct V3MainView: View {
     private var statusText: String {
         if useWebRTC {
             if isSessionReady {
-                return "WebRTC Ready"
+                return webRTCService.isVideoEnabled ? "WebRTC + Video Ready" : "WebRTC Ready"
             } else if isConnecting {
                 return "Connecting WebRTC..."
             } else {
@@ -319,21 +329,24 @@ struct V3MainView: View {
             startWebSocketSession()
         }
 
-        // Start camera (same for both modes)
+        // Start camera for local preview
+        // NOTE: For WebRTC, the actual video sent to OpenAI comes from
+        // RTCCameraVideoCapturer, not from this preview camera.
+        // This is just so the user can see what Redi sees.
         cameraService.startCapture()
         
         isSessionActive = true
     }
     
     private func startWebRTCSession() {
-        print("[V3MainView] 🚀 Starting WebRTC session...")
+        print("[V3MainView] 🚀 Starting WebRTC session with VIDEO TRACK...")
         
         // Setup WebRTC callbacks BEFORE connecting
         webRTCService.onSessionReady = {
             DispatchQueue.main.async {
                 self.isSessionReady = true
                 self.isConnecting = false
-                print("[V3MainView] ✅ WebRTC session ready!")
+                print("[V3MainView] ✅ WebRTC session ready with video!")
             }
         }
         
@@ -350,14 +363,9 @@ struct V3MainView: View {
             print("[V3MainView] 🔇 WebRTC playback ended")
         }
         
-        // CRITICAL: Only send ONE frame when user stops speaking!
-        // This is called by WebRTC service when speech_stopped event arrives
-        webRTCService.onRequestFrame = { [weak cameraService, weak webRTCService] in
-            print("[V3MainView] 📷 Capturing single frame for vision context")
-            cameraService?.captureFrameNow { frameData in
-                webRTCService?.sendFrame(frameData)
-            }
-        }
+        // NOTE: We no longer use onRequestFrame or sendFrame for WebRTC!
+        // Video is sent directly via the WebRTC video track.
+        // The Sentinel timer in RediWebRTCService handles proactive interjection.
         
         webRTCService.onError = { error in
             print("[V3MainView] ❌ WebRTC error: \(error.localizedDescription)")
@@ -369,16 +377,11 @@ struct V3MainView: View {
             }
         }
         
-        // DO NOT send continuous frames for WebRTC!
-        // WebRTC is voice-first - only send frames on demand via onRequestFrame
-        // This prevents flooding OpenAI with conversation.item.create events
-        cameraService.onFrameCaptured = nil  // Disable continuous frame sending
-        
         // Connect!
         Task {
             do {
                 try await webRTCService.connect(mode: "general")
-                print("[V3MainView] ✅ WebRTC connected!")
+                print("[V3MainView] ✅ WebRTC connected with video track!")
             } catch {
                 print("[V3MainView] ❌ WebRTC connection failed: \(error.localizedDescription)")
                 await MainActor.run {
