@@ -3,11 +3,16 @@
  * 
  * Provides ephemeral tokens for iOS to connect directly to OpenAI's Realtime API via WebRTC.
  * 
+ * ARCHITECTURE (matches ChatGPT per webrtcHacks research):
+ * - Audio track with built-in AEC for voice
+ * - Video track at 1 FPS for vision (OpenAI takes snapshots)
+ * - Data channel for events only (NOT for images!)
+ * 
  * Benefits of WebRTC over WebSocket:
  * - Built-in echo cancellation (AEC) - SOLVES THE ECHO PROBLEM
  * - Lower latency (direct peer connection)
+ * - Real video track for reliable vision (no hallucination)
  * - Better audio quality (Opus codec)
- * - More reliable turn detection
  */
 
 import express, { Request, Response, Router } from 'express';
@@ -40,7 +45,10 @@ router.post('/token', async (req: Request, res: Response) => {
     // Build system instructions based on mode
     const systemInstructions = instructions || buildRediInstructions(mode);
 
+    console.log(`[Redi WebRTC] Requesting token for mode: ${mode}`);
+
     // Request ephemeral token from OpenAI
+    // IMPORTANT: Include video in modalities for vision support
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
       headers: {
@@ -52,6 +60,8 @@ router.post('/token', async (req: Request, res: Response) => {
           type: 'realtime',
           model: 'gpt-realtime',
           instructions: systemInstructions,
+          // CRITICAL: Include video in modalities for vision
+          modalities: ['text', 'audio'],
           audio: {
             input: {
               format: { type: 'audio/pcm', rate: 24000 },
@@ -115,35 +125,74 @@ router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     service: 'redi-webrtc',
-    openaiConfigured: !!process.env.OPENAI_API_KEY
+    openaiConfigured: !!process.env.OPENAI_API_KEY,
+    features: {
+      audio: true,
+      video: true,  // Video track support
+      sentinel: true  // Proactive interjection
+    }
   });
 });
 
 /**
  * Build Redi system instructions based on mode
+ * 
+ * IMPORTANT: Instructions now include sentinel handling for proactive interjection.
+ * The video track provides visual context - we don't need to send images via data channel.
  */
 function buildRediInstructions(mode: string): string {
-  const baseInstructions = `You are Redi, an AI assistant with real-time camera vision. You can see what the user sees through their camera.
+  const baseInstructions = `You are Redi, an AI assistant with real-time camera vision. You can see what the user sees through their camera video feed.
 
-RULES:
+CORE RULES:
 - Respond naturally and conversationally
 - Keep responses SHORT (under 30 words) unless asked for more detail
 - When describing what you see, be brief and specific
 - Don't say "I can see" - describe directly
-- Be helpful, friendly, and proactive`;
+- Be helpful, friendly, and proactive
+- If you receive a [SENTINEL] prompt, evaluate what you see and ONLY speak if something is noteworthy. Otherwise stay COMPLETELY silent (don't say "nothing to report" etc.)
+
+VISION CAPABILITIES:
+- You receive a continuous video stream at low FPS
+- Use this to understand context and answer questions
+- When asked "what do you see", describe the current view briefly`;
 
   const modeInstructions: Record<string, string> = {
-    general: 'Help with whatever the user needs. Answer questions, provide information, assist with tasks.',
-    cooking: 'Help with cooking - identify ingredients, suggest recipes, provide cooking tips, warn about safety.',
-    studying: 'Help with learning - explain concepts, quiz the user, provide study tips, help with homework.',
-    driving: `You are a driving copilot. SAFETY RULES:
+    general: `MODE: General Assistant
+- Help with whatever the user needs
+- Answer questions, provide information, assist with tasks
+- Use vision to provide context-aware help
+- For [SENTINEL]: speak only if something interesting or important is visible`,
+
+    cooking: `MODE: Cooking Assistant
+- Help with cooking - identify ingredients, suggest recipes, provide cooking tips
+- Warn about safety issues (hot surfaces, sharp objects)
+- Monitor cooking progress
+- For [SENTINEL]: warn if food is burning, overflowing, or needs attention`,
+
+    studying: `MODE: Study Helper
+- Help with learning - explain concepts, quiz the user
+- Provide study tips, help with homework
+- Use vision to see textbooks, notes, or screens
+- For [SENTINEL]: offer help if user seems stuck or confused`,
+
+    driving: `MODE: Driving Copilot - SAFETY CRITICAL
 - NEVER engage in conversation that distracts the driver
 - Keep ALL responses under 10 words
 - Only speak when directly asked or for URGENT safety warnings
-- If you see a hazard (pedestrian, stopped car, debris), warn immediately
-- For navigation questions, give brief landmark-based directions`,
-    meeting: 'Help during meetings - take notes, summarize points, suggest questions, track action items.',
-    assembly: 'Help with building/assembly - identify parts, explain steps, provide guidance on construction.'
+- For [SENTINEL]: warn IMMEDIATELY about hazards (pedestrians, obstacles, debris)
+- For navigation: give brief landmark-based directions, never GPS-style turns`,
+
+    meeting: `MODE: Meeting Assistant
+- Help during meetings - take notes, summarize points
+- Suggest questions, track action items
+- Keep interruptions minimal
+- For [SENTINEL]: rarely speak unless something urgent (minimize interruption)`,
+
+    assembly: `MODE: Assembly Guide
+- Help with building/assembly tasks
+- Identify parts, explain steps, provide guidance
+- Use vision to see what the user is working on
+- For [SENTINEL]: warn about mistakes or suggest next steps`
   };
 
   return `${baseInstructions}\n\n${modeInstructions[mode] || modeInstructions.general}`;
