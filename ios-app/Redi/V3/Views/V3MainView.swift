@@ -2,7 +2,10 @@
  * V3MainView.swift
  *
  * REDI FOR ANYTHING - Production UI
- * No camera preview for now - priority is Redi actually seeing
+ * - Live camera preview
+ * - Memory toggle
+ * - Sensitivity slider
+ * - Activation state
  *
  * Updated: Jan 26, 2026
  */
@@ -14,182 +17,259 @@ struct V3MainView: View {
     @StateObject private var webrtcService = RediWebRTCService()
     @State private var isActive = false
     @State private var sensitivity: Double = 5
+    @State private var memoryEnabled = true
     @State private var statusText = "Ready"
-    @State private var transcriptLines: [(String, String)] = []  // (text, role)
+    @State private var transcriptLines: [(String, String)] = []
     @State private var latency: Int = 0
     
     var body: some View {
         ZStack {
-            // Dark background (no preview - Redi is seeing via WebRTC)
-            Color.black
+            // Camera Preview
+            CameraPreviewView(session: webrtcService.captureSession)
                 .ignoresSafeArea()
             
-            // UI Overlay
+            // Dark overlay when not active
+            if !isActive {
+                Color.black.opacity(0.6)
+                    .ignoresSafeArea()
+            }
+            
+            // UI
             VStack {
                 // Top bar
-                HStack {
-                    // Status indicator
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(isActive ? Color.green : Color.gray)
-                            .frame(width: 10, height: 10)
-                        Text(statusText)
-                            .font(.caption)
-                            .foregroundColor(.white)
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(Color.black.opacity(0.5))
-                    .cornerRadius(20)
-                    
-                    Spacer()
-                    
-                    // Vision indicator when active
-                    if isActive {
-                        HStack(spacing: 4) {
-                            Image(systemName: "eye.fill")
-                                .foregroundColor(.green)
-                            Text("Redi can see")
-                                .font(.caption2)
-                                .foregroundColor(.green)
-                        }
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.green.opacity(0.2))
-                        .cornerRadius(10)
-                    }
-                    
-                    Spacer()
-                    
-                    // Latency (when active)
-                    if isActive && latency > 0 {
-                        Text("\(latency)ms")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.black.opacity(0.3))
-                            .cornerRadius(10)
-                    }
-                }
-                .padding(.horizontal)
-                .padding(.top, 60)
+                topBar
                 
                 Spacer()
                 
-                // Visual indicator that Redi is watching
-                if isActive {
-                    VStack(spacing: 16) {
-                        Image(systemName: "eye.circle.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.cyan.opacity(0.5))
-                        
-                        Text("Point camera at what you want Redi to see")
-                            .font(.subheadline)
-                            .foregroundColor(.white.opacity(0.6))
-                    }
+                // Center content
+                if isActive && !webrtcService.isActivated {
+                    waitingForActivation
                 }
                 
                 Spacer()
                 
-                // Transcript area (last 3 lines)
+                // Transcript
                 if !transcriptLines.isEmpty {
-                    VStack(alignment: .leading, spacing: 4) {
-                        ForEach(transcriptLines.suffix(3), id: \.0) { line in
-                            HStack {
-                                if line.1 == "assistant" {
-                                    Image(systemName: "sparkles")
-                                        .foregroundColor(.cyan)
-                                        .font(.caption)
-                                }
-                                Text(line.0)
-                                    .font(.subheadline)
-                                    .foregroundColor(line.1 == "assistant" ? .white : .white.opacity(0.7))
-                                    .lineLimit(2)
-                            }
-                        }
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.black.opacity(0.6))
-                    .cornerRadius(12)
-                    .padding(.horizontal)
+                    transcriptView
                 }
                 
-                // Sensitivity slider (when inactive)
+                // Controls (when not active)
                 if !isActive {
-                    VStack(spacing: 8) {
-                        Text("Sensitivity")
-                            .font(.caption)
-                            .foregroundColor(.white.opacity(0.7))
-                        
-                        HStack {
-                            Text("\u{1F910}")
-                            Slider(value: $sensitivity, in: 1...10, step: 1)
-                                .accentColor(.cyan)
-                                .onChange(of: sensitivity) { newValue in
-                                    webrtcService.setSensitivity(Int(newValue))
-                                }
-                            Text("\u{1F4AC}")
-                        }
-                        .padding(.horizontal, 40)
-                        
-                        Text(sensitivityLabel)
-                            .font(.caption2)
-                            .foregroundColor(.cyan)
-                    }
-                    .padding()
-                    .background(Color.black.opacity(0.4))
-                    .cornerRadius(16)
-                    .padding(.horizontal, 40)
+                    controlsPanel
                 }
                 
                 // Main button
-                Button(action: toggleSession) {
-                    ZStack {
-                        Circle()
-                            .fill(isActive ? Color.red : Color.cyan)
-                            .frame(width: 80, height: 80)
-                        
-                        if webrtcService.isConnecting {
-                            ProgressView()
-                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                        } else {
-                            Image(systemName: isActive ? "stop.fill" : "play.fill")
-                                .font(.system(size: 30))
-                                .foregroundColor(.white)
-                        }
-                    }
-                }
-                .disabled(webrtcService.isConnecting)
-                .padding(.bottom, 20)
+                mainButton
                 
                 // Branding
-                Text("Redi for Anything")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                
-                Text("Sensitivity: \(Int(sensitivity))/10")
-                    .font(.caption2)
-                    .foregroundColor(.white.opacity(0.5))
-                    .padding(.bottom, 40)
+                branding
             }
         }
-        .onAppear {
-            setupCallbacks()
+        .onAppear { setupCallbacks() }
+    }
+    
+    // MARK: - Top Bar
+    
+    private var topBar: some View {
+        HStack {
+            // Status
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(isActive ? (webrtcService.isActivated ? Color.green : Color.yellow) : Color.gray)
+                    .frame(width: 10, height: 10)
+                Text(statusText)
+                    .font(.caption)
+                    .foregroundColor(.white)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color.black.opacity(0.5))
+            .cornerRadius(20)
+            
+            Spacer()
+            
+            // Memory indicator
+            if memoryEnabled {
+                HStack(spacing: 4) {
+                    Image(systemName: "brain")
+                        .foregroundColor(.purple)
+                    Text("Memory")
+                        .font(.caption2)
+                        .foregroundColor(.purple)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(Color.purple.opacity(0.2))
+                .cornerRadius(10)
+            }
+            
+            Spacer()
+            
+            // Latency
+            if isActive && latency > 0 {
+                Text("\(latency)ms")
+                    .font(.caption)
+                    .foregroundColor(latency < 500 ? .green : (latency < 1000 ? .yellow : .red))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.3))
+                    .cornerRadius(10)
+            }
         }
+        .padding(.horizontal)
+        .padding(.top, 60)
+    }
+    
+    // MARK: - Waiting State
+    
+    private var waitingForActivation: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "waveform.circle")
+                .font(.system(size: 60))
+                .foregroundColor(.cyan.opacity(0.7))
+            
+            Text("Say \"Hey Redi\" to start")
+                .font(.headline)
+                .foregroundColor(.white)
+        }
+        .padding(30)
+        .background(Color.black.opacity(0.5))
+        .cornerRadius(20)
+    }
+    
+    // MARK: - Transcript
+    
+    private var transcriptView: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            ForEach(transcriptLines.suffix(3), id: \.0) { line in
+                HStack {
+                    if line.1 == "assistant" {
+                        Image(systemName: "sparkles")
+                            .foregroundColor(.cyan)
+                            .font(.caption)
+                    }
+                    Text(line.0)
+                        .font(.subheadline)
+                        .foregroundColor(line.1 == "assistant" ? .white : .white.opacity(0.7))
+                        .lineLimit(2)
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.black.opacity(0.6))
+        .cornerRadius(12)
+        .padding(.horizontal)
+    }
+    
+    // MARK: - Controls Panel
+    
+    private var controlsPanel: some View {
+        VStack(spacing: 16) {
+            // Memory toggle
+            HStack {
+                Image(systemName: "brain")
+                    .foregroundColor(.purple)
+                Text("Remember me across sessions")
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+                Spacer()
+                Toggle("", isOn: $memoryEnabled)
+                    .labelsHidden()
+                    .onChange(of: memoryEnabled) { newValue in
+                        webrtcService.setMemoryEnabled(newValue)
+                    }
+            }
+            .padding(.horizontal)
+            
+            Divider().background(Color.white.opacity(0.3))
+            
+            // Sensitivity
+            VStack(spacing: 8) {
+                HStack {
+                    Text("How often should Redi speak up?")
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                    Spacer()
+                    Text("\(Int(sensitivity))/10")
+                        .font(.caption)
+                        .foregroundColor(.cyan)
+                }
+                
+                HStack {
+                    Text("\u{1F910}")
+                    Slider(value: $sensitivity, in: 1...10, step: 1)
+                        .accentColor(.cyan)
+                        .onChange(of: sensitivity) { newValue in
+                            webrtcService.setSensitivity(Int(newValue))
+                        }
+                    Text("\u{1F4AC}")
+                }
+                
+                Text(sensitivityLabel)
+                    .font(.caption2)
+                    .foregroundColor(.cyan)
+            }
+            .padding(.horizontal)
+        }
+        .padding(.vertical)
+        .background(Color.black.opacity(0.7))
+        .cornerRadius(16)
+        .padding(.horizontal, 20)
     }
     
     private var sensitivityLabel: String {
         switch Int(sensitivity) {
-        case 1...2: return "Minimal - Only critical issues"
-        case 3...4: return "Reserved - Significant observations"
-        case 5...6: return "Balanced - Helpful engagement"
-        case 7...8: return "Engaged - Active feedback"
-        case 9...10: return "Maximum - Constant companion"
+        case 1...2: return "Quiet - Only speaks when important"
+        case 3...4: return "Selective - Shares occasionally"
+        case 5...6: return "Balanced - Active partner"
+        case 7...8: return "Engaged - Frequently participating"
+        case 9...10: return "Full - Constant companion"
         default: return "Balanced"
         }
     }
+    
+    // MARK: - Main Button
+    
+    private var mainButton: some View {
+        Button(action: toggleSession) {
+            ZStack {
+                Circle()
+                    .fill(isActive ? Color.red : Color.cyan)
+                    .frame(width: 80, height: 80)
+                
+                if webrtcService.isConnecting {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                } else {
+                    Image(systemName: isActive ? "stop.fill" : "play.fill")
+                        .font(.system(size: 30))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .disabled(webrtcService.isConnecting)
+        .padding(.bottom, 20)
+    }
+    
+    // MARK: - Branding
+    
+    private var branding: some View {
+        VStack(spacing: 4) {
+            Text("Redi for Anything")
+                .font(.headline)
+                .foregroundColor(.white)
+            
+            if isActive {
+                Text(webrtcService.isActivated ? "Active" : "Waiting for 'Hey Redi'")
+                    .font(.caption2)
+                    .foregroundColor(webrtcService.isActivated ? .green : .yellow)
+            }
+        }
+        .padding(.bottom, 40)
+    }
+    
+    // MARK: - Actions
     
     private func toggleSession() {
         if isActive {
@@ -202,9 +282,9 @@ struct V3MainView: View {
                 do {
                     try await webrtcService.connect()
                     isActive = true
-                    statusText = "Listening..."
+                    statusText = "Say 'Hey Redi'"
                 } catch {
-                    statusText = "Connection failed"
+                    statusText = "Failed"
                 }
             }
         }
@@ -213,23 +293,40 @@ struct V3MainView: View {
     private func setupCallbacks() {
         webrtcService.onTranscriptReceived = { text, role in
             transcriptLines.append((text, role))
-            // Keep only last 10
-            if transcriptLines.count > 10 {
-                transcriptLines.removeFirst()
-            }
+            if transcriptLines.count > 10 { transcriptLines.removeFirst() }
         }
         
-        webrtcService.onLatencyMeasured = { ms in
-            latency = ms
-        }
+        webrtcService.onLatencyMeasured = { ms in latency = ms }
         
-        webrtcService.onPlaybackStarted = {
-            statusText = "Speaking..."
-        }
+        webrtcService.onPlaybackStarted = { statusText = "Speaking..." }
         
         webrtcService.onPlaybackEnded = {
-            statusText = "Listening..."
+            statusText = webrtcService.isActivated ? "Listening..." : "Say 'Hey Redi'"
         }
+    }
+}
+
+// MARK: - Camera Preview
+
+struct CameraPreviewView: UIViewRepresentable {
+    let session: AVCaptureSession?
+    
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+        view.backgroundColor = .black
+        return view
+    }
+    
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // Remove old layers
+        uiView.layer.sublayers?.filter { $0 is AVCaptureVideoPreviewLayer }.forEach { $0.removeFromSuperlayer() }
+        
+        guard let session = session else { return }
+        
+        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+        previewLayer.frame = UIScreen.main.bounds
+        uiView.layer.addSublayer(previewLayer)
     }
 }
 

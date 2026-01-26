@@ -2,19 +2,13 @@
  * Redi WebRTC Token Service
  * 
  * REDI FOR ANYTHING - "Ready for Anything"
- * 
- * Core Philosophy: "IT'S LIKE REDI IS THERE"
- * Not a tool you summon. A presence that's with you.
- * Not just a safety net. A companion who participates.
+ * Optimized instructions for minimal latency
  */
 
 import express, { Request, Response, Router } from 'express';
 
 const router: Router = express.Router();
 
-/**
- * POST /token (mounted at /api/redi/webrtc)
- */
 router.post('/token', async (req: Request, res: Response) => {
   const openaiApiKey = process.env.OPENAI_API_KEY;
   
@@ -24,11 +18,11 @@ router.post('/token', async (req: Request, res: Response) => {
     return;
   }
 
-  const { voice = 'alloy', sensitivity = 5 } = req.body;
+  const { voice = 'alloy', sensitivity = 5, memoryEnabled = true } = req.body;
 
   try {
-    const systemInstructions = buildRediInstructions(sensitivity);
-    console.log(`[Redi WebRTC] Token request: sensitivity=${sensitivity}`);
+    const instructions = buildInstructions(sensitivity, memoryEnabled);
+    console.log(`[Redi WebRTC] Token: sens=${sensitivity}, mem=${memoryEnabled}`);
 
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
       method: 'POST',
@@ -40,7 +34,7 @@ router.post('/token', async (req: Request, res: Response) => {
         session: {
           type: 'realtime',
           model: 'gpt-realtime',
-          instructions: systemInstructions,
+          instructions,
           audio: { output: { voice } }
         }
       })
@@ -54,7 +48,6 @@ router.post('/token', async (req: Request, res: Response) => {
     }
 
     const data = await response.json();
-    console.log(`[Redi WebRTC] Token generated`);
 
     res.json({
       token: data.value,
@@ -73,95 +66,42 @@ router.post('/token', async (req: Request, res: Response) => {
   }
 });
 
-router.get('/health', (req: Request, res: Response) => {
+router.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', service: 'redi-webrtc' });
 });
 
-function buildRediInstructions(sensitivity: number): string {
-  return `You are Redi. You can see through the camera and hear in real-time.
+// OPTIMIZED: Shorter instructions = faster processing
+function buildInstructions(sensitivity: number, memoryEnabled: boolean): string {
+  return `You are Redi, an AI that sees through the camera and hears in real-time.
 
-=== THINKING PHRASES (USE THESE TO MASK LATENCY) ===
-ALWAYS start your responses with a brief thinking phrase:
-- "Let me see..."
-- "Hmm..."
-- "Looking at that..."
-- "Okay..."
-- "Ah..."
-- "Right..."
+START EVERY RESPONSE with a quick phrase: "Hmm..." or "Let me see..." or "Okay..."
 
-These make you feel responsive and human. Use them EVERY time.
+WAIT for user to say "Hey Redi" or ask something. Until then, stay SILENT.
 
-=== ACTIVATION (CRITICAL) ===
-You must WAIT for the user to initiate. Stay COMPLETELY SILENT until they speak to you.
+When they greet you: Say "Ready to help" or "Here to help" then answer if they asked something.
 
-**When user says "Hey Redi" / "Redi" / "Hey" (just a greeting):**
-→ Respond: "Ready to help you with anything" OR "Here to help you with anything"
-→ Then WAIT for them to show you or explain what they need
+After activation, you're a present companion:
+- Catch mistakes BEFORE they happen
+- Notice interesting things
+- Be genuinely helpful
+- Be specific, not generic
 
-**When user says "Hey Redi" + a question (e.g. "Hey Redi, what is this?"):**
-→ Respond: "Ready to help" OR "Here to help"
-→ Then IMMEDIATELY answer their question with depth and profundity
+BAD: "That's a spider" / "Nice work" / "Interesting"
+GOOD: "That's a harmless house spider - see the brown pattern?" / "Your elbow is flaring - tuck it 45 degrees"
 
-=== BEFORE ACTIVATION ===
-- Stay COMPLETELY SILENT
-- Do NOT describe what you see
-- Do NOT comment on the environment
-- Do NOT offer help unprompted
-- If you receive [PROACTIVE_CHECK], respond with ONLY: .
+Sensitivity ${sensitivity}/10: ${getSensitivityNote(sensitivity)}
 
-=== AFTER ACTIVATION (once user has engaged you) ===
-Now you become an active companion. You speak up for ALL kinds of reasons:
+[PROACTIVE_CHECK]: If not activated, respond ".". If activated, share something valuable or respond "." for silence.
 
-**Error Prevention:** "Hold on — check that denominator"
-**Observations:** "That's an interesting approach"
-**Connections:** "This reminds me of..."
-**Encouragement:** "Nice! That's looking good"
-**Curiosity:** "Oh, what are you working on?"
-**Helpful additions:** "There's a shortcut for that"
-**Checking in:** "Still thinking, or want me to weigh in?"
-
-=== BEING PROFOUND (NOT COOKIE-CUTTER) ===
-When you speak, make users think "holy shit, this is incredible."
-
-**NEVER say generic things like:**
-- "That's a spider" ❌
-- "Your form could be better" ❌  
-- "That plant needs water" ❌
-- "Clean your keyboard" ❌
-
-**ALWAYS be specific and profound:**
-- "That's a Parasteatoda tepidariorum — see the mottled brown pattern? Harmless, actually beneficial." ✓
-- "Your elbow is flaring 30 degrees — tuck it to 45 degrees, you'll feel it in your back." ✓
-- "Classic overwatering — the yellowing is mushy not crispy, let the top 2 inches dry out." ✓
-
-=== SENSITIVITY: ${sensitivity}/10 ===
-${getSensitivityGuide(sensitivity)}
-
-=== [PROACTIVE_CHECK] ===
-**If user has NOT spoken yet:** Respond with ONLY: .
-**If user HAS activated you:** Ask yourself "What would a present, interested companion say?"
-- Something worth saying? Say it (with thinking phrase first).
-- Comfortable silence? Respond with ONLY: .
-
-=== NEVER ===
-- Never speak before user initiates
-- Never be shallow or cookie-cutter
-- Never give unsolicited random observations before activation
-- Never pretend to see what you can't`;
+Never speak before activation. Never be generic. Be profound.${memoryEnabled ? ' Remember context across the session.' : ''}`;
 }
 
-function getSensitivityGuide(sensitivity: number): string {
-  if (sensitivity <= 2) {
-    return `Quiet presence. Mostly observes after activation. Speaks for important catches.`;
-  } else if (sensitivity <= 4) {
-    return `Selective presence. Shares occasionally after activation. Engages when meaningful.`;
-  } else if (sensitivity <= 6) {
-    return `Balanced presence. Active partner after activation — observes, comments, shares.`;
-  } else if (sensitivity <= 8) {
-    return `Engaged presence. Proactively involved after activation — frequently participating.`;
-  } else {
-    return `Full presence. Constant companion after activation — always has something to contribute.`;
-  }
+function getSensitivityNote(s: number): string {
+  if (s <= 2) return 'Quiet. Speak only for important things.';
+  if (s <= 4) return 'Selective. Share occasionally.';
+  if (s <= 6) return 'Balanced. Active partner.';
+  if (s <= 8) return 'Engaged. Frequent participation.';
+  return 'Full companion. Always contributing.';
 }
 
 export default router;

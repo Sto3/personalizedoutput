@@ -1,16 +1,27 @@
 /**
  * RediWebRTCService.swift
  *
- * REDI FOR ANYTHING - One adaptive AI, no modes needed
+ * REDI FOR ANYTHING - "Ready for Anything"
  * 
- * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Fix: Don't go proactive until user activates
+ * Features:
+ * - Camera preview AND WebRTC video (uses separate sessions)
+ * - Activation flow (waits for "Hey Redi")
+ * - Memory toggle
+ * - Sensitivity control
+ *
+ * Updated: Jan 26, 2026
  */
 
 import Foundation
 import AVFoundation
 import Combine
 import WebRTC
+
+// MARK: - Camera Preview Delegate
+
+protocol CameraPreviewDelegate: AnyObject {
+    func didUpdatePreviewFrame(_ sampleBuffer: CMSampleBuffer)
+}
 
 class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Published Properties
@@ -20,11 +31,18 @@ class RediWebRTCService: NSObject, ObservableObject {
     @Published var connectionState: RTCPeerConnectionState = .new
     @Published var error: String?
     @Published var isVideoEnabled = false
-    @Published var sensitivity: Int = 5  // 1-10 scale
-    @Published var isActivated = false   // Has user said "Hey Redi"?
+    @Published var sensitivity: Int = 5
+    @Published var isActivated = false
+    @Published var memoryEnabled = true  // Persistent memory toggle
     
-    // MARK: - Video Preview
-    var captureSession: AVCaptureSession? { nil }  // No preview for now
+    // MARK: - Camera Preview
+    
+    private var previewCaptureSession: AVCaptureSession?
+    private var previewOutput: AVCaptureVideoDataOutput?
+    weak var previewDelegate: CameraPreviewDelegate?
+    
+    /// Exposes the preview capture session for SwiftUI preview layer
+    var captureSession: AVCaptureSession? { previewCaptureSession }
     
     // MARK: - Latency Tracking
     
@@ -34,7 +52,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Callbacks
     
     var onSessionReady: (() -> Void)?
-    var onTranscriptReceived: ((String, String) -> Void)?  // (text, role)
+    var onTranscriptReceived: ((String, String) -> Void)?
     var onPlaybackStarted: (() -> Void)?
     var onPlaybackEnded: (() -> Void)?
     var onError: ((Error) -> Void)?
@@ -57,7 +75,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var responseInProgress = false
     private var lastUserSpeechTime: Date = .distantPast
     private var sessionStartTime: Date?
-    private var userHasSpoken = false  // Track if user has spoken at all
+    private var userHasSpoken = false
     
     // MARK: - Proactive Check Timer
     
@@ -79,7 +97,7 @@ class RediWebRTCService: NSObject, ObservableObject {
             RediWebRTCService.factoryInitialized = true
         }
         
-        print("[Redi] \u{1F680} Redi for Anything - initialized")
+        print("[Redi] \u{1F680} Initialized")
     }
     
     deinit {
@@ -99,13 +117,16 @@ class RediWebRTCService: NSObject, ObservableObject {
     func setSensitivity(_ newValue: Int) {
         let clamped = max(1, min(10, newValue))
         sensitivity = clamped
-        
-        // Only restart timer if already activated
-        if isActivated {
-            startProactiveTimer()
-        }
-        
-        print("[Redi] \u{1F39A}\u{FE0F} Sensitivity: \(clamped)/10")
+        if isActivated { startProactiveTimer() }
+        print("[Redi] Sensitivity: \(clamped)/10")
+    }
+    
+    // MARK: - Memory Toggle
+    
+    func setMemoryEnabled(_ enabled: Bool) {
+        memoryEnabled = enabled
+        print("[Redi] Memory: \(enabled ? "ON" : "OFF")")
+        // TODO: Persist to UserDefaults and sync with Supabase
     }
     
     // MARK: - Connection Management
@@ -125,14 +146,14 @@ class RediWebRTCService: NSObject, ObservableObject {
             userHasSpoken = false
         }
         
-        print("[Redi] \u{1F517} Connecting...")
+        print("[Redi] Connecting...")
         
         do {
             configureAudioSession()
             
             let tokenResponse = try await fetchEphemeralToken()
             self.ephemeralToken = tokenResponse.token
-            print("[Redi] \u{2705} Token acquired")
+            print("[Redi] Token acquired")
             
             setupPeerConnection()
             setupLocalAudio()
@@ -150,32 +171,22 @@ class RediWebRTCService: NSObject, ObservableObject {
             }
             
             let offerConstraints = RTCMediaConstraints(
-                mandatoryConstraints: [
-                    "OfferToReceiveAudio": "true",
-                    "OfferToReceiveVideo": "false"
-                ],
+                mandatoryConstraints: ["OfferToReceiveAudio": "true", "OfferToReceiveVideo": "false"],
                 optionalConstraints: nil
             )
             
-            let offer = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<RTCSessionDescription, Error>) in
-                pc.offer(for: offerConstraints) { sdp, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else if let sdp = sdp {
-                        continuation.resume(returning: sdp)
-                    } else {
-                        continuation.resume(throwing: WebRTCError.offerCreationFailed)
-                    }
+            let offer = try await withCheckedThrowingContinuation { (cont: CheckedContinuation<RTCSessionDescription, Error>) in
+                pc.offer(for: offerConstraints) { sdp, err in
+                    if let err = err { cont.resume(throwing: err) }
+                    else if let sdp = sdp { cont.resume(returning: sdp) }
+                    else { cont.resume(throwing: WebRTCError.offerCreationFailed) }
                 }
             }
             
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                pc.setLocalDescription(offer) { error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume()
-                    }
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                pc.setLocalDescription(offer) { err in
+                    if let err = err { cont.resume(throwing: err) }
+                    else { cont.resume() }
                 }
             }
             
@@ -184,20 +195,17 @@ class RediWebRTCService: NSObject, ObservableObject {
             }
             
             let answerSdp = try await sendOfferToOpenAI(localSdp: localSdp)
-            
             let answer = RTCSessionDescription(type: .answer, sdp: answerSdp)
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                pc.setRemoteDescription(answer) { error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume()
-                    }
+            
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+                pc.setRemoteDescription(answer) { err in
+                    if let err = err { cont.resume(throwing: err) }
+                    else { cont.resume() }
                 }
             }
             
             let connectionTime = Date().timeIntervalSince(connectionStartTime!) * 1000
-            print("[Redi] \u{2705} Connected in \(Int(connectionTime))ms")
+            print("[Redi] Connected in \(Int(connectionTime))ms")
             
             await MainActor.run {
                 isConnecting = false
@@ -205,10 +213,12 @@ class RediWebRTCService: NSObject, ObservableObject {
                 isVideoEnabled = true
             }
             
+            // Start BOTH: WebRTC video capture AND preview
             startVideoCapture()
+            startPreviewCapture()
             
         } catch {
-            print("[Redi] \u{274C} Connection failed: \(error)")
+            print("[Redi] Connection failed: \(error)")
             await MainActor.run {
                 self.error = error.localizedDescription
                 isConnecting = false
@@ -219,9 +229,10 @@ class RediWebRTCService: NSObject, ObservableObject {
     }
     
     func disconnect() {
-        print("[Redi] \u{1F50C} Disconnecting...")
+        print("[Redi] Disconnecting...")
         
         stopProactiveTimer()
+        stopPreviewCapture()
         
         videoCapturer?.stopCapture()
         videoCapturer = nil
@@ -248,7 +259,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Video Setup
+    // MARK: - Video Setup (WebRTC to OpenAI)
     
     private func setupLocalVideo() {
         guard let pc = peerConnection, let factory = factory else { return }
@@ -261,58 +272,86 @@ class RediWebRTCService: NSObject, ObservableObject {
         pc.add(videoTrack, streamIds: ["local_stream"])
         localVideoTrack = videoTrack
         
-        print("[Redi] \u{1F4F9} Video track added")
+        print("[Redi] Video track added")
     }
     
     private func startVideoCapture() {
-        guard let capturer = videoCapturer else {
-            print("[Redi] \u{274C} No video capturer")
+        guard let capturer = videoCapturer,
+              let camera = findCamera(position: .back) else {
+            print("[Redi] No camera for WebRTC")
             return
         }
         
-        guard let camera = findBackCamera() else {
-            print("[Redi] \u{274C} No camera available")
-            return
-        }
-        
-        let format = selectCameraFormat(for: camera)
+        let format = selectFormat(for: camera, targetWidth: 1280)
         capturer.startCapture(with: camera, format: format, fps: 2)
-        
-        print("[Redi] \u{2705} Camera streaming (2 FPS)")
+        print("[Redi] WebRTC video: 1280x720 @ 2 FPS")
     }
     
-    private func findBackCamera() -> AVCaptureDevice? {
-        let discoverySession = AVCaptureDevice.DiscoverySession(
+    // MARK: - Preview Capture (Separate session for UI)
+    
+    private func startPreviewCapture() {
+        guard previewCaptureSession == nil else { return }
+        
+        let session = AVCaptureSession()
+        session.sessionPreset = .hd1280x720
+        
+        guard let camera = findCamera(position: .back),
+              let input = try? AVCaptureDeviceInput(device: camera) else {
+            print("[Redi] No camera for preview")
+            return
+        }
+        
+        if session.canAddInput(input) {
+            session.addInput(input)
+        }
+        
+        let output = AVCaptureVideoDataOutput()
+        output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        output.setSampleBufferDelegate(self, queue: DispatchQueue(label: "preview.queue"))
+        
+        if session.canAddOutput(output) {
+            session.addOutput(output)
+        }
+        
+        previewCaptureSession = session
+        previewOutput = output
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            session.startRunning()
+        }
+        
+        print("[Redi] Preview started")
+    }
+    
+    private func stopPreviewCapture() {
+        previewCaptureSession?.stopRunning()
+        previewCaptureSession = nil
+        previewOutput = nil
+    }
+    
+    // MARK: - Camera Helpers
+    
+    private func findCamera(position: AVCaptureDevice.Position) -> AVCaptureDevice? {
+        AVCaptureDevice.DiscoverySession(
             deviceTypes: [.builtInWideAngleCamera, .builtInDualCamera, .builtInTripleCamera],
             mediaType: .video,
-            position: .back
-        )
-        return discoverySession.devices.first
+            position: position
+        ).devices.first
     }
     
-    private func selectCameraFormat(for device: AVCaptureDevice) -> AVCaptureDevice.Format {
+    private func selectFormat(for device: AVCaptureDevice, targetWidth: Int32) -> AVCaptureDevice.Format {
         let formats = RTCCameraVideoCapturer.supportedFormats(for: device)
-        var selectedFormat = formats.first!
-        
-        for format in formats {
-            let dimensions = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
-            if dimensions.width == 1280 && dimensions.height == 720 {
-                selectedFormat = format
-                break
-            }
-        }
-        
-        return selectedFormat
+        return formats.first { format in
+            let dims = CMVideoFormatDescriptionGetDimensions(format.formatDescription)
+            return dims.width == targetWidth
+        } ?? formats.first!
     }
     
-    // MARK: - Proactive Check Timer
+    // MARK: - Proactive Timer
     
     func startProactiveTimer() {
         stopProactiveTimer()
-        
         let interval = getProactiveInterval()
-        print("[Redi] \u{23F1}\u{FE0F} Proactive checks every \(interval)s")
-        
         DispatchQueue.main.async { [weak self] in
             self?.proactiveTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
                 self?.performProactiveCheck()
@@ -326,11 +365,8 @@ class RediWebRTCService: NSObject, ObservableObject {
     }
     
     private func performProactiveCheck() {
-        // DON'T do proactive checks until user has activated Redi
         guard isActivated else { return }
-        
-        let timeSinceUserSpoke = Date().timeIntervalSince(lastUserSpeechTime)
-        guard timeSinceUserSpoke > 2.0 && !responseInProgress else { return }
+        guard Date().timeIntervalSince(lastUserSpeechTime) > 2.0, !responseInProgress else { return }
         
         send(message: [
             "type": "conversation.item.create",
@@ -346,8 +382,7 @@ class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Session Configuration
     
     private func configureSession() {
-        guard !sessionConfigured else { return }
-        guard let dc = dataChannel, dc.readyState == .open else { return }
+        guard !sessionConfigured, let dc = dataChannel, dc.readyState == .open else { return }
         
         send(message: [
             "type": "session.update",
@@ -360,34 +395,24 @@ class RediWebRTCService: NSObject, ObservableObject {
                     "create_response": true,
                     "interrupt_response": true
                 ],
-                "input_audio_transcription": [
-                    "model": "whisper-1"
-                ]
+                "input_audio_transcription": ["model": "whisper-1"]
             ]
         ])
         
-        print("[Redi] \u{2705} Session configured (waiting for user to activate)")
         sessionConfigured = true
-        
-        // DON'T start proactive timer here - wait for user activation
+        print("[Redi] Ready (say 'Hey Redi')")
     }
     
-    // MARK: - Activation (called when user speaks for the first time)
+    // MARK: - Activation
     
     private func activateRedi() {
         guard !isActivated else { return }
-        
-        DispatchQueue.main.async {
-            self.isActivated = true
-        }
-        
-        // NOW start proactive timer
+        DispatchQueue.main.async { self.isActivated = true }
         startProactiveTimer()
-        
-        print("[Redi] \u{2705} Activated! Proactive mode enabled.")
+        print("[Redi] ACTIVATED")
     }
     
-    // MARK: - Token Fetching
+    // MARK: - Token
     
     struct TokenResponse: Codable {
         let token: String
@@ -395,7 +420,6 @@ class RediWebRTCService: NSObject, ObservableObject {
         let model: String?
         let voice: String?
         let connectionInfo: ConnectionInfo?
-        
         struct ConnectionInfo: Codable {
             let callsEndpoint: String?
             let dataChannelName: String?
@@ -407,17 +431,15 @@ class RediWebRTCService: NSObject, ObservableObject {
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.timeoutInterval = 5
-        
-        let body: [String: Any] = ["sensitivity": sensitivity]
-        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "sensitivity": sensitivity,
+            "memoryEnabled": memoryEnabled
+        ])
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
+        guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw WebRTCError.tokenFetchFailed
         }
-        
         return try JSONDecoder().decode(TokenResponse.self, from: data)
     }
     
@@ -425,35 +447,23 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     private func configureAudioSession() {
         do {
-            let audioSession = AVAudioSession.sharedInstance()
-            
-            try audioSession.setCategory(
-                .playAndRecord,
-                mode: .videoChat,
-                options: [.defaultToSpeaker, .allowBluetooth]
-            )
-            
-            try audioSession.overrideOutputAudioPort(.speaker)
-            try audioSession.setPreferredSampleRate(48000)
-            try audioSession.setPreferredIOBufferDuration(0.005)
-            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-            
-            print("[Redi] \u{1F50A} Audio ready")
-            
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.playAndRecord, mode: .videoChat, options: [.defaultToSpeaker, .allowBluetooth])
+            try session.overrideOutputAudioPort(.speaker)
+            try session.setPreferredSampleRate(48000)
+            try session.setPreferredIOBufferDuration(0.005)
+            try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch {
-            print("[Redi] \u{26A0}\u{FE0F} Audio error: \(error)")
+            print("[Redi] Audio error: \(error)")
         }
     }
     
     // MARK: - Peer Connection
     
     private func setupPeerConnection() {
-        let encoderFactory = RTCDefaultVideoEncoderFactory()
-        let decoderFactory = RTCDefaultVideoDecoderFactory()
-        
         factory = RTCPeerConnectionFactory(
-            encoderFactory: encoderFactory,
-            decoderFactory: decoderFactory
+            encoderFactory: RTCDefaultVideoEncoderFactory(),
+            decoderFactory: RTCDefaultVideoDecoderFactory()
         )
         
         let config = RTCConfiguration()
@@ -462,12 +472,11 @@ class RediWebRTCService: NSObject, ObservableObject {
         config.bundlePolicy = .maxBundle
         config.rtcpMuxPolicy = .require
         
-        let constraints = RTCMediaConstraints(
-            mandatoryConstraints: nil,
-            optionalConstraints: ["DtlsSrtpKeyAgreement": "true"]
+        peerConnection = factory?.peerConnection(
+            with: config,
+            constraints: RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: ["DtlsSrtpKeyAgreement": "true"]),
+            delegate: self
         )
-        
-        peerConnection = factory?.peerConnection(with: config, constraints: constraints, delegate: self)
     }
     
     // MARK: - Audio Track
@@ -475,32 +484,26 @@ class RediWebRTCService: NSObject, ObservableObject {
     private func setupLocalAudio() {
         guard let pc = peerConnection, let factory = factory else { return }
         
-        let audioConstraints = RTCMediaConstraints(
+        let constraints = RTCMediaConstraints(
             mandatoryConstraints: [
                 "googEchoCancellation": "true",
                 "googAutoGainControl": "true",
                 "googNoiseSuppression": "true",
                 "googHighpassFilter": "true"
             ],
-            optionalConstraints: [
-                "googEchoCancellation2": "true",
-                "googDAEchoCancellation": "true"
-            ]
+            optionalConstraints: ["googEchoCancellation2": "true", "googDAEchoCancellation": "true"]
         )
         
-        let audioSource = factory.audioSource(with: audioConstraints)
-        let audioTrack = factory.audioTrack(with: audioSource, trackId: "local_audio")
-        
-        pc.add(audioTrack, streamIds: ["local_stream"])
-        localAudioTrack = audioTrack
+        let source = factory.audioSource(with: constraints)
+        let track = factory.audioTrack(with: source, trackId: "local_audio")
+        pc.add(track, streamIds: ["local_stream"])
+        localAudioTrack = track
     }
     
     // MARK: - SDP Exchange
     
     private func sendOfferToOpenAI(localSdp: String) async throws -> String {
-        guard let token = ephemeralToken else {
-            throw WebRTCError.noToken
-        }
+        guard let token = ephemeralToken else { throw WebRTCError.noToken }
         
         var request = URLRequest(url: openAICallsURL)
         request.httpMethod = "POST"
@@ -510,59 +513,41 @@ class RediWebRTCService: NSObject, ObservableObject {
         request.timeoutInterval = 10
         
         let (data, response) = try await URLSession.shared.data(for: request)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let sdp = String(data: data, encoding: .utf8) else {
             throw WebRTCError.sdpExchangeFailed
         }
-        
-        guard let answerSdp = String(data: data, encoding: .utf8) else {
-            throw WebRTCError.invalidSDP
-        }
-        
-        return answerSdp
+        return sdp
     }
     
-    // MARK: - Sending Data
+    // MARK: - Sending
     
     func send(message: [String: Any]) {
-        guard let dc = dataChannel, dc.readyState == .open else { return }
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: message) else { return }
-        
-        let buffer = RTCDataBuffer(data: jsonData, isBinary: false)
-        dc.sendData(buffer)
+        guard let dc = dataChannel, dc.readyState == .open,
+              let data = try? JSONSerialization.data(withJSONObject: message) else { return }
+        dc.sendData(RTCDataBuffer(data: data, isBinary: false))
     }
     
-    func setMicMuted(_ muted: Bool) {
-        localAudioTrack?.isEnabled = !muted
-    }
-    
+    func setMicMuted(_ muted: Bool) { localAudioTrack?.isEnabled = !muted }
     func setVideoEnabled(_ enabled: Bool) {
         localVideoTrack?.isEnabled = enabled
         DispatchQueue.main.async { self.isVideoEnabled = enabled }
     }
     
-    // MARK: - Error Types
+    // MARK: - Errors
     
     enum WebRTCError: Error, LocalizedError {
-        case tokenFetchFailed
-        case peerConnectionFailed
-        case offerCreationFailed
-        case noToken
-        case sdpExchangeFailed
-        case invalidSDP
-        case dataChannelFailed
-        case noCameraAvailable
-        
+        case tokenFetchFailed, peerConnectionFailed, offerCreationFailed
+        case noToken, sdpExchangeFailed, invalidSDP, dataChannelFailed, noCameraAvailable
         var errorDescription: String? {
             switch self {
-            case .tokenFetchFailed: return "Token fetch failed"
-            case .peerConnectionFailed: return "Peer connection failed"
-            case .offerCreationFailed: return "Offer creation failed"
+            case .tokenFetchFailed: return "Token failed"
+            case .peerConnectionFailed: return "Connection failed"
+            case .offerCreationFailed: return "Offer failed"
             case .noToken: return "No token"
-            case .sdpExchangeFailed: return "SDP exchange failed"
+            case .sdpExchangeFailed: return "SDP failed"
             case .invalidSDP: return "Invalid SDP"
-            case .dataChannelFailed: return "Data channel failed"
+            case .dataChannelFailed: return "Channel failed"
             case .noCameraAvailable: return "No camera"
             }
         }
@@ -572,68 +557,54 @@ class RediWebRTCService: NSObject, ObservableObject {
 // MARK: - RTCPeerConnectionDelegate
 
 extension RediWebRTCService: RTCPeerConnectionDelegate {
-    func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCSignalingState) {}
-    func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {
-        print("[Redi] \u{1F50A} Audio stream connected")
-    }
-    func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
-    func peerConnectionShouldNegotiate(_ peerConnection: RTCPeerConnection) {}
-    
-    func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
+    func peerConnection(_ pc: RTCPeerConnection, didChange state: RTCSignalingState) {}
+    func peerConnection(_ pc: RTCPeerConnection, didAdd stream: RTCMediaStream) {}
+    func peerConnection(_ pc: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
+    func peerConnectionShouldNegotiate(_ pc: RTCPeerConnection) {}
+    func peerConnection(_ pc: RTCPeerConnection, didChange state: RTCIceConnectionState) {
         DispatchQueue.main.async {
-            switch newState {
-            case .connected, .completed: self.isConnected = true
-            case .disconnected, .failed: self.isConnected = false
-            default: break
-            }
+            self.isConnected = (state == .connected || state == .completed)
         }
     }
-    
-    func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceGatheringState) {}
-    func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {}
-    func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
-    
-    func peerConnection(_ peerConnection: RTCPeerConnection, didOpen dataChannel: RTCDataChannel) {
-        dataChannel.delegate = self
-        self.dataChannel = dataChannel
+    func peerConnection(_ pc: RTCPeerConnection, didChange state: RTCIceGatheringState) {}
+    func peerConnection(_ pc: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {}
+    func peerConnection(_ pc: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {}
+    func peerConnection(_ pc: RTCPeerConnection, didOpen dc: RTCDataChannel) {
+        dc.delegate = self
+        self.dataChannel = dc
     }
-    
-    func peerConnection(_ peerConnection: RTCPeerConnection, didChange stateChanged: RTCPeerConnectionState) {
-        DispatchQueue.main.async { self.connectionState = stateChanged }
+    func peerConnection(_ pc: RTCPeerConnection, didChange state: RTCPeerConnectionState) {
+        DispatchQueue.main.async { self.connectionState = state }
     }
 }
 
 // MARK: - RTCDataChannelDelegate
 
 extension RediWebRTCService: RTCDataChannelDelegate {
-    func dataChannelDidChangeState(_ dataChannel: RTCDataChannel) {
-        if dataChannel.readyState == .open {
-            print("[Redi] \u{2705} Ready (waiting for 'Hey Redi')")
+    func dataChannelDidChangeState(_ dc: RTCDataChannel) {
+        if dc.readyState == .open {
             configureSession()
             DispatchQueue.main.async { self.onSessionReady?() }
         }
     }
     
-    func dataChannel(_ dataChannel: RTCDataChannel, didReceiveMessageWith buffer: RTCDataBuffer) {
-        guard let message = String(data: buffer.data, encoding: .utf8) else { return }
-        DispatchQueue.main.async { self.handleIncomingJSON(message) }
+    func dataChannel(_ dc: RTCDataChannel, didReceiveMessageWith buffer: RTCDataBuffer) {
+        guard let msg = String(data: buffer.data, encoding: .utf8) else { return }
+        DispatchQueue.main.async { self.handleEvent(msg) }
     }
     
-    private func handleIncomingJSON(_ jsonString: String) {
-        guard let data = jsonString.data(using: .utf8),
-              let eventDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let eventType = eventDict["type"] as? String else { return }
+    private func handleEvent(_ json: String) {
+        guard let data = json.data(using: .utf8),
+              let evt = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let type = evt["type"] as? String else { return }
         
-        switch eventType {
+        switch type {
         case "response.created":
             responseInProgress = true
-            
-            if let speechEnd = lastSpeechEndTime {
-                let latencyMs = Int(Date().timeIntervalSince(speechEnd) * 1000)
-                print("[Redi] \u{26A1} \(latencyMs)ms")
-                onLatencyMeasured?(latencyMs)
+            if let end = lastSpeechEndTime {
+                let ms = Int(Date().timeIntervalSince(end) * 1000)
+                onLatencyMeasured?(ms)
             }
-            
             onPlaybackStarted?()
             
         case "response.done":
@@ -641,23 +612,17 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             onPlaybackEnded?()
             
         case "response.audio_transcript.done":
-            if let transcript = eventDict["transcript"] as? String {
-                if !transcript.isEmpty && transcript != "." {
-                    print("[Redi] \u{1F916} \"\(transcript)\"")
-                    onTranscriptReceived?(transcript, "assistant")
-                    
-                    // If Redi responded with activation phrase, mark as activated
-                    let lower = transcript.lowercased()
-                    if lower.contains("ready to help") || lower.contains("here to help") {
-                        activateRedi()
-                    }
+            if let text = evt["transcript"] as? String, !text.isEmpty, text != "." {
+                onTranscriptReceived?(text, "assistant")
+                let lower = text.lowercased()
+                if lower.contains("ready to help") || lower.contains("here to help") {
+                    activateRedi()
                 }
             }
             
         case "conversation.item.input_audio_transcription.completed":
-            if let transcript = eventDict["transcript"] as? String {
-                print("[Redi] \u{1F4DD} \"\(transcript)\"")
-                onTranscriptReceived?(transcript, "user")
+            if let text = evt["transcript"] as? String {
+                onTranscriptReceived?(text, "user")
                 lastUserSpeechTime = Date()
                 userHasSpoken = true
             }
@@ -669,14 +634,19 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             lastSpeechEndTime = Date()
             
         case "error":
-            if let errorInfo = eventDict["error"] as? [String: Any],
-               let errorMessage = errorInfo["message"] as? String {
-                print("[Redi] \u{274C} \(errorMessage)")
-                error = errorMessage
+            if let info = evt["error"] as? [String: Any], let msg = info["message"] as? String {
+                error = msg
             }
             
-        default:
-            break
+        default: break
         }
+    }
+}
+
+// MARK: - AVCaptureVideoDataOutputSampleBufferDelegate (Preview)
+
+extension RediWebRTCService: AVCaptureVideoDataOutputSampleBufferDelegate {
+    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        previewDelegate?.didUpdatePreviewFrame(sampleBuffer)
     }
 }
