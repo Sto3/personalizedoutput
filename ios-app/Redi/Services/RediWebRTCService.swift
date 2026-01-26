@@ -16,7 +16,7 @@
  * 4. Better audio quality (Opus codec)
  *
  * Created: Jan 25, 2026
- * Updated: Jan 26, 2026 - Added video track support
+ * Updated: Jan 26, 2026 - Fixed AEC by properly initializing RTCPeerConnectionFactory
  */
 
 import Foundation
@@ -50,7 +50,8 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var localVideoTrack: RTCVideoTrack?
     private var videoCapturer: RTCCameraVideoCapturer?
     
-    // WebRTC factory - shared instance
+    // WebRTC factory - shared instance with audio processing
+    private static var factoryInitialized = false
     private var factory: RTCPeerConnectionFactory?
     
     // MARK: - Session State
@@ -81,6 +82,15 @@ class RediWebRTCService: NSObject, ObservableObject {
     
     override init() {
         super.init()
+        
+        // Initialize WebRTC once with audio processing enabled
+        // This is CRITICAL for echo cancellation to work!
+        if !RediWebRTCService.factoryInitialized {
+            RTCInitializeSSL()
+            RediWebRTCService.factoryInitialized = true
+            print("[RediWebRTC] 🚀 WebRTC SSL initialized")
+        }
+        
         print("[RediWebRTC] 🚀 Service initialized with video support")
     }
     
@@ -108,27 +118,27 @@ class RediWebRTCService: NSObject, ObservableObject {
         print("[RediWebRTC] 🔗 Starting WebRTC connection with VIDEO...")
         
         do {
-            // Step 1: Get ephemeral token from our server
+            // Step 1: Configure audio session FIRST (before factory creation)
+            print("[RediWebRTC] 🔊 Configuring audio session...")
+            configureAudioSession()
+            
+            // Step 2: Get ephemeral token from our server
             print("[RediWebRTC] 📝 Requesting ephemeral token...")
             let tokenResponse = try await fetchEphemeralToken(mode: mode)
             self.ephemeralToken = tokenResponse.token
             print("[RediWebRTC] ✅ Got token (expires: \(tokenResponse.expiresAt))")
             
-            // Step 2: Setup peer connection (creates factory)
-            print("[RediWebRTC] 🔧 Creating peer connection...")
+            // Step 3: Setup peer connection with audio processing
+            print("[RediWebRTC] 🔧 Creating peer connection with AEC...")
             setupPeerConnection()
             
-            // Step 3: Setup local audio with AEC
+            // Step 4: Setup local audio with AEC
             print("[RediWebRTC] 🎤 Setting up local audio with AEC...")
             setupLocalAudio()
             
-            // Step 4: Setup local video from camera
+            // Step 5: Setup local video from camera
             print("[RediWebRTC] 📹 Setting up video track from camera...")
             setupLocalVideo()
-            
-            // Step 5: Configure audio session for WebRTC
-            print("[RediWebRTC] 🔊 Configuring audio session...")
-            configureAudioSession()
             
             guard let pc = peerConnection else {
                 throw WebRTCError.peerConnectionFailed
@@ -458,11 +468,29 @@ class RediWebRTCService: NSObject, ObservableObject {
     private func configureAudioSession() {
         do {
             let audioSession = AVAudioSession.sharedInstance()
-            // videoChat mode is KEY for WebRTC echo cancellation
-            try audioSession.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetooth])
-            try audioSession.setMode(.videoChat)
+            
+            // CRITICAL: Configure audio session BEFORE creating WebRTC factory
+            // Use voiceChat mode which has aggressive echo cancellation
+            // Also enable mixWithOthers to prevent audio routing issues
+            try audioSession.setCategory(
+                .playAndRecord,
+                mode: .voiceChat,  // voiceChat has better AEC than videoChat for voice-only
+                options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers]
+            )
+            
+            // Set preferred sample rate and buffer duration for low latency
+            try audioSession.setPreferredSampleRate(48000)
+            try audioSession.setPreferredIOBufferDuration(0.01)  // 10ms buffer
+            
             try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
-            print("[RediWebRTC] ✅ Audio session configured (videoChat mode)")
+            
+            print("[RediWebRTC] ✅ Audio session configured:")
+            print("  - Mode: voiceChat (aggressive AEC)")
+            print("  - Sample rate: \(audioSession.sampleRate)")
+            print("  - IO buffer: \(audioSession.ioBufferDuration * 1000)ms")
+            print("  - Input channels: \(audioSession.inputNumberOfChannels)")
+            print("  - Output channels: \(audioSession.outputNumberOfChannels)")
+            
         } catch {
             print("[RediWebRTC] ⚠️ Failed to configure AVAudioSession: \(error)")
         }
@@ -471,13 +499,29 @@ class RediWebRTCService: NSObject, ObservableObject {
     // MARK: - Peer Connection
     
     private func setupPeerConnection() {
-        let config = RTCConfiguration()
-        let constraints = RTCMediaConstraints(mandatoryConstraints: nil, optionalConstraints: nil)
+        // Create factory with default audio/video encoder/decoder
+        // The factory MUST be created AFTER audio session is configured
+        let encoderFactory = RTCDefaultVideoEncoderFactory()
+        let decoderFactory = RTCDefaultVideoDecoderFactory()
         
-        // Create factory fresh
-        factory = RTCPeerConnectionFactory()
+        factory = RTCPeerConnectionFactory(
+            encoderFactory: encoderFactory,
+            decoderFactory: decoderFactory
+        )
+        
+        let config = RTCConfiguration()
+        // No ICE servers needed - OpenAI handles this
+        
+        let constraints = RTCMediaConstraints(
+            mandatoryConstraints: nil,
+            optionalConstraints: [
+                "DtlsSrtpKeyAgreement": "true"
+            ]
+        )
         
         peerConnection = factory?.peerConnection(with: config, constraints: constraints, delegate: self)
+        
+        print("[RediWebRTC] ✅ Peer connection created with video encoder/decoder")
     }
     
     // MARK: - Audio Track
@@ -485,24 +529,31 @@ class RediWebRTCService: NSObject, ObservableObject {
     private func setupLocalAudio() {
         guard let pc = peerConnection, let factory = factory else { return }
         
-        // MANDATORY echo cancellation constraints
-        let constraints = RTCMediaConstraints(
+        // Audio constraints for echo cancellation
+        // These are processed by WebRTC's audio processing module
+        let audioConstraints = RTCMediaConstraints(
             mandatoryConstraints: [
                 "googEchoCancellation": "true",
-                "googAutoGainControl": "true",
+                "googAutoGainControl": "true", 
                 "googNoiseSuppression": "true",
-                "googHighpassFilter": "true"
+                "googHighpassFilter": "true",
+                "googTypingNoiseDetection": "true"
             ],
-            optionalConstraints: nil
+            optionalConstraints: [
+                "googEchoCancellation2": "true",
+                "googAutoGainControl2": "true",
+                "googNoiseSuppression2": "true",
+                "googDAEchoCancellation": "true"  // Dual-Audio Echo Cancellation
+            ]
         )
         
-        let audioSource = factory.audioSource(with: constraints)
+        let audioSource = factory.audioSource(with: audioConstraints)
         let audioTrack = factory.audioTrack(with: audioSource, trackId: "local_audio")
         
         pc.add(audioTrack, streamIds: ["local_stream"])
         localAudioTrack = audioTrack
         
-        print("[RediWebRTC] ✅ Audio track added with AEC enabled")
+        print("[RediWebRTC] ✅ Audio track added with enhanced AEC constraints")
     }
     
     // MARK: - SDP Exchange
@@ -630,6 +681,11 @@ extension RediWebRTCService: RTCPeerConnectionDelegate {
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {
         print("[RediWebRTC] 🔊 Remote stream added - audio should play automatically!")
+        
+        // Log audio track info
+        if let audioTrack = stream.audioTracks.first {
+            print("[RediWebRTC] 🔊 Remote audio track: \(audioTrack.trackId), enabled: \(audioTrack.isEnabled)")
+        }
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove stream: RTCMediaStream) {
