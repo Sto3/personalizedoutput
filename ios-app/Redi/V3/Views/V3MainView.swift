@@ -30,7 +30,7 @@ struct V3MainView: View {
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
     @State private var isSessionReady = false
-    @State private var cancellables = Set&lt;AnyCancellable&gt;()
+    @State private var cancellables = Set<AnyCancellable>()
     @State private var useWebRTC = false  // Determined at session start
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -80,7 +80,7 @@ struct V3MainView: View {
             setupCallbacks()
         }
         .onChange(of: sensitivity) { newValue in
-            if isSessionActive &amp;&amp; !useWebRTC {
+            if isSessionActive && !useWebRTC {
                 webSocketService.sendSensitivity(newValue)
             }
         }
@@ -90,7 +90,7 @@ struct V3MainView: View {
     // MARK: - Portrait Layout
 
     @ViewBuilder
-    private func portraitLayout(geometry: GeometryProxy) -&gt; some View {
+    private func portraitLayout(geometry: GeometryProxy) -> some View {
         VStack {
             statusBar
             Spacer()
@@ -103,7 +103,7 @@ struct V3MainView: View {
     // MARK: - Landscape Layout
 
     @ViewBuilder
-    private func landscapeLayout(geometry: GeometryProxy) -&gt; some View {
+    private func landscapeLayout(geometry: GeometryProxy) -> some View {
         HStack {
             // Left side - transcript
             VStack {
@@ -152,7 +152,7 @@ struct V3MainView: View {
 
             Spacer()
 
-            if isSessionActive &amp;&amp; isSessionReady {
+            if isSessionActive && isSessionReady {
                 HStack(spacing: 4) {
                     Text(useWebRTC ? "WebRTC" : "WebSocket")
                         .font(.caption)
@@ -195,10 +195,10 @@ struct V3MainView: View {
     }
 
     @ViewBuilder
-    private func controlsView(compact: Bool) -&gt; some View {
+    private func controlsView(compact: Bool) -> some View {
         VStack(spacing: compact ? 12 : 20) {
             // Sensitivity slider (only shown when active)
-            if isSessionActive &amp;&amp; !compact {
+            if isSessionActive && !compact {
                 VStack(spacing: 8) {
                     Text("Sensitivity")
                         .font(.caption)
@@ -402,14 +402,14 @@ struct V3MainView: View {
         // Start audio (WebSocket needs explicit audio handling)
         audioService.startRecording()
         
-        // Audio -&gt; Server (using Combine publisher)
+        // Audio -> Server (using Combine publisher)
         audioService.audioCaptured
             .sink { [weak webSocketService] audioData in
                 webSocketService?.sendAudio(audioData)
             }
-            .store(in: &amp;cancellables)
+            .store(in: &cancellables)
         
-        // Camera frames -&gt; Server (WebSocket needs continuous frames for V7 fresh-frame logic)
+        // Camera frames -> Server (WebSocket needs continuous frames for V7 fresh-frame logic)
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
             print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
@@ -468,23 +468,23 @@ struct V3MainView: View {
     }
     
     private func setupWebSocketCallbacks() {
-        // Camera frames → Server
+        // Camera frames -> Server
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
             print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
         }
 
-        // Server audio → Speaker
+        // Server audio -> Speaker
         webSocketService.onAudioReceived = { [weak audioService] audioData in
             audioService?.playAudio(audioData)
         }
         
-        // Server signals audio stream complete → Flush remaining audio
+        // Server signals audio stream complete -> Flush remaining audio
         webSocketService.onAudioDone = { [weak audioService] in
             audioService?.flushAudio()
         }
 
-        // Server transcripts → UI
+        // Server transcripts -> UI
         webSocketService.onTranscriptReceived = { text, role in
             self.handleTranscript(text: text, role: role)
         }
