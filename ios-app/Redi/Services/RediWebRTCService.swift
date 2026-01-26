@@ -50,6 +50,9 @@ class RediWebRTCService: NSObject, ObservableObject {
     private var audioTrack: RTCAudioTrack?
     private var localAudioTrack: RTCAudioTrack?
     
+    // Track if session is configured
+    private var sessionConfigured = false
+    
     // WebRTC factory (singleton)
     private static let factory: RTCPeerConnectionFactory = {
         RTCInitializeSSL()
@@ -96,6 +99,7 @@ class RediWebRTCService: NSObject, ObservableObject {
         await MainActor.run {
             isConnecting = true
             error = nil
+            sessionConfigured = false
         }
         
         print("[RediWebRTC] 🔗 Starting WebRTC connection...")
@@ -170,12 +174,56 @@ class RediWebRTCService: NSObject, ObservableObject {
         localAudioTrack = nil
         audioTrack = nil
         ephemeralToken = nil
+        sessionConfigured = false
         
         DispatchQueue.main.async {
             self.isConnected = false
             self.isConnecting = false
             self.connectionState = .closed
         }
+    }
+    
+    // MARK: - Session Configuration
+    
+    /// Configure the OpenAI session - MUST be called when data channel opens
+    private func configureSession() {
+        guard !sessionConfigured else {
+            print("[RediWebRTC] Session already configured")
+            return
+        }
+        
+        print("[RediWebRTC] 🔧 Configuring session...")
+        
+        let sessionConfig: [String: Any] = [
+            "type": "session.update",
+            "session": [
+                "modalities": ["text", "audio"],
+                "instructions": """
+                    You are Redi, a helpful AI assistant with vision capabilities.
+                    You can see through the user's camera and hear them speak.
+                    Keep responses concise and natural - this is a real-time conversation.
+                    If you see something interesting, feel free to comment on it.
+                    Be friendly, helpful, and conversational.
+                    """,
+                "voice": "shimmer",
+                "input_audio_format": "pcm16",
+                "output_audio_format": "pcm16",
+                "input_audio_transcription": [
+                    "model": "whisper-1"
+                ],
+                "turn_detection": [
+                    "type": "server_vad",
+                    "threshold": 0.5,
+                    "prefix_padding_ms": 300,
+                    "silence_duration_ms": 500,
+                    "create_response": true
+                ]
+            ]
+        ]
+        
+        send(message: sessionConfig)
+        sessionConfigured = true
+        print("[RediWebRTC] ✅ Session configured!")
     }
     
     // MARK: - Token Fetching
@@ -361,6 +409,11 @@ class RediWebRTCService: NSObject, ObservableObject {
         
         let buffer = RTCDataBuffer(data: jsonData, isBinary: false)
         dc.sendData(buffer)
+        
+        // Log what we're sending (for debugging)
+        if let type = message["type"] as? String {
+            print("[RediWebRTC] 📤 Sent: \(type)")
+        }
     }
     
     /// Send a camera frame to OpenAI
@@ -379,6 +432,11 @@ class RediWebRTCService: NSObject, ObservableObject {
                     ]
                 ]
             ]
+        ])
+        
+        // After sending image, trigger a response
+        send(message: [
+            "type": "response.create"
         ])
     }
     
@@ -490,6 +548,10 @@ extension RediWebRTCService: RTCDataChannelDelegate {
         
         if dataChannel.readyState == .open {
             print("[RediWebRTC] ✅ Data channel ready!")
+            
+            // IMPORTANT: Configure session when data channel opens
+            configureSession()
+            
             DispatchQueue.main.async {
                 self.onSessionReady?()
             }
@@ -510,6 +572,12 @@ extension RediWebRTCService: RTCDataChannelDelegate {
     
     private func handleDataChannelMessage(type: String, message: [String: Any]) {
         switch type {
+        case "session.created":
+            print("[RediWebRTC] 📋 Session created")
+            
+        case "session.updated":
+            print("[RediWebRTC] ✅ Session updated - ready for conversation!")
+            
         case "response.created":
             print("[RediWebRTC] 🎙️ Response started")
             onPlaybackStarted?()
@@ -545,7 +613,7 @@ extension RediWebRTCService: RTCDataChannelDelegate {
             }
             
         default:
-            if type.hasPrefix("response.") || type.hasPrefix("conversation.") {
+            if type.hasPrefix("response.") || type.hasPrefix("conversation.") || type.hasPrefix("session.") {
                 print("[RediWebRTC] 📨 \(type)")
             }
         }
