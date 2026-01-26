@@ -10,6 +10,8 @@
  * 
  * Jan 25, 2026: Added WebRTC support for echo-free audio!
  * When V7 WebRTC is selected, uses direct connection to OpenAI.
+ * 
+ * Jan 26, 2026: Fixed frame flooding - only send ONE frame when user stops speaking
  */
 
 import SwiftUI
@@ -28,7 +30,7 @@ struct V3MainView: View {
     @State private var sensitivity: Double = 0.5
     @State private var isConnecting = false
     @State private var isSessionReady = false
-    @State private var cancellables = Set<AnyCancellable>()
+    @State private var cancellables = Set&lt;AnyCancellable&gt;()
     @State private var useWebRTC = false  // Determined at session start
 
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
@@ -78,7 +80,7 @@ struct V3MainView: View {
             setupCallbacks()
         }
         .onChange(of: sensitivity) { newValue in
-            if isSessionActive && !useWebRTC {
+            if isSessionActive &amp;&amp; !useWebRTC {
                 webSocketService.sendSensitivity(newValue)
             }
         }
@@ -88,7 +90,7 @@ struct V3MainView: View {
     // MARK: - Portrait Layout
 
     @ViewBuilder
-    private func portraitLayout(geometry: GeometryProxy) -> some View {
+    private func portraitLayout(geometry: GeometryProxy) -&gt; some View {
         VStack {
             statusBar
             Spacer()
@@ -101,7 +103,7 @@ struct V3MainView: View {
     // MARK: - Landscape Layout
 
     @ViewBuilder
-    private func landscapeLayout(geometry: GeometryProxy) -> some View {
+    private func landscapeLayout(geometry: GeometryProxy) -&gt; some View {
         HStack {
             // Left side - transcript
             VStack {
@@ -150,7 +152,7 @@ struct V3MainView: View {
 
             Spacer()
 
-            if isSessionActive && isSessionReady {
+            if isSessionActive &amp;&amp; isSessionReady {
                 HStack(spacing: 4) {
                     Text(useWebRTC ? "WebRTC" : "WebSocket")
                         .font(.caption)
@@ -193,10 +195,10 @@ struct V3MainView: View {
     }
 
     @ViewBuilder
-    private func controlsView(compact: Bool) -> some View {
+    private func controlsView(compact: Bool) -&gt; some View {
         VStack(spacing: compact ? 12 : 20) {
             // Sensitivity slider (only shown when active)
-            if isSessionActive && !compact {
+            if isSessionActive &amp;&amp; !compact {
                 VStack(spacing: 8) {
                     Text("Sensitivity")
                         .font(.caption)
@@ -348,9 +350,12 @@ struct V3MainView: View {
             print("[V3MainView] 🔇 WebRTC playback ended")
         }
         
-        webRTCService.onRequestFrame = {
-            self.cameraService.captureFrameNow { frameData in
-                self.webRTCService.sendFrame(frameData)
+        // CRITICAL: Only send ONE frame when user stops speaking!
+        // This is called by WebRTC service when speech_stopped event arrives
+        webRTCService.onRequestFrame = { [weak cameraService, weak webRTCService] in
+            print("[V3MainView] 📷 Capturing single frame for vision context")
+            cameraService?.captureFrameNow { frameData in
+                webRTCService?.sendFrame(frameData)
             }
         }
         
@@ -364,10 +369,10 @@ struct V3MainView: View {
             }
         }
         
-        // Camera frames -> WebRTC (for vision)
-        cameraService.onFrameCaptured = { [weak webRTCService] frameData in
-            webRTCService?.sendFrame(frameData)
-        }
+        // DO NOT send continuous frames for WebRTC!
+        // WebRTC is voice-first - only send frames on demand via onRequestFrame
+        // This prevents flooding OpenAI with conversation.item.create events
+        cameraService.onFrameCaptured = nil  // Disable continuous frame sending
         
         // Connect!
         Task {
@@ -397,14 +402,14 @@ struct V3MainView: View {
         // Start audio (WebSocket needs explicit audio handling)
         audioService.startRecording()
         
-        // Audio -> Server (using Combine publisher)
+        // Audio -&gt; Server (using Combine publisher)
         audioService.audioCaptured
             .sink { [weak webSocketService] audioData in
                 webSocketService?.sendAudio(audioData)
             }
-            .store(in: &cancellables)
+            .store(in: &amp;cancellables)
         
-        // Camera frames -> Server
+        // Camera frames -&gt; Server (WebSocket needs continuous frames for V7 fresh-frame logic)
         cameraService.onFrameCaptured = { [weak webSocketService] frameData in
             print("[DEBUG] Frame captured, sending to websocket: \(frameData.count) bytes")
             webSocketService?.sendFrame(frameData)
