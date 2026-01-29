@@ -37,6 +37,8 @@ import { initRediV5 } from './websocket/rediV5Server';
 import { initRediV6, closeRediV6 } from './websocket/rediV6Server';
 import { initRediV7, closeRediV7 } from './websocket/rediV7Server';
 import { initRediV8, closeRediV8 } from './websocket/rediV8Server';
+// Screen sharing WebSocket server
+import { initScreenShare } from './websocket/screenShareServer';
 // Import Homework Rescue pages
 import {
   renderHomeworkRescuePage,
@@ -316,6 +318,14 @@ app.get('/manifest.json', (req, res) => {
 app.get('/sw.js', (req, res) => {
   res.setHeader('Content-Type', 'application/javascript');
   res.sendFile(path.join(process.cwd(), 'public', 'sw.js'));
+});
+
+// ============================================================
+// REDI SCREEN SHARE - Web UI for desktop screen sharing
+// ============================================================
+app.get('/screen', (req, res) => {
+  trackEvent('page', 'screen-share');
+  res.sendFile(path.join(process.cwd(), 'public', 'screen', 'index.html'));
 });
 
 // ============================================================
@@ -1498,6 +1508,9 @@ initRediV3(server);
 // V5 - Routes to V6/V7 based on query param
 initRediV5(server);
 
+// Screen Share - WebRTC signaling for desktop screen sharing to phone
+initScreenShare(server);
+
 server.listen(PORT, () => {
   startUsageMonitoring();
 
@@ -1538,6 +1551,8 @@ server.listen(PORT, () => {
 ║   • V3 (Legacy):     /ws/redi?v=3                             ║
 ║                                                               ║
 ║   Redi WebRTC:       POST /api/redi/webrtc/token              ║
+║   Screen Share:      /ws/screen (WebRTC signaling)            ║
+║                      /screen (Web UI)                         ║
 ║                                                               ║
 ║   API Usage Monitoring: ACTIVE (checks every 4 hours)         ║
 ║                                                               ║
