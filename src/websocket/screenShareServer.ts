@@ -8,7 +8,7 @@
  *
  * Flow:
  * 1. Phone connects, receives 6-digit code
- * 2. Computer enters code at redi.app/screen
+ * 2. Computer enters code at redialways.com/screen
  * 3. Server pairs them and relays WebRTC signaling
  * 4. Screen video streams P2P to phone
  *
@@ -16,7 +16,7 @@
  */
 
 import { WebSocket, WebSocketServer } from 'ws';
-import { IncomingMessage } from 'http';
+import { IncomingMessage, Server } from 'http';
 import { URL } from 'url';
 
 // MARK: - Types
@@ -43,6 +43,7 @@ interface SignalingMessage {
 
 const pendingConnections = new Map<string, PendingConnection>();
 const wsToCode = new Map<WebSocket, string>();
+let wss: WebSocketServer | null = null;
 
 // MARK: - Code Generation
 
@@ -55,9 +56,35 @@ function generateCode(): string {
     return code;
 }
 
+// MARK: - Initialize WebSocket Server
+
+export function initScreenShare(server: Server): void {
+    wss = new WebSocketServer({ noServer: true });
+
+    server.on('upgrade', (request: IncomingMessage, socket, head) => {
+        const url = new URL(request.url || '', `http://${request.headers.host}`);
+        
+        // Only handle /ws/screen endpoint
+        if (url.pathname === '/ws/screen') {
+            wss!.handleUpgrade(request, socket, head, (ws) => {
+                wss!.emit('connection', ws, request);
+            });
+        }
+    });
+
+    wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
+        handleScreenShareConnection(ws, request);
+    });
+
+    // Start cleanup timer
+    setInterval(cleanupExpiredConnections, 60000);
+
+    console.log('[ScreenShare] WebSocket server initialized on /ws/screen');
+}
+
 // MARK: - Connection Handling
 
-export function handleScreenShareConnection(ws: WebSocket, request: IncomingMessage) {
+function handleScreenShareConnection(ws: WebSocket, request: IncomingMessage) {
     const url = new URL(request.url || '', `http://${request.headers.host}`);
     const role = url.searchParams.get('role'); // 'phone' or 'computer'
     const code = url.searchParams.get('code');
@@ -75,6 +102,7 @@ export function handleScreenShareConnection(ws: WebSocket, request: IncomingMess
             message: 'Invalid connection parameters. Need role=phone or role=computer&code=XXXXXX'
         }));
         ws.close();
+        return;
     }
 
     // Handle messages
@@ -256,7 +284,7 @@ function handleDisconnect(ws: WebSocket) {
 
 // MARK: - Cleanup Timer
 
-setInterval(() => {
+function cleanupExpiredConnections() {
     const now = new Date();
     let cleaned = 0;
 
@@ -279,6 +307,6 @@ setInterval(() => {
     if (cleaned > 0) {
         console.log(`[ScreenShare] Cleaned up ${cleaned} expired connection(s)`);
     }
-}, 60000); // Run every minute
+}
 
 console.log('[ScreenShare] Server module loaded');

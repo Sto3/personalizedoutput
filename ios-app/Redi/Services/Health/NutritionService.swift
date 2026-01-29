@@ -1,203 +1,308 @@
 /**
  * NutritionService.swift
  *
- * REDI HEALTH - Meal/Nutrition Tracking
+ * REDI NUTRITION TRACKING SERVICE
  * 
- * Features:
- * - AI-powered food recognition from camera
- * - Nutritional estimation
- * - Daily/weekly tracking
- * - Voice logging
+ * Manages:
+ * - Meal logging with AI food recognition
+ * - Calorie and macro tracking
+ * - Daily/weekly nutrition summaries
+ * - Voice query handling
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import Foundation
 import UIKit
-import Combine
 
 class NutritionService: ObservableObject {
     static let shared = NutritionService()
     
-    // MARK: - Published
-    
     @Published var todaysMeals: [MealLog] = []
-    @Published var dailyTotals: NutritionTotals = .zero
-    @Published var isAnalyzing = false
+    @Published var dailyCalories: Int = 0
+    @Published var dailyProtein: Int = 0
+    @Published var dailyCarbs: Int = 0
+    @Published var dailyFat: Int = 0
     
-    // MARK: - Dependencies
+    // Goals
+    @Published var calorieGoal: Int = 2000
+    @Published var proteinGoal: Int = 150
     
     private let dataManager = HealthDataManager.shared
-    private var cancellables = Set<AnyCancellable>()
-    
-    // MARK: - Goals (configurable)
-    
-    var dailyCalorieGoal: Int = 2000
-    var dailyProteinGoal: Double = 50  // grams
-    
-    // MARK: - Init
     
     private init() {
-        // Refresh when meals change
-        dataManager.$mealLogs
-            .sink { [weak self] _ in
-                self?.refreshToday()
-            }
-            .store(in: &cancellables)
-        
-        refreshToday()
+        loadTodaysMeals()
     }
     
-    // MARK: - Refresh
+    // MARK: - Data Loading
     
-    func refreshToday() {
-        todaysMeals = dataManager.getMeals(on: Date())
-        dailyTotals = dataManager.dailyNutrition(on: Date())
-    }
-    
-    // MARK: - Analyze Food Image
-    
-    /// Analyzes a food image and returns nutrition estimate
-    /// This would integrate with OpenAI Vision API in production
-    func analyzeImage(_ image: UIImage) async -> NutritionEstimate? {
-        await MainActor.run { isAnalyzing = true }
-        defer { Task { @MainActor in isAnalyzing = false } }
-        
-        // In production, this sends to OpenAI Vision with prompt:
-        // "Analyze this food image. Estimate each item, portion, and macros."
-        // For now, return a placeholder that demonstrates the flow
-        
-        // Simulate API delay
-        try? await Task.sleep(nanoseconds: 1_500_000_000)
-        
-        // Placeholder response - in production, parse OpenAI JSON response
-        return NutritionEstimate(
-            items: [
-                FoodItem(name: "grilled chicken breast", portion: "6 oz", calories: 280, protein: 52, carbs: 0, fat: 6),
-                FoodItem(name: "brown rice", portion: "1 cup", calories: 215, protein: 5, carbs: 45, fat: 2),
-                FoodItem(name: "steamed broccoli", portion: "1 cup", calories: 55, protein: 4, carbs: 11, fat: 0)
-            ],
-            totals: NutritionTotals(calories: 550, protein: 61, carbs: 56, fat: 8, fiber: 6),
-            confidence: 0.85
-        )
-    }
-    
-    // MARK: - Log Meal
-    
-    func logMeal(type: MealLog.MealType, items: [FoodItem], totals: NutritionTotals, image: UIImage? = nil, notes: String? = nil) {
-        let meal = MealLog(
-            id: UUID(),
-            timestamp: Date(),
-            mealType: type,
-            items: items,
-            totals: totals,
-            imageData: image?.jpegData(compressionQuality: 0.6),
-            notes: notes
-        )
-        
-        dataManager.logMeal(meal)
-        refreshToday()
-    }
-    
-    func logMealFromEstimate(_ estimate: NutritionEstimate, type: MealLog.MealType, image: UIImage? = nil) {
-        logMeal(type: type, items: estimate.items, totals: estimate.totals, image: image)
-    }
-    
-    // MARK: - Quick Log (no image)
-    
-    func quickLog(description: String, calories: Int, type: MealLog.MealType) {
-        let item = FoodItem(name: description, portion: "1 serving", calories: calories)
-        let totals = NutritionTotals(calories: calories, protein: 0, carbs: 0, fat: 0, fiber: 0)
-        logMeal(type: type, items: [item], totals: totals)
-    }
-    
-    // MARK: - Queries
-    
-    func caloriesRemaining() -> Int {
-        max(0, dailyCalorieGoal - dailyTotals.calories)
-    }
-    
-    func mealsLogged() -> Int {
-        todaysMeals.count
-    }
-    
-    func weeklyAverage() -> NutritionTotals {
+    func loadTodaysMeals() {
         let calendar = Calendar.current
-        var totals: [NutritionTotals] = []
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
         
-        for daysAgo in 0..<7 {
-            if let date = calendar.date(byAdding: .day, value: -daysAgo, to: Date()) {
-                totals.append(dataManager.dailyNutrition(on: date))
-            }
+        todaysMeals = dataManager.getMealLogs(from: today, to: tomorrow)
+        calculateDailyTotals()
+    }
+    
+    private func calculateDailyTotals() {
+        dailyCalories = todaysMeals.reduce(0) { $0 + ($1.totalCalories ?? 0) }
+        dailyProtein = todaysMeals.reduce(0) { $0 + ($1.totalProtein ?? 0) }
+        dailyCarbs = todaysMeals.reduce(0) { $0 + ($1.totalCarbs ?? 0) }
+        dailyFat = todaysMeals.reduce(0) { $0 + ($1.totalFat ?? 0) }
+    }
+    
+    // MARK: - Meal Logging
+    
+    func logMeal(description: String, mealType: MealType, calories: Int?, protein: Int?, carbs: Int?, fat: Int?, imageData: Data? = nil) {
+        let foodItem = FoodItem(
+            id: UUID().uuidString,
+            name: description,
+            calories: calories,
+            protein: protein,
+            carbs: carbs,
+            fat: fat,
+            servingSize: nil
+        )
+        
+        let meal = MealLog(
+            id: UUID().uuidString,
+            timestamp: Date(),
+            mealType: mealType,
+            foods: [foodItem],
+            notes: nil,
+            imageData: imageData
+        )
+        
+        dataManager.saveMealLog(meal)
+        loadTodaysMeals()
+    }
+    
+    func logMealWithFoods(mealType: MealType, foods: [FoodItem], notes: String? = nil, imageData: Data? = nil) {
+        let meal = MealLog(
+            id: UUID().uuidString,
+            timestamp: Date(),
+            mealType: mealType,
+            foods: foods,
+            notes: notes,
+            imageData: imageData
+        )
+        
+        dataManager.saveMealLog(meal)
+        loadTodaysMeals()
+    }
+    
+    func deleteMeal(_ meal: MealLog) {
+        dataManager.deleteMealLog(meal.id)
+        loadTodaysMeals()
+    }
+    
+    // MARK: - AI Food Analysis
+    
+    func analyzeImage(_ image: UIImage, completion: @escaping ([FoodItem]) -> Void) {
+        // TODO: Connect to OpenAI Vision API
+        // For now, return placeholder
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+            let placeholder = FoodItem(
+                id: UUID().uuidString,
+                name: "Analyzed food",
+                calories: 350,
+                protein: 25,
+                carbs: 30,
+                fat: 12,
+                servingSize: "1 serving"
+            )
+            completion([placeholder])
+        }
+    }
+    
+    // MARK: - Meal Type Inference
+    
+    func inferMealType() -> MealType {
+        let hour = Calendar.current.component(.hour, from: Date())
+        
+        switch hour {
+        case 5..<11:
+            return .breakfast
+        case 11..<14:
+            return .lunch
+        case 14..<17:
+            return .snack
+        case 17..<21:
+            return .dinner
+        default:
+            return .snack
+        }
+    }
+    
+    // MARK: - Statistics
+    
+    func getWeeklyStats() -> (avgCalories: Int, avgProtein: Int, totalMeals: Int) {
+        let calendar = Calendar.current
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -7, to: endDate) else {
+            return (0, 0, 0)
         }
         
-        let count = Double(totals.count)
-        return NutritionTotals(
-            calories: Int(Double(totals.map { $0.calories }.reduce(0, +)) / count),
-            protein: totals.map { $0.protein }.reduce(0, +) / count,
-            carbs: totals.map { $0.carbs }.reduce(0, +) / count,
-            fat: totals.map { $0.fat }.reduce(0, +) / count,
-            fiber: totals.map { $0.fiber }.reduce(0, +) / count
+        let meals = dataManager.getMealLogs(from: startDate, to: endDate)
+        
+        let totalCalories = meals.reduce(0) { $0 + ($1.totalCalories ?? 0) }
+        let totalProtein = meals.reduce(0) { $0 + ($1.totalProtein ?? 0) }
+        
+        return (
+            avgCalories: meals.isEmpty ? 0 : totalCalories / 7,
+            avgProtein: meals.isEmpty ? 0 : totalProtein / 7,
+            totalMeals: meals.count
         )
     }
     
-    // MARK: - Voice Handling
+    func getCaloriesRemaining() -> Int {
+        return max(0, calorieGoal - dailyCalories)
+    }
+    
+    func getProteinRemaining() -> Int {
+        return max(0, proteinGoal - dailyProtein)
+    }
+    
+    // MARK: - Voice Query Handling
     
     func handleQuery(_ query: String) -> String {
-        let lower = query.lowercased()
+        let lowercased = query.lowercased()
         
-        // "How many calories today?"
-        if lower.contains("calorie") && lower.contains("today") {
-            let remaining = caloriesRemaining()
-            return "You've had \(dailyTotals.calories) calories today. \(remaining) remaining of your \(dailyCalorieGoal) goal."
+        // "How many calories have I eaten today?"
+        if lowercased.contains("calorie") && (lowercased.contains("today") || lowercased.contains("eaten") || lowercased.contains("had")) {
+            return describeCalorieProgress()
         }
         
         // "What did I eat today?"
-        if (lower.contains("what") || lower.contains("show")) && lower.contains("eat") && lower.contains("today") {
-            if todaysMeals.isEmpty {
-                return "I don't have any meals logged for today yet."
-            }
-            let meals = todaysMeals.map { meal in
-                let items = meal.items.map { $0.name }.joined(separator: ", ")
-                return "\(meal.mealType.displayName): \(items)"
-            }.joined(separator: ". ")
-            return meals
-        }
-        
-        // "Log my [meal]"
-        if lower.contains("log") && (lower.contains("meal") || lower.contains("food") || lower.contains("breakfast") || lower.contains("lunch") || lower.contains("dinner") || lower.contains("snack")) {
-            return "Show me what you're eating and I'll analyze it, or tell me what it is."
+        if lowercased.contains("what") && lowercased.contains("eat") {
+            return describeTodaysMeals()
         }
         
         // "How much protein?"
-        if lower.contains("protein") {
-            return "You've had \(Int(dailyTotals.protein))g of protein today."
+        if lowercased.contains("protein") {
+            return describeProteinProgress()
         }
         
-        return "I can help track your meals. Try: 'How many calories today?' or 'Log my lunch'"
+        // "Am I on track?"
+        if lowercased.contains("track") || lowercased.contains("doing") {
+            return describeOverallProgress()
+        }
+        
+        // "What should I eat?"
+        if lowercased.contains("should") && lowercased.contains("eat") {
+            return suggestNextMeal()
+        }
+        
+        // Default
+        return "I can help you track your nutrition. Ask me how many calories you've eaten, what you ate today, or if you're on track with your goals."
     }
     
-    /// Infer meal type from current time
-    func inferMealType() -> MealLog.MealType {
-        let hour = Calendar.current.component(.hour, from: Date())
-        switch hour {
-        case 5..<11: return .breakfast
-        case 11..<15: return .lunch
-        case 15..<18: return .snack
-        default: return .dinner
+    private func describeCalorieProgress() -> String {
+        loadTodaysMeals()
+        
+        let remaining = getCaloriesRemaining()
+        let progress = Double(dailyCalories) / Double(calorieGoal) * 100
+        
+        if dailyCalories == 0 {
+            return "You haven't logged any meals today yet. Your goal is \(calorieGoal) calories."
         }
+        
+        var response = "You've had \(dailyCalories) calories today, which is \(Int(progress))% of your \(calorieGoal) calorie goal."
+        
+        if remaining > 0 {
+            response += " You have \(remaining) calories remaining."
+        } else {
+            response += " You've reached your calorie goal for today."
+        }
+        
+        return response
+    }
+    
+    private func describeTodaysMeals() -> String {
+        loadTodaysMeals()
+        
+        if todaysMeals.isEmpty {
+            return "You haven't logged any meals today. Would you like to log something?"
+        }
+        
+        var mealDescriptions: [String] = []
+        
+        for meal in todaysMeals {
+            let foods = meal.foods.map { $0.name }.joined(separator: ", ")
+            mealDescriptions.append("\(meal.mealType.rawValue): \(foods)")
+        }
+        
+        return "Today you've had: \(mealDescriptions.joined(separator: "; "))."
+    }
+    
+    private func describeProteinProgress() -> String {
+        loadTodaysMeals()
+        
+        let remaining = getProteinRemaining()
+        
+        if dailyProtein == 0 {
+            return "You haven't logged any protein today. Your goal is \(proteinGoal) grams."
+        }
+        
+        var response = "You've had \(dailyProtein) grams of protein today out of your \(proteinGoal) gram goal."
+        
+        if remaining > 0 {
+            response += " You need \(remaining) more grams."
+        } else {
+            response += " Great job hitting your protein goal!"
+        }
+        
+        return response
+    }
+    
+    private func describeOverallProgress() -> String {
+        loadTodaysMeals()
+        
+        let calorieProgress = Double(dailyCalories) / Double(calorieGoal) * 100
+        let proteinProgress = Double(dailyProtein) / Double(proteinGoal) * 100
+        
+        let timeProgress = Double(Calendar.current.component(.hour, from: Date())) / 24.0 * 100
+        
+        if calorieProgress > timeProgress + 20 {
+            return "You're a bit ahead on calories today at \(Int(calorieProgress))%. Consider lighter options for your remaining meals."
+        } else if calorieProgress < timeProgress - 20 {
+            return "You're a bit behind on your nutrition today. Make sure to get enough fuel!"
+        } else {
+            return "You're right on track! \(Int(calorieProgress))% of calories and \(Int(proteinProgress))% of protein for the day."
+        }
+    }
+    
+    private func suggestNextMeal() -> String {
+        loadTodaysMeals()
+        
+        let mealType = inferMealType()
+        let caloriesRemaining = getCaloriesRemaining()
+        let proteinRemaining = getProteinRemaining()
+        
+        var suggestion = "For \(mealType.rawValue), "
+        
+        if proteinRemaining > 30 {
+            suggestion += "try something high in protein like chicken, fish, or tofu. "
+        }
+        
+        if caloriesRemaining < 400 {
+            suggestion += "Go for something light like a salad or soup."
+        } else if caloriesRemaining > 800 {
+            suggestion += "You have room for a substantial meal."
+        } else {
+            suggestion += "A balanced meal of about \(caloriesRemaining / 2) calories would be perfect."
+        }
+        
+        return suggestion
     }
 }
 
-// MARK: - Nutrition Estimate (from AI)
+// MARK: - Meal Type Enum
 
-struct NutritionEstimate {
-    var items: [FoodItem]
-    var totals: NutritionTotals
-    var confidence: Double  // 0-1
-    
-    var description: String {
-        let itemList = items.map { "\($0.name) (\($0.portion))" }.joined(separator: ", ")
-        return "I see \(itemList) — about \(totals.calories) calories, \(Int(totals.protein))g protein."
-    }
+enum MealType: String, Codable, CaseIterable {
+    case breakfast = "Breakfast"
+    case lunch = "Lunch"
+    case dinner = "Dinner"
+    case snack = "Snack"
 }

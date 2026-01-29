@@ -1,335 +1,304 @@
 /**
  * SymptomService.swift
  *
- * REDI HEALTH - Symptom Tracking
+ * REDI SYMPTOM TRACKING SERVICE
  * 
- * Features:
+ * Manages:
  * - Voice-based symptom logging
- * - Severity tracking
+ * - Severity tracking (1-10 scale)
  * - Pattern detection
- * - Correlation with medications/meals
+ * - Voice query handling
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import Foundation
-import Combine
 
 class SymptomService: ObservableObject {
     static let shared = SymptomService()
     
-    // MARK: - Published
-    
     @Published var recentSymptoms: [SymptomEntry] = []
-    @Published var loggingState: LoggingState = .idle
-    @Published var currentEntry: PartialSymptomEntry?
-    
-    // MARK: - Dependencies
+    @Published var isLoggingSymptom = false
+    @Published var currentSymptomDraft: SymptomDraft?
     
     private let dataManager = HealthDataManager.shared
-    private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Logging State Machine
-    
-    enum LoggingState {
-        case idle
-        case awaitingSymptom
-        case awaitingSeverity
-        case awaitingAssociated
-        case confirming
-    }
-    
-    struct PartialSymptomEntry {
-        var symptom: String?
-        var severity: Int?
-        var associatedSymptoms: [String] = []
-        var triggers: [String] = []
-    }
-    
-    // MARK: - Common Symptoms
-    
-    static let commonSymptoms = [
-        "headache", "dizziness", "nausea", "fatigue", "pain",
-        "anxiety", "insomnia", "shortness of breath", "chest pain",
-        "stomach ache", "back pain", "joint pain", "muscle ache",
-        "cough", "sore throat", "fever", "chills", "rash"
+    // Common symptom keywords for detection
+    private let symptomKeywords: [String: String] = [
+        "headache": "Headache",
+        "head hurts": "Headache",
+        "migraine": "Migraine",
+        "nausea": "Nausea",
+        "nauseous": "Nausea",
+        "sick to my stomach": "Nausea",
+        "tired": "Fatigue",
+        "fatigue": "Fatigue",
+        "exhausted": "Fatigue",
+        "dizzy": "Dizziness",
+        "lightheaded": "Dizziness",
+        "pain": "Pain",
+        "hurts": "Pain",
+        "ache": "Pain",
+        "sore": "Soreness",
+        "congested": "Congestion",
+        "stuffy": "Congestion",
+        "cough": "Cough",
+        "coughing": "Cough",
+        "fever": "Fever",
+        "hot": "Fever",
+        "chills": "Chills",
+        "anxiety": "Anxiety",
+        "anxious": "Anxiety",
+        "stressed": "Stress",
+        "insomnia": "Insomnia",
+        "can't sleep": "Insomnia"
     ]
     
-    // MARK: - Init
-    
     private init() {
-        dataManager.$symptomEntries
-            .sink { [weak self] _ in
-                self?.refreshRecent()
-            }
-            .store(in: &cancellables)
+        loadRecentSymptoms()
+    }
+    
+    // MARK: - Data Loading
+    
+    func loadRecentSymptoms() {
+        let calendar = Calendar.current
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -7, to: endDate) else { return }
         
-        refreshRecent()
+        recentSymptoms = dataManager.getSymptomEntries(from: startDate, to: endDate)
     }
     
-    // MARK: - Refresh
+    // MARK: - Symptom Logging
     
-    func refreshRecent() {
-        recentSymptoms = dataManager.getSymptoms(last: 7)
-            .sorted { $0.timestamp > $1.timestamp }
+    struct SymptomDraft {
+        var name: String
+        var severity: Int?
+        var location: String?
+        var associatedSymptoms: [String]
+        var notes: String?
     }
     
-    // MARK: - Quick Log
-    
-    func quickLog(symptom: String, severity: Int, associated: [String] = []) {
-        let entry = SymptomEntry(
-            symptom: symptom,
-            severity: severity,
-            associated: associated
+    func startLoggingSymptom(_ symptomName: String) {
+        currentSymptomDraft = SymptomDraft(
+            name: symptomName,
+            severity: nil,
+            location: nil,
+            associatedSymptoms: [],
+            notes: nil
         )
-        dataManager.logSymptom(entry)
-        refreshRecent()
+        isLoggingSymptom = true
     }
     
-    // MARK: - Voice Interaction State Machine
+    func setSeverity(_ severity: Int) {
+        currentSymptomDraft?.severity = severity
+    }
     
-    func handleVoiceInput(_ text: String) -> String {
-        let lower = text.lowercased()
+    func setLocation(_ location: String) {
+        currentSymptomDraft?.location = location
+    }
+    
+    func addAssociatedSymptom(_ symptom: String) {
+        currentSymptomDraft?.associatedSymptoms.append(symptom)
+    }
+    
+    func finishLogging() -> SymptomEntry? {
+        guard let draft = currentSymptomDraft else { return nil }
         
-        switch loggingState {
-        case .idle:
-            // Check if user is reporting a symptom
-            if let symptom = extractSymptom(from: lower) {
-                currentEntry = PartialSymptomEntry(symptom: symptom)
-                loggingState = .awaitingSeverity
-                return "I'm sorry to hear that. On a scale of 1 to 10, how severe is the \(symptom)?"
-            }
-            
-            // Check for queries
-            return handleQuery(lower)
-            
-        case .awaitingSeverity:
-            if let severity = extractNumber(from: lower) {
-                currentEntry?.severity = severity
-                loggingState = .awaitingAssociated
-                return "Got it, \(severity) out of 10. Any other symptoms along with it?"
-            }
-            return "Please give me a number from 1 to 10."
-            
-        case .awaitingAssociated:
-            let associated = extractSymptoms(from: lower)
-            currentEntry?.associatedSymptoms = associated
-            loggingState = .confirming
-            return generateConfirmation()
-            
-        case .confirming:
-            if isAffirmative(lower) {
-                saveCurrentEntry()
-                let pattern = checkForPatterns()
-                loggingState = .idle
-                currentEntry = nil
-                return "Logged. \(pattern ?? "Feel better soon!")"
-            } else if isNegative(lower) {
-                loggingState = .idle
-                currentEntry = nil
-                return "Okay, cancelled."
-            }
-            return "Should I log this? Say yes or no."
-            
-        default:
-            loggingState = .idle
-            return "Let's start over. What symptom are you experiencing?"
-        }
+        let entry = SymptomEntry(
+            id: UUID().uuidString,
+            timestamp: Date(),
+            symptomName: draft.name,
+            severity: draft.severity ?? 5,
+            location: draft.location,
+            associatedSymptoms: draft.associatedSymptoms,
+            notes: draft.notes
+        )
+        
+        dataManager.saveSymptomEntry(entry)
+        
+        currentSymptomDraft = nil
+        isLoggingSymptom = false
+        loadRecentSymptoms()
+        
+        return entry
     }
     
     func cancelLogging() {
-        loggingState = .idle
-        currentEntry = nil
+        currentSymptomDraft = nil
+        isLoggingSymptom = false
     }
     
-    // MARK: - Query Handling
-    
-    private func handleQuery(_ query: String) -> String {
-        // "How have I been feeling?"
-        if query.contains("how") && (query.contains("feeling") || query.contains("been")) {
-            let recent = dataManager.getSymptoms(last: 7)
-            if recent.isEmpty {
-                return "No symptoms logged in the past week. That's good!"
-            }
-            
-            let freq = dataManager.symptomFrequency(last: 7)
-            if let top = freq.first {
-                return "In the past week, you've reported \(top.symptom) \(top.count) time\(top.count == 1 ? "" : "s") with average severity \(String(format: "%.1f", top.avgSeverity))/10."
-            }
-            return "You've logged \(recent.count) symptom\(recent.count == 1 ? "" : "s") this week."
-        }
-        
-        // "Any patterns?"
-        if query.contains("pattern") {
-            if let pattern = checkForPatterns() {
-                return pattern
-            }
-            return "I haven't detected any clear patterns yet. Keep logging symptoms and I'll watch for trends."
-        }
-        
-        // Start logging flow
-        if query.contains("log") || query.contains("report") || query.contains("track") {
-            loggingState = .awaitingSymptom
-            return "What symptom are you experiencing?"
-        }
-        
-        return "I can help track symptoms. Say something like 'I'm feeling dizzy' or 'log a symptom'."
-    }
-    
-    // MARK: - Extraction Helpers
-    
-    private func extractSymptom(from text: String) -> String? {
-        // Check for trigger phrases
-        let triggers = ["feeling", "have", "experiencing", "got", "suffering"]
-        let hasТrigger = triggers.contains { text.contains($0) }
-        
-        // Find matching symptom
-        for symptom in Self.commonSymptoms {
-            if text.contains(symptom) {
-                return symptom
-            }
-        }
-        
-        // If trigger word but no common symptom, extract noun
-        if hasТrigger {
-            // Simple extraction - take word after trigger
-            for trigger in triggers {
-                if let range = text.range(of: trigger) {
-                    let after = text[range.upperBound...].trimmingCharacters(in: .whitespaces)
-                    let words = after.split(separator: " ")
-                    if let first = words.first {
-                        let word = String(first).trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-                        if word.count > 2 && !isStopWord(word) {
-                            return word
-                        }
-                    }
-                }
-            }
-        }
-        
-        return nil
-    }
-    
-    private func extractSymptoms(from text: String) -> [String] {
-        var found: [String] = []
-        for symptom in Self.commonSymptoms {
-            if text.contains(symptom) {
-                found.append(symptom)
-            }
-        }
-        
-        // "none" or "no" = no associated symptoms
-        if text.contains("none") || text == "no" || text.contains("that's it") {
-            return []
-        }
-        
-        return found
-    }
-    
-    private func extractNumber(from text: String) -> Int? {
-        // Direct number
-        let numbers = text.components(separatedBy: CharacterSet.decimalDigits.inverted)
-            .compactMap { Int($0) }
-            .filter { $0 >= 1 && $0 <= 10 }
-        if let num = numbers.first {
-            return num
-        }
-        
-        // Word numbers
-        let wordNumbers = ["one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
-                          "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10]
-        for (word, num) in wordNumbers {
-            if text.contains(word) {
-                return num
-            }
-        }
-        
-        return nil
-    }
-    
-    private func isAffirmative(_ text: String) -> Bool {
-        ["yes", "yeah", "yep", "correct", "right", "sure", "ok", "okay", "log it", "save"].contains { text.contains($0) }
-    }
-    
-    private func isNegative(_ text: String) -> Bool {
-        ["no", "nope", "cancel", "stop", "never mind", "forget it"].contains { text.contains($0) }
-    }
-    
-    private func isStopWord(_ word: String) -> Bool {
-        ["a", "an", "the", "is", "am", "are", "very", "really", "bit", "little", "some"].contains(word)
-    }
-    
-    // MARK: - Confirmation
-    
-    private func generateConfirmation() -> String {
-        guard let entry = currentEntry, let symptom = entry.symptom, let severity = entry.severity else {
-            return "Something went wrong. Let's start over."
-        }
-        
-        var msg = "So you have \(symptom) at \(severity)/10"
-        if !entry.associatedSymptoms.isEmpty {
-            msg += " with \(entry.associatedSymptoms.joined(separator: " and "))"
-        }
-        msg += ". Should I log this?"
-        return msg
-    }
-    
-    // MARK: - Save
-    
-    private func saveCurrentEntry() {
-        guard let partial = currentEntry,
-              let symptom = partial.symptom,
-              let severity = partial.severity else { return }
-        
+    func logSymptomDirectly(name: String, severity: Int, location: String? = nil, notes: String? = nil) {
         let entry = SymptomEntry(
-            symptom: symptom,
+            id: UUID().uuidString,
+            timestamp: Date(),
+            symptomName: name,
             severity: severity,
-            associated: partial.associatedSymptoms,
-            triggers: partial.triggers
+            location: location,
+            associatedSymptoms: [],
+            notes: notes
         )
         
-        dataManager.logSymptom(entry)
-        refreshRecent()
+        dataManager.saveSymptomEntry(entry)
+        loadRecentSymptoms()
+    }
+    
+    // MARK: - Voice Processing
+    
+    func processVoiceInput(_ input: String) -> String {
+        let lowercased = input.lowercased()
+        
+        // Detect symptom from keywords
+        var detectedSymptom: String? = nil
+        for (keyword, symptomName) in symptomKeywords {
+            if lowercased.contains(keyword) {
+                detectedSymptom = symptomName
+                break
+            }
+        }
+        
+        // Extract severity if mentioned
+        var severity: Int? = nil
+        let severityPatterns = [
+            ("really bad", 8), ("terrible", 9), ("awful", 9), ("severe", 8),
+            ("pretty bad", 7), ("moderate", 5), ("mild", 3), ("slight", 2),
+            ("a little", 2), ("minor", 2)
+        ]
+        
+        for (pattern, value) in severityPatterns {
+            if lowercased.contains(pattern) {
+                severity = value
+                break
+            }
+        }
+        
+        // Also check for numeric severity ("6 out of 10")
+        if let range = lowercased.range(of: "\\d+\\s*(out of|/|of)\\s*10", options: .regularExpression) {
+            let match = String(lowercased[range])
+            if let number = Int(match.components(separatedBy: CharacterSet.decimalDigits.inverted).first ?? "") {
+                severity = min(10, max(1, number))
+            }
+        }
+        
+        // If we detected a symptom, log it
+        if let symptom = detectedSymptom {
+            let actualSeverity = severity ?? 5
+            logSymptomDirectly(name: symptom, severity: actualSeverity, notes: "Logged via voice: \(input)")
+            
+            var response = "I've logged your \(symptom.lowercased()) with a severity of \(actualSeverity) out of 10."
+            
+            // Check for patterns
+            let patterns = detectPatterns(for: symptom)
+            if !patterns.isEmpty {
+                response += " " + patterns
+            }
+            
+            return response
+        }
+        
+        // Couldn't detect specific symptom
+        return "I heard that you're not feeling well. Can you tell me more specifically what's bothering you? For example, 'I have a headache' or 'I'm feeling nauseous'."
     }
     
     // MARK: - Pattern Detection
     
-    func checkForPatterns() -> String? {
-        let freq = dataManager.symptomFrequency(last: 14)
+    func detectPatterns(for symptomName: String) -> String {
+        let calendar = Calendar.current
+        let now = Date()
+        guard let weekAgo = calendar.date(byAdding: .day, value: -7, to: now) else { return "" }
         
-        // Check for recurring symptom
-        if let top = freq.first, top.count >= 3 {
-            // Check time patterns
-            let entries = dataManager.getSymptoms(last: 14).filter { $0.symptom.lowercased() == top.symptom }
-            let hours = entries.map { Calendar.current.component(.hour, from: $0.timestamp) }
-            
-            // Afternoon pattern (12-18)
-            let afternoonCount = hours.filter { $0 >= 12 && $0 < 18 }.count
-            if Double(afternoonCount) / Double(hours.count) > 0.6 {
-                return "I've noticed your \(top.symptom) tends to occur in the afternoon. This has happened \(top.count) times in the past 2 weeks."
-            }
-            
-            // Morning pattern (6-11)
-            let morningCount = hours.filter { $0 >= 6 && $0 < 11 }.count
-            if Double(morningCount) / Double(hours.count) > 0.6 {
-                return "Your \(top.symptom) seems to occur mostly in the morning. Worth mentioning to your doctor."
-            }
-            
-            // Just frequency
-            return "This is the \(ordinal(top.count)) time you've reported \(top.symptom) in 2 weeks."
+        let recentOccurrences = dataManager.getSymptomEntries(from: weekAgo, to: now)
+            .filter { $0.symptomName.lowercased() == symptomName.lowercased() }
+        
+        if recentOccurrences.count >= 3 {
+            let avgSeverity = recentOccurrences.reduce(0) { $0 + $1.severity } / recentOccurrences.count
+            return "I've noticed you've had \(symptomName.lowercased()) \(recentOccurrences.count) times this week with an average severity of \(avgSeverity). You might want to mention this to your doctor."
         }
         
-        return nil
+        return ""
     }
     
-    private func ordinal(_ n: Int) -> String {
-        let suffix: String
-        switch n % 10 {
-        case 1 where n % 100 != 11: suffix = "st"
-        case 2 where n % 100 != 12: suffix = "nd"
-        case 3 where n % 100 != 13: suffix = "rd"
-        default: suffix = "th"
+    // MARK: - Voice Query Handling
+    
+    func handleQuery(_ query: String) -> String {
+        let lowercased = query.lowercased()
+        
+        // "What symptoms have I had?"
+        if lowercased.contains("what symptom") || lowercased.contains("my symptoms") {
+            return describeRecentSymptoms()
         }
-        return "\(n)\(suffix)"
+        
+        // "How often have I had headaches?"
+        if lowercased.contains("how often") || lowercased.contains("how many times") {
+            // Try to extract the symptom
+            for (keyword, symptomName) in symptomKeywords {
+                if lowercased.contains(keyword) {
+                    return describeSymptomFrequency(symptomName)
+                }
+            }
+            return describeRecentSymptoms()
+        }
+        
+        // "Any patterns?"
+        if lowercased.contains("pattern") || lowercased.contains("trend") {
+            return describePatterns()
+        }
+        
+        // Default
+        return "I can help you track symptoms. Tell me what you're feeling, like 'I have a headache' or ask about your symptom history."
+    }
+    
+    private func describeRecentSymptoms() -> String {
+        loadRecentSymptoms()
+        
+        if recentSymptoms.isEmpty {
+            return "You haven't logged any symptoms in the past week. That's great news!"
+        }
+        
+        // Group by symptom name
+        var symptomCounts: [String: Int] = [:]
+        for entry in recentSymptoms {
+            symptomCounts[entry.symptomName, default: 0] += 1
+        }
+        
+        let descriptions = symptomCounts.map { "\($0.key) (\($0.value) time\($0.value == 1 ? "" : "s"))" }
+        
+        return "In the past week, you've logged: \(descriptions.joined(separator: ", "))."
+    }
+    
+    private func describeSymptomFrequency(_ symptomName: String) -> String {
+        loadRecentSymptoms()
+        
+        let occurrences = recentSymptoms.filter { $0.symptomName.lowercased() == symptomName.lowercased() }
+        
+        if occurrences.isEmpty {
+            return "You haven't logged any \(symptomName.lowercased()) in the past week."
+        }
+        
+        let avgSeverity = occurrences.reduce(0) { $0 + $1.severity } / occurrences.count
+        
+        return "You've had \(symptomName.lowercased()) \(occurrences.count) time\(occurrences.count == 1 ? "" : "s") this week with an average severity of \(avgSeverity) out of 10."
+    }
+    
+    private func describePatterns() -> String {
+        loadRecentSymptoms()
+        
+        if recentSymptoms.count < 3 {
+            return "I don't have enough data yet to detect patterns. Keep logging symptoms and I'll let you know if I notice anything."
+        }
+        
+        // Check for recurring symptoms
+        var symptomCounts: [String: Int] = [:]
+        for entry in recentSymptoms {
+            symptomCounts[entry.symptomName, default: 0] += 1
+        }
+        
+        let recurring = symptomCounts.filter { $0.value >= 3 }.keys
+        
+        if recurring.isEmpty {
+            return "I haven't detected any recurring patterns in your symptoms this week."
+        }
+        
+        return "You've had recurring \(recurring.joined(separator: " and ")) this week. You might want to discuss this with your doctor."
     }
 }
