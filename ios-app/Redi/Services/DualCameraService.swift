@@ -3,11 +3,14 @@
  *
  * REDI DUAL CAMERA SERVICE
  * 
- * Captures from both front and back cameras simultaneously:
- * - Uses AVCaptureMultiCamSession (iOS 13+, iPhone XS+)
- * - 5 FPS capture rate
- * - I420 to RGB conversion
- * - Graceful fallback for unsupported devices
+ * Captures from both front and back cameras simultaneously
+ * using AVCaptureMultiCamSession (iOS 13+, iPhone XS+).
+ *
+ * Features:
+ * - Simultaneous front/back capture
+ * - 5 FPS capture rate for AI processing
+ * - Graceful fallback to single camera
+ * - Frame conversion to JPEG/RGB
  *
  * Created: Jan 29, 2026
  */
@@ -16,175 +19,219 @@ import Foundation
 import AVFoundation
 import UIKit
 
-protocol DualCameraDelegate: AnyObject {
-    func dualCamera(_ service: DualCameraService, didCaptureFront image: UIImage)
-    func dualCamera(_ service: DualCameraService, didCaptureBack image: UIImage)
-}
-
 class DualCameraService: NSObject, ObservableObject {
     static let shared = DualCameraService()
     
-    weak var delegate: DualCameraDelegate?
+    // MARK: - Published Properties
     
-    @Published var isSupported = false
+    @Published var frontFrame: Data?
+    @Published var backFrame: Data?
     @Published var isRunning = false
-    @Published var latestFrontFrame: UIImage?
-    @Published var latestBackFrame: UIImage?
+    @Published var isDualSupported = false
+    
+    // MARK: - Private Properties
     
     private var multiCamSession: AVCaptureMultiCamSession?
+    private var singleSession: AVCaptureSession?
+    
     private var frontOutput: AVCaptureVideoDataOutput?
     private var backOutput: AVCaptureVideoDataOutput?
     
-    private let sessionQueue = DispatchQueue(label: "com.redi.dualcamera.session")
-    private let frontOutputQueue = DispatchQueue(label: "com.redi.dualcamera.front")
-    private let backOutputQueue = DispatchQueue(label: "com.redi.dualcamera.back")
+    private let captureQueue = DispatchQueue(label: "com.redi.dualcamera", qos: .userInteractive)
+    private let processingQueue = DispatchQueue(label: "com.redi.frameprocessing", qos: .utility)
     
-    private var lastFrontCaptureTime = Date.distantPast
-    private var lastBackCaptureTime = Date.distantPast
+    private var lastFrontCapture: Date = .distantPast
+    private var lastBackCapture: Date = .distantPast
     private let captureInterval: TimeInterval = 0.2 // 5 FPS
     
-    private override init() {
+    // MARK: - Initialization
+    
+    override init() {
         super.init()
-        checkSupport()
+        checkDualCameraSupport()
     }
     
-    // MARK: - Support Check
-    
-    private func checkSupport() {
-        // AVCaptureMultiCamSession requires iOS 13+ and specific hardware
+    private func checkDualCameraSupport() {
+        // MultiCam requires iOS 13+ and specific hardware
         if #available(iOS 13.0, *) {
-            isSupported = AVCaptureMultiCamSession.isMultiCamSupported
+            isDualSupported = AVCaptureMultiCamSession.isMultiCamSupported
         } else {
-            isSupported = false
+            isDualSupported = false
         }
         
-        print("[DualCamera] Multi-cam supported: \(isSupported)")
+        print("[DualCamera] Dual camera supported: \(isDualSupported)")
     }
     
-    // MARK: - Session Management
+    // MARK: - Public Methods
     
-    func startCapture() {
-        guard isSupported else {
-            print("[DualCamera] Multi-cam not supported on this device")
-            return
-        }
+    func start() {
+        guard !isRunning else { return }
         
-        sessionQueue.async { [weak self] in
-            self?.setupSession()
-            self?.multiCamSession?.startRunning()
+        captureQueue.async { [weak self] in
+            guard let self = self else { return }
             
-            DispatchQueue.main.async {
-                self?.isRunning = true
+            if self.isDualSupported {
+                self.setupMultiCamSession()
+            } else {
+                self.setupSingleSession()
             }
         }
     }
     
-    func stopCapture() {
-        sessionQueue.async { [weak self] in
+    func stop() {
+        captureQueue.async { [weak self] in
             self?.multiCamSession?.stopRunning()
+            self?.singleSession?.stopRunning()
             
             DispatchQueue.main.async {
                 self?.isRunning = false
+                self?.frontFrame = nil
+                self?.backFrame = nil
             }
         }
     }
     
+    // MARK: - Multi-Camera Setup
+    
     @available(iOS 13.0, *)
-    private func setupSession() {
-        guard multiCamSession == nil else { return }
-        
+    private func setupMultiCamSession() {
         let session = AVCaptureMultiCamSession()
         
         // Configure front camera
         guard let frontDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .front),
               let frontInput = try? AVCaptureDeviceInput(device: frontDevice) else {
-            print("[DualCamera] Failed to setup front camera")
+            print("[DualCamera] Failed to get front camera")
+            setupSingleSession()
             return
         }
         
         // Configure back camera
         guard let backDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
               let backInput = try? AVCaptureDeviceInput(device: backDevice) else {
-            print("[DualCamera] Failed to setup back camera")
+            print("[DualCamera] Failed to get back camera")
+            setupSingleSession()
             return
         }
         
         session.beginConfiguration()
         
-        // Add inputs
+        // Add front camera
         if session.canAddInput(frontInput) {
             session.addInputWithNoConnections(frontInput)
         }
+        
+        let frontOutput = AVCaptureVideoDataOutput()
+        frontOutput.setSampleBufferDelegate(self, queue: processingQueue)
+        frontOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
+        
+        if session.canAddOutput(frontOutput) {
+            session.addOutputWithNoConnections(frontOutput)
+            self.frontOutput = frontOutput
+        }
+        
+        // Connect front camera
+        if let frontPort = frontInput.ports(for: .video, sourceDeviceType: .builtInWideAngleCamera, sourceDevicePosition: .front).first {
+            let frontConnection = AVCaptureConnection(inputPorts: [frontPort], output: frontOutput)
+            if session.canAddConnection(frontConnection) {
+                session.addConnection(frontConnection)
+                frontConnection.videoOrientation = .portrait
+                frontConnection.isVideoMirrored = true
+            }
+        }
+        
+        // Add back camera
         if session.canAddInput(backInput) {
             session.addInputWithNoConnections(backInput)
         }
         
-        // Setup front output
-        let frontOutput = AVCaptureVideoDataOutput()
-        frontOutput.videoSettings = [
-            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
-        ]
-        frontOutput.setSampleBufferDelegate(self, queue: frontOutputQueue)
-        frontOutput.alwaysDiscardsLateVideoFrames = true
-        
-        if session.canAddOutput(frontOutput) {
-            session.addOutputWithNoConnections(frontOutput)
-        }
-        
-        // Setup back output
         let backOutput = AVCaptureVideoDataOutput()
+        backOutput.setSampleBufferDelegate(self, queue: processingQueue)
         backOutput.videoSettings = [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
         ]
-        backOutput.setSampleBufferDelegate(self, queue: backOutputQueue)
-        backOutput.alwaysDiscardsLateVideoFrames = true
         
         if session.canAddOutput(backOutput) {
             session.addOutputWithNoConnections(backOutput)
+            self.backOutput = backOutput
         }
         
-        // Create connections
-        if let frontPort = frontInput.ports(for: .video, sourceDeviceType: frontDevice.deviceType, sourceDevicePosition: .front).first {
-            let connection = AVCaptureConnection(inputPorts: [frontPort], output: frontOutput)
-            connection.videoOrientation = .portrait
-            connection.isVideoMirrored = true
-            if session.canAddConnection(connection) {
-                session.addConnection(connection)
-            }
-        }
-        
-        if let backPort = backInput.ports(for: .video, sourceDeviceType: backDevice.deviceType, sourceDevicePosition: .back).first {
-            let connection = AVCaptureConnection(inputPorts: [backPort], output: backOutput)
-            connection.videoOrientation = .portrait
-            if session.canAddConnection(connection) {
-                session.addConnection(connection)
+        // Connect back camera
+        if let backPort = backInput.ports(for: .video, sourceDeviceType: .builtInWideAngleCamera, sourceDevicePosition: .back).first {
+            let backConnection = AVCaptureConnection(inputPorts: [backPort], output: backOutput)
+            if session.canAddConnection(backConnection) {
+                session.addConnection(backConnection)
+                backConnection.videoOrientation = .portrait
             }
         }
         
         session.commitConfiguration()
         
         self.multiCamSession = session
-        self.frontOutput = frontOutput
-        self.backOutput = backOutput
+        session.startRunning()
         
-        print("[DualCamera] Session configured successfully")
+        DispatchQueue.main.async {
+            self.isRunning = true
+        }
+        
+        print("[DualCamera] Multi-cam session started")
+    }
+    
+    // MARK: - Single Camera Fallback
+    
+    private func setupSingleSession() {
+        let session = AVCaptureSession()
+        session.sessionPreset = .medium
+        
+        // Use back camera as default
+        guard let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
+              let input = try? AVCaptureDeviceInput(device: device) else {
+            print("[DualCamera] Failed to setup single camera")
+            return
+        }
+        
+        if session.canAddInput(input) {
+            session.addInput(input)
+        }
+        
+        let output = AVCaptureVideoDataOutput()
+        output.setSampleBufferDelegate(self, queue: processingQueue)
+        output.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
+        
+        if session.canAddOutput(output) {
+            session.addOutput(output)
+            self.backOutput = output
+        }
+        
+        self.singleSession = session
+        session.startRunning()
+        
+        DispatchQueue.main.async {
+            self.isRunning = true
+        }
+        
+        print("[DualCamera] Single camera session started (fallback)")
     }
     
     // MARK: - Frame Conversion
     
-    private func imageFromSampleBuffer(_ sampleBuffer: CMSampleBuffer) -> UIImage? {
-        guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+    private func convertToJPEG(_ sampleBuffer: CMSampleBuffer) -> Data? {
+        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
             return nil
         }
         
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let ciImage = CIImage(cvPixelBuffer: imageBuffer)
         let context = CIContext()
         
         guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else {
             return nil
         }
         
-        return UIImage(cgImage: cgImage)
+        let uiImage = UIImage(cgImage: cgImage)
+        return uiImage.jpegData(compressionQuality: 0.7)
     }
 }
 
@@ -195,36 +242,26 @@ extension DualCameraService: AVCaptureVideoDataOutputSampleBufferDelegate {
         let now = Date()
         
         // Determine which camera this is from
-        let isFront = (output === frontOutput)
-        let lastCapture = isFront ? lastFrontCaptureTime : lastBackCaptureTime
+        let isFront = output == frontOutput
         
-        // Rate limit to 5 FPS
-        guard now.timeIntervalSince(lastCapture) >= captureInterval else {
-            return
-        }
-        
-        // Update last capture time
+        // Throttle capture rate
         if isFront {
-            lastFrontCaptureTime = now
+            guard now.timeIntervalSince(lastFrontCapture) >= captureInterval else { return }
+            lastFrontCapture = now
         } else {
-            lastBackCaptureTime = now
+            guard now.timeIntervalSince(lastBackCapture) >= captureInterval else { return }
+            lastBackCapture = now
         }
         
-        // Convert to image
-        guard let image = imageFromSampleBuffer(sampleBuffer) else {
-            return
-        }
+        // Convert to JPEG
+        guard let jpegData = convertToJPEG(sampleBuffer) else { return }
         
-        // Deliver to delegate and published properties
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
+        // Update published property on main thread
+        DispatchQueue.main.async {
             if isFront {
-                self.latestFrontFrame = image
-                self.delegate?.dualCamera(self, didCaptureFront: image)
+                self.frontFrame = jpegData
             } else {
-                self.latestBackFrame = image
-                self.delegate?.dualCamera(self, didCaptureBack: image)
+                self.backFrame = jpegData
             }
         }
     }

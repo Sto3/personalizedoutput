@@ -3,76 +3,87 @@
  *
  * REDI SCREEN SHARE SERVICE
  * 
- * Manages WebRTC connection for desktop screen sharing:
- * - WebSocket signaling
- * - Pairing code generation
+ * Manages WebRTC connection for receiving desktop screen:
+ * - WebSocket signaling to server
  * - WebRTC peer connection
- * - Frame extraction
+ * - Frame extraction for AI analysis
  *
  * Created: Jan 29, 2026
  */
 
 import Foundation
 import WebRTC
-import UIKit
-
-enum ScreenShareState {
-    case disconnected
-    case connecting
-    case waitingForComputer
-    case connected
-    case error(String)
-}
 
 class ScreenShareService: NSObject, ObservableObject {
     static let shared = ScreenShareService()
     
-    @Published var connectionState: ScreenShareState = .disconnected
-    @Published var pairingCode: String = ""
-    @Published var latestFrame: UIImage?
+    // MARK: - Published State
+    
+    enum ConnectionState {
+        case disconnected
+        case connecting
+        case waitingForPeer
+        case connected
+        case error(String)
+    }
+    
+    @Published var connectionState: ConnectionState = .disconnected
+    @Published var pairingCode: String?
+    @Published var latestFrame: Data?
+    
+    // MARK: - Private Properties
     
     private var webSocket: URLSessionWebSocketTask?
     private var peerConnection: RTCPeerConnection?
     private var peerConnectionFactory: RTCPeerConnectionFactory?
+    private var frameRenderer: FrameCaptureRenderer?
     
     private let serverURL = "wss://personalizedoutput.onrender.com/ws/screen"
     
-    private override init() {
+    // MARK: - WebRTC Configuration
+    
+    private lazy var rtcConfig: RTCConfiguration = {
+        let config = RTCConfiguration()
+        config.iceServers = [
+            RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"]),
+            RTCIceServer(urlStrings: ["stun:stun1.l.google.com:19302"])
+        ]
+        config.sdpSemantics = .unifiedPlan
+        config.continualGatheringPolicy = .gatherContinually
+        return config
+    }()
+    
+    // MARK: - Initialization
+    
+    override init() {
         super.init()
-        setupWebRTC()
+        initializeWebRTC()
     }
     
-    // MARK: - WebRTC Setup
-    
-    private func setupWebRTC() {
+    private func initializeWebRTC() {
         RTCInitializeSSL()
         
         let encoderFactory = RTCDefaultVideoEncoderFactory()
         let decoderFactory = RTCDefaultVideoDecoderFactory()
-        
         peerConnectionFactory = RTCPeerConnectionFactory(
             encoderFactory: encoderFactory,
             decoderFactory: decoderFactory
         )
     }
     
-    // MARK: - Connection Management
+    // MARK: - Public Methods
     
     func connect() {
-        guard connectionState == .disconnected || connectionState == .error("") else {
-            return
-        }
+        guard connectionState == .disconnected || isErrorState else { return }
         
         DispatchQueue.main.async {
             self.connectionState = .connecting
         }
         
-        // Connect as 'phone' role to get pairing code
+        // Connect as "phone" role
         let urlString = "\(serverURL)?role=phone&name=Redi"
         guard let url = URL(string: urlString) else {
-            DispatchQueue.main.async {
-                self.connectionState = .error("Invalid server URL")
-            }
+            setError("Invalid server URL")
             return
         }
         
@@ -81,6 +92,8 @@ class ScreenShareService: NSObject, ObservableObject {
         webSocket?.resume()
         
         receiveMessage()
+        
+        print("[ScreenShare] Connecting to server...")
     }
     
     func disconnect() {
@@ -92,42 +105,32 @@ class ScreenShareService: NSObject, ObservableObject {
         
         DispatchQueue.main.async {
             self.connectionState = .disconnected
-            self.pairingCode = ""
+            self.pairingCode = nil
             self.latestFrame = nil
         }
+        
+        print("[ScreenShare] Disconnected")
     }
     
-    // MARK: - WebSocket Communication
+    // MARK: - WebSocket Message Handling
     
     private func receiveMessage() {
         webSocket?.receive { [weak self] result in
             switch result {
             case .success(let message):
-                switch message {
-                case .string(let text):
-                    self?.handleMessage(text)
-                case .data(let data):
-                    if let text = String(data: data, encoding: .utf8) {
-                        self?.handleMessage(text)
-                    }
-                @unknown default:
-                    break
-                }
-                
-                // Continue receiving
-                self?.receiveMessage()
+                self?.handleMessage(message)
+                self?.receiveMessage() // Continue listening
                 
             case .failure(let error):
                 print("[ScreenShare] WebSocket error: \(error)")
-                DispatchQueue.main.async {
-                    self?.connectionState = .error(error.localizedDescription)
-                }
+                self?.setError("Connection lost")
             }
         }
     }
     
-    private func handleMessage(_ text: String) {
-        guard let data = text.data(using: .utf8),
+    private func handleMessage(_ message: URLSessionWebSocketTask.Message) {
+        guard case .string(let text) = message,
+              let data = text.data(using: .utf8),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = json["type"] as? String else {
             return
@@ -140,35 +143,28 @@ class ScreenShareService: NSObject, ObservableObject {
             if let code = json["code"] as? String {
                 DispatchQueue.main.async {
                     self.pairingCode = code
-                    self.connectionState = .waitingForComputer
+                    self.connectionState = .waitingForPeer
                 }
             }
             
         case "paired":
-            DispatchQueue.main.async {
-                self.connectionState = .connected
-            }
+            print("[ScreenShare] Paired with computer")
+            // Wait for offer from computer
             
         case "offer":
-            if let offer = json["offer"] as? [String: Any] {
-                handleOffer(offer)
-            }
+            handleOffer(json)
             
         case "ice-candidate":
-            if let candidate = json["candidate"] as? [String: Any] {
-                handleIceCandidate(candidate)
-            }
+            handleIceCandidate(json)
             
         case "disconnected":
             DispatchQueue.main.async {
-                self.connectionState = .disconnected
-                self.pairingCode = ""
+                self.connectionState = .waitingForPeer
             }
             
         case "error":
-            let message = json["message"] as? String ?? "Unknown error"
-            DispatchQueue.main.async {
-                self.connectionState = .error(message)
+            if let message = json["message"] as? String {
+                setError(message)
             }
             
         default:
@@ -176,50 +172,22 @@ class ScreenShareService: NSObject, ObservableObject {
         }
     }
     
-    private func sendMessage(_ message: [String: Any]) {
-        guard let data = try? JSONSerialization.data(withJSONObject: message),
-              let text = String(data: data, encoding: .utf8) else {
-            return
-        }
-        
-        webSocket?.send(.string(text)) { error in
-            if let error = error {
-                print("[ScreenShare] Send error: \(error)")
-            }
-        }
-    }
-    
     // MARK: - WebRTC Signaling
     
-    private func handleOffer(_ offer: [String: Any]) {
-        guard let sdp = offer["sdp"] as? String,
-              let factory = peerConnectionFactory else {
+    private func handleOffer(_ json: [String: Any]) {
+        guard let offerDict = json["offer"] as? [String: Any],
+              let sdp = offerDict["sdp"] as? String else {
             return
         }
         
         // Create peer connection
-        let config = RTCConfiguration()
-        config.iceServers = [
-            RTCIceServer(urlStrings: ["stun:stun.l.google.com:19302"]),
-            RTCIceServer(urlStrings: ["stun:stun1.l.google.com:19302"])
-        ]
+        setupPeerConnection()
         
-        let constraints = RTCMediaConstraints(
-            mandatoryConstraints: nil,
-            optionalConstraints: nil
-        )
-        
-        peerConnection = factory.peerConnection(
-            with: config,
-            constraints: constraints,
-            delegate: self
-        )
-        
-        // Set remote description (the offer)
-        let sessionDescription = RTCSessionDescription(type: .offer, sdp: sdp)
-        peerConnection?.setRemoteDescription(sessionDescription) { [weak self] error in
+        // Set remote description
+        let offer = RTCSessionDescription(type: .offer, sdp: sdp)
+        peerConnection?.setRemoteDescription(offer) { [weak self] error in
             if let error = error {
-                print("[ScreenShare] Set remote description error: \(error)")
+                print("[ScreenShare] Failed to set offer: \(error)")
                 return
             }
             
@@ -230,57 +198,102 @@ class ScreenShareService: NSObject, ObservableObject {
     
     private func createAnswer() {
         let constraints = RTCMediaConstraints(
-            mandatoryConstraints: [
-                "OfferToReceiveVideo": "true",
-                "OfferToReceiveAudio": "false"
-            ],
+            mandatoryConstraints: nil,
             optionalConstraints: nil
         )
         
         peerConnection?.answer(for: constraints) { [weak self] answer, error in
-            if let error = error {
-                print("[ScreenShare] Create answer error: \(error)")
+            guard let answer = answer else {
+                print("[ScreenShare] Failed to create answer: \(error?.localizedDescription ?? "unknown")")
                 return
             }
             
-            guard let answer = answer else { return }
-            
             self?.peerConnection?.setLocalDescription(answer) { error in
                 if let error = error {
-                    print("[ScreenShare] Set local description error: \(error)")
+                    print("[ScreenShare] Failed to set local description: \(error)")
                     return
                 }
                 
-                // Send answer to computer
-                self?.sendMessage([
-                    "type": "answer",
-                    "answer": [
-                        "type": "answer",
-                        "sdp": answer.sdp
-                    ]
-                ])
+                // Send answer to server
+                self?.sendAnswer(answer)
             }
         }
     }
     
-    private func handleIceCandidate(_ candidate: [String: Any]) {
-        guard let sdpMid = candidate["sdpMid"] as? String,
-              let sdpMLineIndex = candidate["sdpMLineIndex"] as? Int32,
-              let sdp = candidate["candidate"] as? String else {
+    private func sendAnswer(_ answer: RTCSessionDescription) {
+        let message: [String: Any] = [
+            "type": "answer",
+            "answer": [
+                "type": "answer",
+                "sdp": answer.sdp
+            ]
+        ]
+        
+        sendJSON(message)
+    }
+    
+    private func handleIceCandidate(_ json: [String: Any]) {
+        guard let candidateDict = json["candidate"] as? [String: Any],
+              let sdp = candidateDict["candidate"] as? String,
+              let sdpMLineIndex = candidateDict["sdpMLineIndex"] as? Int32,
+              let sdpMid = candidateDict["sdpMid"] as? String else {
             return
         }
         
-        let iceCandidate = RTCIceCandidate(
+        let candidate = RTCIceCandidate(
             sdp: sdp,
             sdpMLineIndex: sdpMLineIndex,
             sdpMid: sdpMid
         )
         
-        peerConnection?.add(iceCandidate) { error in
+        peerConnection?.add(candidate) { error in
             if let error = error {
-                print("[ScreenShare] Add ICE candidate error: \(error)")
+                print("[ScreenShare] Failed to add ICE candidate: \(error)")
             }
         }
+    }
+    
+    // MARK: - Peer Connection Setup
+    
+    private func setupPeerConnection() {
+        guard let factory = peerConnectionFactory else { return }
+        
+        let constraints = RTCMediaConstraints(
+            mandatoryConstraints: nil,
+            optionalConstraints: ["DtlsSrtpKeyAgreement": "true"]
+        )
+        
+        peerConnection = factory.peerConnection(
+            with: rtcConfig,
+            constraints: constraints,
+            delegate: self
+        )
+    }
+    
+    // MARK: - Helpers
+    
+    private func sendJSON(_ dict: [String: Any]) {
+        guard let data = try? JSONSerialization.data(withJSONObject: dict),
+              let string = String(data: data, encoding: .utf8) else {
+            return
+        }
+        
+        webSocket?.send(.string(string)) { error in
+            if let error = error {
+                print("[ScreenShare] Send error: \(error)")
+            }
+        }
+    }
+    
+    private func setError(_ message: String) {
+        DispatchQueue.main.async {
+            self.connectionState = .error(message)
+        }
+    }
+    
+    private var isErrorState: Bool {
+        if case .error = connectionState { return true }
+        return false
     }
 }
 
@@ -292,16 +305,20 @@ extension ScreenShareService: RTCPeerConnectionDelegate {
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didAdd stream: RTCMediaStream) {
-        print("[ScreenShare] Stream added with \(stream.videoTracks.count) video tracks")
+        print("[ScreenShare] Stream added")
         
+        // Get video track
         if let videoTrack = stream.videoTracks.first {
-            // Add renderer to capture frames
-            let renderer = FrameCaptureRenderer { [weak self] image in
-                DispatchQueue.main.async {
-                    self?.latestFrame = image
-                }
+            DispatchQueue.main.async {
+                self.connectionState = .connected
             }
-            videoTrack.add(renderer)
+            
+            // Setup frame capture
+            frameRenderer = FrameCaptureRenderer { [weak self] frameData in
+                self?.latestFrame = frameData
+            }
+            
+            videoTrack.add(frameRenderer!)
         }
     }
     
@@ -316,15 +333,17 @@ extension ScreenShareService: RTCPeerConnectionDelegate {
     func peerConnection(_ peerConnection: RTCPeerConnection, didChange newState: RTCIceConnectionState) {
         print("[ScreenShare] ICE connection state: \(newState.rawValue)")
         
-        DispatchQueue.main.async {
-            switch newState {
-            case .connected, .completed:
+        switch newState {
+        case .connected, .completed:
+            DispatchQueue.main.async {
                 self.connectionState = .connected
-            case .disconnected, .failed, .closed:
-                self.connectionState = .disconnected
-            default:
-                break
             }
+        case .disconnected, .failed:
+            DispatchQueue.main.async {
+                self.connectionState = .waitingForPeer
+            }
+        default:
+            break
         }
     }
     
@@ -333,15 +352,17 @@ extension ScreenShareService: RTCPeerConnectionDelegate {
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didGenerate candidate: RTCIceCandidate) {
-        // Send ICE candidate to computer
-        sendMessage([
+        // Send ICE candidate to server
+        let message: [String: Any] = [
             "type": "ice-candidate",
             "candidate": [
                 "candidate": candidate.sdp,
-                "sdpMid": candidate.sdpMid ?? "",
-                "sdpMLineIndex": candidate.sdpMLineIndex
+                "sdpMLineIndex": candidate.sdpMLineIndex,
+                "sdpMid": candidate.sdpMid ?? ""
             ]
-        ])
+        ]
+        
+        sendJSON(message)
     }
     
     func peerConnection(_ peerConnection: RTCPeerConnection, didRemove candidates: [RTCIceCandidate]) {
@@ -356,38 +377,97 @@ extension ScreenShareService: RTCPeerConnectionDelegate {
 // MARK: - Frame Capture Renderer
 
 class FrameCaptureRenderer: NSObject, RTCVideoRenderer {
-    private let onFrame: (UIImage) -> Void
-    private var frameCount = 0
-    private let captureInterval = 30 // Capture every 30 frames (~2 FPS at 60fps source)
+    private var lastCaptureTime: Date = .distantPast
+    private let captureInterval: TimeInterval = 0.5 // 2 FPS
+    private let onFrame: (Data) -> Void
     
-    init(onFrame: @escaping (UIImage) -> Void) {
+    init(onFrame: @escaping (Data) -> Void) {
         self.onFrame = onFrame
         super.init()
     }
     
     func setSize(_ size: CGSize) {
-        // Not needed for frame capture
+        // Not needed for our use case
     }
     
     func renderFrame(_ frame: RTCVideoFrame?) {
-        frameCount += 1
+        guard let frame = frame else { return }
         
-        // Only capture periodically
-        guard frameCount % captureInterval == 0,
-              let frame = frame else {
-            return
+        // Throttle frame capture
+        let now = Date()
+        guard now.timeIntervalSince(lastCaptureTime) >= captureInterval else { return }
+        lastCaptureTime = now
+        
+        // Convert frame to JPEG
+        if let imageData = convertFrameToJPEG(frame) {
+            DispatchQueue.main.async {
+                self.onFrame(imageData)
+            }
+        }
+    }
+    
+    private func convertFrameToJPEG(_ frame: RTCVideoFrame) -> Data? {
+        guard let buffer = frame.buffer as? RTCI420Buffer else { return nil }
+        
+        let width = Int(buffer.width)
+        let height = Int(buffer.height)
+        
+        // Create RGB buffer
+        var rgbData = [UInt8](repeating: 0, count: width * height * 4)
+        
+        // Convert I420 to RGBA
+        let yPlane = buffer.dataY
+        let uPlane = buffer.dataU
+        let vPlane = buffer.dataV
+        
+        for y in 0..<height {
+            for x in 0..<width {
+                let yIndex = y * Int(buffer.strideY) + x
+                let uvIndex = (y / 2) * Int(buffer.strideU) + (x / 2)
+                
+                let yValue = Int(yPlane[yIndex])
+                let uValue = Int(uPlane[uvIndex]) - 128
+                let vValue = Int(vPlane[uvIndex]) - 128
+                
+                var r = yValue + Int(1.402 * Double(vValue))
+                var g = yValue - Int(0.344 * Double(uValue)) - Int(0.714 * Double(vValue))
+                var b = yValue + Int(1.772 * Double(uValue))
+                
+                r = max(0, min(255, r))
+                g = max(0, min(255, g))
+                b = max(0, min(255, b))
+                
+                let pixelIndex = (y * width + x) * 4
+                rgbData[pixelIndex] = UInt8(r)
+                rgbData[pixelIndex + 1] = UInt8(g)
+                rgbData[pixelIndex + 2] = UInt8(b)
+                rgbData[pixelIndex + 3] = 255
+            }
         }
         
-        // Convert frame to UIImage
-        guard let buffer = frame.buffer as? RTCCVPixelBuffer else { return }
-        let pixelBuffer = buffer.pixelBuffer
+        // Create CGImage
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
         
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let context = CIContext()
+        guard let provider = CGDataProvider(data: Data(rgbData) as CFData),
+              let cgImage = CGImage(
+                width: width,
+                height: height,
+                bitsPerComponent: 8,
+                bitsPerPixel: 32,
+                bytesPerRow: width * 4,
+                space: colorSpace,
+                bitmapInfo: bitmapInfo,
+                provider: provider,
+                decode: nil,
+                shouldInterpolate: false,
+                intent: .defaultIntent
+              ) else {
+            return nil
+        }
         
-        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
-        let image = UIImage(cgImage: cgImage)
-        
-        onFrame(image)
+        // Convert to JPEG
+        let uiImage = UIImage(cgImage: cgImage)
+        return uiImage.jpegData(compressionQuality: 0.8)
     }
 }
