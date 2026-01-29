@@ -1,357 +1,342 @@
 /**
  * MedicationService.swift
  *
- * REDI HEALTH - Medication Compliance System
+ * REDI MEDICATION COMPLIANCE SERVICE
  * 
- * Features:
- * - Add/manage medications with schedules
+ * Manages:
+ * - Medication schedules
  * - Push notification reminders
- * - Visual verification via front camera
- * - Voice logging
- * - Adherence tracking
+ * - Dose logging and tracking
+ * - Adherence calculations
+ * - Voice query handling
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import Foundation
 import UserNotifications
-import Combine
 import UIKit
 
 class MedicationService: ObservableObject {
     static let shared = MedicationService()
     
-    // MARK: - Published
-    
-    @Published var todaysSchedule: [ScheduledDose] = []
-    @Published var pendingVerification: Medication?
-    
-    // MARK: - Dependencies
+    @Published var medications: [Medication] = []
+    @Published var todaysDoses: [MedicationLog] = []
     
     private let dataManager = HealthDataManager.shared
-    private let notificationCenter = UNUserNotificationCenter.current()
-    private var cancellables = Set<AnyCancellable>()
     
-    // MARK: - Types
+    private init() {
+        loadMedications()
+        loadTodaysDoses()
+    }
     
-    struct ScheduledDose: Identifiable {
-        var id: String { "\(medication.id)-\(scheduledTime.timeIntervalSince1970)" }
-        let medication: Medication
-        let scheduledTime: Date
-        var status: DoseStatus
+    // MARK: - Data Loading
+    
+    func loadMedications() {
+        medications = dataManager.getMedications()
+    }
+    
+    func loadTodaysDoses() {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
         
-        enum DoseStatus {
-            case upcoming
-            case due
-            case taken(Date)
-            case missed
-            case skipped
+        todaysDoses = dataManager.getMedicationLogs(from: today, to: tomorrow)
+    }
+    
+    // MARK: - Medication Management
+    
+    func addMedication(name: String, dosage: String, instructions: String?, scheduleTimes: [Date]) {
+        let schedules = scheduleTimes.map { time -> ScheduleTime in
+            let components = Calendar.current.dateComponents([.hour, .minute], from: time)
+            return ScheduleTime(
+                id: UUID().uuidString,
+                hour: components.hour ?? 8,
+                minute: components.minute ?? 0,
+                enabled: true
+            )
+        }
+        
+        let medication = Medication(
+            id: UUID().uuidString,
+            name: name,
+            dosage: dosage,
+            instructions: instructions,
+            schedule: schedules,
+            createdAt: Date(),
+            isActive: true
+        )
+        
+        dataManager.saveMedication(medication)
+        loadMedications()
+        
+        // Schedule notifications
+        scheduleNotifications(for: medication)
+    }
+    
+    func updateMedication(_ medication: Medication) {
+        dataManager.saveMedication(medication)
+        loadMedications()
+        
+        // Reschedule notifications
+        cancelNotifications(for: medication)
+        if medication.isActive {
+            scheduleNotifications(for: medication)
         }
     }
     
-    // MARK: - Init
-    
-    private init() {
-        setupNotificationCategories()
-        
-        // Refresh schedule when medications change
-        dataManager.$medications
-            .sink { [weak self] _ in
-                self?.refreshTodaysSchedule()
-            }
-            .store(in: &cancellables)
-        
-        // Initial load
-        refreshTodaysSchedule()
-    }
-    
-    // MARK: - Notification Setup
-    
-    private func setupNotificationCategories() {
-        let takenAction = UNNotificationAction(
-            identifier: "TAKEN",
-            title: "✓ Taken",
-            options: []
-        )
-        
-        let snoozeAction = UNNotificationAction(
-            identifier: "SNOOZE",
-            title: "Snooze 10 min",
-            options: []
-        )
-        
-        let skipAction = UNNotificationAction(
-            identifier: "SKIP",
-            title: "Skip",
-            options: [.destructive]
-        )
-        
-        let category = UNNotificationCategory(
-            identifier: "MEDICATION_REMINDER",
-            actions: [takenAction, snoozeAction, skipAction],
-            intentIdentifiers: [],
-            options: []
-        )
-        
-        notificationCenter.setNotificationCategories([category])
-    }
-    
-    // MARK: - Add Medication
-    
-    func addMedication(name: String, dosage: String, times: [ScheduleTime], instructions: String? = nil) {
-        let medication = Medication(
-            name: name,
-            dosage: dosage,
-            schedule: times,
-            instructions: instructions
-        )
-        
-        dataManager.addMedication(medication)
-        scheduleNotifications(for: medication)
-        refreshTodaysSchedule()
-    }
-    
-    // MARK: - Schedule Notifications
-    
-    func scheduleNotifications(for medication: Medication) {
-        // Cancel existing
+    func deleteMedication(_ medication: Medication) {
+        dataManager.deleteMedication(medication.id)
         cancelNotifications(for: medication)
+        loadMedications()
+    }
+    
+    // MARK: - Dose Logging
+    
+    func logDose(medicationId: String, taken: Bool, notes: String? = nil) {
+        let log = MedicationLog(
+            id: UUID().uuidString,
+            medicationId: medicationId,
+            timestamp: Date(),
+            taken: taken,
+            notes: notes
+        )
         
-        for (index, time) in medication.schedule.enumerated() {
+        dataManager.saveMedicationLog(log)
+        loadTodaysDoses()
+    }
+    
+    func isDoseTakenToday(medicationId: String, scheduleTime: ScheduleTime) -> Bool {
+        let calendar = Calendar.current
+        let now = Date()
+        
+        // Check if there's a log for this medication today at approximately this time
+        return todaysDoses.contains { log in
+            guard log.medicationId == medicationId && log.taken else { return false }
+            
+            let logHour = calendar.component(.hour, from: log.timestamp)
+            let logMinute = calendar.component(.minute, from: log.timestamp)
+            
+            // Within 2 hours of scheduled time
+            let scheduledMinutes = scheduleTime.hour * 60 + scheduleTime.minute
+            let logMinutes = logHour * 60 + logMinute
+            
+            return abs(scheduledMinutes - logMinutes) < 120
+        }
+    }
+    
+    // MARK: - Notifications
+    
+    private func scheduleNotifications(for medication: Medication) {
+        let center = UNUserNotificationCenter.current()
+        
+        for schedule in medication.schedule where schedule.enabled {
             let content = UNMutableNotificationContent()
             content.title = "Time for \(medication.name)"
-            content.body = "\(medication.dosage)" + (medication.instructions.map { " — \($0)" } ?? "")
+            content.body = medication.dosage
+            if let instructions = medication.instructions {
+                content.body += " - \(instructions)"
+            }
             content.sound = .default
             content.categoryIdentifier = "MEDICATION_REMINDER"
             content.userInfo = [
-                "medicationId": medication.id.uuidString,
-                "medicationName": medication.name
+                "medicationId": medication.id,
+                "scheduleTimeId": schedule.id
             ]
             
+            // Create daily repeating trigger
             var dateComponents = DateComponents()
-            dateComponents.hour = time.hour
-            dateComponents.minute = time.minute
+            dateComponents.hour = schedule.hour
+            dateComponents.minute = schedule.minute
             
             let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: true)
-            let request = UNNotificationRequest(
-                identifier: "med-\(medication.id)-\(index)",
-                content: content,
-                trigger: trigger
-            )
             
-            notificationCenter.add(request) { error in
+            let identifier = "medication-\(medication.id)-\(schedule.id)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            
+            center.add(request) { error in
                 if let error = error {
-                    print("[Medication] Notification error: \(error)")
+                    print("[MedicationService] Failed to schedule notification: \(error)")
                 } else {
-                    print("[Medication] Scheduled notification for \(medication.name) at \(time.displayTime)")
+                    print("[MedicationService] Scheduled notification for \(medication.name) at \(schedule.hour):\(schedule.minute)")
                 }
             }
         }
     }
     
-    func cancelNotifications(for medication: Medication) {
-        let identifiers = medication.schedule.indices.map { "med-\(medication.id)-\($0)" }
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: identifiers)
+    private func cancelNotifications(for medication: Medication) {
+        let center = UNUserNotificationCenter.current()
+        let identifiers = medication.schedule.map { "medication-\(medication.id)-\($0.id)" }
+        center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
     
-    // MARK: - Request Permission
+    // MARK: - Adherence Tracking
     
-    func requestNotificationPermission() async -> Bool {
-        do {
-            let granted = try await notificationCenter.requestAuthorization(options: [.alert, .sound, .badge])
-            print("[Medication] Notification permission: \(granted)")
-            return granted
-        } catch {
-            print("[Medication] Permission error: \(error)")
-            return false
-        }
-    }
-    
-    // MARK: - Today's Schedule
-    
-    func refreshTodaysSchedule() {
+    func calculateAdherence(days: Int = 7) -> Double {
         let calendar = Calendar.current
-        let now = Date()
-        let today = calendar.component(.weekday, from: now) // 1=Sun, 7=Sat
-        
-        var schedule: [ScheduledDose] = []
-        
-        for medication in dataManager.medications where medication.isActive {
-            for time in medication.schedule {
-                // Check if this dose is for today
-                if time.daysOfWeek.isEmpty || time.daysOfWeek.contains(today) {
-                    // Create scheduled time for today
-                    var components = calendar.dateComponents([.year, .month, .day], from: now)
-                    components.hour = time.hour
-                    components.minute = time.minute
-                    
-                    guard let scheduledTime = calendar.date(from: components) else { continue }
-                    
-                    // Check if already taken
-                    let (taken, takenTime) = dataManager.didTakeMedication(medication.id, on: now)
-                    
-                    let status: ScheduledDose.DoseStatus
-                    if taken, let time = takenTime {
-                        status = .taken(time)
-                    } else if scheduledTime < now.addingTimeInterval(-3600) { // >1 hour past
-                        status = .missed
-                    } else if scheduledTime < now.addingTimeInterval(1800) { // within 30 min
-                        status = .due
-                    } else {
-                        status = .upcoming
-                    }
-                    
-                    schedule.append(ScheduledDose(
-                        medication: medication,
-                        scheduledTime: scheduledTime,
-                        status: status
-                    ))
-                }
-            }
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
+            return 0.0
         }
         
-        todaysSchedule = schedule.sorted { $0.scheduledTime < $1.scheduledTime }
-    }
-    
-    // MARK: - Log Dose
-    
-    func logDoseTaken(medication: Medication, method: MedicationLog.VerificationMethod = .manual) {
-        let now = Date()
-        let scheduledTime = findNearestScheduledTime(for: medication) ?? now
+        let logs = dataManager.getMedicationLogs(from: startDate, to: endDate)
         
-        dataManager.logDose(
-            medicationId: medication.id,
-            scheduledTime: scheduledTime,
-            takenTime: now,
-            status: .taken,
-            method: method
-        )
+        // Calculate expected doses
+        var expectedDoses = 0
+        var takenDoses = 0
         
-        refreshTodaysSchedule()
-    }
-    
-    func logDoseSkipped(medication: Medication, reason: String? = nil) {
-        let now = Date()
-        let scheduledTime = findNearestScheduledTime(for: medication) ?? now
-        
-        dataManager.logDose(
-            medicationId: medication.id,
-            scheduledTime: scheduledTime,
-            takenTime: nil,
-            status: .skipped,
-            method: .manual,
-            notes: reason
-        )
-        
-        refreshTodaysSchedule()
-    }
-    
-    private func findNearestScheduledTime(for medication: Medication) -> Date? {
-        let calendar = Calendar.current
-        let now = Date()
-        
-        var nearest: Date?
-        var nearestDiff: TimeInterval = .infinity
-        
-        for time in medication.schedule {
-            var components = calendar.dateComponents([.year, .month, .day], from: now)
-            components.hour = time.hour
-            components.minute = time.minute
+        for medication in medications where medication.isActive {
+            // Each schedule time = 1 dose per day
+            let dosesPerDay = medication.schedule.filter { $0.enabled }.count
+            expectedDoses += dosesPerDay * days
             
-            if let scheduled = calendar.date(from: components) {
-                let diff = abs(scheduled.timeIntervalSince(now))
-                if diff < nearestDiff {
-                    nearestDiff = diff
-                    nearest = scheduled
-                }
-            }
+            // Count taken doses for this medication
+            takenDoses += logs.filter { $0.medicationId == medication.id && $0.taken }.count
         }
         
-        return nearest
+        guard expectedDoses > 0 else { return 1.0 }
+        return Double(takenDoses) / Double(expectedDoses)
     }
     
-    // MARK: - Adherence
-    
-    func weeklyAdherence() -> Double {
-        let activeMeds = dataManager.medications.filter { $0.isActive }
-        guard !activeMeds.isEmpty else { return 1.0 }
-        
-        let rates = activeMeds.map { dataManager.adherenceRate(for: $0.id, days: 7) }
-        return rates.reduce(0, +) / Double(rates.count)
-    }
-    
-    func adherenceReport(days: Int) -> [(medication: Medication, rate: Double, missed: Int)] {
-        dataManager.medications.filter { $0.isActive }.map { med in
-            let rate = dataManager.adherenceRate(for: med.id, days: days)
-            let logs = dataManager.medicationLogs.filter { $0.medicationId == med.id }
-            let missed = logs.filter { $0.status == .missed }.count
-            return (med, rate, missed)
+    func getMissedDoses(days: Int = 7) -> Int {
+        let adherence = calculateAdherence(days: days)
+        let calendar = Calendar.current
+        let endDate = Date()
+        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
+            return 0
         }
+        
+        var expectedDoses = 0
+        for medication in medications where medication.isActive {
+            let dosesPerDay = medication.schedule.filter { $0.enabled }.count
+            expectedDoses += dosesPerDay * days
+        }
+        
+        let takenDoses = Int(adherence * Double(expectedDoses))
+        return expectedDoses - takenDoses
     }
     
-    // MARK: - Voice Queries
+    // MARK: - Voice Query Handling
     
     func handleQuery(_ query: String) -> String {
-        let lower = query.lowercased()
+        let lowercased = query.lowercased()
         
-        // "Did I take my [medication]?"
-        if lower.contains("did i take") || lower.contains("have i taken") {
-            // Try to extract medication name
-            for med in dataManager.medications {
-                if lower.contains(med.name.lowercased()) {
-                    let (taken, time) = dataManager.didTakeMedication(med.id, on: Date())
-                    if taken, let t = time {
-                        let formatter = DateFormatter()
-                        formatter.timeStyle = .short
-                        return "Yes, you took your \(med.name) at \(formatter.string(from: t))."
-                    } else {
-                        return "I don't have a record of you taking \(med.name) today yet."
-                    }
-                }
-            }
-            return "Which medication are you asking about?"
+        // "Did I take my medication?"
+        if lowercased.contains("did i take") || lowercased.contains("have i taken") {
+            return checkTodaysMedications()
         }
         
-        // "What medications do I have today?"
-        if lower.contains("medication") && (lower.contains("today") || lower.contains("schedule")) {
-            refreshTodaysSchedule()
-            if todaysSchedule.isEmpty {
-                return "You don't have any medications scheduled for today."
-            }
-            
-            let upcoming = todaysSchedule.filter {
-                if case .upcoming = $0.status { return true }
-                if case .due = $0.status { return true }
-                return false
-            }
-            
-            if upcoming.isEmpty {
-                return "You've taken all your medications for today!"
-            }
-            
-            let list = upcoming.map { "\($0.medication.name) at \(formatTime($0.scheduledTime))" }.joined(separator: ", ")
-            return "You have: \(list)"
+        // "What's my medication schedule?"
+        if lowercased.contains("schedule") || lowercased.contains("when") {
+            return describeMedicationSchedule()
         }
         
         // "How's my adherence?"
-        if lower.contains("adherence") || lower.contains("compliance") {
-            let rate = weeklyAdherence()
-            let percent = Int(rate * 100)
-            if percent >= 90 {
-                return "Your medication adherence is excellent at \(percent)% this week!"
-            } else if percent >= 70 {
-                return "Your adherence is \(percent)% this week. Try to keep it above 90%."
+        if lowercased.contains("adherence") || lowercased.contains("compliance") || lowercased.contains("how am i doing") {
+            return describeAdherence()
+        }
+        
+        // "What medications am I taking?"
+        if lowercased.contains("what medication") || lowercased.contains("list") {
+            return listMedications()
+        }
+        
+        // Default
+        return "I can help you track your medications. You can ask me if you've taken your medication, what your schedule is, or how your adherence is doing."
+    }
+    
+    private func checkTodaysMedications() -> String {
+        loadTodaysDoses()
+        
+        if medications.isEmpty {
+            return "You don't have any medications set up yet. Would you like to add one?"
+        }
+        
+        var takenMeds: [String] = []
+        var pendingMeds: [String] = []
+        
+        for medication in medications where medication.isActive {
+            let takenToday = todaysDoses.contains { $0.medicationId == medication.id && $0.taken }
+            if takenToday {
+                takenMeds.append(medication.name)
             } else {
-                return "Your adherence is \(percent)% this week. Missing doses can affect your health."
+                pendingMeds.append(medication.name)
             }
         }
         
-        return "I can help you track medications. Try: 'Did I take my [medication]?' or 'What's my schedule today?'"
+        if pendingMeds.isEmpty && !takenMeds.isEmpty {
+            return "Great job! You've taken all your medications today: \(takenMeds.joined(separator: ", "))."
+        } else if !pendingMeds.isEmpty {
+            var response = "You still need to take: \(pendingMeds.joined(separator: ", "))."
+            if !takenMeds.isEmpty {
+                response += " You've already taken: \(takenMeds.joined(separator: ", "))."
+            }
+            return response
+        }
+        
+        return "You don't have any medications scheduled for today."
     }
     
-    private func formatTime(_ date: Date) -> String {
+    private func describeMedicationSchedule() -> String {
+        if medications.isEmpty {
+            return "You don't have any medications set up. Would you like to add one?"
+        }
+        
+        var schedule: [String] = []
         let formatter = DateFormatter()
         formatter.timeStyle = .short
-        return formatter.string(from: date)
+        
+        for medication in medications where medication.isActive {
+            for time in medication.schedule where time.enabled {
+                var components = DateComponents()
+                components.hour = time.hour
+                components.minute = time.minute
+                let date = Calendar.current.date(from: components) ?? Date()
+                schedule.append("\(medication.name) at \(formatter.string(from: date))")
+            }
+        }
+        
+        if schedule.isEmpty {
+            return "You don't have any medication reminders scheduled."
+        }
+        
+        return "Your medication schedule is: \(schedule.joined(separator: ", "))."
+    }
+    
+    private func describeAdherence() -> String {
+        let weeklyAdherence = calculateAdherence(days: 7)
+        let missedDoses = getMissedDoses(days: 7)
+        
+        let percentage = Int(weeklyAdherence * 100)
+        
+        var response = "Your medication adherence this week is \(percentage)%."
+        
+        if missedDoses > 0 {
+            response += " You've missed \(missedDoses) dose\(missedDoses == 1 ? "" : "s")."
+        }
+        
+        if percentage >= 90 {
+            response += " Excellent work keeping up with your medications!"
+        } else if percentage >= 70 {
+            response += " You're doing well, but there's room for improvement."
+        } else {
+            response += " Let's work on improving this together. Would you like me to remind you more frequently?"
+        }
+        
+        return response
+    }
+    
+    private func listMedications() -> String {
+        if medications.isEmpty {
+            return "You don't have any medications set up yet."
+        }
+        
+        let activeMeds = medications.filter { $0.isActive }
+        if activeMeds.isEmpty {
+            return "You don't have any active medications."
+        }
+        
+        let names = activeMeds.map { "\($0.name) \($0.dosage)" }
+        return "You're currently taking: \(names.joined(separator: ", "))."
     }
 }
