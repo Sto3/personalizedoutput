@@ -58,33 +58,31 @@ function generateCode(): string {
 
 // MARK: - Initialize WebSocket Server
 
-export function initScreenShare(server: Server): void {
+export function initScreenShare(server: Server) {
     wss = new WebSocketServer({ noServer: true });
 
     server.on('upgrade', (request: IncomingMessage, socket, head) => {
         const url = new URL(request.url || '', `http://${request.headers.host}`);
         
-        // Only handle /ws/screen endpoint
+        // Handle /ws/screen endpoint
         if (url.pathname === '/ws/screen') {
             wss!.handleUpgrade(request, socket, head, (ws) => {
                 wss!.emit('connection', ws, request);
             });
         }
+        // Other WebSocket endpoints are handled by their respective servers
     });
 
     wss.on('connection', (ws: WebSocket, request: IncomingMessage) => {
         handleScreenShareConnection(ws, request);
     });
 
-    // Start cleanup timer
-    setInterval(cleanupExpiredConnections, 60000);
-
     console.log('[ScreenShare] WebSocket server initialized on /ws/screen');
 }
 
 // MARK: - Connection Handling
 
-function handleScreenShareConnection(ws: WebSocket, request: IncomingMessage) {
+export function handleScreenShareConnection(ws: WebSocket, request: IncomingMessage) {
     const url = new URL(request.url || '', `http://${request.headers.host}`);
     const role = url.searchParams.get('role'); // 'phone' or 'computer'
     const code = url.searchParams.get('code');
@@ -102,7 +100,6 @@ function handleScreenShareConnection(ws: WebSocket, request: IncomingMessage) {
             message: 'Invalid connection parameters. Need role=phone or role=computer&code=XXXXXX'
         }));
         ws.close();
-        return;
     }
 
     // Handle messages
@@ -284,7 +281,7 @@ function handleDisconnect(ws: WebSocket) {
 
 // MARK: - Cleanup Timer
 
-function cleanupExpiredConnections() {
+setInterval(() => {
     const now = new Date();
     let cleaned = 0;
 
@@ -307,6 +304,6 @@ function cleanupExpiredConnections() {
     if (cleaned > 0) {
         console.log(`[ScreenShare] Cleaned up ${cleaned} expired connection(s)`);
     }
-}
+}, 60000); // Run every minute
 
 console.log('[ScreenShare] Server module loaded');
