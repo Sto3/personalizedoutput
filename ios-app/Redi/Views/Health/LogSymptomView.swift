@@ -3,11 +3,10 @@
  *
  * REDI LOG SYMPTOM VIEW
  * 
- * Log symptoms with:
- * - Symptom picker
+ * Quick symptom logging with:
+ * - Common symptom picker
  * - Severity slider (1-10)
- * - Associated symptoms
- * - Notes
+ * - Optional notes
  *
  * Created: Jan 29, 2026
  */
@@ -16,90 +15,119 @@ import SwiftUI
 
 struct LogSymptomView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var symptomService = SymptomService.shared
     
-    @State private var selectedSymptom = "Headache"
+    @State private var selectedSymptom = ""
     @State private var customSymptom = ""
-    @State private var severity = 5.0
-    @State private var location = ""
+    @State private var severity: Double = 5
     @State private var notes = ""
-    @State private var showCustomInput = false
     
-    let commonSymptoms = [
-        "Headache", "Migraine", "Nausea", "Fatigue", "Dizziness",
-        "Pain", "Soreness", "Congestion", "Cough", "Fever",
-        "Chills", "Anxiety", "Stress", "Insomnia", "Other"
+    private let service = SymptomService.shared
+    
+    private let commonSymptoms = [
+        "Headache", "Fatigue", "Nausea", "Dizziness",
+        "Stomach Ache", "Back Pain", "Anxiety", "Insomnia",
+        "Congestion", "Cough", "Sore Throat", "Fever"
     ]
     
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Symptom")) {
-                    Picker("Select Symptom", selection: $selectedSymptom) {
-                        ForEach(commonSymptoms, id: \.self) { symptom in
-                            Text(symptom).tag(symptom)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(commonSymptoms, id: \.self) { symptom in
+                                Button(action: {
+                                    selectedSymptom = symptom
+                                    customSymptom = ""
+                                }) {
+                                    Text(symptom)
+                                        .font(.subheadline)
+                                        .padding(.horizontal, 12)
+                                        .padding(.vertical, 8)
+                                        .background(selectedSymptom == symptom ? Color.blue : Color(.systemGray5))
+                                        .foregroundColor(selectedSymptom == symptom ? .white : .primary)
+                                        .cornerRadius(20)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    
+                    TextField("Or type a symptom", text: $customSymptom)
+                        .onChange(of: customSymptom) { newValue in
+                            if !newValue.isEmpty {
+                                selectedSymptom = ""
+                            }
+                        }
+                }
+                
+                Section(header: Text("Severity")) {
+                    VStack(spacing: 16) {
+                        HStack {
+                            Text("Mild")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("Severe")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        HStack {
+                            Slider(value: $severity, in: 1...10, step: 1)
+                                .tint(severityColor)
+                            
+                            Text("\(Int(severity))")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                                .foregroundColor(severityColor)
+                                .frame(width: 40)
                         }
                     }
-                    .onChange(of: selectedSymptom) { newValue in
-                        showCustomInput = (newValue == "Other")
-                    }
-                    
-                    if showCustomInput {
-                        TextField("Describe your symptom", text: $customSymptom)
-                    }
                 }
                 
-                Section(header: Text("Severity: \(Int(severity))/10")) {
-                    Slider(value: $severity, in: 1...10, step: 1)
-                    
-                    HStack {
-                        Text("Mild")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text("Severe")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Section(header: Text("Details (optional)")) {
-                    TextField("Location (e.g., left temple)", text: $location)
-                    TextField("Notes", text: $notes, axis: .vertical)
+                Section(header: Text("Notes (Optional)")) {
+                    TextField("Any additional details", text: $notes, axis: .vertical)
                         .lineLimit(2...4)
-                }
-                
-                Section {
-                    Text("Tracking symptoms helps identify patterns over time.")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Log Symptom")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveSymptom()
                     }
-                    .fontWeight(.semibold)
+                    .disabled(symptomName.isEmpty)
                 }
             }
         }
     }
     
+    private var symptomName: String {
+        if !customSymptom.isEmpty {
+            return customSymptom
+        }
+        return selectedSymptom
+    }
+    
+    private var severityColor: Color {
+        switch Int(severity) {
+        case 1...3: return .green
+        case 4...6: return .orange
+        default: return .red
+        }
+    }
+    
     private func saveSymptom() {
-        let symptomName = showCustomInput ? customSymptom : selectedSymptom
-        symptomService.logSymptomDirectly(
+        service.logSymptom(
             name: symptomName,
             severity: Int(severity),
-            location: location.isEmpty ? nil : location,
             notes: notes.isEmpty ? nil : notes
         )
         dismiss()

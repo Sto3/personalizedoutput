@@ -3,10 +3,10 @@
  *
  * REDI LOG MEAL VIEW
  * 
- * Log meals with:
- * - Camera analysis or manual entry
+ * Quick meal logging with:
+ * - Camera-based food recognition (AI)
+ * - Manual entry mode
  * - Meal type selection
- * - Nutrition info
  *
  * Created: Jan 29, 2026
  */
@@ -15,19 +15,20 @@ import SwiftUI
 
 struct LogMealView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var nutritionService = NutritionService.shared
     
     @State private var description = ""
-    @State private var selectedMealType: MealType
-    @State private var calories = ""
-    @State private var protein = ""
-    @State private var carbs = ""
-    @State private var fat = ""
-    @State private var showCamera = false
+    @State private var mealType: MealType
+    @State private var calories: String = ""
+    @State private var protein: String = ""
+    @State private var carbs: String = ""
+    @State private var fat: String = ""
+    @State private var useCamera = false
     @State private var isAnalyzing = false
     
+    private let service = NutritionService.shared
+    
     init() {
-        _selectedMealType = State(initialValue: NutritionService.shared.inferMealType())
+        _mealType = State(initialValue: NutritionService.shared.inferMealType())
     }
     
     var body: some View {
@@ -35,34 +36,19 @@ struct LogMealView: View {
             Form {
                 Section(header: Text("What did you eat?")) {
                     TextField("Describe your meal", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                    
-                    Picker("Meal Type", selection: $selectedMealType) {
+                        .lineLimit(2...4)
+                }
+                
+                Section(header: Text("Meal Type")) {
+                    Picker("Type", selection: $mealType) {
                         ForEach(MealType.allCases, id: \.self) { type in
                             Text(type.rawValue).tag(type)
                         }
                     }
+                    .pickerStyle(.segmented)
                 }
                 
-                Section(header: Text("Quick Entry")) {
-                    Button(action: { showCamera = true }) {
-                        HStack {
-                            Image(systemName: "camera.fill")
-                            Text("Analyze with Camera")
-                        }
-                    }
-                    .disabled(isAnalyzing)
-                    
-                    if isAnalyzing {
-                        HStack {
-                            ProgressView()
-                            Text("Analyzing...")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                Section(header: Text("Nutrition (optional)")) {
+                Section(header: Text("Nutrition (Optional)")) {
                     HStack {
                         Text("Calories")
                         Spacer()
@@ -76,7 +62,7 @@ struct LogMealView: View {
                         Text("Protein (g)")
                         Spacer()
                         TextField("0", text: $protein)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
                     }
@@ -85,7 +71,7 @@ struct LogMealView: View {
                         Text("Carbs (g)")
                         Spacer()
                         TextField("0", text: $carbs)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
                     }
@@ -94,14 +80,14 @@ struct LogMealView: View {
                         Text("Fat (g)")
                         Spacer()
                         TextField("0", text: $fat)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
                     }
                 }
                 
                 Section {
-                    Text("Tip: Just describe what you ate and Redi can help estimate nutrition during your conversation.")
+                    Text("Leave nutrition blank and Redi will estimate based on your description.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -109,31 +95,29 @@ struct LogMealView: View {
             .navigationTitle("Log Meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveMeal()
                     }
                     .disabled(description.isEmpty)
-                    .fontWeight(.semibold)
                 }
             }
         }
     }
     
     private func saveMeal() {
-        nutritionService.logMeal(
+        service.logMeal(
             description: description,
-            mealType: selectedMealType,
+            mealType: mealType,
             calories: Int(calories),
-            protein: Int(protein),
-            carbs: Int(carbs),
-            fat: Int(fat)
+            protein: Double(protein),
+            carbs: Double(carbs),
+            fat: Double(fat)
         )
         dismiss()
     }

@@ -3,10 +3,10 @@
  *
  * REDI ADD MEDICATION VIEW
  * 
- * Form to add new medications with:
+ * Form for adding new medications with:
  * - Name and dosage
- * - Schedule times
  * - Instructions
+ * - Multiple schedule times
  *
  * Created: Jan 29, 2026
  */
@@ -15,54 +15,51 @@ import SwiftUI
 
 struct AddMedicationView: View {
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var medicationService = MedicationService.shared
     
     @State private var name = ""
     @State private var dosage = ""
     @State private var instructions = ""
     @State private var scheduleTimes: [Date] = [Date()]
     
+    private let service = MedicationService.shared
+    
     var body: some View {
         NavigationView {
             Form {
                 Section(header: Text("Medication Details")) {
-                    TextField("Medication Name", text: $name)
+                    TextField("Name", text: $name)
                     TextField("Dosage (e.g., 10mg)", text: $dosage)
                     TextField("Instructions (optional)", text: $instructions)
                 }
                 
                 Section(header: Text("Schedule")) {
                     ForEach(scheduleTimes.indices, id: \.self) { index in
-                        HStack {
-                            DatePicker(
-                                "Time \(index + 1)",
-                                selection: $scheduleTimes[index],
-                                displayedComponents: .hourAndMinute
-                            )
-                            
-                            if scheduleTimes.count > 1 {
-                                Button(action: {
-                                    scheduleTimes.remove(at: index)
-                                }) {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundColor(.red)
-                                }
-                            }
-                        }
+                        DatePicker(
+                            "Time \(index + 1)",
+                            selection: $scheduleTimes[index],
+                            displayedComponents: .hourAndMinute
+                        )
                     }
                     
-                    Button(action: {
-                        scheduleTimes.append(Date())
-                    }) {
+                    Button(action: addTime) {
                         HStack {
                             Image(systemName: "plus.circle.fill")
                             Text("Add Another Time")
                         }
                     }
+                    
+                    if scheduleTimes.count > 1 {
+                        Button(role: .destructive, action: removeLastTime) {
+                            HStack {
+                                Image(systemName: "minus.circle.fill")
+                                Text("Remove Last Time")
+                            }
+                        }
+                    }
                 }
                 
                 Section {
-                    Text("You'll receive reminders at each scheduled time.")
+                    Text("You'll receive a reminder at each scheduled time.")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -70,25 +67,33 @@ struct AddMedicationView: View {
             .navigationTitle("Add Medication")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         dismiss()
                     }
                 }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveMedication()
                     }
                     .disabled(name.isEmpty || dosage.isEmpty)
-                    .fontWeight(.semibold)
                 }
             }
         }
     }
     
+    private func addTime() {
+        scheduleTimes.append(Date())
+    }
+    
+    private func removeLastTime() {
+        if scheduleTimes.count > 1 {
+            scheduleTimes.removeLast()
+        }
+    }
+    
     private func saveMedication() {
-        medicationService.addMedication(
+        service.addMedication(
             name: name,
             dosage: dosage,
             instructions: instructions.isEmpty ? nil : instructions,
