@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect to Redi</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            max-width: 420px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 8px;
+        }
+        
+        .tagline {
+            color: #888;
+            margin-bottom: 40px;
+        }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 32px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        h2 {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 24px;
+        }
+        
+        .code-input {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+        
+        .code-input input {
+            width: 48px;
+            height: 56px;
+            font-size: 24px;
+            text-align: center;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .code-input input:focus {
+            border-color: #00d4ff;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 16px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, opacity 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, #00d4ff, #00ff88);
+            color: #1a1a2e;
+        }
+        
+        .btn-danger {
+            background: #ff4757;
+            color: white;
+        }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.connecting { background: #ffa502; }
+        .status-dot.connected { background: #2ed573; }
+        .status-dot.error { background: #ff4757; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .instructions {
+            margin-top: 32px;
+            padding: 20px;
+            background: rgba(0, 212, 255, 0.1);
+            border-radius: 12px;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            font-size: 14px;
+            margin-bottom: 12px;
+            color: #00d4ff;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #aaa;
+            line-height: 1.8;
+        }
+        
+        .error-message {
+            color: #ff4757;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .sharing-preview {
+            background: #000;
+            border-radius: 8px;
+            padding: 60px 20px;
+            margin-bottom: 24px;
+        }
+        
+        .sharing-preview svg {
+            width: 64px;
+            height: 64px;
+            opacity: 0.5;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">Redi</div>
+        <p class="tagline">Screen Sharing</p>
+        
+        <!-- Step 1: Enter Code -->
+        <div class="card" id="code-entry">
+            <h2>Enter the code from your phone</h2>
+            
+            <div class="code-input">
+                <input type="text" maxlength="1" data-index="0" inputmode="numeric">
+                <input type="text" maxlength="1" data-index="1" inputmode="numeric">
+                <input type="text" maxlength="1" data-index="2" inputmode="numeric">
+                <input type="text" maxlength="1" data-index="3" inputmode="numeric">
+                <input type="text" maxlength="1" data-index="4" inputmode="numeric">
+                <input type="text" maxlength="1" data-index="5" inputmode="numeric">
+            </div>
+            
+            <p class="error-message hidden" id="error-msg"></p>
+            
+            <button class="btn btn-primary" id="connect-btn" disabled>Connect</button>
+            
+            <div class="instructions">
+                <h3>How to connect:</h3>
+                <ol>
+                    <li>Open Redi on your phone</li>
+                    <li>Tap "Connect to Computer"</li>
+                    <li>Enter the 6-digit code shown above</li>
+                </ol>
+            </div>
+        </div>
+        
+        <!-- Step 2: Sharing -->
+        <div class="card hidden" id="sharing">
+            <div class="status">
+                <span class="status-dot connected"></span>
+                <span id="status-text">Connected! Sharing screen...</span>
+            </div>
+            
+            <div class="sharing-preview">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/>
+                </svg>
+                <p style="margin-top: 16px; opacity: 0.5">Your screen is being shared</p>
+            </div>
+            
+            <button class="btn btn-danger" id="stop-btn">Stop Sharing</button>
+        </div>
+    </div>
+    
+    <script>
+        // Elements
+        const codeEntry = document.getElementById('code-entry');
+        const sharingView = document.getElementById('sharing');
+        const connectBtn = document.getElementById('connect-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const errorMsg = document.getElementById('error-msg');
+        const statusText = document.getElementById('status-text');
+        const codeInputs = document.querySelectorAll('.code-input input');
+        
+        // State
+        let ws = null;
+        let peerConnection = null;
+        let stream = null;
+        
+        // Server URL (same origin)
+        const WS_URL = `wss://${window.location.host}/ws/screen`;
+        
+        // Code input handling
+        codeInputs.forEach((input, index) => {
+            input.addEventListener('input', (e) => {
+                const value = e.target.value;
+                if (value && index < 5) {
+                    codeInputs[index + 1].focus();
+                }
+                checkCode();
+            });
+            
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Backspace' && !e.target.value && index > 0) {
+                    codeInputs[index - 1].focus();
+                }
+            });
+            
+            input.addEventListener('paste', (e) => {
+                e.preventDefault();
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                const digits = paste.replace(/\D/g, '').slice(0, 6);
+                digits.split('').forEach((digit, i) => {
+                    if (codeInputs[i]) codeInputs[i].value = digit;
+                });
+                checkCode();
+            });
+        });
+        
+        function checkCode() {
+            const code = getCode();
+            connectBtn.disabled = code.length !== 6;
+        }
+        
+        function getCode() {
+            return Array.from(codeInputs).map(i => i.value).join('');
+        }
+        
+        function showError(msg) {
+            errorMsg.textContent = msg;
+            errorMsg.classList.remove('hidden');
+        }
+        
+        function hideError() {
+            errorMsg.classList.add('hidden');
+        }
+        
+        // Connect button
+        connectBtn.addEventListener('click', connect);
+        
+        async function connect() {
+            const code = getCode();
+            if (code.length !== 6) return;
+            
+            hideError();
+            connectBtn.disabled = true;
+            connectBtn.textContent = 'Connecting...';
+            
+            try {
+                ws = new WebSocket(`${WS_URL}?role=computer&code=${code}`);
+                
+                ws.onopen = () => {
+                    console.log('WebSocket connected');
+                };
+                
+                ws.onmessage = async (event) => {
+                    const msg = JSON.parse(event.data);
+                    console.log('Received:', msg.type);
+                    
+                    switch (msg.type) {
+                        case 'paired':
+                            await startScreenShare();
+                            break;
+                        case 'answer':
+                            if (peerConnection && msg.answer) {
+                                await peerConnection.setRemoteDescription(msg.answer);
+                            }
+                            break;
+                        case 'ice-candidate':
+                            if (peerConnection && msg.candidate) {
+                                await peerConnection.addIceCandidate(msg.candidate);
+                            }
+                            break;
+                        case 'error':
+                            showError(msg.message || 'Connection failed');
+                            resetUI();
+                            break;
+                        case 'disconnected':
+                            statusText.textContent = 'Phone disconnected';
+                            setTimeout(stopSharing, 2000);
+                            break;
+                    }
+                };
+                
+                ws.onerror = (err) => {
+                    console.error('WebSocket error:', err);
+                    showError('Connection failed');
+                    resetUI();
+                };
+                
+                ws.onclose = () => {
+                    console.log('WebSocket closed');
+                    if (stream) stopSharing();
+                };
+                
+            } catch (err) {
+                console.error('Connection error:', err);
+                showError(err.message);
+                resetUI();
+            }
+        }
+        
+        async function startScreenShare() {
+            try {
+                // Request screen share - browser will show native picker
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        cursor: 'always',
+                        width: { ideal: 1920 },
+                        height: { ideal: 1080 },
+                        frameRate: { ideal: 15, max: 30 }
+                    },
+                    audio: false
+                });
+                
+                // Create peer connection
+                peerConnection = new RTCPeerConnection({
+                    iceServers: [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' }
+                    ]
+                });
+                
+                // Add stream tracks
+                stream.getTracks().forEach(track => {
+                    peerConnection.addTrack(track, stream);
+                    
+                    // Handle user stopping share via browser UI
+                    track.onended = () => {
+                        stopSharing();
+                    };
+                });
+                
+                // ICE candidates
+                peerConnection.onicecandidate = (event) => {
+                    if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
+                        ws.send(JSON.stringify({
+                            type: 'ice-candidate',
+                            candidate: event.candidate
+                        }));
+                    }
+                };
+                
+                // Create and send offer
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                
+                ws.send(JSON.stringify({
+                    type: 'offer',
+                    offer: offer
+                }));
+                
+                // Show sharing UI
+                codeEntry.classList.add('hidden');
+                sharingView.classList.remove('hidden');
+                
+            } catch (err) {
+                console.error('Screen share error:', err);
+                if (err.name === 'NotAllowedError') {
+                    showError('Screen sharing was cancelled');
+                } else {
+                    showError('Failed to start screen sharing');
+                }
+                resetUI();
+            }
+        }
+        
+        // Stop button
+        stopBtn.addEventListener('click', stopSharing);
+        
+        function stopSharing() {
+            // Stop all tracks
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            
+            // Close peer connection
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            
+            // Close WebSocket
+            if (ws) {
+                ws.close();
+                ws = null;
+            }
+            
+            // Reset UI
+            resetUI();
+        }
+        
+        function resetUI() {
+            codeEntry.classList.remove('hidden');
+            sharingView.classList.add('hidden');
+            connectBtn.disabled = false;
+            connectBtn.textContent = 'Connect';
+            codeInputs.forEach(i => i.value = '');
+            codeInputs[0].focus();
+        }
+        
+        // Focus first input on load
+        codeInputs[0].focus();
+    </script>
+</body>
+</html>
