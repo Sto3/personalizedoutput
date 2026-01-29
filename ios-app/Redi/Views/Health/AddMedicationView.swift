@@ -1,9 +1,14 @@
 /**
  * AddMedicationView.swift
  *
- * REDI HEALTH - Add New Medication
+ * REDI ADD MEDICATION VIEW
+ * 
+ * Form to add new medications with:
+ * - Name and dosage
+ * - Schedule times
+ * - Instructions
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import SwiftUI
@@ -15,106 +20,81 @@ struct AddMedicationView: View {
     @State private var name = ""
     @State private var dosage = ""
     @State private var instructions = ""
-    @State private var times: [ScheduleTime] = []
-    @State private var showingAddTime = false
+    @State private var scheduleTimes: [Date] = [Date()]
     
     var body: some View {
         NavigationView {
             Form {
-                Section("Medication Details") {
-                    TextField("Name (e.g., Metformin)", text: $name)
-                    TextField("Dosage (e.g., 500mg)", text: $dosage)
+                Section(header: Text("Medication Details")) {
+                    TextField("Medication Name", text: $name)
+                    TextField("Dosage (e.g., 10mg)", text: $dosage)
                     TextField("Instructions (optional)", text: $instructions)
                 }
                 
-                Section("Schedule") {
-                    ForEach(times.indices, id: \.self) { index in
+                Section(header: Text("Schedule")) {
+                    ForEach(scheduleTimes.indices, id: \.self) { index in
                         HStack {
-                            Text(times[index].displayTime)
-                            Spacer()
-                            Button(action: { times.remove(at: index) }) {
-                                Image(systemName: "minus.circle.fill")
-                                    .foregroundColor(.red)
+                            DatePicker(
+                                "Time \(index + 1)",
+                                selection: $scheduleTimes[index],
+                                displayedComponents: .hourAndMinute
+                            )
+                            
+                            if scheduleTimes.count > 1 {
+                                Button(action: {
+                                    scheduleTimes.remove(at: index)
+                                }) {
+                                    Image(systemName: "minus.circle.fill")
+                                        .foregroundColor(.red)
+                                }
                             }
                         }
                     }
                     
-                    Button(action: { showingAddTime = true }) {
-                        Label("Add Time", systemImage: "plus.circle")
+                    Button(action: {
+                        scheduleTimes.append(Date())
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("Add Another Time")
+                        }
                     }
                 }
                 
                 Section {
-                    Button(action: save) {
-                        Text("Add Medication")
-                            .frame(maxWidth: .infinity)
-                            .foregroundColor(.white)
-                    }
-                    .listRowBackground(Color.cyan)
-                    .disabled(name.isEmpty || dosage.isEmpty || times.isEmpty)
+                    Text("You'll receive reminders at each scheduled time.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Add Medication")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-            }
-            .sheet(isPresented: $showingAddTime) {
-                TimePickerSheet { time in
-                    times.append(time)
-                }
-            }
-        }
-    }
-    
-    private func save() {
-        medicationService.addMedication(
-            name: name,
-            dosage: dosage,
-            times: times,
-            instructions: instructions.isEmpty ? nil : instructions
-        )
-        dismiss()
-    }
-}
-
-struct TimePickerSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    @State private var selectedTime = Date()
-    let onSave: (ScheduleTime) -> Void
-    
-    var body: some View {
-        NavigationView {
-            VStack {
-                DatePicker("", selection: $selectedTime, displayedComponents: .hourAndMinute)
-                    .datePickerStyle(.wheel)
-                    .labelsHidden()
-                
-                Spacer()
-            }
-            .navigationTitle("Select Time")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        let calendar = Calendar.current
-                        let time = ScheduleTime(
-                            hour: calendar.component(.hour, from: selectedTime),
-                            minute: calendar.component(.minute, from: selectedTime),
-                            daysOfWeek: [] // Every day
-                        )
-                        onSave(time)
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveMedication()
+                    }
+                    .disabled(name.isEmpty || dosage.isEmpty)
+                    .fontWeight(.semibold)
+                }
             }
         }
-        .presentationDetents([.medium])
+    }
+    
+    private func saveMedication() {
+        medicationService.addMedication(
+            name: name,
+            dosage: dosage,
+            instructions: instructions.isEmpty ? nil : instructions,
+            scheduleTimes: scheduleTimes
+        )
+        dismiss()
     }
 }
 

@@ -1,9 +1,15 @@
 /**
  * LogSymptomView.swift
  *
- * REDI HEALTH - Log Symptom
+ * REDI LOG SYMPTOM VIEW
+ * 
+ * Log symptoms with:
+ * - Symptom picker
+ * - Severity slider (1-10)
+ * - Associated symptoms
+ * - Notes
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import SwiftUI
@@ -12,35 +18,38 @@ struct LogSymptomView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var symptomService = SymptomService.shared
     
-    @State private var symptom = ""
-    @State private var severity: Double = 5
-    @State private var selectedSymptom: String?
-    @State private var associatedSymptoms: Set<String> = []
+    @State private var selectedSymptom = "Headache"
+    @State private var customSymptom = ""
+    @State private var severity = 5.0
+    @State private var location = ""
     @State private var notes = ""
+    @State private var showCustomInput = false
+    
+    let commonSymptoms = [
+        "Headache", "Migraine", "Nausea", "Fatigue", "Dizziness",
+        "Pain", "Soreness", "Congestion", "Cough", "Fever",
+        "Chills", "Anxiety", "Stress", "Insomnia", "Other"
+    ]
     
     var body: some View {
         NavigationView {
             Form {
-                Section("What are you experiencing?") {
-                    TextField("Describe symptom", text: $symptom)
-                    
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 100))], spacing: 8) {
-                        ForEach(SymptomService.commonSymptoms.prefix(12), id: \.self) { s in
-                            Button(action: { selectSymptom(s) }) {
-                                Text(s.capitalized)
-                                    .font(.caption)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(symptom.lowercased() == s ? Color.cyan : Color(.systemGray5))
-                                    .foregroundColor(symptom.lowercased() == s ? .white : .primary)
-                                    .cornerRadius(8)
-                            }
-                            .buttonStyle(.plain)
+                Section(header: Text("Symptom")) {
+                    Picker("Select Symptom", selection: $selectedSymptom) {
+                        ForEach(commonSymptoms, id: \.self) { symptom in
+                            Text(symptom).tag(symptom)
                         }
+                    }
+                    .onChange(of: selectedSymptom) { newValue in
+                        showCustomInput = (newValue == "Other")
+                    }
+                    
+                    if showCustomInput {
+                        TextField("Describe your symptom", text: $customSymptom)
                     }
                 }
                 
-                Section("Severity: \(Int(severity))/10") {
+                Section(header: Text("Severity: \(Int(severity))/10")) {
                     Slider(value: $severity, in: 1...10, step: 1)
                     
                     HStack {
@@ -54,68 +63,45 @@ struct LogSymptomView: View {
                     }
                 }
                 
-                Section("Associated symptoms (optional)") {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 80))], spacing: 8) {
-                        ForEach(SymptomService.commonSymptoms.filter { $0 != symptom.lowercased() }.prefix(8), id: \.self) { s in
-                            Button(action: { toggleAssociated(s) }) {
-                                Text(s.capitalized)
-                                    .font(.caption)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(associatedSymptoms.contains(s) ? Color.orange : Color(.systemGray5))
-                                    .foregroundColor(associatedSymptoms.contains(s) ? .white : .primary)
-                                    .cornerRadius(6)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                }
-                
-                Section("Notes (optional)") {
-                    TextField("Any additional details", text: $notes, axis: .vertical)
-                        .lineLimit(3)
+                Section(header: Text("Details (optional)")) {
+                    TextField("Location (e.g., left temple)", text: $location)
+                    TextField("Notes", text: $notes, axis: .vertical)
+                        .lineLimit(2...4)
                 }
                 
                 Section {
-                    Button(action: save) {
-                        Text("Log Symptom")
-                            .frame(maxWidth: .infinity)
-                            .foregroundColor(.white)
-                    }
-                    .listRowBackground(Color.cyan)
-                    .disabled(symptom.isEmpty)
+                    Text("Tracking symptoms helps identify patterns over time.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Log Symptom")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveSymptom()
+                    }
+                    .fontWeight(.semibold)
                 }
             }
         }
     }
     
-    private func selectSymptom(_ s: String) {
-        symptom = s
-    }
-    
-    private func toggleAssociated(_ s: String) {
-        if associatedSymptoms.contains(s) {
-            associatedSymptoms.remove(s)
-        } else {
-            associatedSymptoms.insert(s)
-        }
-    }
-    
-    private func save() {
-        let entry = SymptomEntry(
-            symptom: symptom,
+    private func saveSymptom() {
+        let symptomName = showCustomInput ? customSymptom : selectedSymptom
+        symptomService.logSymptomDirectly(
+            name: symptomName,
             severity: Int(severity),
-            associated: Array(associatedSymptoms),
+            location: location.isEmpty ? nil : location,
             notes: notes.isEmpty ? nil : notes
         )
-        HealthDataManager.shared.logSymptom(entry)
         dismiss()
     }
 }

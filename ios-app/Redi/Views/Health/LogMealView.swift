@@ -1,13 +1,14 @@
 /**
  * LogMealView.swift
  *
- * REDI HEALTH - Log Meal
+ * REDI LOG MEAL VIEW
  * 
- * Options:
- * - Camera analysis (AI-powered)
- * - Quick log (manual entry)
+ * Log meals with:
+ * - Camera analysis or manual entry
+ * - Meal type selection
+ * - Nutrition info
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import SwiftUI
@@ -16,131 +17,124 @@ struct LogMealView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var nutritionService = NutritionService.shared
     
-    @State private var selectedTab = 0
-    @State private var mealType: MealLog.MealType
-    
-    // Quick log
     @State private var description = ""
+    @State private var selectedMealType: MealType
     @State private var calories = ""
+    @State private var protein = ""
+    @State private var carbs = ""
+    @State private var fat = ""
+    @State private var showCamera = false
+    @State private var isAnalyzing = false
     
     init() {
-        _mealType = State(initialValue: NutritionService.shared.inferMealType())
+        _selectedMealType = State(initialValue: NutritionService.shared.inferMealType())
     }
     
     var body: some View {
         NavigationView {
-            VStack {
-                Picker("Method", selection: $selectedTab) {
-                    Text("Camera").tag(0)
-                    Text("Quick Log").tag(1)
+            Form {
+                Section(header: Text("What did you eat?")) {
+                    TextField("Describe your meal", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                    
+                    Picker("Meal Type", selection: $selectedMealType) {
+                        ForEach(MealType.allCases, id: \.self) { type in
+                            Text(type.rawValue).tag(type)
+                        }
+                    }
                 }
-                .pickerStyle(.segmented)
-                .padding()
                 
-                if selectedTab == 0 {
-                    cameraView
-                } else {
-                    quickLogView
+                Section(header: Text("Quick Entry")) {
+                    Button(action: { showCamera = true }) {
+                        HStack {
+                            Image(systemName: "camera.fill")
+                            Text("Analyze with Camera")
+                        }
+                    }
+                    .disabled(isAnalyzing)
+                    
+                    if isAnalyzing {
+                        HStack {
+                            ProgressView()
+                            Text("Analyzing...")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+                
+                Section(header: Text("Nutrition (optional)")) {
+                    HStack {
+                        Text("Calories")
+                        Spacer()
+                        TextField("0", text: $calories)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    
+                    HStack {
+                        Text("Protein (g)")
+                        Spacer()
+                        TextField("0", text: $protein)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    
+                    HStack {
+                        Text("Carbs (g)")
+                        Spacer()
+                        TextField("0", text: $carbs)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    
+                    HStack {
+                        Text("Fat (g)")
+                        Spacer()
+                        TextField("0", text: $fat)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                }
+                
+                Section {
+                    Text("Tip: Just describe what you ate and Redi can help estimate nutrition during your conversation.")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
             .navigationTitle("Log Meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        saveMeal()
+                    }
+                    .disabled(description.isEmpty)
+                    .fontWeight(.semibold)
                 }
             }
         }
     }
     
-    // MARK: - Camera View
-    
-    private var cameraView: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            
-            Image(systemName: "camera.viewfinder")
-                .font(.system(size: 80))
-                .foregroundColor(.cyan)
-            
-            Text("Point camera at your food")
-                .font(.headline)
-            
-            Text("Redi will analyze and estimate nutrition")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
-            Spacer()
-            
-            mealTypePicker
-            
-            Button(action: analyzeWithCamera) {
-                Label("Take Photo", systemImage: "camera.fill")
-                    .font(.headline)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.cyan)
-                    .foregroundColor(.white)
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal)
-            .padding(.bottom)
-        }
-    }
-    
-    // MARK: - Quick Log View
-    
-    private var quickLogView: some View {
-        Form {
-            Section("Meal Details") {
-                TextField("What did you eat?", text: $description)
-                TextField("Estimated calories", text: $calories)
-                    .keyboardType(.numberPad)
-            }
-            
-            Section {
-                mealTypePicker
-            }
-            
-            Section {
-                Button(action: quickLog) {
-                    Text("Log Meal")
-                        .frame(maxWidth: .infinity)
-                        .foregroundColor(.white)
-                }
-                .listRowBackground(Color.cyan)
-                .disabled(description.isEmpty || calories.isEmpty)
-            }
-        }
-    }
-    
-    private var mealTypePicker: some View {
-        Picker("Meal Type", selection: $mealType) {
-            ForEach(MealLog.MealType.allCases, id: \.self) { type in
-                Text(type.displayName).tag(type)
-            }
-        }
-        .pickerStyle(.segmented)
-        .padding(.horizontal)
-    }
-    
-    // MARK: - Actions
-    
-    private func analyzeWithCamera() {
-        // In production, this would:
-        // 1. Open camera
-        // 2. Capture image
-        // 3. Send to NutritionService.analyzeImage()
-        // 4. Show results for confirmation
-        // 5. Log meal
-        
-        // For now, show placeholder
-        dismiss()
-    }
-    
-    private func quickLog() {
-        guard let cal = Int(calories) else { return }
-        nutritionService.quickLog(description: description, calories: cal, type: mealType)
+    private func saveMeal() {
+        nutritionService.logMeal(
+            description: description,
+            mealType: selectedMealType,
+            calories: Int(calories),
+            protein: Int(protein),
+            carbs: Int(carbs),
+            fat: Int(fat)
+        )
         dismiss()
     }
 }

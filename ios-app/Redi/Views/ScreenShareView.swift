@@ -1,51 +1,71 @@
 /**
  * ScreenShareView.swift
  *
- * REDI SCREEN SHARING - iOS UI
+ * REDI SCREEN SHARE VIEW
  * 
- * Shows pairing code and connection status.
- * Displays received screen frames.
+ * UI for desktop screen sharing:
+ * - Display pairing code
+ * - Connection status
+ * - Screen preview
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import SwiftUI
 
 struct ScreenShareView: View {
-    @StateObject private var screenService = ScreenShareService()
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var screenShareService = ScreenShareService.shared
     
     var body: some View {
         NavigationView {
-            ZStack {
-                Color.black.ignoresSafeArea()
+            VStack(spacing: 32) {
+                // Header
+                VStack(spacing: 8) {
+                    Image(systemName: "display")
+                        .font(.system(size: 48))
+                        .foregroundColor(.cyan)
+                    
+                    Text("Share Computer Screen")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    
+                    Text("Let Redi see your computer screen")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.top, 32)
                 
-                switch screenService.connectionState {
+                // Status-based content
+                switch screenShareService.connectionState {
                 case .disconnected:
-                    startView
-                    
-                case .waitingForCode:
-                    loadingView("Getting pairing code...")
-                    
-                case .waitingForComputer:
-                    codeView
+                    disconnectedView
                     
                 case .connecting:
-                    loadingView("Connecting to computer...")
+                    connectingView
+                    
+                case .waitingForComputer:
+                    waitingForComputerView
                     
                 case .connected:
                     connectedView
                     
-                case .error:
-                    errorView
+                case .error(let message):
+                    errorView(message: message)
                 }
+                
+                Spacer()
+                
+                // Instructions
+                instructionsView
             }
+            .padding()
             .navigationTitle("Screen Share")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button("Close") {
-                        screenService.stop()
+                        screenShareService.disconnect()
                         dismiss()
                     }
                 }
@@ -53,176 +73,149 @@ struct ScreenShareView: View {
         }
     }
     
-    // MARK: - Start View
+    // MARK: - State Views
     
-    private var startView: some View {
-        VStack(spacing: 32) {
-            Image(systemName: "display")
-                .font(.system(size: 80))
-                .foregroundColor(.cyan)
-            
-            Text("Share Your Computer Screen")
-                .font(.title2)
-                .fontWeight(.semibold)
-                .foregroundColor(.white)
-            
-            Text("Let Redi see what's on your computer to help with desktop tasks.")
-                .font(.subheadline)
-                .foregroundColor(.gray)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 40)
-            
-            Button(action: { screenService.startPairing() }) {
-                Text("Start Pairing")
-                    .font(.headline)
-                    .foregroundColor(.black)
+    private var disconnectedView: some View {
+        VStack(spacing: 16) {
+            Button(action: {
+                screenShareService.connect()
+            }) {
+                Text("Get Pairing Code")
+                    .fontWeight(.semibold)
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(
-                        LinearGradient(colors: [.cyan, .green], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .cornerRadius(12)
-            }
-            .padding(.horizontal, 40)
-        }
-    }
-    
-    // MARK: - Code View
-    
-    private var codeView: some View {
-        VStack(spacing: 32) {
-            Text("Enter this code on your computer")
-                .font(.headline)
-                .foregroundColor(.white)
-            
-            if let code = screenService.pairingCode {
-                HStack(spacing: 12) {
-                    ForEach(Array(code), id: \.self) { digit in
-                        Text(String(digit))
-                            .font(.system(size: 40, weight: .bold, design: .monospaced))
-                            .foregroundColor(.white)
-                            .frame(width: 48, height: 56)
-                            .background(Color.white.opacity(0.1))
-                            .cornerRadius(8)
-                    }
-                }
-            }
-            
-            VStack(spacing: 8) {
-                Text("On your computer, go to:")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
-                
-                Text("redialways.com/screen")
-                    .font(.headline)
-                    .foregroundColor(.cyan)
-            }
-            
-            Text("Code expires in 10 minutes")
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            Button(action: { screenService.stop() }) {
-                Text("Cancel")
-                    .foregroundColor(.red)
-            }
-            .padding(.top, 20)
-        }
-    }
-    
-    // MARK: - Connected View
-    
-    private var connectedView: some View {
-        VStack {
-            // Status bar
-            HStack {
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 8, height: 8)
-                Text("Connected")
-                    .font(.caption)
-                    .foregroundColor(.green)
-                Spacer()
-            }
-            .padding()
-            
-            // Screen preview
-            if let frame = screenService.latestFrame {
-                Image(uiImage: frame)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .cornerRadius(8)
-                    .padding()
-            } else {
-                VStack {
-                    ProgressView()
-                        .scaleEffect(1.5)
-                    Text("Receiving screen...")
-                        .font(.caption)
-                        .foregroundColor(.gray)
-                        .padding(.top)
-                }
-                .frame(maxHeight: .infinity)
-            }
-            
-            Spacer()
-            
-            // Stop button
-            Button(action: { screenService.stop() }) {
-                Text("Disconnect")
-                    .font(.headline)
+                    .background(Color.cyan)
                     .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
                     .cornerRadius(12)
             }
-            .padding()
         }
     }
     
-    // MARK: - Loading View
-    
-    private func loadingView(_ text: String) -> some View {
-        VStack(spacing: 20) {
+    private var connectingView: some View {
+        VStack(spacing: 16) {
             ProgressView()
                 .scaleEffect(1.5)
-                .tint(.cyan)
-            
-            Text(text)
-                .foregroundColor(.gray)
+            Text("Connecting...")
+                .foregroundColor(.secondary)
         }
     }
     
-    // MARK: - Error View
-    
-    private var errorView: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "exclamationmark.circle")
-                .font(.system(size: 60))
-                .foregroundColor(.red)
-            
-            Text("Connection Failed")
-                .font(.headline)
-                .foregroundColor(.white)
-            
-            if let error = screenService.error {
-                Text(error)
+    private var waitingForComputerView: some View {
+        VStack(spacing: 24) {
+            // Pairing code display
+            VStack(spacing: 8) {
+                Text("Your Pairing Code")
                     .font(.subheadline)
-                    .foregroundColor(.gray)
-                    .multilineTextAlignment(.center)
+                    .foregroundColor(.secondary)
+                
+                Text(screenShareService.pairingCode)
+                    .font(.system(size: 48, weight: .bold, design: .monospaced))
+                    .tracking(8)
+                    .foregroundColor(.cyan)
             }
+            .padding(24)
+            .background(Color(.secondarySystemBackground))
+            .cornerRadius(16)
             
-            Button(action: { screenService.startPairing() }) {
+            Text("Enter this code on your computer at:")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Text("redialways.com/screen")
+                .font(.headline)
+                .foregroundColor(.cyan)
+            
+            // Timer
+            Text("Code expires in 10 minutes")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    private var connectedView: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "checkmark.circle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.green)
+            
+            Text("Connected!")
+                .font(.headline)
+            
+            Text("Redi can now see your computer screen")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Button(action: {
+                screenShareService.disconnect()
+            }) {
+                Text("Disconnect")
+                    .foregroundColor(.red)
+            }
+            .padding(.top, 16)
+        }
+    }
+    
+    private func errorView(message: String) -> some View {
+        VStack(spacing: 16) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 48))
+                .foregroundColor(.orange)
+            
+            Text("Connection Error")
+                .font(.headline)
+            
+            Text(message)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+            
+            Button(action: {
+                screenShareService.connect()
+            }) {
                 Text("Try Again")
-                    .font(.headline)
-                    .foregroundColor(.black)
-                    .padding(.horizontal, 40)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal, 32)
                     .padding(.vertical, 12)
                     .background(Color.cyan)
+                    .foregroundColor(.white)
                     .cornerRadius(8)
             }
-            .padding(.top)
+        }
+    }
+    
+    private var instructionsView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("How it works")
+                .font(.headline)
+            
+            InstructionRow(number: 1, text: "Get a pairing code above")
+            InstructionRow(number: 2, text: "Go to redialways.com/screen on your computer")
+            InstructionRow(number: 3, text: "Enter the 6-digit code")
+            InstructionRow(number: 4, text: "Select which screen to share")
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(16)
+    }
+}
+
+struct InstructionRow: View {
+    let number: Int
+    let text: String
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Text("\(number)")
+                .font(.caption)
+                .fontWeight(.bold)
+                .foregroundColor(.white)
+                .frame(width: 20, height: 20)
+                .background(Color.cyan)
+                .clipShape(Circle())
+            
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
         }
     }
 }

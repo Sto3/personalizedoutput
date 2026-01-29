@@ -1,15 +1,15 @@
 /**
  * HealthDashboardView.swift
  *
- * REDI HEALTH - Main Dashboard
+ * REDI HEALTH DASHBOARD
  * 
- * Central hub for all health features:
+ * Central hub for health tracking:
  * - Today's medications
  * - Nutrition summary
  * - Recent symptoms
  * - Quick actions
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import SwiftUI
@@ -19,49 +19,119 @@ struct HealthDashboardView: View {
     @StateObject private var nutritionService = NutritionService.shared
     @StateObject private var symptomService = SymptomService.shared
     
-    @State private var showingAddMedication = false
-    @State private var showingLogMeal = false
-    @State private var showingLogSymptom = false
-    @State private var showingReport = false
+    @State private var showAddMedication = false
+    @State private var showLogMeal = false
+    @State private var showLogSymptom = false
+    @State private var showHealthReport = false
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Today's Medications
-                    medicationsSection
-                    
-                    // Nutrition Summary
-                    nutritionSection
-                    
-                    // Recent Symptoms
-                    symptomsSection
-                    
-                    // Quick Actions
-                    quickActionsSection
-                }
-                .padding()
+        ScrollView {
+            VStack(spacing: 24) {
+                // Header
+                headerSection
+                
+                // Quick Actions
+                quickActionsSection
+                
+                // Today's Medications
+                medicationsSection
+                
+                // Nutrition Summary
+                nutritionSection
+                
+                // Recent Symptoms
+                symptomsSection
             }
-            .navigationTitle("Health")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showingReport = true }) {
-                        Image(systemName: "doc.text")
-                    }
+            .padding()
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("Health")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button(action: { showHealthReport = true }) {
+                    Image(systemName: "doc.text")
                 }
             }
         }
-        .sheet(isPresented: $showingAddMedication) {
+        .sheet(isPresented: $showAddMedication) {
             AddMedicationView()
         }
-        .sheet(isPresented: $showingLogMeal) {
+        .sheet(isPresented: $showLogMeal) {
             LogMealView()
         }
-        .sheet(isPresented: $showingLogSymptom) {
+        .sheet(isPresented: $showLogSymptom) {
             LogSymptomView()
         }
-        .sheet(isPresented: $showingReport) {
+        .sheet(isPresented: $showHealthReport) {
             HealthReportView()
+        }
+        .onAppear {
+            medicationService.loadTodaysDoses()
+            nutritionService.loadTodaysMeals()
+            symptomService.loadRecentSymptoms()
+        }
+    }
+    
+    // MARK: - Header Section
+    
+    private var headerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Today, \(formattedDate)")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Text(greetingMessage)
+                .font(.title2)
+                .fontWeight(.semibold)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+    
+    private var formattedDate: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEEE, MMMM d"
+        return formatter.string(from: Date())
+    }
+    
+    private var greetingMessage: String {
+        let hour = Calendar.current.component(.hour, from: Date())
+        if hour < 12 {
+            return "Good morning!"
+        } else if hour < 17 {
+            return "Good afternoon!"
+        } else {
+            return "Good evening!"
+        }
+    }
+    
+    // MARK: - Quick Actions
+    
+    private var quickActionsSection: some View {
+        HStack(spacing: 12) {
+            QuickActionButton(
+                title: "Log Meal",
+                icon: "fork.knife",
+                color: .orange
+            ) {
+                showLogMeal = true
+            }
+            
+            QuickActionButton(
+                title: "Log Symptom",
+                icon: "heart.text.square",
+                color: .red
+            ) {
+                showLogSymptom = true
+            }
+            
+            QuickActionButton(
+                title: "Add Med",
+                icon: "pills",
+                color: .blue
+            ) {
+                showAddMedication = true
+            }
         }
     }
     
@@ -70,30 +140,37 @@ struct HealthDashboardView: View {
     private var medicationsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Medications", systemImage: "pills")
+                Text("Medications")
                     .font(.headline)
                 Spacer()
-                Button(action: { showingAddMedication = true }) {
-                    Image(systemName: "plus.circle")
+                if !medicationService.medications.isEmpty {
+                    Text("\(Int(medicationService.calculateAdherence() * 100))% adherence")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
             
-            if medicationService.todaysSchedule.isEmpty {
-                Text("No medications scheduled")
-                    .foregroundColor(.secondary)
-                    .padding(.vertical, 8)
+            if medicationService.medications.isEmpty {
+                EmptyStateCard(
+                    icon: "pills",
+                    title: "No medications",
+                    subtitle: "Add your medications to track adherence",
+                    action: { showAddMedication = true }
+                )
             } else {
-                ForEach(medicationService.todaysSchedule) { dose in
-                    MedicationDoseRow(dose: dose) {
-                        medicationService.logDoseTaken(medication: dose.medication)
+                ForEach(medicationService.medications.filter { $0.isActive }) { medication in
+                    MedicationCard(
+                        medication: medication,
+                        isTaken: medicationService.todaysDoses.contains { $0.medicationId == medication.id && $0.taken }
+                    ) {
+                        medicationService.logDose(medicationId: medication.id, taken: true)
                     }
                 }
             }
         }
         .padding()
         .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5)
+        .cornerRadius(16)
     }
     
     // MARK: - Nutrition Section
@@ -101,41 +178,40 @@ struct HealthDashboardView: View {
     private var nutritionSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Today's Nutrition", systemImage: "fork.knife")
+                Text("Nutrition")
                     .font(.headline)
                 Spacer()
-                Button(action: { showingLogMeal = true }) {
-                    Image(systemName: "plus.circle")
+                Button("Log Meal") {
+                    showLogMeal = true
                 }
+                .font(.caption)
             }
             
-            HStack(spacing: 20) {
-                NutritionStatView(
+            HStack(spacing: 16) {
+                NutritionRing(
+                    value: nutritionService.dailyCalories,
+                    goal: nutritionService.calorieGoal,
                     label: "Calories",
-                    value: "\(nutritionService.dailyTotals.calories)",
-                    goal: "\(nutritionService.dailyCalorieGoal)",
                     color: .orange
                 )
                 
-                NutritionStatView(
+                NutritionRing(
+                    value: nutritionService.dailyProtein,
+                    goal: nutritionService.proteinGoal,
                     label: "Protein",
-                    value: "\(Int(nutritionService.dailyTotals.protein))g",
-                    goal: "\(Int(nutritionService.dailyProteinGoal))g",
                     color: .blue
                 )
                 
-                NutritionStatView(
-                    label: "Meals",
-                    value: "\(nutritionService.mealsLogged())",
-                    goal: "3",
-                    color: .green
-                )
+                VStack(alignment: .leading, spacing: 8) {
+                    NutritionStat(label: "Carbs", value: "\(nutritionService.dailyCarbs)g")
+                    NutritionStat(label: "Fat", value: "\(nutritionService.dailyFat)g")
+                    NutritionStat(label: "Meals", value: "\(nutritionService.todaysMeals.count)")
+                }
             }
         }
         .padding()
         .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5)
+        .cornerRadius(16)
     }
     
     // MARK: - Symptoms Section
@@ -143,188 +219,33 @@ struct HealthDashboardView: View {
     private var symptomsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Label("Recent Symptoms", systemImage: "heart.text.square")
+                Text("Recent Symptoms")
                     .font(.headline)
                 Spacer()
-                Button(action: { showingLogSymptom = true }) {
-                    Image(systemName: "plus.circle")
+                Button("Log") {
+                    showLogSymptom = true
                 }
+                .font(.caption)
             }
             
             if symptomService.recentSymptoms.isEmpty {
-                Text("No symptoms logged recently")
+                Text("No symptoms logged this week")
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
                     .padding(.vertical, 8)
             } else {
-                ForEach(symptomService.recentSymptoms.prefix(3)) { entry in
-                    SymptomRow(entry: entry)
+                ForEach(symptomService.recentSymptoms.prefix(3)) { symptom in
+                    SymptomRow(symptom: symptom)
                 }
             }
         }
         .padding()
         .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5)
-    }
-    
-    // MARK: - Quick Actions
-    
-    private var quickActionsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Quick Actions")
-                .font(.headline)
-            
-            HStack(spacing: 12) {
-                QuickActionButton(title: "Log Meal", icon: "camera", color: .orange) {
-                    showingLogMeal = true
-                }
-                
-                QuickActionButton(title: "Add Symptom", icon: "plus.circle", color: .red) {
-                    showingLogSymptom = true
-                }
-                
-                QuickActionButton(title: "Report", icon: "doc.text", color: .blue) {
-                    showingReport = true
-                }
-            }
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.05), radius: 5)
+        .cornerRadius(16)
     }
 }
 
 // MARK: - Supporting Views
-
-struct MedicationDoseRow: View {
-    let dose: MedicationService.ScheduledDose
-    let onTaken: () -> Void
-    
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading) {
-                Text(dose.medication.name)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                Text(dose.medication.dosage)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer()
-            
-            Text(formatTime(dose.scheduledTime))
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            statusView
-        }
-        .padding(.vertical, 4)
-    }
-    
-    @ViewBuilder
-    private var statusView: some View {
-        switch dose.status {
-        case .taken(let time):
-            Label(formatTime(time), systemImage: "checkmark.circle.fill")
-                .font(.caption)
-                .foregroundColor(.green)
-        case .due:
-            Button(action: onTaken) {
-                Text("Take")
-                    .font(.caption)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 4)
-                    .background(Color.cyan)
-                    .foregroundColor(.white)
-                    .cornerRadius(8)
-            }
-        case .missed:
-            Label("Missed", systemImage: "exclamationmark.circle")
-                .font(.caption)
-                .foregroundColor(.red)
-        case .skipped:
-            Label("Skipped", systemImage: "minus.circle")
-                .font(.caption)
-                .foregroundColor(.orange)
-        case .upcoming:
-            Text("Upcoming")
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-    
-    private func formatTime(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
-    }
-}
-
-struct NutritionStatView: View {
-    let label: String
-    let value: String
-    let goal: String
-    let color: Color
-    
-    var body: some View {
-        VStack {
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(color)
-            Text("of \(goal)")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-            Text(label)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-    }
-}
-
-struct SymptomRow: View {
-    let entry: SymptomEntry
-    
-    var body: some View {
-        HStack {
-            Circle()
-                .fill(severityColor)
-                .frame(width: 8, height: 8)
-            
-            Text(entry.symptom.capitalized)
-                .font(.subheadline)
-            
-            Spacer()
-            
-            Text("\(entry.severity)/10")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            
-            Text(formatDate(entry.timestamp))
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-        .padding(.vertical, 2)
-    }
-    
-    private var severityColor: Color {
-        switch entry.severity {
-        case 1...3: return .green
-        case 4...6: return .yellow
-        case 7...10: return .red
-        default: return .gray
-        }
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: date, relativeTo: Date())
-    }
-}
 
 struct QuickActionButton: View {
     let title: String
@@ -334,7 +255,7 @@ struct QuickActionButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack {
+            VStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(.title2)
                     .foregroundColor(color)
@@ -343,13 +264,174 @@ struct QuickActionButton: View {
                     .foregroundColor(.primary)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(color.opacity(0.1))
-            .cornerRadius(8)
+            .padding(.vertical, 16)
+            .background(Color(.systemBackground))
+            .cornerRadius(12)
         }
     }
 }
 
+struct EmptyStateCard: View {
+    let icon: String
+    let title: String
+    let subtitle: String
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.largeTitle)
+                    .foregroundColor(.secondary)
+                Text(title)
+                    .font(.headline)
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .frame(maxWidth: .infinity)
+            .padding()
+        }
+    }
+}
+
+struct MedicationCard: View {
+    let medication: Medication
+    let isTaken: Bool
+    let onTake: () -> Void
+    
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(medication.name)
+                    .font(.subheadline)
+                    .fontWeight(.medium)
+                Text(medication.dosage)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            if isTaken {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.green)
+                    .font(.title2)
+            } else {
+                Button(action: onTake) {
+                    Text("Take")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.blue)
+                        .foregroundColor(.white)
+                        .cornerRadius(20)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color(.secondarySystemBackground))
+        .cornerRadius(12)
+    }
+}
+
+struct NutritionRing: View {
+    let value: Int
+    let goal: Int
+    let label: String
+    let color: Color
+    
+    var progress: Double {
+        guard goal > 0 else { return 0 }
+        return min(Double(value) / Double(goal), 1.0)
+    }
+    
+    var body: some View {
+        VStack(spacing: 4) {
+            ZStack {
+                Circle()
+                    .stroke(color.opacity(0.2), lineWidth: 8)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(color, style: StrokeStyle(lineWidth: 8, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                Text("\(value)")
+                    .font(.caption)
+                    .fontWeight(.bold)
+            }
+            .frame(width: 60, height: 60)
+            
+            Text(label)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+        }
+    }
+}
+
+struct NutritionStat: View {
+    let label: String
+    let value: String
+    
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .font(.caption)
+                .fontWeight(.medium)
+        }
+    }
+}
+
+struct SymptomRow: View {
+    let symptom: SymptomEntry
+    
+    var body: some View {
+        HStack {
+            Circle()
+                .fill(severityColor)
+                .frame(width: 8, height: 8)
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(symptom.symptomName)
+                    .font(.subheadline)
+                Text(formattedDate)
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+            
+            Spacer()
+            
+            Text("\(symptom.severity)/10")
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+        .padding(.vertical, 4)
+    }
+    
+    private var severityColor: Color {
+        if symptom.severity >= 7 {
+            return .red
+        } else if symptom.severity >= 4 {
+            return .orange
+        } else {
+            return .green
+        }
+    }
+    
+    private var formattedDate: String {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .short
+        return formatter.localizedString(for: symptom.timestamp, relativeTo: Date())
+    }
+}
+
 #Preview {
-    HealthDashboardView()
+    NavigationView {
+        HealthDashboardView()
+    }
 }

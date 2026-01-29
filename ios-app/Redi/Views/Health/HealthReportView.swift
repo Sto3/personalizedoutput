@@ -1,73 +1,110 @@
 /**
  * HealthReportView.swift
  *
- * REDI HEALTH - Doctor Visit Report
+ * REDI HEALTH REPORT VIEW
+ * 
+ * Generate and share health reports:
+ * - Period selector
+ * - Report preview
+ * - Share/export options
  *
- * Created: Jan 26, 2026
+ * Created: Jan 29, 2026
  */
 
 import SwiftUI
 
 struct HealthReportView: View {
     @Environment(\.dismiss) private var dismiss
+    @StateObject private var reportService = HealthReportService.shared
     
-    @State private var reportDays = 30
+    @State private var selectedPeriod = 30
     @State private var reportText = ""
     @State private var isGenerating = false
+    @State private var showShareSheet = false
+    @State private var shareURL: URL?
     
-    private let reportService = HealthReportService.shared
+    let periods = [
+        (7, "Last 7 Days"),
+        (14, "Last 2 Weeks"),
+        (30, "Last 30 Days"),
+        (90, "Last 90 Days")
+    ]
     
     var body: some View {
         NavigationView {
-            VStack {
-                // Period selector
-                Picker("Period", selection: $reportDays) {
-                    Text("7 Days").tag(7)
-                    Text("14 Days").tag(14)
-                    Text("30 Days").tag(30)
+            VStack(spacing: 0) {
+                // Period Selector
+                Picker("Period", selection: $selectedPeriod) {
+                    ForEach(periods, id: \.0) { period in
+                        Text(period.1).tag(period.0)
+                    }
                 }
                 .pickerStyle(.segmented)
                 .padding()
-                .onChange(of: reportDays) { _ in
+                .onChange(of: selectedPeriod) { _ in
                     generateReport()
                 }
                 
+                Divider()
+                
+                // Report Preview
                 if isGenerating {
+                    Spacer()
                     ProgressView("Generating report...")
-                        .frame(maxHeight: .infinity)
+                    Spacer()
+                } else if reportText.isEmpty {
+                    Spacer()
+                    VStack(spacing: 16) {
+                        Image(systemName: "doc.text")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        Text("Tap Generate to create your report")
+                            .foregroundColor(.secondary)
+                        Button("Generate Report") {
+                            generateReport()
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    Spacer()
                 } else {
                     ScrollView {
                         Text(reportText)
-                            .font(.system(.body, design: .monospaced))
+                            .font(.system(.caption, design: .monospaced))
                             .padding()
                     }
                 }
                 
                 // Actions
-                HStack(spacing: 16) {
-                    Button(action: shareReport) {
-                        Label("Share", systemImage: "square.and.arrow.up")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
+                if !reportText.isEmpty {
+                    Divider()
                     
-                    Button(action: copyReport) {
-                        Label("Copy", systemImage: "doc.on.doc")
-                            .frame(maxWidth: .infinity)
+                    HStack(spacing: 16) {
+                        Button(action: regenerateReport) {
+                            Label("Regenerate", systemImage: "arrow.clockwise")
+                        }
+                        .buttonStyle(.bordered)
+                        
+                        Button(action: shareReport) {
+                            Label("Share", systemImage: "square.and.arrow.up")
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .buttonStyle(.bordered)
+                    .padding()
                 }
-                .padding()
             }
             .navigationTitle("Health Report")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Done") {
+                        dismiss()
+                    }
                 }
             }
-            .onAppear {
-                generateReport()
+            .sheet(isPresented: $showShareSheet) {
+                if let url = shareURL {
+                    ShareSheet(items: [url])
+                }
             }
         }
     }
@@ -75,7 +112,7 @@ struct HealthReportView: View {
     private func generateReport() {
         isGenerating = true
         DispatchQueue.global().async {
-            let text = reportService.generateTextReport(days: reportDays)
+            let text = reportService.generateTextReport(days: selectedPeriod)
             DispatchQueue.main.async {
                 reportText = text
                 isGenerating = false
@@ -83,18 +120,29 @@ struct HealthReportView: View {
         }
     }
     
-    private func shareReport() {
-        let av = UIActivityViewController(activityItems: [reportText], applicationActivities: nil)
-        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-           let window = windowScene.windows.first,
-           let rootVC = window.rootViewController {
-            rootVC.present(av, animated: true)
-        }
+    private func regenerateReport() {
+        reportText = ""
+        generateReport()
     }
     
-    private func copyReport() {
-        UIPasteboard.general.string = reportText
+    private func shareReport() {
+        if let url = reportService.shareReport(days: selectedPeriod) {
+            shareURL = url
+            showShareSheet = true
+        }
     }
+}
+
+// MARK: - Share Sheet
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: items, applicationActivities: nil)
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {
