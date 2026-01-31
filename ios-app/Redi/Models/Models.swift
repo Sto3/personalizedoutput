@@ -55,15 +55,15 @@ struct SessionParticipant: Codable, Identifiable {
 }
 
 enum RediMode: String, Codable, CaseIterable {
-    case general = "general"        // Autonomous - works for anything
-    case cooking = "cooking"        // Kitchen & food
+    case general = "general"
+    case cooking = "cooking"
     case studying = "studying"
     case meeting = "meeting"
     case sports = "sports"
     case music = "music"
     case assembly = "assembly"
     case monitoring = "monitoring"
-    case driving = "driving"        // Driving mode - on-device TTS, navigation, driver monitoring
+    case driving = "driving"
 
     var displayName: String {
         switch self {
@@ -96,7 +96,7 @@ enum RediMode: String, Codable, CaseIterable {
     var usesMotionDetection: Bool {
         switch self {
         case .general, .cooking, .sports, .music, .assembly, .monitoring: return true
-        case .studying, .meeting, .driving: return false  // Driving has its own monitoring
+        case .studying, .meeting, .driving: return false
         }
     }
 
@@ -106,20 +106,18 @@ enum RediMode: String, Codable, CaseIterable {
         case .cooking: return 5000
         case .studying: return 8000
         case .meeting: return 10000
-        case .sports: return 0  // Motion triggered only
+        case .sports: return 0
         case .music: return 0
         case .assembly: return 5000
         case .monitoring: return 15000
-        case .driving: return 0  // Uses on-device services only
+        case .driving: return 0
         }
     }
 
-    /// Whether this mode is a specialized focus (vs autonomous general)
     var isSpecializedMode: Bool {
         return self != .general
     }
 
-    /// Whether this mode runs primarily on-device (minimal cloud usage)
     var isOnDeviceMode: Bool {
         return self == .driving
     }
@@ -146,15 +144,6 @@ enum SessionStatus: String, Codable {
 
 // MARK: - Subscription Models
 
-/**
- * Redi Subscription Tiers (Minute-Based)
- *
- * Pricing:
- * - Try: $9 for 15 min (one-time)
- * - Monthly: $59/mo for 120 min pool
- * - Unlimited: $99/mo
- * - Extensions: $4/5min, $7/10min, $10/15min
- */
 enum SubscriptionTier: String, Codable, CaseIterable {
     case monthly = "monthly"
     case unlimited = "unlimited"
@@ -168,15 +157,15 @@ enum SubscriptionTier: String, Codable, CaseIterable {
 
     var priceMonthly: Int {
         switch self {
-        case .monthly: return 59      // $59/mo
-        case .unlimited: return 99    // $99/mo
+        case .monthly: return 59
+        case .unlimited: return 99
         }
     }
 
     var minutesIncluded: Int {
         switch self {
-        case .monthly: return 120     // 120 minute pool
-        case .unlimited: return -1    // Unlimited
+        case .monthly: return 120
+        case .unlimited: return -1
         }
     }
 
@@ -249,11 +238,11 @@ enum RediPurchase: String, CaseIterable, Identifiable {
 
     var price: Int {
         switch self {
-        case .tryRedi: return 9       // $9
-        case .extend5: return 4       // $4
-        case .extend10: return 7      // $7
-        case .extend15: return 10     // $10
-        case .overage: return 10      // $10
+        case .tryRedi: return 9
+        case .extend5: return 4
+        case .extend10: return 7
+        case .extend15: return 10
+        case .overage: return 10
         }
     }
 
@@ -286,7 +275,6 @@ struct UserSubscription: Codable {
     let periodEnd: Date?
     let canStartSession: Bool
 
-    /// Display string for remaining time
     var minutesRemainingDisplay: String {
         if isUnlimited { return "Unlimited" }
         if minutesRemaining < 60 { return "\(minutesRemaining) min" }
@@ -311,7 +299,7 @@ struct SessionConfig: Codable {
     var sensitivity: Double
     var voiceGender: VoiceGender
     var durationMinutes: Int
-    var voiceOnly: Bool  // Audio-only mode without camera
+    var voiceOnly: Bool
 
     static var `default`: SessionConfig {
         SessionConfig(
@@ -388,18 +376,14 @@ enum WSMessageType: String, Codable {
     case error = "error"
     case ping = "ping"
     case pong = "pong"
-    // Multi-phone session messages
     case participantJoined = "participant_joined"
     case participantLeft = "participant_left"
     case participantList = "participant_list"
     case audioOutputModeChanged = "audio_output_mode_changed"
-    // Military-grade perception messages
     case perception = "perception"
     case userSpeaking = "user_speaking"
     case userStopped = "user_stopped"
-    // Autonomous mode detection
     case modeChange = "mode_change"
-    // Graceful degradation - use iOS TTS when cloud unavailable
     case ttsFallback = "tts_fallback"
 }
 
@@ -433,7 +417,7 @@ struct AIResponse: Codable {
 // MARK: - Voice Audio
 
 struct VoiceAudio: Codable {
-    let audio: String  // Base64 encoded
+    let audio: String
     let format: String
     let isStreaming: Bool
     let isFinal: Bool
@@ -573,17 +557,20 @@ struct SessionStats: Codable {
 // MARK: - JSONDecoder Extension for ISO8601 with Fractional Seconds
 
 extension JSONDecoder {
-    /// Returns a JSONDecoder configured to handle ISO8601 dates with or without milliseconds
     static var rediDecoder: JSONDecoder {
         let decoder = JSONDecoder()
-        let formatterWithFractionalSeconds = ISO8601DateFormatter()
-        formatterWithFractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        let formatterWithoutFractionalSeconds = ISO8601DateFormatter()
-        formatterWithoutFractionalSeconds.formatOptions = [.withInternetDateTime]
 
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
+            
+            // Create formatters inside closure to avoid Sendable capture issues
+            let formatterWithFractionalSeconds = ISO8601DateFormatter()
+            formatterWithFractionalSeconds.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            
+            let formatterWithoutFractionalSeconds = ISO8601DateFormatter()
+            formatterWithoutFractionalSeconds.formatOptions = [.withInternetDateTime]
+            
             if let date = formatterWithFractionalSeconds.date(from: dateString) {
                 return date
             }
