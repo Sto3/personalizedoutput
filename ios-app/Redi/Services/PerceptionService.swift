@@ -485,14 +485,18 @@ class PerceptionService: NSObject, ObservableObject {
         // Only capture every 500ms to avoid performance overhead
         let now = Date().timeIntervalSince1970 * 1000
         guard now - lastFrameTimestamp > 500 else { return }
+        
+        // Convert CVPixelBuffer to CIImage SYNCHRONOUSLY before async dispatch
+        // This avoids Sendable issues with CVPixelBuffer
+        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+        let imageExtent = ciImage.extent
 
         processingQueue.async { [weak self] in
             guard let self = self else { return }
 
-            // Convert CVPixelBuffer to UIImage
-            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
+            // Convert CIImage to CGImage
             let context = CIContext()
-            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
+            guard let cgImage = context.createCGImage(ciImage, from: imageExtent) else { return }
 
             var image = UIImage(cgImage: cgImage)
 
@@ -642,49 +646,47 @@ class PerceptionService: NSObject, ObservableObject {
         pose.confidence = observation.confidence
 
         // Extract joint positions
-        do {
-            // Upper body
-            if let point = try? observation.recognizedPoint(.leftShoulder), point.confidence > 0.3 {
-                pose.leftShoulder = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.rightShoulder), point.confidence > 0.3 {
-                pose.rightShoulder = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.leftElbow), point.confidence > 0.3 {
-                pose.leftElbow = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.rightElbow), point.confidence > 0.3 {
-                pose.rightElbow = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.leftWrist), point.confidence > 0.3 {
-                pose.leftWrist = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.rightWrist), point.confidence > 0.3 {
-                pose.rightWrist = Point3D(from: point)
-            }
+        // Upper body
+        if let point = try? observation.recognizedPoint(.leftShoulder), point.confidence > 0.3 {
+            pose.leftShoulder = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.rightShoulder), point.confidence > 0.3 {
+            pose.rightShoulder = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.leftElbow), point.confidence > 0.3 {
+            pose.leftElbow = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.rightElbow), point.confidence > 0.3 {
+            pose.rightElbow = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.leftWrist), point.confidence > 0.3 {
+            pose.leftWrist = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.rightWrist), point.confidence > 0.3 {
+            pose.rightWrist = Point3D(from: point)
+        }
 
-            // Core
-            if let point = try? observation.recognizedPoint(.neck), point.confidence > 0.3 {
-                pose.neck = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.root), point.confidence > 0.3 {
-                pose.hips = Point3D(from: point)
-                pose.spine = Point3D(from: point)  // Approximate
-            }
+        // Core
+        if let point = try? observation.recognizedPoint(.neck), point.confidence > 0.3 {
+            pose.neck = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.root), point.confidence > 0.3 {
+            pose.hips = Point3D(from: point)
+            pose.spine = Point3D(from: point)  // Approximate
+        }
 
-            // Lower body
-            if let point = try? observation.recognizedPoint(.leftKnee), point.confidence > 0.3 {
-                pose.leftKnee = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.rightKnee), point.confidence > 0.3 {
-                pose.rightKnee = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.leftAnkle), point.confidence > 0.3 {
-                pose.leftAnkle = Point3D(from: point)
-            }
-            if let point = try? observation.recognizedPoint(.rightAnkle), point.confidence > 0.3 {
-                pose.rightAnkle = Point3D(from: point)
-            }
+        // Lower body
+        if let point = try? observation.recognizedPoint(.leftKnee), point.confidence > 0.3 {
+            pose.leftKnee = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.rightKnee), point.confidence > 0.3 {
+            pose.rightKnee = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.leftAnkle), point.confidence > 0.3 {
+            pose.leftAnkle = Point3D(from: point)
+        }
+        if let point = try? observation.recognizedPoint(.rightAnkle), point.confidence > 0.3 {
+            pose.rightAnkle = Point3D(from: point)
         }
 
         // Calculate angles
