@@ -62,9 +62,9 @@ class AudioService: ObservableObject {
         
         do {
             audioEngine = AVAudioEngine()
-            guard let engine = audioEngine else { return }
+            guard audioEngine != nil else { return }
             
-            inputNode = engine.inputNode
+            inputNode = audioEngine?.inputNode
             guard let input = inputNode else { return }
             
             // Create format for 24kHz mono PCM
@@ -85,7 +85,7 @@ class AudioService: ObservableObject {
                 self?.processAudioBuffer(buffer, targetFormat: recordingFormat)
             }
             
-            try engine.start()
+            try audioEngine?.start()
             
             DispatchQueue.main.async {
                 self.isRecording = true
@@ -170,7 +170,7 @@ class AudioService: ObservableObject {
             setupPlayer()
         }
         
-        guard let player = playerNode, let engine = audioEngine else {
+        guard let player = playerNode, audioEngine != nil else {
             isProcessingPlayback = false
             return
         }
@@ -219,7 +219,7 @@ class AudioService: ObservableObject {
     }
     
     private func setupPlayer() {
-        guard let engine = audioEngine else {
+        guard let existingEngine = audioEngine else {
             // Create new engine for playback
             audioEngine = AVAudioEngine()
             guard let newEngine = audioEngine else { return }
@@ -250,7 +250,7 @@ class AudioService: ObservableObject {
         playerNode = AVAudioPlayerNode()
         guard let player = playerNode else { return }
         
-        engine.attach(player)
+        existingEngine.attach(player)
         
         let format = AVAudioFormat(
             commonFormat: .pcmFormatInt16,
@@ -259,7 +259,7 @@ class AudioService: ObservableObject {
             interleaved: true
         )!
         
-        engine.connect(player, to: engine.mainMixerNode, format: format)
+        existingEngine.connect(player, to: existingEngine.mainMixerNode, format: format)
     }
     
     func stopPlayback() {
