@@ -194,7 +194,7 @@ class SessionViewModel: ObservableObject {
 
         // Motion clip capture (if needed)
         cameraService.motionClipCaptured
-            .sink { [weak self] (frames, duration) in
+            .sink { (frames, duration) in
                 // Motion clips not currently used in V7
                 print("[Session] Motion clip captured: \(frames.count) frames")
             }
