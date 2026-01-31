@@ -196,11 +196,8 @@ class AudioClassificationService: NSObject, ObservableObject {
         guard isRunning, let analyzer = analyzer else { return }
 
         analysisQueue.async {
-            do {
-                try analyzer.analyze(buffer, atAudioFramePosition: AVAudioFramePosition(buffer.frameLength))
-            } catch {
-                print("[AudioClassification] Analysis error: \(error)")
-            }
+            // analyze() no longer throws in newer iOS SDKs
+            analyzer.analyze(buffer, atAudioFramePosition: AVAudioFramePosition(buffer.frameLength))
         }
     }
 
