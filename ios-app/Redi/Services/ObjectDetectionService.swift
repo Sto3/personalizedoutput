@@ -218,10 +218,12 @@ class ObjectDetectionService: NSObject, ObservableObject {
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Create handler synchronously BEFORE async dispatch to avoid Sendable issues
+        // VNImageRequestHandler holds a reference to the pixel buffer
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
 
         processingQueue.async { [weak self] in
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
-
             do {
                 try handler.perform([request])
 
@@ -242,10 +244,11 @@ class ObjectDetectionService: NSObject, ObservableObject {
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Create handler synchronously BEFORE async dispatch
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
 
         processingQueue.async { [weak self] in
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-
             do {
                 try handler.perform([request])
 
