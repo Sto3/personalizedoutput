@@ -84,6 +84,7 @@
             border-radius: 50px;
             cursor: pointer;
             transition: all 0.3s;
+            margin: 5px;
         }
         
         .btn-primary {
@@ -110,6 +111,26 @@
         
         .btn-secondary:hover {
             background: rgba(255,255,255,0.2);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ff9800, #ff5722);
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(255,152,0,0.3);
+        }
+        
+        .btn-danger {
+            background: rgba(255,59,48,0.2);
+            color: #ff3b30;
+            border: 1px solid rgba(255,59,48,0.3);
+        }
+        
+        .btn-danger:hover {
+            background: rgba(255,59,48,0.3);
         }
         
         .status {
@@ -248,9 +269,155 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+        
+        /* Persistent sharing banner */
+        .sharing-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(135deg, #ff3b30, #ff9500);
+            color: white;
+            padding: 12px 20px;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 1000;
+            font-weight: 600;
+        }
+        
+        .sharing-banner.visible {
+            display: flex;
+        }
+        
+        .sharing-banner .left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .sharing-banner .pulse {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+        
+        .sharing-banner .timer {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+        
+        .sharing-banner button {
+            background: rgba(255,255,255,0.2);
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        
+        .sharing-banner button:hover {
+            background: rgba(255,255,255,0.3);
+        }
+        
+        /* Privacy pause overlay */
+        .privacy-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+            flex-direction: column;
+        }
+        
+        .privacy-overlay.visible {
+            display: flex;
+        }
+        
+        .privacy-overlay h2 {
+            font-size: 2rem;
+            margin-bottom: 20px;
+            color: #ff9800;
+        }
+        
+        .privacy-overlay p {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 30px;
+        }
+        
+        /* Reminder toast */
+        .reminder-toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(255,152,0,0.95);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            z-index: 1001;
+            transition: transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .reminder-toast.visible {
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        /* Button container for streaming controls */
+        .streaming-controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
+    <!-- Persistent sharing banner -->
+    <div id="sharingBanner" class="sharing-banner">
+        <div class="left">
+            <div class="pulse"></div>
+            <span>🔴 SCREEN SHARING ACTIVE</span>
+            <span class="timer" id="shareTimer">00:00</span>
+        </div>
+        <div>
+            <button id="privacyPauseBtn">⏸️ Privacy Pause</button>
+            <button id="bannerStopBtn">Stop</button>
+        </div>
+    </div>
+    
+    <!-- Privacy pause overlay -->
+    <div id="privacyOverlay" class="privacy-overlay">
+        <h2>🔒 Privacy Mode Active</h2>
+        <p>Screen sharing is paused. Redi cannot see your screen.</p>
+        <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5);">Use this when entering passwords or viewing sensitive information.</p>
+        <button class="btn btn-primary" id="resumeBtn">Resume Sharing</button>
+    </div>
+    
+    <!-- Reminder toast -->
+    <div id="reminderToast" class="reminder-toast">
+        👁️ Reminder: Redi can see your screen
+    </div>
+
     <div class="container">
         <div class="logo">🔐</div>
         <h1>Share Screen to Redi</h1>
@@ -275,6 +442,7 @@
                     <li>End-to-end encrypted video stream</li>
                     <li>Code expires in 5 minutes</li>
                     <li>Phone must approve connection</li>
+                    <li>Privacy Pause for sensitive info</li>
                     <li>You control what's shared</li>
                 </ul>
             </div>
@@ -292,16 +460,22 @@
             
             <div class="privacy-warning">
                 <strong>⚠️ Privacy Notice:</strong> Screen frames will be sent to OpenAI for AI analysis. 
-                Only share screens without sensitive information visible.
+                Use the <strong>Privacy Pause</strong> button when entering passwords or sensitive info.
             </div>
         </div>
         
         <div id="streaming" class="hidden">
             <p style="color: #00ff88; font-size: 1.2rem; margin-bottom: 16px;">✓ Streaming to Redi</p>
-            <button id="stopBtn" class="btn btn-secondary">Stop Sharing</button>
+            
+            <div class="streaming-controls">
+                <button id="privacyBtn" class="btn btn-warning">⏸️ Privacy Pause</button>
+                <button id="stopBtn" class="btn btn-danger">⬛ Stop Sharing</button>
+            </div>
             
             <div class="privacy-warning" style="margin-top: 20px;">
                 <strong>🔴 Live:</strong> Your screen is being analyzed by Redi via OpenAI's vision API.
+                <br><br>
+                <strong>Tip:</strong> Click "Privacy Pause" before entering passwords or sensitive information.
             </div>
         </div>
         
@@ -335,6 +509,10 @@
         const connectBtn = document.getElementById('connectBtn');
         const shareBtn = document.getElementById('shareBtn');
         const stopBtn = document.getElementById('stopBtn');
+        const privacyBtn = document.getElementById('privacyBtn');
+        const privacyPauseBtn = document.getElementById('privacyPauseBtn');
+        const bannerStopBtn = document.getElementById('bannerStopBtn');
+        const resumeBtn = document.getElementById('resumeBtn');
         const statusEl = document.getElementById('status');
         const codeEntry = document.getElementById('codeEntry');
         const waitingApproval = document.getElementById('waitingApproval');
@@ -342,11 +520,19 @@
         const streaming = document.getElementById('streaming');
         const previewContainer = document.getElementById('previewContainer');
         const preview = document.getElementById('preview');
+        const sharingBanner = document.getElementById('sharingBanner');
+        const privacyOverlay = document.getElementById('privacyOverlay');
+        const reminderToast = document.getElementById('reminderToast');
+        const shareTimer = document.getElementById('shareTimer');
         
         // State
         let ws = null;
         let pc = null;
         let stream = null;
+        let isPrivacyPaused = false;
+        let shareStartTime = null;
+        let timerInterval = null;
+        let reminderInterval = null;
         
         // Valid characters for code (matches server)
         const validChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -355,7 +541,6 @@
         inputs.forEach((input, index) => {
             input.addEventListener('input', (e) => {
                 let value = e.target.value.toUpperCase();
-                // Only allow valid characters
                 if (value && !validChars.includes(value)) {
                     e.target.value = '';
                     return;
@@ -378,7 +563,6 @@
             input.addEventListener('paste', (e) => {
                 e.preventDefault();
                 const paste = (e.clipboardData || window.clipboardData).getData('text').toUpperCase();
-                // Filter to valid characters only
                 const chars = paste.split('').filter(c => validChars.includes(c)).slice(0, 8);
                 
                 chars.forEach((char, i) => {
@@ -410,6 +594,82 @@
         function hideStatus() {
             statusEl.className = 'status';
         }
+        
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+        
+        function startTimer() {
+            shareStartTime = Date.now();
+            timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - shareStartTime) / 1000);
+                shareTimer.textContent = formatTime(elapsed);
+            }, 1000);
+        }
+        
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+        
+        function startReminders() {
+            // Show reminder every 60 seconds
+            reminderInterval = setInterval(() => {
+                if (!isPrivacyPaused) {
+                    showReminder();
+                }
+            }, 60000);
+        }
+        
+        function stopReminders() {
+            if (reminderInterval) {
+                clearInterval(reminderInterval);
+                reminderInterval = null;
+            }
+        }
+        
+        function showReminder() {
+            reminderToast.classList.add('visible');
+            setTimeout(() => {
+                reminderToast.classList.remove('visible');
+            }, 4000);
+        }
+        
+        // Privacy Pause
+        function togglePrivacyPause() {
+            isPrivacyPaused = !isPrivacyPaused;
+            
+            if (isPrivacyPaused) {
+                privacyOverlay.classList.add('visible');
+                // Pause the video track (black frames)
+                if (stream) {
+                    stream.getVideoTracks().forEach(track => track.enabled = false);
+                }
+                // Notify phone that privacy mode is active
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'privacy_pause', paused: true }));
+                }
+            } else {
+                privacyOverlay.classList.remove('visible');
+                // Resume video track
+                if (stream) {
+                    stream.getVideoTracks().forEach(track => track.enabled = true);
+                }
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'privacy_pause', paused: false }));
+                }
+            }
+        }
+        
+        // Connect button handlers
+        privacyBtn.addEventListener('click', togglePrivacyPause);
+        privacyPauseBtn.addEventListener('click', togglePrivacyPause);
+        resumeBtn.addEventListener('click', togglePrivacyPause);
+        bannerStopBtn.addEventListener('click', () => cleanup());
         
         // Connect to signaling server
         connectBtn.addEventListener('click', () => {
@@ -452,7 +712,6 @@
                         break;
                         
                     case 'paired':
-                        // Legacy support - direct pairing without approval
                         showStatus('Connected to phone! Select screen to share.', 'success');
                         codeEntry.classList.add('hidden');
                         waitingApproval.classList.add('hidden');
@@ -513,7 +772,12 @@
                 
                 shareScreen.classList.add('hidden');
                 streaming.classList.remove('hidden');
+                sharingBanner.classList.add('visible');
                 hideStatus();
+                
+                // Start timer and reminders
+                startTimer();
+                startReminders();
                 
                 // Handle stream ending
                 stream.getVideoTracks()[0].onended = () => {
@@ -545,12 +809,10 @@
             
             pc = new RTCPeerConnection(config);
             
-            // Add stream tracks
             stream.getTracks().forEach(track => {
                 pc.addTrack(track, stream);
             });
             
-            // Handle ICE candidates
             pc.onicecandidate = (event) => {
                 if (event.candidate && ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
@@ -564,7 +826,6 @@
                 console.log('[WebRTC] ICE state:', pc.iceConnectionState);
             };
             
-            // Create and send offer
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
             
@@ -587,6 +848,9 @@
         }
         
         function cleanup() {
+            stopTimer();
+            stopReminders();
+            
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
@@ -603,6 +867,9 @@
             shareScreen.classList.add('hidden');
             waitingApproval.classList.add('hidden');
             codeEntry.classList.remove('hidden');
+            sharingBanner.classList.remove('visible');
+            privacyOverlay.classList.remove('visible');
+            isPrivacyPaused = false;
             
             inputs.forEach(i => i.value = '');
             inputs[0].focus();
