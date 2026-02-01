@@ -1,14 +1,16 @@
 /**
  * ScreenShareView.swift
  *
- * REDI SCREEN SHARE VIEW
+ * REDI SCREEN SHARE VIEW - SECURE VERSION
  * 
- * UI for initiating desktop screen sharing:
- * - Display pairing code
- * - Show connection status
- * - Preview shared screen
+ * Security UI Features:
+ * - Shows device info before approval
+ * - Approve/Reject buttons for incoming connections
+ * - Countdown timer for code expiration
+ * - Clear status indicators
  *
  * Created: Jan 29, 2026
+ * Updated: Feb 1, 2026 - Security hardening
  */
 
 import SwiftUI
@@ -31,6 +33,8 @@ struct ScreenShareView: View {
                     connectingView
                 case .waitingForPeer:
                     waitingView
+                case .pendingApproval:
+                    approvalView
                 case .connected:
                     connectedView
                 case .error(let message):
@@ -40,6 +44,7 @@ struct ScreenShareView: View {
                 Spacer()
             }
             .padding(32)
+            .background(Color(.systemBackground))
             .navigationTitle("Screen Share")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -71,6 +76,7 @@ struct ScreenShareView: View {
         switch service.connectionState {
         case .disconnected: return .gray
         case .connecting, .waitingForPeer: return .orange
+        case .pendingApproval: return .yellow
         case .connected: return .green
         case .error: return .red
         }
@@ -81,6 +87,7 @@ struct ScreenShareView: View {
         case .disconnected: return "display"
         case .connecting: return "wifi"
         case .waitingForPeer: return "qrcode"
+        case .pendingApproval: return "person.fill.questionmark"
         case .connected: return "checkmark.circle.fill"
         case .error: return "exclamationmark.triangle.fill"
         }
@@ -100,6 +107,16 @@ struct ScreenShareView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
+            // Security info
+            VStack(alignment: .leading, spacing: 8) {
+                securityFeature(icon: "lock.shield", text: "Encrypted connection")
+                securityFeature(icon: "checkmark.circle", text: "You approve each connection")
+                securityFeature(icon: "clock", text: "Codes expire in 5 minutes")
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(12)
+            
             Button(action: { service.connect() }) {
                 Text("Get Pairing Code")
                     .font(.headline)
@@ -112,6 +129,17 @@ struct ScreenShareView: View {
         }
     }
     
+    private func securityFeature(icon: String, text: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: icon)
+                .foregroundColor(.green)
+                .frame(width: 24)
+            Text(text)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+    
     // MARK: - Connecting View
     
     private var connectingView: some View {
@@ -119,7 +147,7 @@ struct ScreenShareView: View {
             ProgressView()
                 .scaleEffect(1.5)
             
-            Text("Connecting to server...")
+            Text("Connecting to secure server...")
                 .font(.headline)
         }
     }
@@ -131,12 +159,12 @@ struct ScreenShareView: View {
             Text("Enter this code on your computer")
                 .font(.headline)
             
-            // Pairing code display
-            HStack(spacing: 8) {
-                ForEach(Array(service.pairingCode ?? "------"), id: \.self) { char in
+            // Pairing code display (8 characters now)
+            HStack(spacing: 6) {
+                ForEach(Array(service.pairingCode ?? "--------").prefix(8), id: \.self) { char in
                     Text(String(char))
-                        .font(.system(size: 36, weight: .bold, design: .monospaced))
-                        .frame(width: 44, height: 56)
+                        .font(.system(size: 28, weight: .bold, design: .monospaced))
+                        .frame(width: 36, height: 48)
                         .background(Color(.systemGray5))
                         .cornerRadius(8)
                 }
@@ -152,9 +180,95 @@ struct ScreenShareView: View {
                     .foregroundColor(.cyan)
             }
             
-            Text("Code expires in 10 minutes")
-                .font(.caption)
+            // Countdown timer
+            HStack {
+                Image(systemName: "clock")
+                    .foregroundColor(service.codeExpiresIn < 60 ? .red : .orange)
+                Text("Expires in \(formatTime(service.codeExpiresIn))")
+                    .font(.subheadline)
+                    .foregroundColor(service.codeExpiresIn < 60 ? .red : .secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(Color(.systemGray6))
+            .cornerRadius(20)
+        }
+    }
+    
+    private func formatTime(_ seconds: Int) -> String {
+        let minutes = seconds / 60
+        let secs = seconds % 60
+        return String(format: "%d:%02d", minutes, secs)
+    }
+    
+    // MARK: - Approval View (NEW - Security Feature)
+    
+    private var approvalView: some View {
+        VStack(spacing: 24) {
+            Text("Connection Request")
+                .font(.title2)
+                .fontWeight(.semibold)
+            
+            Text("A computer wants to share its screen")
+                .font(.body)
                 .foregroundColor(.secondary)
+            
+            // Device info card
+            if let info = service.pendingComputerInfo {
+                VStack(alignment: .leading, spacing: 12) {
+                    deviceInfoRow(icon: "desktopcomputer", label: "Browser", value: info.browser)
+                    deviceInfoRow(icon: "laptopcomputer", label: "System", value: info.os)
+                    deviceInfoRow(icon: "network", label: "IP Address", value: info.ip)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+            }
+            
+            // Warning
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text("Only approve if you recognize this device")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            
+            // Approve/Reject buttons
+            HStack(spacing: 16) {
+                Button(action: { service.rejectConnection() }) {
+                    Text("Reject")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red.opacity(0.1))
+                        .foregroundColor(.red)
+                        .cornerRadius(12)
+                }
+                
+                Button(action: { service.approveConnection() }) {
+                    Text("Approve")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.green)
+                        .foregroundColor(.white)
+                        .cornerRadius(12)
+                }
+            }
+        }
+    }
+    
+    private func deviceInfoRow(icon: String, label: String, value: String) -> some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.cyan)
+                .frame(width: 24)
+            Text(label)
+                .foregroundColor(.secondary)
+            Spacer()
+            Text(value)
+                .fontWeight(.medium)
         }
     }
     
@@ -170,6 +284,18 @@ struct ScreenShareView: View {
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
+            
+            // Privacy reminder
+            HStack {
+                Image(systemName: "eye.fill")
+                    .foregroundColor(.cyan)
+                Text("Screen frames are sent to OpenAI for AI analysis")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding()
+            .background(Color(.systemGray6))
+            .cornerRadius(8)
             
             // Screen preview placeholder
             RoundedRectangle(cornerRadius: 12)
