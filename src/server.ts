@@ -31,6 +31,7 @@ import homeworkApi from './api/homeworkApi';
 import analyticsApi from './api/analyticsApi';
 import rediApi from './api/rediApi';
 import rediWebRTCApi from './api/rediWebRTCApi';
+import usageApi from './api/usageApi';
 // V1/V2 archived - V3, V5, V6, V7, V8 active
 import { initRediV3 } from './websocket/rediV3Server';
 import { initRediV5 } from './websocket/rediV5Server';
@@ -819,6 +820,9 @@ app.use('/api/analytics', analyticsApi);
 app.use('/api/redi/webrtc', rediWebRTCApi);  // More specific - handles /api/redi/webrtc/*
 app.use('/api/redi', rediApi);                // Less specific - handles /api/redi/*
 
+// OpenAI Usage API - Check spending via API
+app.use('/api/usage', usageApi);
+
 // ============================================================
 // STRIPE WEBHOOK
 // ============================================================
@@ -1553,6 +1557,9 @@ server.listen(PORT, () => {
 ║   Redi WebRTC:       POST /api/redi/webrtc/token              ║
 ║   Screen Share:      /ws/screen (WebRTC signaling)            ║
 ║                      /screen (Web UI)                         ║
+║                                                               ║
+║   Usage API:         GET /api/usage/summary                   ║
+║                      GET /api/usage/openai                    ║
 ║                                                               ║
 ║   API Usage Monitoring: ACTIVE (checks every 4 hours)         ║
 ║                                                               ║
