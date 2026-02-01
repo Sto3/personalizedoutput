@@ -1,8 +1,9 @@
 /**
  * OpenAI Usage API Endpoint
  * 
- * Allows checking OpenAI API spending without logging into the dashboard.
- * Can be queried by Perse or Claude to check current usage.
+ * Allows checking OpenAI API usage/spending directly from the server.
+ * Perse can ask Claude "how much have I spent on OpenAI?" and Claude
+ * can call this endpoint to check.
  * 
  * Created: Feb 1, 2026
  */
@@ -12,45 +13,46 @@ import { Router, Request, Response } from 'express';
 const router = Router();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const ADMIN_KEY = process.env.ADMIN_KEY || 'po-admin-2024';
+
+interface UsageData {
+  totalSpent: number;
+  dailyBreakdown: Array<{
+    date: string;
+    spent: number;
+    requests: number;
+  }>;
+  currentMonth: {
+    spent: number;
+    limit: number | null;
+  };
+}
 
 /**
  * GET /api/usage/openai
  * 
- * Get OpenAI API usage for current billing period.
- * Requires admin key for security.
- * 
- * Query params:
- * - key: Admin key for authentication
- * - days: Number of days to look back (default: 30)
+ * Get OpenAI usage statistics
+ * Note: OpenAI's usage API is limited - this fetches what's available
  */
 router.get('/openai', async (req: Request, res: Response) => {
-  const adminKey = req.query.key || req.headers['x-admin-key'];
-  
-  if (adminKey !== ADMIN_KEY) {
-    res.status(401).json({ error: 'Unauthorized - admin key required' });
-    return;
-  }
-
   if (!OPENAI_API_KEY) {
     res.status(503).json({ error: 'OpenAI API key not configured' });
     return;
   }
 
   try {
-    // Get current date and start of billing period
-    const now = new Date();
-    const daysBack = parseInt(req.query.days as string) || 30;
-    const startDate = new Date(now.getTime() - daysBack * 24 * 60 * 60 * 1000);
+    // Get the current date range (last 30 days)
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
     
-    // Format dates for OpenAI API (YYYY-MM-DD)
-    const formatDate = (d: Date) => d.toISOString().split('T')[0];
-    
-    // Fetch usage data from OpenAI
-    // Note: OpenAI's usage API requires organization-level access
-    // We'll use the billing/usage endpoint
+    const startDateStr = startDate.toISOString().split('T')[0];
+    const endDateStr = endDate.toISOString().split('T')[0];
+
+    console.log(`[Usage] Fetching OpenAI usage from ${startDateStr} to ${endDateStr}`);
+
+    // OpenAI Usage API endpoint
     const response = await fetch(
-      `https://api.openai.com/v1/organization/usage?start_date=${formatDate(startDate)}&end_date=${formatDate(now)}`,
+      `https://api.openai.com/v1/usage?start_date=${startDateStr}&end_date=${endDateStr}`,
       {
         headers: {
           'Authorization': `Bearer ${OPENAI_API_KEY}`,
@@ -60,23 +62,15 @@ router.get('/openai', async (req: Request, res: Response) => {
     );
 
     if (!response.ok) {
-      // Try alternative: dashboard API (may not work with all keys)
-      // Fall back to a simple cost estimate based on known usage
       const errorText = await response.text();
-      console.log('[Usage API] OpenAI usage endpoint not available:', response.status);
+      console.error('[Usage] OpenAI API error:', response.status, errorText);
       
-      // Return manual guidance instead
-      res.json({
-        success: false,
-        message: 'Direct usage API requires organization admin access',
-        checkManually: 'https://platform.openai.com/usage',
-        estimatedRates: {
-          realtimeAudioInput: '$0.06/min',
-          realtimeAudioOutput: '$0.24/min',
-          visionPerFrame: '$0.01-0.05/frame',
-          estimatedPerMinute: '$0.30-0.60/min with vision'
-        },
-        tip: 'Log into platform.openai.com/usage to see actual spending'
+      // If usage API fails, try the organization billing endpoint
+      // Note: This requires organization-level API access
+      res.status(response.status).json({ 
+        error: 'Failed to fetch usage data',
+        details: errorText,
+        hint: 'Check usage manually at https://platform.openai.com/usage'
       });
       return;
     }
@@ -85,32 +79,66 @@ router.get('/openai', async (req: Request, res: Response) => {
     
     // Calculate totals
     let totalCost = 0;
-    const breakdown: Record<string, number> = {};
+    const dailyBreakdown: Array<{ date: string; spent: number; requests: number }> = [];
     
     if (data.data) {
-      for (const entry of data.data) {
-        const cost = entry.cost || 0;
-        totalCost += cost;
+      // Process usage data
+      const dailyMap = new Map<string, { spent: number; requests: number }>();
+      
+      for (const item of data.data) {
+        const date = item.aggregation_timestamp 
+          ? new Date(item.aggregation_timestamp * 1000).toISOString().split('T')[0]
+          : 'unknown';
         
-        const model = entry.model || 'unknown';
-        breakdown[model] = (breakdown[model] || 0) + cost;
+        // Calculate cost based on model and usage
+        let itemCost = 0;
+        if (item.n_context_tokens_total && item.n_generated_tokens_total) {
+          // Rough cost estimate based on model
+          const model = item.snapshot_id || '';
+          if (model.includes('gpt-4')) {
+            itemCost = (item.n_context_tokens_total * 0.00003) + (item.n_generated_tokens_total * 0.00006);
+          } else if (model.includes('gpt-3.5')) {
+            itemCost = (item.n_context_tokens_total * 0.0000015) + (item.n_generated_tokens_total * 0.000002);
+          } else if (model.includes('whisper')) {
+            itemCost = (item.n_context_tokens_total / 1000) * 0.006; // per minute approximation
+          } else if (model.includes('realtime')) {
+            // Realtime API pricing
+            itemCost = (item.n_context_tokens_total * 0.00015) + (item.n_generated_tokens_total * 0.0006);
+          }
+        }
+        
+        totalCost += itemCost;
+        
+        const existing = dailyMap.get(date) || { spent: 0, requests: 0 };
+        dailyMap.set(date, {
+          spent: existing.spent + itemCost,
+          requests: existing.requests + (item.n_requests || 1)
+        });
       }
+      
+      // Convert to array and sort by date
+      for (const [date, stats] of dailyMap) {
+        dailyBreakdown.push({ date, ...stats });
+      }
+      dailyBreakdown.sort((a, b) => b.date.localeCompare(a.date));
     }
 
     res.json({
       success: true,
       period: {
-        start: formatDate(startDate),
-        end: formatDate(now),
-        days: daysBack
+        start: startDateStr,
+        end: endDateStr
       },
-      totalCost: `$${totalCost.toFixed(2)}`,
-      breakdown,
-      checkDashboard: 'https://platform.openai.com/usage'
+      totalSpent: totalCost,
+      totalSpentFormatted: `$${totalCost.toFixed(2)}`,
+      dailyBreakdown: dailyBreakdown.slice(0, 7), // Last 7 days
+      rawData: data,
+      checkManually: 'https://platform.openai.com/usage',
+      note: 'Cost estimates are approximate. Check OpenAI dashboard for exact billing.'
     });
 
   } catch (error) {
-    console.error('[Usage API] Error:', error);
+    console.error('[Usage] Error:', error);
     res.status(500).json({ 
       error: 'Failed to fetch usage data',
       checkManually: 'https://platform.openai.com/usage'
@@ -121,71 +149,81 @@ router.get('/openai', async (req: Request, res: Response) => {
 /**
  * GET /api/usage/summary
  * 
- * Quick summary for Claude/Perse to check spending.
- * Returns a human-readable response.
+ * Quick summary for Claude to read
  */
 router.get('/summary', async (req: Request, res: Response) => {
-  const adminKey = req.query.key || req.headers['x-admin-key'];
-  
-  if (adminKey !== ADMIN_KEY) {
-    res.status(401).json({ error: 'Unauthorized' });
+  if (!OPENAI_API_KEY) {
+    res.json({
+      message: "OpenAI API key not configured. Check usage at https://platform.openai.com/usage"
+    });
     return;
   }
 
-  // Since direct API access is limited, provide guidance
-  res.json({
-    message: 'OpenAI Usage Summary',
-    checkHere: 'https://platform.openai.com/usage',
-    currentRates: {
-      'Realtime API (audio input)': '$0.06/min',
-      'Realtime API (audio output)': '$0.24/min', 
-      'Vision (per frame)': '$0.01-0.05',
-      'Estimated with vision': '$0.30-0.60/min'
-    },
-    costSavingTip: 'V9 architecture (Cerebras + GPT-4o) targets $0.07-0.09/min',
-    billingCycle: 'Monthly, around the 1st'
-  });
+  try {
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+    
+    const response = await fetch(
+      `https://api.openai.com/v1/usage?start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}`,
+      {
+        headers: {
+          'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        },
+      }
+    );
+
+    if (!response.ok) {
+      res.json({
+        message: `Could not fetch usage automatically. Check manually at https://platform.openai.com/usage`,
+        status: response.status
+      });
+      return;
+    }
+
+    const data = await response.json();
+    
+    // Simple token count
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    let totalRequests = 0;
+    
+    if (data.data) {
+      for (const item of data.data) {
+        totalInputTokens += item.n_context_tokens_total || 0;
+        totalOutputTokens += item.n_generated_tokens_total || 0;
+        totalRequests += item.n_requests || 0;
+      }
+    }
+
+    // Rough cost estimate for Realtime API
+    const estimatedCost = (totalInputTokens * 0.00015) + (totalOutputTokens * 0.0006);
+
+    res.json({
+      message: `Last 30 days: ~${totalRequests} requests, ~${Math.round(totalInputTokens/1000)}K input tokens, ~${Math.round(totalOutputTokens/1000)}K output tokens. Estimated cost: $${estimatedCost.toFixed(2)}. For exact billing, check https://platform.openai.com/usage`,
+      totalRequests,
+      totalInputTokens,
+      totalOutputTokens,
+      estimatedCost: `$${estimatedCost.toFixed(2)}`,
+      checkExact: 'https://platform.openai.com/usage'
+    });
+
+  } catch (error) {
+    res.json({
+      message: `Error fetching usage. Check manually at https://platform.openai.com/usage`,
+      error: String(error)
+    });
+  }
 });
 
 /**
- * GET /api/usage/estimate
- * 
- * Estimate cost based on usage minutes.
+ * GET /api/usage/health
  */
-router.get('/estimate', (req: Request, res: Response) => {
-  const minutes = parseFloat(req.query.minutes as string) || 0;
-  const withVision = req.query.vision !== 'false';
-  
-  // Current V7 rates (OpenAI Realtime API)
-  const audioInputRate = 0.06;  // per minute
-  const audioOutputRate = 0.24; // per minute
-  const visionRate = 0.15;      // approximate per minute with frames
-  
-  const audioCost = minutes * (audioInputRate + audioOutputRate);
-  const visionCost = withVision ? minutes * visionRate : 0;
-  const totalCost = audioCost + visionCost;
-  
-  // V9 projected rates
-  const v9Rate = 0.08; // per minute
-  const v9Cost = minutes * v9Rate;
-  const savings = totalCost - v9Cost;
-  
+router.get('/health', (req: Request, res: Response) => {
   res.json({
-    input: {
-      minutes,
-      withVision
-    },
-    v7Estimate: {
-      audio: `$${audioCost.toFixed(2)}`,
-      vision: `$${visionCost.toFixed(2)}`,
-      total: `$${totalCost.toFixed(2)}`,
-      perMinute: `$${(totalCost / minutes).toFixed(2)}/min`
-    },
-    v9Projected: {
-      total: `$${v9Cost.toFixed(2)}`,
-      perMinute: '$0.08/min',
-      savings: `$${savings.toFixed(2)} (${((savings/totalCost)*100).toFixed(0)}% less)`
-    }
+    status: 'ok',
+    configured: !!OPENAI_API_KEY,
+    endpoints: ['/api/usage/openai', '/api/usage/summary']
   });
 });
 
