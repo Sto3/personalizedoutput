@@ -1,7 +1,7 @@
 /**
  * SettingsView.swift
  *
- * Settings screen for Redi - includes server version toggle for dev testing.
+ * Settings screen for Redi - includes server version toggle, screen share, and more.
  */
 
 import SwiftUI
@@ -9,10 +9,42 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) var dismiss
     @State private var selectedVersion: RediServerVersion = RediConfig.serverVersion
+    @State private var showScreenShare = false
     
     var body: some View {
         NavigationView {
             List {
+                // Screen Share Section
+                Section {
+                    Button(action: { showScreenShare = true }) {
+                        HStack {
+                            Image(systemName: "display")
+                                .foregroundColor(.cyan)
+                                .frame(width: 30)
+                            
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Share Computer Screen")
+                                    .foregroundColor(.white)
+                                
+                                Text("Let Redi see your desktop")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
+                            }
+                            
+                            Spacer()
+                            
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
+                                .font(.caption)
+                        }
+                    }
+                } header: {
+                    Text("Screen Share")
+                } footer: {
+                    Text("Share your computer screen so Redi can help with tasks.")
+                        .foregroundColor(.gray)
+                }
+                
                 // Server Version Section
                 Section {
                     ForEach(RediServerVersion.allCases, id: \.self) { version in
@@ -98,6 +130,9 @@ struct SettingsView: View {
                     }
                     .foregroundColor(.cyan)
                 }
+            }
+            .sheet(isPresented: $showScreenShare) {
+                ScreenShareView()
             }
         }
         .preferredColorScheme(.dark)
