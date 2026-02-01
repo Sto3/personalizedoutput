@@ -2,53 +2,40 @@
  * WebRTC Token Endpoint for Redi
  * 
  * Generates ephemeral tokens for iOS clients to connect directly to OpenAI
- * via WebRTC. This bypasses the server for audio streaming, reducing latency
- * by 200-300ms and providing better echo cancellation.
+ * via WebRTC. Uses API-AGNOSTIC privacy middleware that works with any provider.
  * 
- * Flow:
- * 1. iOS requests ephemeral token from this endpoint
- * 2. Server creates session with OpenAI REST API
- * 3. Returns ephemeral token (valid ~60 seconds)
- * 4. iOS connects directly to OpenAI via WebRTC using token
+ * Privacy rules are injected via PrivacyService, not hardcoded here.
+ * This allows the same privacy protections to work with:
+ * - OpenAI Realtime API (V7)
+ * - Cerebras + GPT-4o (V9)
+ * - Any future AI provider
  * 
  * Created: Jan 25, 2026
- * Updated: Feb 1, 2026 - Added privacy protections
+ * Updated: Feb 1, 2026 - Use API-agnostic PrivacyService
  */
 
 import { Router, Request, Response } from 'express';
+import PrivacyService from '../services/PrivacyService';
 
 const router = Router();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// System prompt for Redi with PRIVACY PROTECTIONS
-const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time camera and screen vision.
+// Base system prompt (privacy rules injected by PrivacyService)
+const BASE_SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time camera and screen vision.
 
 RULES:
 - Respond naturally to what the user asks
 - If they ask what you see, describe the image briefly (10-20 words)
 - Be conversational and helpful
 - Don't say "I see" - describe directly
-- Keep responses SHORT - under 30 words unless asked for more
-
-CRITICAL PRIVACY RULES - YOU MUST FOLLOW THESE:
-1. NEVER read, mention, or acknowledge passwords, PINs, or security codes visible on screen
-2. NEVER read, mention, or acknowledge credit card numbers, CVVs, or financial account numbers
-3. NEVER read, mention, or acknowledge social security numbers or government IDs
-4. NEVER read, mention, or acknowledge private keys, API keys, or authentication tokens
-5. NEVER read, mention, or acknowledge email addresses in login forms
-6. If you see a login page, password field, or payment form, say "I notice you're on a sensitive page - I'll look away until you're done"
-7. If asked to read credentials or sensitive data, politely refuse
-8. Treat any text in password-style input fields (dots/asterisks) as invisible
-9. If you see banking, medical, or legal documents, only describe them generically without reading specifics
-
-When screen sharing is active, remind users every few minutes: "Remember, I can see your screen."`;
+- Keep responses SHORT - under 30 words unless asked for more`;
 
 /**
  * POST /api/redi/webrtc/token
  * 
  * Generate an ephemeral token for WebRTC connection to OpenAI Realtime API.
- * The token is pre-configured with Redi's settings.
+ * Privacy rules are injected based on session state.
  */
 router.post('/token', async (req: Request, res: Response) => {
   if (!OPENAI_API_KEY) {
@@ -57,20 +44,29 @@ router.post('/token', async (req: Request, res: Response) => {
     return;
   }
 
-  const { mode, voice, screenShareActive } = req.body;
+  const { mode, voice, screenShareActive, sessionId } = req.body;
 
-  // Adjust prompt based on whether screen sharing is active
-  let instructions = SYSTEM_PROMPT;
-  if (screenShareActive) {
-    instructions += `\n\nSCREEN SHARE MODE ACTIVE:
-- You are viewing the user's computer screen
-- Be extra vigilant about privacy - do not read any sensitive information
-- Periodically remind the user that screen sharing is active
-- If you see login pages, banking sites, or sensitive documents, mention you're "looking away"`;
+  // Generate session ID if not provided
+  const sid = sessionId || `session_${Date.now()}`;
+
+  // Update privacy state
+  if (screenShareActive !== undefined) {
+    PrivacyService.setScreenShareActive(sid, screenShareActive);
   }
+
+  // Inject privacy rules into system prompt (API-AGNOSTIC)
+  const instructions = PrivacyService.injectPrivacyRules(BASE_SYSTEM_PROMPT, sid);
 
   try {
     console.log('[WebRTC Token] 🎫 Generating ephemeral token...');
+    console.log(`[WebRTC Token] Session: ${sid}, Screen Share: ${screenShareActive}`);
+
+    // Log audit entry
+    PrivacyService.logAudit({
+      sessionId: sid,
+      action: screenShareActive ? 'screen_share_start' : 'frame_sent',
+      provider: 'openai_realtime'
+    });
 
     // Use the new client_secrets endpoint (GA interface)
     const response = await fetch('https://api.openai.com/v1/realtime/client_secrets', {
@@ -83,7 +79,7 @@ router.post('/token', async (req: Request, res: Response) => {
         session: {
           type: 'realtime',
           model: 'gpt-realtime',
-          instructions: instructions,
+          instructions: instructions, // Privacy-enhanced prompt
           audio: {
             input: {
               format: {
@@ -94,7 +90,7 @@ router.post('/token', async (req: Request, res: Response) => {
                 model: 'whisper-1'
               },
               noise_reduction: {
-                type: 'near_field'  // Better for mobile devices
+                type: 'near_field'
               },
               turn_detection: {
                 type: 'semantic_vad',
@@ -112,7 +108,6 @@ router.post('/token', async (req: Request, res: Response) => {
               speed: 1.0
             }
           },
-          // Token valid for 10 minutes (default)
         },
         expiration: {
           ttl_seconds: 600  // 10 minutes
@@ -134,12 +129,10 @@ router.post('/token', async (req: Request, res: Response) => {
     
     console.log('[WebRTC Token] ✅ Token generated, expires at:', new Date(data.expires_at * 1000).toISOString());
 
-    // Return the ephemeral token and session info
     res.json({
       token: data.value,
       expiresAt: data.expires_at,
-      sessionId: data.session?.id,
-      // Include the WebRTC endpoint URL for iOS
+      sessionId: sid,
       webrtcUrl: 'https://api.openai.com/v1/realtime/calls'
     });
 
@@ -150,15 +143,69 @@ router.post('/token', async (req: Request, res: Response) => {
 });
 
 /**
+ * POST /api/redi/webrtc/privacy
+ * Update privacy state for a session
+ */
+router.post('/privacy', (req: Request, res: Response) => {
+  const { sessionId, paused, screenShareActive } = req.body;
+
+  if (!sessionId) {
+    res.status(400).json({ error: 'sessionId required' });
+    return;
+  }
+
+  if (paused !== undefined) {
+    PrivacyService.setPrivacyPause(sessionId, paused);
+    PrivacyService.logAudit({
+      sessionId,
+      action: paused ? 'privacy_pause' : 'privacy_resume'
+    });
+  }
+
+  if (screenShareActive !== undefined) {
+    PrivacyService.setScreenShareActive(sessionId, screenShareActive);
+    PrivacyService.logAudit({
+      sessionId,
+      action: screenShareActive ? 'screen_share_start' : 'screen_share_end'
+    });
+  }
+
+  const state = PrivacyService.getPrivacyState(sessionId);
+  
+  res.json({
+    success: true,
+    state: {
+      isPaused: state.isPaused,
+      screenShareActive: state.screenShareActive
+    }
+  });
+});
+
+/**
+ * GET /api/redi/webrtc/privacy/:sessionId
+ * Get current privacy state
+ */
+router.get('/privacy/:sessionId', (req: Request, res: Response) => {
+  const { sessionId } = req.params;
+  const state = PrivacyService.getPrivacyState(sessionId);
+  
+  res.json({
+    isPaused: state.isPaused,
+    screenShareActive: state.screenShareActive,
+    shouldSendFrames: PrivacyService.shouldSendFrame(sessionId)
+  });
+});
+
+/**
  * GET /api/redi/webrtc/health
- * 
  * Health check for WebRTC token service
  */
 router.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'ok',
     configured: !!OPENAI_API_KEY,
-    endpoint: '/api/redi/webrtc/token'
+    endpoint: '/api/redi/webrtc/token',
+    privacyService: 'enabled'
   });
 });
 
