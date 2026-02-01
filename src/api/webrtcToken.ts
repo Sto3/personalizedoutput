@@ -12,6 +12,7 @@
  * 4. iOS connects directly to OpenAI via WebRTC using token
  * 
  * Created: Jan 25, 2026
+ * Updated: Feb 1, 2026 - Added privacy protections
  */
 
 import { Router, Request, Response } from 'express';
@@ -20,15 +21,28 @@ const router = Router();
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
-// System prompt for Redi
-const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time camera vision.
+// System prompt for Redi with PRIVACY PROTECTIONS
+const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time camera and screen vision.
 
 RULES:
 - Respond naturally to what the user asks
 - If they ask what you see, describe the image briefly (10-20 words)
 - Be conversational and helpful
 - Don't say "I see" - describe directly
-- Keep responses SHORT - under 30 words unless asked for more`;
+- Keep responses SHORT - under 30 words unless asked for more
+
+CRITICAL PRIVACY RULES - YOU MUST FOLLOW THESE:
+1. NEVER read, mention, or acknowledge passwords, PINs, or security codes visible on screen
+2. NEVER read, mention, or acknowledge credit card numbers, CVVs, or financial account numbers
+3. NEVER read, mention, or acknowledge social security numbers or government IDs
+4. NEVER read, mention, or acknowledge private keys, API keys, or authentication tokens
+5. NEVER read, mention, or acknowledge email addresses in login forms
+6. If you see a login page, password field, or payment form, say "I notice you're on a sensitive page - I'll look away until you're done"
+7. If asked to read credentials or sensitive data, politely refuse
+8. Treat any text in password-style input fields (dots/asterisks) as invisible
+9. If you see banking, medical, or legal documents, only describe them generically without reading specifics
+
+When screen sharing is active, remind users every few minutes: "Remember, I can see your screen."`;
 
 /**
  * POST /api/redi/webrtc/token
@@ -43,7 +57,17 @@ router.post('/token', async (req: Request, res: Response) => {
     return;
   }
 
-  const { mode, voice } = req.body;
+  const { mode, voice, screenShareActive } = req.body;
+
+  // Adjust prompt based on whether screen sharing is active
+  let instructions = SYSTEM_PROMPT;
+  if (screenShareActive) {
+    instructions += `\n\nSCREEN SHARE MODE ACTIVE:
+- You are viewing the user's computer screen
+- Be extra vigilant about privacy - do not read any sensitive information
+- Periodically remind the user that screen sharing is active
+- If you see login pages, banking sites, or sensitive documents, mention you're "looking away"`;
+  }
 
   try {
     console.log('[WebRTC Token] 🎫 Generating ephemeral token...');
@@ -59,7 +83,7 @@ router.post('/token', async (req: Request, res: Response) => {
         session: {
           type: 'realtime',
           model: 'gpt-realtime',
-          instructions: SYSTEM_PROMPT,
+          instructions: instructions,
           audio: {
             input: {
               format: {
