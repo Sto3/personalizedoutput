@@ -247,11 +247,8 @@ class ScreenShareService: NSObject, ObservableObject {
             sdpMid: sdpMid
         )
         
-        peerConnection?.add(candidate, completionHandler: { error in
-            if let error = error {
-                print("[ScreenShare] Failed to add ICE candidate: \(error)")
-            }
-        })
+        // Add ICE candidate (no completion handler in this WebRTC version)
+        peerConnection?.add(candidate)
     }
     
     // MARK: - Peer Connection Setup
