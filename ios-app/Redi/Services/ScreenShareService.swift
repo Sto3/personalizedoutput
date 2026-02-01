@@ -13,13 +13,14 @@
 
 import Foundation
 import WebRTC
+import UIKit
 
 class ScreenShareService: NSObject, ObservableObject {
     static let shared = ScreenShareService()
     
     // MARK: - Published State
     
-    enum ConnectionState {
+    enum ConnectionState: Equatable {
         case disconnected
         case connecting
         case waitingForPeer
@@ -246,11 +247,11 @@ class ScreenShareService: NSObject, ObservableObject {
             sdpMid: sdpMid
         )
         
-        peerConnection?.add(candidate) { error in
+        peerConnection?.add(candidate, completionHandler: { error in
             if let error = error {
                 print("[ScreenShare] Failed to add ICE candidate: \(error)")
             }
-        }
+        })
     }
     
     // MARK: - Peer Connection Setup
