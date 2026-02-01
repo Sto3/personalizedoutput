@@ -212,7 +212,6 @@ class ObjectDetectionService: NSObject, ObservableObject {
     // MARK: - Detection
 
     /// Process a camera frame for object detection
-    /// Note: CVPixelBuffer is retained for the duration of the async operation
     func detectObjects(in pixelBuffer: CVPixelBuffer) {
         guard isModelLoaded, let request = request else {
             return
@@ -220,14 +219,11 @@ class ObjectDetectionService: NSObject, ObservableObject {
 
         let startTime = CFAbsoluteTimeGetCurrent()
         
-        // Retain the pixel buffer for async processing
-        CVPixelBufferRetain(pixelBuffer)
+        // Create handler SYNCHRONOUSLY before async dispatch to avoid Sendable issues
+        // VNImageRequestHandler retains the pixel buffer internally
+        let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
 
-        processingQueue.async { [weak self, pixelBuffer] in
-            defer { CVPixelBufferRelease(pixelBuffer) }
-            
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer, options: [:])
-
+        processingQueue.async { [weak self] in
             do {
                 try handler.perform([request])
 
@@ -248,10 +244,11 @@ class ObjectDetectionService: NSObject, ObservableObject {
         }
 
         let startTime = CFAbsoluteTimeGetCurrent()
+        
+        // Create handler SYNCHRONOUSLY before async dispatch
+        let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
 
         processingQueue.async { [weak self] in
-            let handler = VNImageRequestHandler(cgImage: cgImage, options: [:])
-
             do {
                 try handler.perform([request])
 
