@@ -1,14 +1,16 @@
 /**
  * ScreenShareService.swift
  *
- * REDI SCREEN SHARE SERVICE
+ * REDI SCREEN SHARE SERVICE - SECURE VERSION
  * 
- * Manages WebRTC connection for receiving desktop screen:
- * - WebSocket signaling to server
- * - WebRTC peer connection
- * - Frame extraction for AI analysis
+ * Security Features:
+ * - 8-character alphanumeric codes
+ * - Connection approval required before video starts
+ * - Device info shown before approval
+ * - 5-minute code expiration
  *
  * Created: Jan 29, 2026
+ * Updated: Feb 1, 2026 - Security hardening
  */
 
 import Foundation
@@ -24,13 +26,22 @@ class ScreenShareService: NSObject, ObservableObject {
         case disconnected
         case connecting
         case waitingForPeer
+        case pendingApproval
         case connected
         case error(String)
     }
     
+    struct ComputerInfo: Equatable {
+        let ip: String
+        let browser: String
+        let os: String
+    }
+    
     @Published var connectionState: ConnectionState = .disconnected
     @Published var pairingCode: String?
+    @Published var codeExpiresIn: Int = 0 // seconds
     @Published var latestFrame: Data?
+    @Published var pendingComputerInfo: ComputerInfo?
     
     // MARK: - Private Properties
     
@@ -38,6 +49,7 @@ class ScreenShareService: NSObject, ObservableObject {
     private var peerConnection: RTCPeerConnection?
     private var peerConnectionFactory: RTCPeerConnectionFactory?
     private var frameRenderer: FrameCaptureRenderer?
+    private var expirationTimer: Timer?
     
     private let serverURL = "wss://personalizedoutput.onrender.com/ws/screen"
     
@@ -94,10 +106,13 @@ class ScreenShareService: NSObject, ObservableObject {
         
         receiveMessage()
         
-        print("[ScreenShare] Connecting to server...")
+        print("[ScreenShare] 🔐 Connecting to secure server...")
     }
     
     func disconnect() {
+        expirationTimer?.invalidate()
+        expirationTimer = nil
+        
         webSocket?.cancel(with: .normalClosure, reason: nil)
         webSocket = nil
         
@@ -107,10 +122,31 @@ class ScreenShareService: NSObject, ObservableObject {
         DispatchQueue.main.async {
             self.connectionState = .disconnected
             self.pairingCode = nil
+            self.codeExpiresIn = 0
             self.latestFrame = nil
+            self.pendingComputerInfo = nil
         }
         
         print("[ScreenShare] Disconnected")
+    }
+    
+    /// Approve a pending connection request
+    func approveConnection() {
+        sendJSON(["type": "approve"])
+        DispatchQueue.main.async {
+            self.pendingComputerInfo = nil
+        }
+        print("[ScreenShare] ✅ Connection approved by user")
+    }
+    
+    /// Reject a pending connection request
+    func rejectConnection() {
+        sendJSON(["type": "reject"])
+        DispatchQueue.main.async {
+            self.connectionState = .waitingForPeer
+            self.pendingComputerInfo = nil
+        }
+        print("[ScreenShare] ❌ Connection rejected by user")
     }
     
     // MARK: - WebSocket Message Handling
@@ -142,15 +178,34 @@ class ScreenShareService: NSObject, ObservableObject {
         switch type {
         case "code":
             if let code = json["code"] as? String {
+                let expiresIn = json["expiresIn"] as? Int ?? 300
                 DispatchQueue.main.async {
                     self.pairingCode = code
+                    self.codeExpiresIn = expiresIn
                     self.connectionState = .waitingForPeer
+                }
+                startExpirationTimer(seconds: expiresIn)
+            }
+            
+        case "approval_request":
+            // Computer wants to connect - show approval dialog
+            if let info = json["computerInfo"] as? [String: Any] {
+                let computerInfo = ComputerInfo(
+                    ip: info["ip"] as? String ?? "Unknown",
+                    browser: info["browser"] as? String ?? "Unknown",
+                    os: info["os"] as? String ?? "Unknown"
+                )
+                DispatchQueue.main.async {
+                    self.pendingComputerInfo = computerInfo
+                    self.connectionState = .pendingApproval
                 }
             }
             
         case "paired":
-            print("[ScreenShare] Paired with computer")
-            // Wait for offer from computer
+            print("[ScreenShare] ✅ Paired with computer")
+            DispatchQueue.main.async {
+                self.connectionState = .connected
+            }
             
         case "offer":
             handleOffer(json)
@@ -161,6 +216,7 @@ class ScreenShareService: NSObject, ObservableObject {
         case "disconnected":
             DispatchQueue.main.async {
                 self.connectionState = .waitingForPeer
+                self.pendingComputerInfo = nil
             }
             
         case "error":
@@ -170,6 +226,25 @@ class ScreenShareService: NSObject, ObservableObject {
             
         default:
             break
+        }
+    }
+    
+    // MARK: - Expiration Timer
+    
+    private func startExpirationTimer(seconds: Int) {
+        expirationTimer?.invalidate()
+        
+        var remaining = seconds
+        expirationTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            remaining -= 1
+            DispatchQueue.main.async {
+                self?.codeExpiresIn = remaining
+            }
+            
+            if remaining <= 0 {
+                timer.invalidate()
+                self?.setError("Code expired. Please try again.")
+            }
         }
     }
     
@@ -286,6 +361,7 @@ class ScreenShareService: NSObject, ObservableObject {
     private func setError(_ message: String) {
         DispatchQueue.main.async {
             self.connectionState = .error(message)
+            self.pendingComputerInfo = nil
         }
     }
     
