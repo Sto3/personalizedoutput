@@ -486,17 +486,17 @@ class PerceptionService: NSObject, ObservableObject {
         let now = Date().timeIntervalSince1970 * 1000
         guard now - lastFrameTimestamp > 500 else { return }
         
-        // Convert CVPixelBuffer to CIImage SYNCHRONOUSLY before async dispatch
-        // This avoids Sendable issues with CVPixelBuffer
-        let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
-        let imageExtent = ciImage.extent
+        // Retain the pixel buffer for async processing
+        CVPixelBufferRetain(pixelBuffer)
 
-        processingQueue.async { [weak self] in
+        processingQueue.async { [weak self, pixelBuffer] in
+            defer { CVPixelBufferRelease(pixelBuffer) }
             guard let self = self else { return }
 
-            // Convert CIImage to CGImage
+            // Convert CVPixelBuffer to UIImage
+            let ciImage = CIImage(cvPixelBuffer: pixelBuffer)
             let context = CIContext()
-            guard let cgImage = context.createCGImage(ciImage, from: imageExtent) else { return }
+            guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return }
 
             var image = UIImage(cgImage: cgImage)
 

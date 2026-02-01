@@ -81,7 +81,7 @@ class AudioService: ObservableObject {
             // Install tap with conversion
             let bufferSize: AVAudioFrameCount = 4800 // 200ms at 24kHz
             
-            input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, time in
+            input.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
                 self?.processAudioBuffer(buffer, targetFormat: recordingFormat)
             }
             
@@ -123,7 +123,7 @@ class AudioService: ObservableObject {
         }
         
         var error: NSError?
-        let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+        let inputBlock: AVAudioConverterInputBlock = { _, outStatus in
             outStatus.pointee = .haveData
             return buffer
         }

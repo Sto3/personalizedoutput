@@ -9,13 +9,13 @@
 /* Begin PBXBuildFile section */
 		0215ED4F4E9C059895B265BE /* AudioClassificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DBA8434655A768264517F24 /* AudioClassificationService.swift */; };
 		02C31AED37CCB58BF6AD1EE2 /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */; };
-		04E3E50806A2046D280A6649 /* Pods_Redi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FB65A740B6D68808EF4004F /* Pods_Redi.framework */; };
 		082690F2D9C74568BCA66AD6 /* SessionExtensionOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */; };
 		1DE4D16B4AE14013B5C68DFB /* V5Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD19B055865344E0BF4B29A4 /* V5Config.swift */; };
 		223406C2FD912DDB6018B1F1 /* SceneUnderstandingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F76A72D1B020F9C4758B067 /* SceneUnderstandingService.swift */; };
 		286BF8E5642D302C409B86FA /* V3WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24956C7F8C224D00B5EA5696 /* V3WebSocketService.swift */; };
 		39287B4F803973145E3EE010 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97D9CC5312EFE7EC3589A208 /* Assets.xcassets */; };
 		3A0C91300C54AEC7AE37592D /* PerceptionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC474247BC1D787F92786F35 /* PerceptionService.swift */; };
+		42EC1D8B63C08953C626E8EB /* Pods_Redi.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC2F3E8EB8B9F84362D67F19 /* Pods_Redi.framework */; };
 		42F4B1A4BF3CDC673F2B6D61 /* SessionViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67DFA597214E78B4FF52CEC3 /* SessionViewModel.swift */; };
 		48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F172479862AD94B0F25637 /* MotionService.swift */; };
 		4A5CC964788FBFBC3147BA44 /* WakeWordService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */; };
@@ -32,8 +32,9 @@
 		A66634CF8EC7740D40897F19 /* SessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914EA6EA78E0805AC7676CEA /* SessionView.swift */; };
 		BA0B1E2C9D418685240D4414 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CE5395098EB5DED9990A4C0 /* HomeView.swift */; };
 		C80227FB26645796A682337E /* V3AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CFB05189C28C4E9FD5F1981 /* V3AudioService.swift */; };
+		C93000B12F26E85400431780 /* RediWebRTCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93000B02F26E85400431780 /* RediWebRTCService.swift */; };
 		C9C59EBAF783A1FA1B8C5DE5 /* ObjectDetectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB36CA549D64781F0A73176 /* ObjectDetectionService.swift */; };
-		C9EFBD4B2F2ED75B009B7745 /* RediWebRTCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9EFBD4A2F2ED75B009B7745 /* RediWebRTCService.swift */; };
+		D089E7930C9B40E159DC7659 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 912FCAF90FD72EEF12352A19 /* LaunchScreen.storyboard */; };
 		DED19773F5CEE6421A1D38AC /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74C63A793466E4E7AAF9988A /* HistoryView.swift */; };
 		DR1V1NG001B001A001B001C1 /* DrivingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG001F001A001B001C1 /* DrivingView.swift */; };
 		DR1V1NG002B002A002B002C2 /* DrivingViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DR1V1NG002F002A002B002C2 /* DrivingViewModel.swift */; };
@@ -55,15 +56,14 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0E7F8083FFD019DB3B0F3F4D /* Pods-Redi.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Redi.debug.xcconfig"; path = "Target Support Files/Pods-Redi/Pods-Redi.debug.xcconfig"; sourceTree = "<group>"; };
 		11FC2B0A07423D27282940F2 /* HomeViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeViewModel.swift; sourceTree = "<group>"; };
 		150F0DC41592737940795313 /* AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioService.swift; sourceTree = "<group>"; };
 		1A15A5C980612F788435CE38 /* V3CameraService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = V3CameraService.swift; path = V3/Services/V3CameraService.swift; sourceTree = "<group>"; };
 		1BB36CA549D64781F0A73176 /* ObjectDetectionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ObjectDetectionService.swift; sourceTree = "<group>"; };
 		24956C7F8C224D00B5EA5696 /* V3WebSocketService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = V3WebSocketService.swift; path = V3/Services/V3WebSocketService.swift; sourceTree = "<group>"; };
 		24E70B1BB70C4FAFA8F9510C /* V5AudioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5AudioService.swift; path = V5/V5AudioService.swift; sourceTree = "<group>"; };
-		2FB65A740B6D68808EF4004F /* Pods_Redi.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Redi.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		4C31A0F557DEDCDFAC8A2B4F /* V3CameraPreview.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = V3CameraPreview.swift; path = V3/Views/V3CameraPreview.swift; sourceTree = "<group>"; };
-		5AA226BBFD071AD3C1D48C79 /* Pods-Redi.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Redi.debug.xcconfig"; path = "Target Support Files/Pods-Redi/Pods-Redi.debug.xcconfig"; sourceTree = "<group>"; };
 		5DBA8434655A768264517F24 /* AudioClassificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioClassificationService.swift; sourceTree = "<group>"; };
 		6636316D44F600A5FA454913 /* DepthService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DepthService.swift; sourceTree = "<group>"; };
 		67DFA597214E78B4FF52CEC3 /* SessionViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionViewModel.swift; sourceTree = "<group>"; };
@@ -74,18 +74,20 @@
 		89FED5AD019E3A6E33F5A1E3 /* RediApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediApp.swift; sourceTree = "<group>"; };
 		8C9C0A0F441E508F2A48580E /* WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSocketService.swift; sourceTree = "<group>"; };
 		8CE5395098EB5DED9990A4C0 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		912FCAF90FD72EEF12352A19 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
 		914EA6EA78E0805AC7676CEA /* SessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionView.swift; sourceTree = "<group>"; };
 		97D9CC5312EFE7EC3589A208 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		983C3ED150496CC193920FF1 /* Pods-Redi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Redi.release.xcconfig"; path = "Target Support Files/Pods-Redi/Pods-Redi.release.xcconfig"; sourceTree = "<group>"; };
 		998E6C112D6203AD82731674 /* SessionExtensionOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionExtensionOverlay.swift; sourceTree = "<group>"; };
 		9CFB05189C28C4E9FD5F1981 /* V3AudioService.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = V3AudioService.swift; path = V3/Services/V3AudioService.swift; sourceTree = "<group>"; };
 		A09B1F75008D18DF50E341BE /* StoreKitConfiguration.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = StoreKitConfiguration.storekit; sourceTree = "<group>"; };
 		A4F172479862AD94B0F25637 /* MotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionService.swift; sourceTree = "<group>"; };
 		B8527DB2EE46FEFC586AAB99 /* WakeWordService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WakeWordService.swift; sourceTree = "<group>"; };
+		BEA53ACD5677BE0F02E19E7B /* Pods-Redi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Redi.release.xcconfig"; path = "Target Support Files/Pods-Redi/Pods-Redi.release.xcconfig"; sourceTree = "<group>"; };
 		BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
-		C9EFBD4A2F2ED75B009B7745 /* RediWebRTCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediWebRTCService.swift; sourceTree = "<group>"; };
+		C93000B02F26E85400431780 /* RediWebRTCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RediWebRTCService.swift; path = Services/RediWebRTCService.swift; sourceTree = "<group>"; };
 		DA8A2494A90C7565782AB51B /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V5WebSocketService.swift; path = V5/V5WebSocketService.swift; sourceTree = "<group>"; };
+		DC2F3E8EB8B9F84362D67F19 /* Pods_Redi.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Redi.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		DC474247BC1D787F92786F35 /* PerceptionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PerceptionService.swift; sourceTree = "<group>"; };
 		DD078B8E09E9F023A212E581 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		DR1V1NG001F001A001B001C1 /* DrivingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = DrivingView.swift; path = Driving/Views/DrivingView.swift; sourceTree = "<group>"; };
@@ -107,11 +109,11 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		F9D6BD6E05BA8D36C6DC01A2 /* Frameworks */ = {
+		32F3C664534844EB8BC99C89 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				04E3E50806A2046D280A6649 /* Pods_Redi.framework in Frameworks */,
+				42EC1D8B63C08953C626E8EB /* Pods_Redi.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,6 +126,16 @@
 				F2EB01869FCA9D8F2292C998 /* Redi.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		01DB4ABD5EF77CB22B8832A0 /* Pods */ = {
+			isa = PBXGroup;
+			children = (
+				0E7F8083FFD019DB3B0F3F4D /* Pods-Redi.debug.xcconfig */,
+				BEA53ACD5677BE0F02E19E7B /* Pods-Redi.release.xcconfig */,
+			);
+			name = Pods;
+			path = Pods;
 			sourceTree = "<group>";
 		};
 		0498F34336D682844E8FE2E0 /* Views */ = {
@@ -150,7 +162,6 @@
 		2E58C488A3F1229AE1A8082A /* Services */ = {
 			isa = PBXGroup;
 			children = (
-				C9EFBD4A2F2ED75B009B7745 /* RediWebRTCService.swift */,
 				5DBA8434655A768264517F24 /* AudioClassificationService.swift */,
 				150F0DC41592737940795313 /* AudioService.swift */,
 				EF7B4408A28AE7C6E005F6B3 /* CameraService.swift */,
@@ -181,6 +192,14 @@
 			path = Models;
 			sourceTree = "<group>";
 		};
+		7A0B452D3A91DF2936064313 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DC2F3E8EB8B9F84362D67F19 /* Pods_Redi.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		87CED800F54AE7AAC9F6C82F /* V3 */ = {
 			isa = PBXGroup;
 			children = (
@@ -199,23 +218,6 @@
 				24956C7F8C224D00B5EA5696 /* V3WebSocketService.swift */,
 			);
 			name = Services;
-			sourceTree = "<group>";
-		};
-		BAD6DCE0060FF3F349C2E771 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				2FB65A740B6D68808EF4004F /* Pods_Redi.framework */,
-			);
-			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		C2C0AE1EE16EA4797EC082E2 /* Pods */ = {
-			isa = PBXGroup;
-			children = (
-				5AA226BBFD071AD3C1D48C79 /* Pods-Redi.debug.xcconfig */,
-				983C3ED150496CC193920FF1 /* Pods-Redi.release.xcconfig */,
-			);
-			path = Pods;
 			sourceTree = "<group>";
 		};
 		C9ED63D2C52CD9A595BD6DF1 /* App */ = {
@@ -286,6 +288,7 @@
 		FE7D5ACDAD9848F606558C22 = {
 			isa = PBXGroup;
 			children = (
+				C93000B02F26E85400431780 /* RediWebRTCService.swift */,
 				97D9CC5312EFE7EC3589A208 /* Assets.xcassets */,
 				A09B1F75008D18DF50E341BE /* StoreKitConfiguration.storekit */,
 				C9ED63D2C52CD9A595BD6DF1 /* App */,
@@ -296,8 +299,9 @@
 				0498F34336D682844E8FE2E0 /* Views */,
 				00ABEAFC8178F0FD404CD161 /* Products */,
 				87CED800F54AE7AAC9F6C82F /* V3 */,
-				C2C0AE1EE16EA4797EC082E2 /* Pods */,
-				BAD6DCE0060FF3F349C2E771 /* Frameworks */,
+				01DB4ABD5EF77CB22B8832A0 /* Pods */,
+				7A0B452D3A91DF2936064313 /* Frameworks */,
+				912FCAF90FD72EEF12352A19 /* LaunchScreen.storyboard */,
 			);
 			sourceTree = "<group>";
 		};
@@ -308,11 +312,11 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = DAE1BB8594A029229CCE96C7 /* Build configuration list for PBXNativeTarget "Redi" */;
 			buildPhases = (
-				050E2391D0660A5D6E79D3E8 /* [CP] Check Pods Manifest.lock */,
+				8C2AD7C9BD6899859625FD6E /* [CP] Check Pods Manifest.lock */,
 				92F2BDC1A599DCE9A3D97ACC /* Sources */,
 				F1EA5FE4272B77A83E81141D /* Resources */,
-				F9D6BD6E05BA8D36C6DC01A2 /* Frameworks */,
-				9DF06713201EA9706442F5E0 /* [CP] Embed Pods Frameworks */,
+				32F3C664534844EB8BC99C89 /* Frameworks */,
+				D45BA4166766066FAF08489A /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -362,13 +366,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				39287B4F803973145E3EE010 /* Assets.xcassets in Resources */,
+				D089E7930C9B40E159DC7659 /* LaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		050E2391D0660A5D6E79D3E8 /* [CP] Check Pods Manifest.lock */ = {
+		8C2AD7C9BD6899859625FD6E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -390,7 +395,7 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		9DF06713201EA9706442F5E0 /* [CP] Embed Pods Frameworks */ = {
+		D45BA4166766066FAF08489A /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -439,7 +444,7 @@
 				ED2BF773D000DBF150F17712 /* StoreKitService.swift in Sources */,
 				4A5CC964788FBFBC3147BA44 /* WakeWordService.swift in Sources */,
 				7EF88080B323380BFA82F74F /* WebSocketService.swift in Sources */,
-				C9EFBD4B2F2ED75B009B7745 /* RediWebRTCService.swift in Sources */,
+				C93000B12F26E85400431780 /* RediWebRTCService.swift in Sources */,
 				7096E16A1E3028A7B89D536C /* V3Config.swift in Sources */,
 				C80227FB26645796A682337E /* V3AudioService.swift in Sources */,
 				EDDC5BDA47D35F4CE1CAF36D /* V3CameraService.swift in Sources */,
@@ -584,7 +589,7 @@
 		};
 		5C975710BDB2173CD8C4F7A9 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 5AA226BBFD071AD3C1D48C79 /* Pods-Redi.debug.xcconfig */;
+			baseConfigurationReference = 0E7F8083FFD019DB3B0F3F4D /* Pods-Redi.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -607,7 +612,7 @@
 		};
 		6728A1FA3506059CE4B4FE97 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 983C3ED150496CC193920FF1 /* Pods-Redi.release.xcconfig */;
+			baseConfigurationReference = BEA53ACD5677BE0F02E19E7B /* Pods-Redi.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
