@@ -38,6 +38,7 @@ import { initRediV5 } from './websocket/rediV5Server';
 import { initRediV6, closeRediV6 } from './websocket/rediV6Server';
 import { initRediV7, closeRediV7 } from './websocket/rediV7Server';
 import { initRediV8, closeRediV8 } from './websocket/rediV8Server';
+import { initV9WebSocket } from './websocket/rediV9Server';
 // Screen sharing WebSocket server
 import { initScreenShare } from './websocket/screenShareServer';
 // Import Homework Rescue pages
@@ -1497,6 +1498,9 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 const server = createServer(app);
 
 // Initialize WebSocket servers in order
+// V9 - Three-Brain (Cerebras Fast + Claude Haiku Voice + GPT-4o Deep, Deepgram STT, ElevenLabs TTS)
+initV9WebSocket(server);
+
 // V8 - Split pipeline (Deepgram STT → Groq Vision → Groq LLM → ElevenLabs TTS)
 initRediV8(server);
 
