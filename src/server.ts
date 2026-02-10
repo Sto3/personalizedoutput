@@ -39,6 +39,35 @@ import { initRediV6, closeRediV6 } from './websocket/rediV6Server';
 import { initRediV7, closeRediV7 } from './websocket/rediV7Server';
 import { initRediV8, closeRediV8 } from './websocket/rediV8Server';
 import { initV9WebSocket } from './websocket/rediV9Server';
+// Redi services
+import memoryService from './memory/memoryService';
+import tieredMemory from './memory/tieredMemory';
+import outreachService from './outreach/outreachService';
+import callScheduler from './outreach/callScheduler';
+import numberManager from './outreach/numberManager';
+import { initCallHandler } from './outreach/callHandler';
+import callingService from './calling/callingService';
+import meetingService from './meetings/meetingService';
+import reflectSession from './sessions/reflectSession';
+import sessionTypes from './sessions/sessionTypes';
+import reportGenerator from './reports/reportGenerator';
+import webSearch from './integrations/webSearch';
+import weatherService from './integrations/weatherService';
+import translationService from './integrations/translationService';
+import productService from './integrations/productService';
+import gmailService from './integrations/email/gmailService';
+import outlookService from './integrations/email/outlookService';
+import yelpService from './integrations/booking/yelpService';
+import transportService from './integrations/deeplinks/transportService';
+import shoppingService from './integrations/deeplinks/shoppingService';
+import paypalService from './integrations/payments/paypalService';
+import paymentDeeplinks from './integrations/payments/paymentDeeplinks';
+import spotifyService from './integrations/music/spotifyService';
+import smartThingsService from './integrations/smarthome/smartThingsService';
+import proactiveEngine from './intelligence/proactiveEngine';
+import usageTracker from './billing/usageTracker';
+import authService from './auth/authService';
+import landingPage from './api/landingPage';
 // Screen sharing WebSocket server
 import { initScreenShare } from './websocket/screenShareServer';
 // Import Homework Rescue pages
@@ -824,6 +853,36 @@ app.use('/api/redi', rediApi);                // Less specific - handles /api/re
 // OpenAI Usage API - Check spending via API
 app.use('/api/usage', usageApi);
 
+// Redi service routes
+app.use('/api/memory', memoryService);
+app.use('/api/memory', tieredMemory);
+app.use('/api/outreach', outreachService);
+app.use('/api/outreach', callScheduler);
+app.use('/api/phone', numberManager);
+app.use('/api/calling', callingService);
+app.use('/api/meetings', meetingService);
+app.use('/api/sessions', reflectSession);
+app.use('/api/sessions', sessionTypes);
+app.use('/api/study', sessionTypes);
+app.use('/api/reports', reportGenerator);
+app.use('/api/search', webSearch);
+app.use('/api/weather', weatherService);
+app.use('/api/translate', translationService);
+app.use('/api/product', productService);
+app.use('/api/email/gmail', gmailService);
+app.use('/api/email/outlook', outlookService);
+app.use('/api/booking', yelpService);
+app.use('/api/deeplinks', transportService);
+app.use('/api/deeplinks', shoppingService);
+app.use('/api/payments/paypal', paypalService);
+app.use('/api/payments', paymentDeeplinks);
+app.use('/api/music/spotify', spotifyService);
+app.use('/api/smarthome/smartthings', smartThingsService);
+app.use('/api/intelligence', proactiveEngine);
+app.use('/api/billing', usageTracker);
+app.use('/api/auth', authService);
+app.use('/redi', landingPage);
+
 // ============================================================
 // STRIPE WEBHOOK
 // ============================================================
@@ -1500,6 +1559,9 @@ const server = createServer(app);
 // Initialize WebSocket servers in order
 // V9 - Three-Brain (Cerebras Fast + Claude Haiku Voice + GPT-4o Deep, Deepgram STT, ElevenLabs TTS)
 initV9WebSocket(server);
+
+// Twilio call handler WebSocket (/ws/redi-call)
+initCallHandler(server);
 
 // V8 - Split pipeline (Deepgram STT → Groq Vision → Groq LLM → ElevenLabs TTS)
 initRediV8(server);
