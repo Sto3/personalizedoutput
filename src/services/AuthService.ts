@@ -22,6 +22,7 @@
 
 import crypto from 'crypto';
 import { Router, Request, Response } from 'express';
+import { Resend } from 'resend';
 
 const router = Router();
 
@@ -47,6 +48,10 @@ interface PendingVerification {
 const users = new Map<string, User>();
 const pendingVerifications = new Map<string, PendingVerification>();
 const sessions = new Map<string, { userId: string; expiresAt: Date }>();
+
+// Initialize Resend client (only if API key exists)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const FROM_EMAIL = process.env.FROM_EMAIL || 'auth@personalizedoutput.com';
 
 // ============================================
 // TOTP (Time-based One-Time Password) - RFC 6238
@@ -193,15 +198,37 @@ function generateEmailCode(): string {
 }
 
 /**
- * Send email verification code (placeholder - use Resend in production)
+ * Send email verification code via Resend API
+ * Falls back to console logging when RESEND_API_KEY is not configured
  */
 async function sendEmailCode(email: string, code: string): Promise<boolean> {
-  // TODO: Integrate with Resend API
-  console.log(`[Auth] Sending email code ${code} to ${email}`);
-  // In production:
-  // const resend = new Resend(process.env.RESEND_API_KEY);
-  // await resend.emails.send({ ... });
-  return true;
+  if (!resend) {
+    console.log(`[Auth] Resend not configured, logging code: ${code} for ${email}`);
+    return true;
+  }
+
+  try {
+    await resend.emails.send({
+      from: FROM_EMAIL,
+      to: email,
+      subject: 'Your Redi Verification Code',
+      html: `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 20px;">
+          <h2 style="color: #1a1a1a; margin-bottom: 8px;">Your verification code</h2>
+          <p style="color: #666; margin-bottom: 24px;">Enter this code to verify your identity:</p>
+          <div style="background: #f4f4f5; border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 32px; font-weight: 700; letter-spacing: 6px; color: #1a1a1a;">${code}</span>
+          </div>
+          <p style="color: #999; font-size: 14px;">This code expires in 10 minutes. If you didn't request this, you can safely ignore this email.</p>
+        </div>
+      `
+    });
+    console.log(`[Auth] Verification email sent to ${email}`);
+    return true;
+  } catch (error) {
+    console.error(`[Auth] Failed to send verification email to ${email}:`, error);
+    return false;
+  }
 }
 
 // ============================================
@@ -247,9 +274,13 @@ router.post('/register', async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
   });
 
-  await sendEmailCode(email, code);
+  const sent = await sendEmailCode(email, code);
+  if (!sent) {
+    res.status(500).json({ error: 'Failed to send verification email. Please try again.' });
+    return;
+  }
 
-  res.json({ 
+  res.json({
     userId,
     message: 'Verification code sent to email'
   });
@@ -415,7 +446,11 @@ router.post('/login', async (req: Request, res: Response) => {
     expiresAt: new Date(Date.now() + 10 * 60 * 1000)
   });
 
-  await sendEmailCode(email, code);
+  const sent = await sendEmailCode(email, code);
+  if (!sent) {
+    res.status(500).json({ error: 'Failed to send verification email. Please try again.' });
+    return;
+  }
 
   res.json({
     userId: user.id,
