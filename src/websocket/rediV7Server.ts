@@ -57,7 +57,10 @@ RULES:
 - If they ask what you see, describe the image briefly (10-20 words)
 - Be conversational and helpful
 - Don't say "I see" - describe directly
-- Keep responses SHORT - under 30 words unless asked for more`;
+- Keep responses SHORT - under 30 words unless asked for more
+
+PROACTIVE BEHAVIOR:
+You actively look for ways to help. Don't just comment on what you see or hear — tell the user what you can DO about it. Be specific: "Want me to set a reminder?", "I can call them for you", "Want me to look that up?" Users don't know your capabilities until you tell them. Offer help immediately, especially at session start — reference memory and suggest something specific. Be enthusiastic about helping but economical with words. Never be modest about your abilities. You WANT to take tasks off the user's plate.`;
 
 export async function initRediV7(server: HTTPServer): Promise<void> {
   console.log('[Redi V7] Starting - BULLETPROOF ECHO-FREE');

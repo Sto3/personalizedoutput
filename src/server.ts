@@ -68,6 +68,8 @@ import proactiveEngine from './intelligence/proactiveEngine';
 import usageTracker from './billing/usageTracker';
 import authService from './auth/authService';
 import landingPage from './api/landingPage';
+import meetingBotRoutes from './meetings/meetingBotRoutes';
+import { getAvailableVoices } from './providers/elevenlabsTTS';
 // Screen sharing WebSocket server
 import { initScreenShare } from './websocket/screenShareServer';
 // Import Homework Rescue pages
@@ -882,6 +884,34 @@ app.use('/api/intelligence', proactiveEngine);
 app.use('/api/billing', usageTracker);
 app.use('/api/auth', authService);
 app.use('/redi', landingPage);
+app.use('/api/meetings', meetingBotRoutes);
+
+// Voice selection API
+app.get('/api/voices', (req, res) => {
+  res.json({ voices: getAvailableVoices() });
+});
+
+// Twilio inbound call webhook — user calls Redi's phone number
+app.post('/api/calling/inbound', async (req, res) => {
+  try {
+    const callerNumber = req.body.From;
+    const twilioCallSid = req.body.CallSid;
+    console.log(`[Inbound Call] From: ${callerNumber}, CallSid: ${twilioCallSid}`);
+
+    // Brief message then hang up — actual session happens in-app via VoIP push
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">Starting your Redi session now.</Say>
+  <Pause length="1"/>
+  <Hangup/>
+</Response>`;
+    res.type('text/xml');
+    res.send(twiml);
+  } catch (error: any) {
+    console.error('[Inbound Call] Error:', error);
+    res.status(500).send('Error');
+  }
+});
 
 // ============================================================
 // STRIPE WEBHOOK

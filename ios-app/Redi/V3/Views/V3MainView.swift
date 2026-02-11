@@ -14,7 +14,9 @@ import AVFoundation
 import WebRTC
 
 struct V3MainView: View {
+    @EnvironmentObject var appState: AppState
     @StateObject private var webrtcService = RediWebRTCService()
+    @StateObject private var v9Service = V9WebSocketService()
     @State private var isActive = false
     @State private var sensitivity: Double = 5
     @State private var memoryEnabled = true
@@ -22,10 +24,14 @@ struct V3MainView: View {
     @State private var transcriptLines: [(String, String)] = []
     @State private var latency: Int = 0
     @State private var showSettings = false
+    @State private var showSessionModeSelector = false
     @State private var waveformPhase: CGFloat = 0
     @State private var glowPulse: CGFloat = 0
     @State private var particleSystem = ParticleSystem()
-    
+    @State private var logoTapCount = 0
+    @State private var logoTapTimer: Timer? = nil
+    @State private var activeBrain: String = ""  // "fast", "voice", "deep", or ""
+
     // Brand colors
     private let cyanGlow = Color(hex: "00D4FF")
     private let magentaGlow = Color(hex: "FF00AA")
@@ -82,6 +88,12 @@ struct V3MainView: View {
         .onAppear {
             setupCallbacks()
             startAnimations()
+        }
+        .sheet(isPresented: $showSessionModeSelector) {
+            SessionModeSelector(isPresented: $showSessionModeSelector) { mode in
+                // Mode selected - start session
+                showSessionModeSelector = false
+            }
         }
     }
     
@@ -231,7 +243,7 @@ struct V3MainView: View {
     private var brandingText: some View {
         VStack(spacing: 8) {
             Text("REDI")
-                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .font(.custom("Bodoni 72", size: 36))
                 .foregroundStyle(
                     LinearGradient(
                         colors: [cyanGlow, magentaGlow],
@@ -239,10 +251,52 @@ struct V3MainView: View {
                         endPoint: .trailing
                     )
                 )
-            
+                .onTapGesture {
+                    handleLogoTap()
+                }
+
             Text("for Anything")
                 .font(.system(size: 14, weight: .medium, design: .rounded))
                 .foregroundColor(.white.opacity(0.6))
+
+            // Brain indicator (V9 only)
+            if appState.useV9 && !activeBrain.isEmpty {
+                brainIndicator
+                    .transition(.opacity)
+            }
+        }
+    }
+
+    private var brainIndicator: some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(brainColor)
+                .frame(width: 6, height: 6)
+            Text(brainLabel)
+                .font(.system(size: 10, weight: .bold, design: .monospaced))
+                .foregroundColor(brainColor)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 4)
+        .background(brainColor.opacity(0.15))
+        .cornerRadius(8)
+    }
+
+    private var brainColor: Color {
+        switch activeBrain {
+        case "fast": return .orange
+        case "voice": return cyanGlow
+        case "deep": return .purple
+        default: return .gray
+        }
+    }
+
+    private var brainLabel: String {
+        switch activeBrain {
+        case "fast": return "CEREBRAS"
+        case "voice": return "HAIKU"
+        case "deep": return "GPT-4o"
+        default: return ""
         }
     }
     
@@ -400,7 +454,7 @@ struct V3MainView: View {
                 buttonContent
             }
         }
-        .disabled(webrtcService.isConnecting)
+        .disabled(webrtcService.isConnecting || v9Service.connectionState == .connecting)
     }
     
     private var outerGlowRing: some View {
@@ -622,33 +676,76 @@ struct V3MainView: View {
     
     private func toggleSession() {
         if isActive {
-            webrtcService.disconnect()
+            if appState.useV9 {
+                v9Service.disconnect()
+            } else {
+                webrtcService.disconnect()
+            }
             isActive = false
             statusText = "Ready"
             transcriptLines = []
+            activeBrain = ""
         } else {
-            Task {
-                do {
-                    try await webrtcService.connect()
-                    isActive = true
-                    statusText = "Connecting..."
-                } catch {
-                    statusText = "Failed"
+            if appState.useV9 {
+                v9Service.connect()
+                isActive = true
+                statusText = "Connecting (V9)..."
+            } else {
+                Task {
+                    do {
+                        try await webrtcService.connect()
+                        isActive = true
+                        statusText = "Connecting..."
+                    } catch {
+                        statusText = "Failed"
+                    }
                 }
             }
         }
     }
-    
+
     private func setupCallbacks() {
+        // V7 WebRTC callbacks
         webrtcService.onTranscriptReceived = { text, role in
             transcriptLines.append((text, role))
             if transcriptLines.count > 10 { transcriptLines.removeFirst() }
         }
-        
         webrtcService.onLatencyMeasured = { ms in latency = ms }
         webrtcService.onPlaybackStarted = { statusText = "Speaking" }
         webrtcService.onPlaybackEnded = {
             statusText = webrtcService.isActivated ? "Listening" : "Say 'Hey Redi'"
+        }
+
+        // V9 WebSocket callbacks
+        v9Service.onTranscript = { text, role in
+            DispatchQueue.main.async {
+                transcriptLines.append((text, role))
+                if transcriptLines.count > 10 { transcriptLines.removeFirst() }
+            }
+        }
+        v9Service.onPlaybackStarted = {
+            DispatchQueue.main.async { statusText = "Speaking" }
+        }
+        v9Service.onPlaybackEnded = {
+            DispatchQueue.main.async { statusText = "Listening" }
+        }
+        v9Service.onSessionReady = {
+            DispatchQueue.main.async { statusText = "Listening (V9)" }
+        }
+        v9Service.onBrainUsed = { brain in
+            DispatchQueue.main.async { activeBrain = brain }
+        }
+    }
+
+    private func handleLogoTap() {
+        logoTapCount += 1
+        logoTapTimer?.invalidate()
+        logoTapTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in
+            logoTapCount = 0
+        }
+        if logoTapCount >= 7 {
+            logoTapCount = 0
+            DeveloperModeManager.shared.unlock()
         }
     }
     

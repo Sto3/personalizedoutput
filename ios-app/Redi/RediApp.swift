@@ -14,13 +14,22 @@
 import SwiftUI
 import UserNotifications
 
+// MARK: - App State (shared across views)
+
+class AppState: ObservableObject {
+    static let shared = AppState()
+    @Published var useV9 = false  // Set to true to test V9 Three-Brain architecture
+}
+
 @main
 struct RediApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    
+    @StateObject private var appState = AppState.shared
+
     var body: some Scene {
         WindowGroup {
             RediTabView()
+                .environmentObject(appState)
         }
     }
 }
@@ -38,8 +47,21 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
         
         // Request notification permissions
         requestNotificationPermissions()
-        
+
+        // Register for remote notifications (push)
+        application.registerForRemoteNotifications()
+
+        // Register Siri Shortcuts
+        RediShortcuts.registerShortcuts()
+
+        // Register push notification categories for Redi
+        PushNotificationService.shared.registerCategories()
+
         return true
+    }
+
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        PushNotificationService.shared.registerToken(deviceToken)
     }
     
     // MARK: - Notification Setup
