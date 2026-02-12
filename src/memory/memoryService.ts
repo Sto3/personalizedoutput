@@ -57,6 +57,79 @@ async function mergeMemory(existing: string, newSessionSummary: string): Promise
   return data.content?.[0]?.text || existing;
 }
 
+// Get all memory layers for a user (used by backup)
+async function getAllMemoryLayers(userId: string) {
+  const db = getSupabase();
+
+  const [memResult, tieredResult] = await Promise.all([
+    db.from('redi_user_memory').select('*').eq('user_id', userId).single(),
+    db.from('redi_tiered_memory').select('*').eq('user_id', userId).single(),
+  ]);
+
+  return {
+    cumulative: memResult.data || null,
+    tiered: tieredResult.data || null,
+  };
+}
+
+// Generate a downloadable memory backup for the user
+// Automatically deletes the PREVIOUS backup after new one is created
+export async function generateMemoryBackup(userId: string): Promise<{ url: string; generatedAt: Date }> {
+  const db = getSupabase();
+
+  // 1. Fetch all memory layers
+  const allLayers = await getAllMemoryLayers(userId);
+
+  // 2. Format as readable JSON
+  const backup = {
+    userId,
+    generatedAt: new Date().toISOString(),
+    rediVersion: 'V9',
+    layers: allLayers,
+    note: 'This is a backup of everything Redi remembers about you. Keep it somewhere safe.',
+  };
+
+  const backupJson = JSON.stringify(backup, null, 2);
+
+  // 3. Delete previous backup if it exists
+  const { data: prevBackup } = await db
+    .from('redi_user_memory')
+    .select('last_backup_path')
+    .eq('user_id', userId)
+    .single();
+
+  if (prevBackup?.last_backup_path) {
+    // Delete the old file from storage
+    await db.storage.from('memory-backups').remove([prevBackup.last_backup_path]);
+    console.log(`[Memory] Deleted previous backup for user ${userId}`);
+  }
+
+  // 4. Save new backup
+  const backupPath = `backups/${userId}/${new Date().toISOString().split('T')[0]}.json`;
+  await db.storage.from('memory-backups').upload(backupPath, backupJson, {
+    contentType: 'application/json',
+  });
+
+  // 5. Update user's last backup date and path
+  await db
+    .from('redi_users')
+    .update({
+      last_memory_backup: new Date().toISOString(),
+      last_backup_path: backupPath,
+    })
+    .eq('id', userId);
+
+  // 6. Generate signed download URL (expires in 24 hours)
+  const { data: signedUrl } = await db.storage
+    .from('memory-backups')
+    .createSignedUrl(backupPath, 86400);  // 24 hours
+
+  return {
+    url: signedUrl?.signedUrl || '',
+    generatedAt: new Date(),
+  };
+}
+
 // GET /api/memory/:userId — fetch memory
 router.get('/:userId', async (req: Request, res: Response) => {
   try {
@@ -122,6 +195,17 @@ router.delete('/:userId', async (req: Request, res: Response) => {
     await db.from('redi_user_memory').delete().eq('user_id', req.params.userId);
     await db.from('redi_tiered_memory').delete().eq('user_id', req.params.userId);
     res.json({ deleted: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/memory/:userId/backup — generate downloadable memory backup
+// Automatically deletes the PREVIOUS backup after new one is created
+router.post('/:userId/backup', async (req: Request, res: Response) => {
+  try {
+    const result = await generateMemoryBackup(req.params.userId);
+    res.json(result);
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

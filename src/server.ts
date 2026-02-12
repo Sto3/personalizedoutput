@@ -70,6 +70,7 @@ import authService from './auth/authService';
 import landingPage from './api/landingPage';
 import meetingBotRoutes from './meetings/meetingBotRoutes';
 import { getAvailableVoices } from './providers/elevenlabsTTS';
+import { createOrganization, generateInviteCode, joinWithInviteCode, getOrgContext } from './organizations/orgService';
 // Screen sharing WebSocket server
 import { initScreenShare } from './websocket/screenShareServer';
 // Import Homework Rescue pages
@@ -910,6 +911,43 @@ app.post('/api/calling/inbound', async (req, res) => {
   } catch (error: any) {
     console.error('[Inbound Call] Error:', error);
     res.status(500).send('Error');
+  }
+});
+
+// Organization endpoints
+app.post('/api/org/create', async (req, res) => {
+  try {
+    const orgId = await createOrganization(req.body);
+    res.json({ orgId });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/org/:orgId/invite', async (req, res) => {
+  try {
+    const code = await generateInviteCode(req.params.orgId);
+    res.json({ inviteCode: code, expiresIn: '7 days' });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/org/join', async (req, res) => {
+  try {
+    const orgId = await joinWithInviteCode(req.body.code, req.body.userId);
+    res.json({ orgId, status: 'joined' });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/org/:userId/context', async (req, res) => {
+  try {
+    const context = await getOrgContext(req.params.userId);
+    res.json({ context });
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
   }
 });
 

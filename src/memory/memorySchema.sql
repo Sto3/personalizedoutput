@@ -182,3 +182,31 @@ CREATE TABLE IF NOT EXISTS redi_reports (
 );
 
 CREATE INDEX IF NOT EXISTS idx_redi_reports_user ON redi_reports(user_id);
+
+-- Organizations
+CREATE TABLE IF NOT EXISTS redi_organizations (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL DEFAULT 'custom',
+  created_by TEXT NOT NULL,
+  member_ids TEXT[] NOT NULL DEFAULT '{}',
+  org_memory TEXT DEFAULT '',
+  roles JSONB DEFAULT '{}',
+  culture TEXT DEFAULT '',
+  active_projects TEXT[] DEFAULT '{}',
+  shared_calendar BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Organization invite codes
+CREATE TABLE IF NOT EXISTS redi_org_invites (
+  code TEXT PRIMARY KEY,
+  org_id TEXT NOT NULL REFERENCES redi_organizations(id),
+  expires_at TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add last_memory_backup and last_backup_path to users table
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_memory_backup TIMESTAMPTZ;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_backup_path TEXT;

@@ -116,6 +116,22 @@ Output ONLY valid JSON array of objects with: type (schedule/social/health/weath
       suggestions = match ? JSON.parse(match[0]) : [];
     }
 
+    // Check if user should be nudged to download their memory backup
+    const backupStatus = await checkMemoryBackupNudge(userId);
+    if (backupStatus.shouldNudge) {
+      suggestions.push({
+        type: 'memory_backup',
+        priority: 0.5,
+        title: 'Back up your Redi memory',
+        body: backupStatus.lastBackupDate
+          ? `It's been ${backupStatus.daysSinceBackup} days since your last memory backup. Want me to prepare a download? This way everything I know about you is safe even if something happens.`
+          : `I've been learning a lot about you! Want me to create a backup of everything I remember? It's good to have a safe copy — just in case.`,
+        actionType: 'nudge',
+        suggestedAction: 'download_memory_backup',
+        confidence: 0.8,
+      });
+    }
+
     // Sort by priority
     suggestions.sort((a, b) => b.priority - a.priority);
 
@@ -124,5 +140,36 @@ Output ONLY valid JSON array of objects with: type (schedule/social/health/weath
     res.status(500).json({ error: err.message });
   }
 });
+
+// Check if user should be nudged to download their memory backup
+// Runs as part of the proactive suggestion engine
+
+interface MemoryBackupStatus {
+  lastBackupDate: Date | null;
+  daysSinceBackup: number;
+  shouldNudge: boolean;
+}
+
+async function checkMemoryBackupNudge(userId: string): Promise<MemoryBackupStatus> {
+  const db = getSupabase();
+
+  // Get last backup date from user record
+  const { data } = await db
+    .from('redi_users')
+    .select('last_memory_backup')
+    .eq('id', userId)
+    .single();
+
+  const lastBackup = data?.last_memory_backup ? new Date(data.last_memory_backup) : null;
+  const daysSinceBackup = lastBackup
+    ? Math.floor((Date.now() - lastBackup.getTime()) / (1000 * 60 * 60 * 24))
+    : 999;  // Never backed up
+
+  return {
+    lastBackupDate: lastBackup,
+    daysSinceBackup,
+    shouldNudge: daysSinceBackup >= 90,  // ~quarterly
+  };
+}
 
 export default router;

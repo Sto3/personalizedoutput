@@ -26,6 +26,80 @@ function getSupabase(): SupabaseClient {
   return supabase;
 }
 
+// Categories of facts to extract from every session
+// The memory merge (Claude Haiku) should be instructed to look for ALL of these
+const EXTRACTION_CATEGORIES = {
+  // Identity
+  name: 'User\'s name, preferred name, nicknames',
+  family: 'Names and relationships of family members (spouse, kids, parents, siblings)',
+  friends: 'Names and context of friends mentioned',
+  coworkers: 'Names, roles, and dynamics of coworkers and bosses',
+  pets: 'Pet names, breeds, health',
+
+  // Important dates
+  birthday: 'User\'s birthday',
+  anniversary: 'Wedding anniversary, relationship milestones',
+  family_dates: 'Family members\' birthdays, kids\' school events, graduations',
+
+  // Routine & schedule
+  work_schedule: 'Work hours, commute, meeting patterns',
+  weekly_routine: 'Gym days, church schedule, regular commitments',
+  recurring_events: 'Book club, poker night, therapy sessions, tutoring',
+
+  // Preferences
+  food_preferences: 'Favorite foods, restaurants, allergies, dietary restrictions',
+  music_taste: 'Favorite artists, genres, playlists',
+  entertainment: 'Shows, movies, books, podcasts they enjoy',
+  communication_style: 'How they prefer to communicate — direct, detailed, casual, formal',
+  humor_style: 'Do they appreciate jokes? Sarcasm? Puns? Or prefer straight talk?',
+
+  // Health & wellness
+  health_conditions: 'Chronic conditions, medications, doctor appointments',
+  fitness_goals: 'Workout routine, fitness targets, sports',
+  mental_health: 'Stress triggers, therapy, coping strategies (handle with extreme care)',
+  sleep_patterns: 'Sleep issues, bedtime routine',
+
+  // Life goals & passions
+  career_goals: 'Job aspirations, promotions, career changes',
+  financial_goals: 'Savings targets, debts, investments, budgets',
+  passions: 'Hobbies, interests they get excited about, creative pursuits',
+  learning: 'What they\'re studying, courses, skills they want to develop',
+  dreams: 'Long-term life dreams, bucket list items',
+
+  // Current concerns
+  active_problems: 'Problems they\'re currently working through',
+  stressors: 'What\'s causing them stress right now',
+  upcoming_decisions: 'Decisions they\'re weighing',
+
+  // Relationship with Redi
+  running_jokes: 'Inside jokes or recurring humor between user and Redi',
+  shared_history: 'Significant moments in their Redi journey',
+  preferences_for_redi: 'How they want Redi to behave, what they like/dislike about interactions',
+};
+
+const MEMORY_MERGE_PROMPT = `You are extracting and updating a person's memory profile from a conversation transcript.
+
+CRITICAL INSTRUCTIONS:
+1. Extract EVERY personal fact mentioned, no matter how small. Their dog's name matters. Their favorite coffee order matters.
+2. Update existing facts if new information contradicts or adds to them.
+3. Note emotional context: what excited them, what stressed them, what they avoided.
+4. Track communication style observations: are they getting more comfortable? Do they prefer brevity?
+5. Identify passions: what topics made them talk more, get animated, ask follow-up questions?
+6. Note unresolved problems: what issues are still open from this session?
+7. Flag matters of importance: anything time-sensitive, health-related, or emotionally significant.
+
+CATEGORIES TO EXTRACT FROM:
+${JSON.stringify(EXTRACTION_CATEGORIES, null, 2)}
+
+EXISTING MEMORY:
+{existingMemory}
+
+NEW SESSION TRANSCRIPT:
+{transcript}
+
+OUTPUT FORMAT:
+Return the complete updated memory as a single cohesive text (max 2000 words). Organize naturally by theme. Mark any NEW facts discovered in this session with [NEW]. Mark any UPDATED facts with [UPDATED]. Include a "Current Concerns" section at the end with active problems and upcoming events.`;
+
 const LAYER_WORD_BUDGETS: Record<number, number> = {
   2: 500,
   3: 300,
@@ -256,9 +330,14 @@ router.post('/:userId/session-end', async (req: Request, res: Response) => {
       .eq('user_id', userId)
       .single();
 
+    // Use enhanced extraction prompt for richer memory capture
+    const enrichedPrompt = MEMORY_MERGE_PROMPT
+      .replace('{existingMemory}', existing?.layer2_session_context || '(empty)')
+      .replace('{transcript}', sessionSummary);
+
     const updatedL2 = await callHaiku(
-      `Summarize the last 3-5 sessions into a context summary. Keep under ${LAYER_WORD_BUDGETS[2]} words. Output only the summary.`,
-      `PREVIOUS CONTEXT:\n${existing?.layer2_session_context || ''}\n\nLATEST SESSION:\n${sessionSummary}`,
+      `Summarize the last 3-5 sessions into a context summary using deep extraction. Keep under ${LAYER_WORD_BUDGETS[2]} words. Output only the summary.`,
+      enrichedPrompt,
     );
 
     // Track fact frequency for auto-promotion
@@ -285,5 +364,65 @@ router.post('/:userId/session-end', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Update a specific field within a memory layer
+async function updateLayerField(userId: string, layerNum: number, fieldName: string, value: string): Promise<void> {
+  const db = getSupabase();
+  const col = LAYER_COLUMNS[layerNum];
+  if (!col) return;
+
+  const { data } = await db
+    .from('redi_tiered_memory')
+    .select(col)
+    .eq('user_id', userId)
+    .single();
+
+  const existing = data?.[col] || '';
+  // Append or replace the field marker
+  const fieldMarker = `[${fieldName}]`;
+  const fieldRegex = new RegExp(`\\[${fieldName}\\]\\s*[\\s\\S]*?(?=\\[|$)`, 'i');
+
+  let updated: string;
+  if (fieldRegex.test(existing)) {
+    updated = existing.replace(fieldRegex, `${fieldMarker} ${value}\n`);
+  } else {
+    updated = existing + `\n${fieldMarker} ${value}\n`;
+  }
+
+  await db.from('redi_tiered_memory').upsert({
+    user_id: userId,
+    [col]: updated.trim(),
+    updated_at: new Date().toISOString(),
+  });
+}
+
+// After every 5 sessions, analyze the user's communication style
+// and store it in Layer 4 (Personal Profile) for Redi to adapt to
+export async function analyzeCommStyle(userId: string, recentTranscripts: string[]): Promise<string> {
+  const prompt = `Analyze these conversation transcripts and describe this person's communication style in 100 words or less. Focus on:
+- Formality level (casual/professional/mixed)
+- Preferred response length (brief/detailed/depends on topic)
+- Humor appreciation (jokes welcome/straight talk preferred)
+- Decision-making style (quick/deliberate/collaborative)
+- Emotional expression (open/reserved/context-dependent)
+- Topics that energize them vs topics they avoid
+
+Transcripts:
+${recentTranscripts.join('\n---\n')}
+
+Respond with ONLY the style description, no preamble.`;
+
+  const response = await callHaiku(
+    'You are a communication style analyzer. Output only the style description.',
+    prompt,
+  );
+
+  // Store in Layer 4 (Personal Profile) under communication_style
+  await updateLayerField(userId, 4, 'communication_style', response);
+
+  return response;
+}
+
+export { EXTRACTION_CATEGORIES };
 
 export default router;
