@@ -116,6 +116,12 @@ Output ONLY valid JSON array of objects with: type (schedule/social/health/weath
       suggestions = match ? JSON.parse(match[0]) : [];
     }
 
+    // Check engagement nudge for habit building
+    const engagementNudge = await checkEngagementNudge(userId);
+    if (engagementNudge) {
+      suggestions.push(engagementNudge);
+    }
+
     // Check if user should be nudged to download their memory backup
     const backupStatus = await checkMemoryBackupNudge(userId);
     if (backupStatus.shouldNudge) {
@@ -170,6 +176,66 @@ async function checkMemoryBackupNudge(userId: string): Promise<MemoryBackupStatu
     daysSinceBackup,
     shouldNudge: daysSinceBackup >= 90,  // ~quarterly
   };
+}
+
+// Engagement nudge — habit building for new users, tips for established users
+async function checkEngagementNudge(userId: string): Promise<Suggestion | null> {
+  const db = getSupabase();
+
+  // Count total sessions
+  const { count } = await db
+    .from('redi_usage')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  const sessionCount = count || 0;
+
+  // Phase 1: < 30 sessions — habit builders
+  if (sessionCount < 30) {
+    const habitPrompts = [
+      { title: 'Say good morning to Redi', body: 'Start your day by telling Redi what\'s on your mind. It helps Redi learn your rhythm and priorities.' },
+      { title: 'Show Redi what you\'re working on', body: 'Point your camera at anything — Redi can read documents, identify objects, and help you think through what you see.' },
+      { title: 'Tell Redi about your week', body: 'The more Redi knows about your life, the better the help. Redi remembers everything you share — across sessions.' },
+      { title: 'Ask Redi to prep you for a meeting', body: 'Tell Redi who you\'re meeting with and what it\'s about. Redi will help you think through talking points.' },
+      { title: 'Think out loud with Redi', body: 'Got a decision to make? A problem you\'re stuck on? Just talk it through — Redi is a great sounding board.' },
+    ];
+
+    const prompt = habitPrompts[sessionCount % habitPrompts.length];
+
+    return {
+      type: 'engagement',
+      priority: 0.6,
+      title: prompt.title,
+      body: prompt.body,
+      actionType: 'nudge',
+      suggestedAction: 'start_session',
+      confidence: 0.9,
+    };
+  }
+
+  // Phase 2: >= 30 sessions — "did you know" tips (less frequently)
+  if (sessionCount >= 30 && sessionCount % 5 === 0) {
+    const tips = [
+      { title: 'Did you know? Redi can read your screen', body: 'Share your screen and Redi can help with anything visible — emails, code, documents.' },
+      { title: 'Did you know? Redi generates reports', body: 'Ask Redi to write a progress report, meeting summary, or weekly recap for your boss or team.' },
+      { title: 'Did you know? Redi works for teams', body: 'Create an organization and invite your team. Redi will learn your org\'s projects, culture, and goals.' },
+      { title: 'Did you know? Redi joins meetings', body: 'Give Redi a Zoom, Teams, or Google Meet link — Redi will join, listen, and take notes for you.' },
+      { title: 'Did you know? Redi searches the web', body: 'Ask Redi to look anything up — news, restaurants, prices, facts. Real-time search and summary.' },
+    ];
+
+    const tip = tips[Math.floor(sessionCount / 5) % tips.length];
+
+    return {
+      type: 'engagement_tip',
+      priority: 0.3,
+      title: tip.title,
+      body: tip.body,
+      actionType: 'nudge',
+      confidence: 0.7,
+    };
+  }
+
+  return null;
 }
 
 export default router;

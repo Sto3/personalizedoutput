@@ -71,6 +71,7 @@ import landingPage from './api/landingPage';
 import meetingBotRoutes from './meetings/meetingBotRoutes';
 import { getAvailableVoices } from './providers/elevenlabsTTS';
 import { createOrganization, generateInviteCode, joinWithInviteCode, getOrgContext } from './organizations/orgService';
+import contactCardRouter, { handleContactCardRequest } from './api/contactCard';
 // Screen sharing WebSocket server
 import { initScreenShare } from './websocket/screenShareServer';
 // Import Homework Rescue pages
@@ -941,6 +942,10 @@ app.post('/api/org/join', async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+
+// Contact card endpoints
+app.use('/api/contact-card', contactCardRouter);
+app.get('/redi/contact', handleContactCardRequest);
 
 app.get('/api/org/:userId/context', async (req, res) => {
   try {
