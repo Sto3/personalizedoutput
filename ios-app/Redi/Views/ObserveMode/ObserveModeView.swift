@@ -10,6 +10,10 @@ import SwiftUI
 struct ObserveModeView: View {
     @StateObject private var observeService = ObserveModeService()
     @EnvironmentObject var webSocketService: V9WebSocketService
+    @AppStorage("alwaysOnPrivacyAccepted") private var privacyAccepted = false
+    @State private var showPrivacySheet = false
+    @State private var privacyConfirmed = false
+    @State private var showExplainer = false
 
     var body: some View {
         VStack(spacing: 24) {
@@ -98,7 +102,11 @@ struct ObserveModeView: View {
 
                 // Start button
                 Button(action: {
-                    observeService.startObserving(webSocket: webSocketService)
+                    if privacyAccepted {
+                        observeService.startObserving(webSocket: webSocketService)
+                    } else {
+                        showPrivacySheet = true
+                    }
                 }) {
                     HStack {
                         Image(systemName: "play.fill")
@@ -112,6 +120,28 @@ struct ObserveModeView: View {
                     .cornerRadius(12)
                 }
                 .padding(.horizontal)
+                .sheet(isPresented: $showPrivacySheet) {
+                    AlwaysOnPrivacySheet(
+                        isPresented: $showPrivacySheet,
+                        userAccepted: $privacyConfirmed,
+                        observeType: observeService.observeType
+                    )
+                }
+                .onChange(of: privacyConfirmed) { confirmed in
+                    if confirmed {
+                        observeService.startObserving(webSocket: webSocketService)
+                    }
+                }
+
+                // Learn more link
+                Button(action: { showExplainer = true }) {
+                    Text("Learn more about Always On")
+                        .font(.caption)
+                        .foregroundColor(.cyan.opacity(0.7))
+                }
+                .sheet(isPresented: $showExplainer) {
+                    AlwaysOnExplainerView()
+                }
 
             } else {
                 // Active observation view

@@ -9,6 +9,7 @@
 
 import { anthropicComplete } from '../providers/anthropicProvider';
 import { LLMMessage } from '../providers/types';
+import { sanitizeObserveContent } from '../auth/privacyMiddleware';
 
 // =====================================================
 // OBSERVATION MODE TYPES
@@ -126,11 +127,19 @@ async function evaluateInterjection(session: ObserveSession): Promise<string | n
     return null;
   }
 
-  // Build prompt
+  // Sanitize buffers — strip PII (passwords, API keys, SSNs, etc.) before sending to LLM
+  const sanitizedTranscript = session.transcriptBuffer
+    .slice(-config.bufferSize)
+    .map(t => sanitizeObserveContent(t));
+  const sanitizedScreen = session.screenContextBuffer
+    .slice(-5)
+    .map(s => sanitizeObserveContent(s));
+
+  // Build prompt with sanitized content
   const prompt = EVALUATION_PROMPT
     .replace('{memoryContext}', session.memoryContext || '(no memory loaded)')
-    .replace('{transcriptBuffer}', session.transcriptBuffer.slice(-config.bufferSize).join('\n') || '(silence)')
-    .replace('{screenContext}', session.screenContextBuffer.slice(-5).join('\n') || '(no screen data)')
+    .replace('{transcriptBuffer}', sanitizedTranscript.join('\n') || '(silence)')
+    .replace('{screenContext}', sanitizedScreen.join('\n') || '(no screen data)')
     .replace('{sensitivity}', session.sensitivityLevel);
 
   try {

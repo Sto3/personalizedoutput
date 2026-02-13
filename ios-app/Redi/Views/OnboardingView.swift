@@ -24,7 +24,7 @@ struct OnboardingView: View {
             VStack(spacing: 0) {
                 // Progress dots
                 HStack(spacing: 8) {
-                    ForEach(0..<5) { index in
+                    ForEach(0..<6) { index in
                         Circle()
                             .fill(index <= currentPage ? cyanGlow : Color.white.opacity(0.2))
                             .frame(width: 8, height: 8)
@@ -39,7 +39,8 @@ struct OnboardingView: View {
                     microphonePage.tag(1)
                     cameraPage.tag(2)
                     notificationPage.tag(3)
-                    disclaimerPage.tag(4)
+                    alwaysOnPage.tag(4)
+                    disclaimerPage.tag(5)
                 }
                 .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
             }
@@ -143,11 +144,53 @@ struct OnboardingView: View {
             action: {
                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { _, _ in
                     DispatchQueue.main.async {
-                        withAnimation { currentPage = 4 }
+                        withAnimation { currentPage = 4 }  // Go to Always On page
                     }
                 }
             }
         )
+    }
+
+    // MARK: - Always On Introduction Page
+
+    private var alwaysOnPage: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "wave.3.right.circle.fill")
+                .font(.system(size: 60))
+                .foregroundColor(.cyan)
+
+            Text("Always On Mode")
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+
+            Text("Redi can run in the background while you go about your day \u{2014} listening, watching your screen, and speaking up only when it has something genuinely useful to offer.")
+                .font(.system(size: 17))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .padding(.horizontal)
+
+            Text("It's like having a brilliant friend in the room who knows when to chime in. And it costs less than a coffee for a full day.")
+                .font(.system(size: 17))
+                .foregroundColor(.white.opacity(0.7))
+                .multilineTextAlignment(.center)
+                .lineSpacing(4)
+                .padding(.horizontal)
+
+            Text("You can try it anytime from the session menu.")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.4))
+
+            Spacer()
+
+            continueButton {
+                withAnimation { currentPage = 5 }
+            }
+            .padding(.bottom, 60)
+        }
+        .padding(.horizontal, 40)
     }
 
     // MARK: - AI Disclaimer Page
