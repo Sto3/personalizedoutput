@@ -210,3 +210,4 @@ CREATE TABLE IF NOT EXISTS redi_org_invites (
 -- Add last_memory_backup and last_backup_path to users table
 ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_memory_backup TIMESTAMPTZ;
 ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_backup_path TEXT;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS has_used_observe_mode BOOLEAN DEFAULT FALSE;

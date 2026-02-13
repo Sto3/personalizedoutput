@@ -12,6 +12,8 @@ enum RediSessionMode: String, CaseIterable, Codable {
     case chatAndVoice = "Chat & Voice"
     case voiceOnly = "Voice Only"
     case chatOnly = "Chat Only"
+    case alwaysOnAudio = "Always On (Listen)"
+    case alwaysOnScreen = "Always On (Screen + Listen)"
 
     var icon: String {
         switch self {
@@ -19,6 +21,8 @@ enum RediSessionMode: String, CaseIterable, Codable {
         case .chatAndVoice: return "text.bubble.fill"
         case .voiceOnly: return "mic.fill"
         case .chatOnly: return "keyboard"
+        case .alwaysOnAudio: return "ear"
+        case .alwaysOnScreen: return "rectangle.and.text.magnifyingglass"
         }
     }
 
@@ -27,11 +31,28 @@ enum RediSessionMode: String, CaseIterable, Codable {
     }
 
     var micEnabled: Bool {
-        self != .chatOnly
+        switch self {
+        case .chatOnly: return false
+        default: return true
+        }
     }
 
     var chatVisible: Bool {
         self == .chatAndVoice || self == .chatOnly
+    }
+
+    var isObserveMode: Bool {
+        self == .alwaysOnAudio || self == .alwaysOnScreen
+    }
+
+    /// Active session modes (shown in the main 2x2 grid)
+    static var activeModes: [RediSessionMode] {
+        [.videoAndVoice, .chatAndVoice, .voiceOnly, .chatOnly]
+    }
+
+    /// Observation modes (shown in the Always On section)
+    static var observeModes: [RediSessionMode] {
+        [.alwaysOnAudio, .alwaysOnScreen]
     }
 
     static var defaultMode: RediSessionMode {

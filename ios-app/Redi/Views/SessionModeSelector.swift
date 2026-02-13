@@ -27,9 +27,9 @@ struct SessionModeSelector: View {
                     .font(.system(size: 28, weight: .bold, design: .serif))
                     .foregroundColor(.white)
 
-                // 2x2 grid
+                // 2x2 grid of active modes
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                    ForEach(RediSessionMode.allCases, id: \.self) { mode in
+                    ForEach(RediSessionMode.activeModes, id: \.self) { mode in
                         ModeButton(
                             mode: mode,
                             isSelected: selectedMode == mode,
@@ -38,6 +38,39 @@ struct SessionModeSelector: View {
                             selectedMode = mode
                         }
                     }
+                }
+                .padding(.horizontal)
+
+                Divider()
+                    .background(Color.white.opacity(0.2))
+                    .padding(.vertical, 4)
+
+                Text("Always On")
+                    .font(.custom("BodoniSvtyTwoSCITCTT-Book", size: 16))
+                    .foregroundColor(.gray)
+
+                Text("Redi observes in the background and speaks up when useful")
+                    .font(.caption)
+                    .foregroundColor(.gray.opacity(0.7))
+
+                // Always On mode buttons (horizontal)
+                HStack(spacing: 12) {
+                    AlwaysOnModeButton(
+                        icon: "ear",
+                        title: "Listen",
+                        cost: "~$0.36/hr",
+                        isSelected: selectedMode == .alwaysOnAudio,
+                        cyanGlow: cyanGlow,
+                        action: { selectedMode = .alwaysOnAudio }
+                    )
+                    AlwaysOnModeButton(
+                        icon: "rectangle.and.text.magnifyingglass",
+                        title: "Screen",
+                        cost: "~$0.54/hr",
+                        isSelected: selectedMode == .alwaysOnScreen,
+                        cyanGlow: cyanGlow,
+                        action: { selectedMode = .alwaysOnScreen }
+                    )
                 }
                 .padding(.horizontal)
 
@@ -84,6 +117,43 @@ struct SessionModeSelector: View {
                     )
             )
             .padding(.horizontal, 24)
+        }
+    }
+}
+
+struct AlwaysOnModeButton: View {
+    let icon: String
+    let title: String
+    let cost: String
+    let isSelected: Bool
+    let cyanGlow: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 24))
+                    .foregroundColor(isSelected ? cyanGlow : .white.opacity(0.5))
+
+                Text(title)
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundColor(isSelected ? .white : .white.opacity(0.5))
+
+                Text(cost)
+                    .font(.system(size: 10))
+                    .foregroundColor(cyanGlow.opacity(0.7))
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(Color.white.opacity(isSelected ? 0.1 : 0.04))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(isSelected ? cyanGlow : Color.white.opacity(0.08), lineWidth: isSelected ? 2 : 1)
+                    )
+            )
         }
     }
 }

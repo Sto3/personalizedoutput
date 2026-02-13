@@ -122,6 +122,12 @@ Output ONLY valid JSON array of objects with: type (schedule/social/health/weath
       suggestions.push(engagementNudge);
     }
 
+    // Suggest Always On mode to users who haven't tried it
+    const observeSuggestion = await suggestObserveMode(userId);
+    if (observeSuggestion) {
+      suggestions.push(observeSuggestion);
+    }
+
     // Check if user should be nudged to download their memory backup
     const backupStatus = await checkMemoryBackupNudge(userId);
     if (backupStatus.shouldNudge) {
@@ -236,6 +242,38 @@ async function checkEngagementNudge(userId: string): Promise<Suggestion | null> 
   }
 
   return null;
+}
+
+// Suggest Always On mode to users who haven't tried it (after 5+ sessions)
+async function suggestObserveMode(userId: string): Promise<Suggestion | null> {
+  const db = getSupabase();
+
+  const { data: user } = await db
+    .from('redi_users')
+    .select('has_used_observe_mode')
+    .eq('user_id', userId)
+    .single();
+
+  // Count total sessions
+  const { count } = await db
+    .from('redi_usage')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  const sessionCount = count || 0;
+
+  // Suggest after 5+ sessions if they haven't tried observe mode
+  if (!user || sessionCount < 5 || user.has_used_observe_mode) return null;
+
+  return {
+    type: 'feature_suggestion',
+    priority: 0.45,
+    title: 'Try Always On Mode',
+    body: 'Did you know Redi can listen in the background while you work? It only speaks up when it has something useful — like a correction, a reminder, or an answer to something you\'re stuck on. It costs a fraction of a regular session.',
+    actionType: 'nudge',
+    suggestedAction: 'start_observe_mode',
+    confidence: 0.85,
+  };
 }
 
 export default router;

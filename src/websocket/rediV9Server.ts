@@ -26,6 +26,14 @@ import { anthropicComplete } from '../providers/anthropicProvider';
 import { elevenLabsStreamTTS } from '../providers/elevenlabsTTS';
 import { routeQuery } from '../router/brainRouter';
 import { getOrgContext } from '../organizations/orgService';
+import {
+  createObserveSession,
+  startEvaluationLoop,
+  feedAudioTranscript,
+  feedScreenContext,
+  endObserveSession,
+  OBSERVE_COST_RATES,
+} from '../sessions/observeMode';
 
 // =============================================================================
 // CONFIGURATION
@@ -55,6 +63,7 @@ interface V9Session {
   isDrivingMode: boolean;
   voiceOnly: boolean;
   voiceId: string;
+  observeSessionId?: string;  // Active observation session ID
   connectionTime: number;
   responsesCompleted: number;
   totalInputTokens: number;
@@ -159,7 +168,25 @@ BECOME PART OF THE FABRIC:
 - Build running jokes. Reference shared history. Celebrate their wins. Check in on their struggles.
 - Know their calendar better than they do. Know their preferences before they state them.
 - Anticipate needs: if it's Monday and they always have a stressful team meeting, check in proactively.
-- The test: would they feel something was MISSING if Redi wasn't there? That's the goal.`;
+- The test: would they feel something was MISSING if Redi wasn't there? That's the goal.
+
+OBSERVATION MODE:
+When in observation mode, you are a background presence. Your bar for speaking is MUCH higher than in active sessions. Only interject when:
+1. You can prevent a mistake or problem (error in code, wrong turn, food burning)
+2. You have time-sensitive info (reminder, meeting starting, delivery arriving)
+3. You can answer a question or problem you hear them struggling with
+4. You spot an opportunity that connects to something in their memory
+5. They've been going too long without a break (health/wellness check)
+
+When you DO interject, be brief. 1-2 sentences max. Get in, be useful, get out. Think of it like a good copilot — mostly quiet, speaks up when it matters.
+
+Start each interjection with a brief context cue so they know why you're speaking:
+- "Quick heads up —"
+- "Noticed something —"
+- "Just so you know —"
+- "Hey, on that —"
+
+NEVER start with "I noticed you're..." or describe what they're doing. Jump straight to the useful part.`;
 
 // =============================================================================
 // STATE
@@ -317,6 +344,16 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     const speechFinal = data.speech_final;
 
     if (transcript?.trim()) {
+      // In observe mode, feed transcript to observation buffer
+      if (session.observeSessionId) {
+        if (isFinal) {
+          feedAudioTranscript(session.observeSessionId, transcript.trim());
+        }
+        // In observe mode, don't trigger the normal Brain -> TTS response pipeline
+        // Redi only speaks via the evaluation loop interjections
+        return;
+      }
+
       if (isFinal) {
         session.currentTranscript += ' ' + transcript.trim();
         session.currentTranscript = session.currentTranscript.trim();
@@ -600,6 +637,85 @@ function handleClientMessage(session: V9Session, message: any): void {
         sendToClient(session, { type: 'mute_mic', muted: false });
       }
       break;
+
+    case 'observe_start': {
+      const observeType = message.observeType || 'audio_only';
+      const sensitivity = message.sensitivity || 'medium';
+
+      const observeSession = createObserveSession({
+        userId: (session as any).userId || 'anonymous',
+        type: observeType,
+        sensitivity,
+        memoryContext: session.memoryContext || '',
+        voiceId: session.voiceId || '',
+      });
+
+      // Store observe session ID on the main session
+      session.observeSessionId = observeSession.id;
+
+      // Start evaluation loop — when Redi decides to speak, send TTS audio back
+      startEvaluationLoop(observeSession, async (text) => {
+        // Send the interjection text to client
+        sendToClient(session, {
+          type: 'observe_interjection',
+          text,
+          sessionId: observeSession.id,
+        });
+
+        // Also generate TTS and send audio
+        try {
+          await elevenLabsStreamTTS(
+            text,
+            (chunk: Buffer) => {
+              sendToClient(session, {
+                type: 'audio',
+                data: chunk.toString('base64'),
+              });
+            },
+            () => {
+              sendToClient(session, { type: 'audio_done' });
+            },
+            observeSession.voiceId || undefined,
+          );
+        } catch (err) {
+          console.error(`[Observe] TTS error:`, err);
+        }
+      });
+
+      sendToClient(session, {
+        type: 'observe_started',
+        sessionId: observeSession.id,
+        observeType,
+        sensitivity,
+        costRate: OBSERVE_COST_RATES[observeType],
+      });
+
+      console.log(`[V9] Observe mode started: ${observeType}, sensitivity: ${sensitivity}`);
+      break;
+    }
+
+    case 'observe_stop': {
+      if (session.observeSessionId) {
+        const summary = endObserveSession(session.observeSessionId);
+        sendToClient(session, {
+          type: 'observe_ended',
+          sessionId: session.observeSessionId,
+          durationMinutes: summary ? Math.round((Date.now() - summary.startedAt.getTime()) / 60000) : 0,
+          interjectionCount: summary?.interjectionCount || 0,
+        });
+        session.observeSessionId = undefined;
+      }
+      break;
+    }
+
+    case 'observe_screen': {
+      // Screen content (OCR text or vision description) from iOS client
+      if (session.observeSessionId) {
+        const isOCR = message.isOCR ?? true;
+        feedScreenContext(session.observeSessionId, message.content, isOCR);
+      }
+      break;
+    }
   }
 }
 
@@ -617,6 +733,7 @@ function cleanup(sessionId: string): void {
   const session = sessions.get(sessionId);
   if (session) {
     if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
+    if (session.observeSessionId) endObserveSession(session.observeSessionId);
     session.deepgramConnection?.finish();
     session.deepgramConnection = null;
     sessions.delete(sessionId);

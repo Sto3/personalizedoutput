@@ -146,6 +146,20 @@ struct EngagementPromptLibrary {
             actionLabel: "Share",
             actionType: .shareRedi
         ),
+        EngagementPrompt(
+            emoji: "👂",
+            title: "Redi Can Just Listen",
+            body: "Turn on Always On mode and Redi listens in the background while you work, cook, or hang out. It only speaks up when it spots something useful. Like having a brilliant friend in the room who knows when to chime in.",
+            actionLabel: "Try Always On",
+            actionType: .startSession
+        ),
+        EngagementPrompt(
+            emoji: "🖥️",
+            title: "Redi Can Watch Your Screen",
+            body: "Share your screen with Redi and it reads along — catching errors in your code, suggesting better wording in emails, reminding you about deadlines it sees on your calendar. All for about 50 cents an hour.",
+            actionLabel: "Try Screen Observe",
+            actionType: .startSession
+        ),
     ]
 
     /// Get the right prompt for the user's session count
