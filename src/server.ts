@@ -67,6 +67,8 @@ import smartThingsService from './integrations/smarthome/smartThingsService';
 import proactiveEngine from './intelligence/proactiveEngine';
 import usageTracker from './billing/usageTracker';
 import authService from './auth/authService';
+import { rediSignup, rediLogin, verifyToken, requireAuth, getCreditBalance } from './auth/authService';
+import { createRediCheckoutSession, handleRediStripeWebhook, getCreditPacks, getRediCreditBalance } from './billing/stripeService';
 import landingPage from './api/landingPage';
 import meetingBotRoutes from './meetings/meetingBotRoutes';
 import { getAvailableVoices } from './providers/elevenlabsTTS';
@@ -273,8 +275,41 @@ if (!fs.existsSync(EMAIL_LIST_PATH)) {
 // MIDDLEWARE
 // ============================================================
 
+// ============================================================
+// SECURITY HEADERS (helmet-equivalent, no external dependency)
+// ============================================================
+app.use((req, res, next) => {
+  // HSTS — force HTTPS
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  // Prevent MIME sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  // XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  // Permissions policy
+  res.setHeader('Permissions-Policy', 'camera=self, microphone=self, display-capture=self');
+  next();
+});
+
+// Force HTTPS in production
+if (isProduction) {
+  app.use((req, res, next) => {
+    if (req.headers['x-forwarded-proto'] !== 'https') {
+      return res.redirect(301, 'https://' + req.headers.host + req.url);
+    }
+    next();
+  });
+}
+
 app.use(cors());
 app.use(cookieParser());
+
+// Redi Stripe webhook — MUST be before express.json() to receive raw body
+app.post('/api/redi/billing/webhook', express.raw({ type: 'application/json' }), handleRediStripeWebhook);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -308,6 +343,10 @@ app.use('/api/santa', generationRateLimiter);
 app.use('/api/thought-chat', generationRateLimiter);
 app.use('/api/planner', generationRateLimiter);
 app.use('/api/homework-rescue', generationRateLimiter);
+
+// Rate limiting for Redi auth — prevent brute force (10 attempts per 15 min)
+app.use('/api/redi/auth/login', generationRateLimiter);
+app.use('/api/redi/auth/signup', generationRateLimiter);
 
 // System health endpoint
 app.get('/api/health', (req, res) => {
@@ -899,6 +938,72 @@ app.use('/api/billing', usageTracker);
 app.use('/api/auth', authService);
 app.use('/redi', landingPage);
 app.use('/api/meetings', meetingBotRoutes);
+
+// ============================================================
+// REDI AUTH — Password-based accounts for web + iOS
+// ============================================================
+
+app.post('/api/redi/auth/signup', async (req, res) => {
+  try {
+    const result = await rediSignup(req.body);
+    res.json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post('/api/redi/auth/login', async (req, res) => {
+  try {
+    const result = await rediLogin(req.body);
+    res.json(result);
+  } catch (error: any) {
+    res.status(401).json({ error: error.message });
+  }
+});
+
+app.get('/api/redi/auth/verify', requireAuth, (req: any, res) => {
+  res.json({ valid: true, user: req.user });
+});
+
+// Redi auth pages
+app.get('/login', (req, res) => {
+  // Check if it's for the main site (has query params) vs Redi
+  if (req.query.error || req.query.success || req.query.redirect) {
+    trackEvent('page', 'login');
+    const error = req.query.error as string | undefined;
+    const success = req.query.success === '1';
+    res.send(renderLoginPage(error, success));
+  } else {
+    res.sendFile(path.join(process.cwd(), 'public', 'auth.html'));
+  }
+});
+
+// ============================================================
+// REDI BILLING — Pay-as-you-go credits
+// ============================================================
+
+app.get('/api/redi/billing/packs', (req, res) => {
+  res.json({ packs: getCreditPacks() });
+});
+
+app.post('/api/redi/billing/checkout', requireAuth, async (req: any, res) => {
+  try {
+    const url = await createRediCheckoutSession({
+      userId: req.user.userId,
+      packId: req.body.packId,
+      successUrl: req.protocol + '://' + req.get('host') + '/app?purchase=success',
+      cancelUrl: req.protocol + '://' + req.get('host') + '/app?purchase=cancelled',
+    });
+    res.json({ checkoutUrl: url });
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.get('/api/redi/billing/balance', requireAuth, async (req: any, res) => {
+  const balance = await getRediCreditBalance(req.user.userId);
+  res.json({ credits: balance });
+});
 
 // Voice selection API
 app.get('/api/voices', (req, res) => {

@@ -402,6 +402,13 @@
         <div class="logo">REDI</div>
         <div class="tagline">for anything</div>
 
+        <!-- User bar -->
+        <div style="display:flex; align-items:center; gap:8px; margin-top:12px;">
+            <span style="color:#888; font-size:13px;" id="userGreeting"></span>
+            <span class="brain-badge" id="creditBadge" style="display:inline; background:rgba(0,206,209,0.1); cursor:pointer;" onclick="showBuyCredits()"><span id="creditCount">--</span> credits</span>
+            <button onclick="logout()" style="background:none; border:1px solid #333; color:#888; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-family:Georgia,serif;">Sign Out</button>
+        </div>
+
         <!-- Status bar -->
         <div class="status-bar">
             <div class="status-dot" id="statusDot"></div>
@@ -485,6 +492,41 @@
 
     <script>
         // =====================================================
+        // AUTH CHECK — Redirect to login if not authenticated
+        // =====================================================
+        var authToken = localStorage.getItem('redi_token');
+        var userId = localStorage.getItem('redi_user_id');
+        var userName = localStorage.getItem('redi_user_name');
+
+        if (!authToken) {
+            window.location.href = '/login';
+        }
+
+        // Verify token is still valid
+        fetch('/api/redi/auth/verify', {
+            headers: { 'Authorization': 'Bearer ' + authToken }
+        }).then(function(r) {
+            if (!r.ok) {
+                localStorage.removeItem('redi_token');
+                localStorage.removeItem('redi_user_id');
+                localStorage.removeItem('redi_user_name');
+                window.location.href = '/login';
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('redi_token');
+            localStorage.removeItem('redi_user_id');
+            localStorage.removeItem('redi_user_name');
+            window.location.href = '/login';
+        }
+
+        // Show user greeting
+        if (userName) {
+            document.getElementById('userGreeting').textContent = 'Hi, ' + userName;
+        }
+
+        // =====================================================
         // STATE
         // =====================================================
         var ws = null;
@@ -499,7 +541,8 @@
         var selectedMode = 'voice';
         var sessionActive = false;
 
-        var SERVER_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/redi?v=9';
+        // WebSocket URL includes auth token
+        var SERVER_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/redi?v=9&token=' + encodeURIComponent(authToken || '');
 
         // =====================================================
         // MODE SELECTION
@@ -686,9 +729,19 @@
                         // Barge-in: stop playback
                         break;
 
+                    case 'credits_update':
+                        document.getElementById('creditCount').textContent = Math.round(msg.remaining);
+                        if (msg.remaining <= 2) {
+                            document.getElementById('creditBadge').style.background = 'rgba(255,68,68,0.15)';
+                            document.getElementById('creditBadge').style.color = '#FF4444';
+                        }
+                        break;
+
                     case 'error':
                         console.error('[WS] Error:', msg.message);
                         updateStatus('error', msg.message || 'Error');
+                        if (msg.action === 'buy_credits') showBuyCredits();
+                        if (msg.action === 'login') logout();
                         break;
                 }
             } catch (err) {
@@ -992,8 +1045,54 @@
         }
 
         // =====================================================
+        // CREDITS + BILLING
+        // =====================================================
+        async function loadCredits() {
+            try {
+                var resp = await fetch('/api/redi/billing/balance', { headers: { 'Authorization': 'Bearer ' + authToken } });
+                var data = await resp.json();
+                document.getElementById('creditCount').textContent = Math.round(data.credits);
+                if (data.credits <= 2) {
+                    document.getElementById('creditBadge').style.background = 'rgba(255,68,68,0.15)';
+                    document.getElementById('creditBadge').style.color = '#FF4444';
+                }
+            } catch (e) {}
+        }
+
+        async function showBuyCredits() {
+            var resp = await fetch('/api/redi/billing/packs');
+            var data = await resp.json();
+            var html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:1000;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">';
+            html += '<div style="max-width:400px;width:90%;background:#111;border-radius:16px;padding:24px;">';
+            html += '<h2 style="color:#00CED1;text-align:center;font-family:Georgia,serif;">Add Credits</h2>';
+            html += '<p style="color:#888;text-align:center;font-size:13px;margin:8px 0 20px;">1 credit \u2248 1 minute of active use</p>';
+            data.packs.forEach(function(pack) {
+                html += '<div onclick="buyPack(\'' + pack.id + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:14px;margin:8px 0;background:rgba(0,206,209,0.05);border-radius:10px;cursor:pointer;border:1px solid #222;">';
+                html += '<div><strong style="color:#fff;">' + pack.name + '</strong><br><span style="color:#888;font-size:12px;">' + pack.credits + ' credits</span></div>';
+                html += '<span style="color:#00CED1;font-weight:bold;">$' + (pack.priceInCents / 100).toFixed(0) + '</span>';
+                html += '</div>';
+            });
+            html += '<button onclick="this.parentElement.parentElement.remove()" style="width:100%;margin-top:16px;padding:10px;background:#222;color:#888;border:none;border-radius:8px;cursor:pointer;font-family:Georgia,serif;">Cancel</button>';
+            html += '</div></div>';
+            document.body.insertAdjacentHTML('beforeend', html);
+        }
+
+        async function buyPack(packId) {
+            var resp = await fetch('/api/redi/billing/checkout', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+                body: JSON.stringify({ packId: packId }),
+            });
+            var data = await resp.json();
+            if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+        }
+
+        // =====================================================
         // INIT
         // =====================================================
+        loadCredits();
+        if (window.location.search.indexOf('purchase=success') !== -1) setTimeout(loadCredits, 2000);
+
         document.addEventListener('click', function() {
             if (!audioContext) {
                 audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });

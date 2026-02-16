@@ -211,3 +211,31 @@ CREATE TABLE IF NOT EXISTS redi_org_invites (
 ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_memory_backup TIMESTAMPTZ;
 ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_backup_path TEXT;
 ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS has_used_observe_mode BOOLEAN DEFAULT FALSE;
+
+-- ============================================================
+-- AUTH + BILLING columns for redi_users
+-- ============================================================
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS email TEXT UNIQUE;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS password_hash TEXT;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS name TEXT;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS credits_remaining REAL DEFAULT 5;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS total_sessions INTEGER DEFAULT 0;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+ALTER TABLE redi_users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+
+-- Indexes for fast lookup
+CREATE INDEX IF NOT EXISTS idx_redi_users_email ON redi_users(email);
+CREATE INDEX IF NOT EXISTS idx_redi_users_phone ON redi_users(phone);
+
+-- Purchase history
+CREATE TABLE IF NOT EXISTS redi_purchases (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  pack_id TEXT NOT NULL,
+  credits_added REAL NOT NULL,
+  amount_cents INTEGER NOT NULL,
+  stripe_session_id TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

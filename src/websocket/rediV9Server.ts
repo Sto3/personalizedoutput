@@ -26,12 +26,15 @@ import { anthropicComplete } from '../providers/anthropicProvider';
 import { elevenLabsStreamTTS } from '../providers/elevenlabsTTS';
 import { routeQuery } from '../router/brainRouter';
 import { getOrgContext } from '../organizations/orgService';
+import { verifyToken } from '../auth/authService';
+import { deductCredits } from '../billing/stripeService';
 import {
   createObserveSession,
   startEvaluationLoop,
   feedAudioTranscript,
   feedScreenContext,
   endObserveSession,
+  getObserveSession,
   OBSERVE_COST_RATES,
 } from '../sessions/observeMode';
 
@@ -64,6 +67,11 @@ interface V9Session {
   voiceOnly: boolean;
   voiceId: string;
   observeSessionId?: string;  // Active observation session ID
+  userId?: string;            // Authenticated user ID
+  userName?: string;          // Authenticated user name
+  userEmail?: string;         // Authenticated user email
+  creditTimer?: NodeJS.Timeout; // Credit consumption interval
+  isActive: boolean;          // Session still alive
   connectionTime: number;
   responsesCompleted: number;
   totalInputTokens: number;
@@ -222,8 +230,26 @@ export function initV9WebSocket(server: HTTPServer): void {
   wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    // =========================================================
+    // JWT AUTHENTICATION — verify token from query string
+    // =========================================================
+    const reqUrl = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
+    const token = reqUrl.searchParams.get('token');
+
+    let authUser: { userId: string; email: string; name: string } | null = null;
+    if (token) {
+      authUser = verifyToken(token);
+    }
+
+    if (!authUser) {
+      ws.send(JSON.stringify({ type: 'error', message: 'Authentication required. Please log in again.', action: 'login' }));
+      ws.close(4001, 'Authentication required');
+      return;
+    }
+
+    console.log(`[V9] Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
+
     const sessionId = randomUUID();
-    console.log(`[V9] Connected: ${sessionId.slice(0, 8)}`);
 
     const session: V9Session = {
       id: sessionId,
@@ -241,6 +267,10 @@ export function initV9WebSocket(server: HTTPServer): void {
       isDrivingMode: false,
       voiceOnly: false,
       voiceId: '',
+      userId: authUser.userId,
+      userName: authUser.name,
+      userEmail: authUser.email,
+      isActive: true,
       connectionTime: Date.now(),
       responsesCompleted: 0,
       totalInputTokens: 0,
@@ -249,10 +279,51 @@ export function initV9WebSocket(server: HTTPServer): void {
 
     sessions.set(sessionId, session);
 
+    // =========================================================
+    // CREDIT CONSUMPTION TIMER — deduct credits every 60s
+    // =========================================================
+    session.creditTimer = setInterval(async () => {
+      if (!session.isActive || !session.userId) {
+        if (session.creditTimer) clearInterval(session.creditTimer);
+        return;
+      }
+
+      // Determine credit rate based on session type
+      let creditsPerMinute = 1.0; // Active voice
+      if (session.observeSessionId) {
+        const obs = getObserveSession(session.observeSessionId);
+        if (obs) {
+          const rates: Record<string, number> = { audio_only: 0.1, screen_ocr: 0.15, screen_vision: 0.4 };
+          creditsPerMinute = rates[obs.type] || 0.1;
+        }
+      } else if (session.hasVision) {
+        creditsPerMinute = 1.5; // Vision mode is more expensive
+      }
+
+      try {
+        const result = await deductCredits(session.userId!, creditsPerMinute);
+
+        // Send credit update to client
+        sendToClient(session, { type: 'credits_update', remaining: Math.round(result.remaining * 10) / 10 });
+
+        if (result.depleted) {
+          sendToClient(session, {
+            type: 'error',
+            message: 'You\'ve used all your credits. Add more to continue.',
+            action: 'buy_credits',
+          });
+          ws.close(4003, 'No credits');
+          if (session.creditTimer) clearInterval(session.creditTimer);
+        }
+      } catch (err) {
+        console.error('[V9] Credit deduction error:', err);
+      }
+    }, 60000);
+
     connectToDeepgram(session)
       .then(() => {
-        sendToClient(session, { type: 'session_ready', sessionId, version: 'v9-three-brain' });
-        console.log(`[V9] Session ready: ${sessionId.slice(0, 8)}`);
+        sendToClient(session, { type: 'session_ready', sessionId, version: 'v9-three-brain', userName: authUser!.name });
+        console.log(`[V9] Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
       })
       .catch((error) => {
         console.error(`[V9] Deepgram setup failed:`, error);
@@ -276,6 +347,8 @@ export function initV9WebSocket(server: HTTPServer): void {
     });
 
     ws.on('close', () => {
+      session.isActive = false;
+      if (session.creditTimer) clearInterval(session.creditTimer);
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
       console.log(
         `[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`,
@@ -320,7 +393,10 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     throw new Error('DEEPGRAM_API_KEY not set');
   }
 
-  const deepgram = createClient(DEEPGRAM_API_KEY);
+  // PRIVACY: Zero data retention — Deepgram will not store audio or transcripts
+  const deepgram = createClient(DEEPGRAM_API_KEY, {
+    global: { headers: { 'X-DG-No-Logging': 'true' } },
+  });
 
   const connection = deepgram.listen.live({
     model: 'nova-2',
@@ -846,6 +922,8 @@ function sendToClient(session: V9Session, message: any): void {
 function cleanup(sessionId: string): void {
   const session = sessions.get(sessionId);
   if (session) {
+    session.isActive = false;
+    if (session.creditTimer) clearInterval(session.creditTimer);
     if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
     if (session.observeSessionId) endObserveSession(session.observeSessionId);
     session.deepgramConnection?.finish();
