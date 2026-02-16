@@ -716,6 +716,120 @@ function handleClientMessage(session: V9Session, message: any): void {
       }
       break;
     }
+
+    case 'chat': {
+      // Text-based input from web client — bypasses audio pipeline, goes straight to brain
+      const chatText = (message.text || '').trim();
+      if (!chatText || session.isResponding) break;
+
+      // If in observe mode, feed as transcript and skip
+      if (session.observeSessionId) {
+        feedAudioTranscript(session.observeSessionId, chatText);
+        break;
+      }
+
+      // Process through the normal brain pipeline (same as handleSpeechEnd but with text input)
+      session.isResponding = true;
+      const chatStart = Date.now();
+
+      const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 3000);
+      const route = routeQuery(chatText, hasRecentFrame);
+      console.log(`[V9] Chat route: ${route.brain.toUpperCase()} | "${chatText.slice(0, 50)}${chatText.length > 50 ? '...' : ''}"`);
+
+      // Send user transcript back so UI shows it
+      sendToClient(session, { type: 'transcript', text: chatText, role: 'user' });
+
+      (async () => {
+        try {
+          let systemContent = SYSTEM_PROMPT;
+          if (session.memoryContext) {
+            systemContent += `\n\nUser context/memory: ${session.memoryContext}`;
+          }
+          if (session.voiceOnly) {
+            systemContent += '\n\nTEXT CHAT MODE: User is typing, not speaking. You can be slightly more detailed than voice responses but stay concise.';
+          }
+
+          const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
+          const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
+          for (const entry of historySlice) {
+            messages.push({ role: entry.role, content: entry.content });
+          }
+
+          if (hasRecentFrame && route.brain === 'fast') {
+            messages.push({
+              role: 'user',
+              content: [
+                { type: 'text', text: chatText },
+                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } },
+              ],
+            });
+          } else {
+            messages.push({ role: 'user', content: chatText });
+          }
+
+          let responseText: string;
+          let brainUsed: BrainType = route.brain;
+
+          if (route.brain === 'fast') {
+            const result = await cerebrasComplete({ messages, max_tokens: 1024 });
+            responseText = result.text;
+            session.totalInputTokens += result.usage.inputTokens;
+            session.totalOutputTokens += result.usage.outputTokens;
+          } else if (route.brain === 'deep') {
+            const result = await openaiComplete({ messages, max_tokens: 2048 });
+            responseText = result.text;
+            session.totalInputTokens += result.usage.inputTokens;
+            session.totalOutputTokens += result.usage.outputTokens;
+          } else {
+            const result = await anthropicComplete({ messages, max_tokens: 1024 });
+            responseText = result.text;
+            session.totalInputTokens += result.usage.inputTokens;
+            session.totalOutputTokens += result.usage.outputTokens;
+          }
+
+          if (!session.isResponding || !responseText) {
+            session.isResponding = false;
+            return;
+          }
+
+          session.conversationHistory.push({ role: 'user', content: chatText });
+          session.conversationHistory.push({ role: 'assistant', content: responseText });
+          if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) {
+            session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
+          }
+
+          sendToClient(session, { type: 'transcript', text: responseText, role: 'assistant', brain: brainUsed });
+
+          // Stream TTS audio for web client voice playback
+          if (!message.textOnly) {
+            sendToClient(session, { type: 'mute_mic', muted: true });
+            await elevenLabsStreamTTS(
+              responseText,
+              (audioChunk: Buffer) => {
+                if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) {
+                  sendToClient(session, { type: 'audio', data: audioChunk.toString('base64'), format: 'pcm_24000' });
+                }
+              },
+              () => {
+                sendToClient(session, { type: 'mute_mic', muted: false });
+                sendToClient(session, { type: 'audio_done' });
+              },
+              session.voiceId || undefined,
+            );
+          }
+
+          const totalMs = Date.now() - chatStart;
+          console.log(`[V9] Chat total: ${totalMs}ms`);
+          session.responsesCompleted++;
+          session.isResponding = false;
+        } catch (error) {
+          console.error(`[V9] Chat pipeline error:`, error);
+          session.isResponding = false;
+          sendToClient(session, { type: 'mute_mic', muted: false });
+        }
+      })();
+      break;
+    }
   }
 }
 

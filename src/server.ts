@@ -356,6 +356,18 @@ app.get('/sw.js', (req, res) => {
 });
 
 // ============================================================
+// REDI WEB CLIENT - Browser-based voice + screen + chat
+// ============================================================
+app.get('/app', (req, res) => {
+  trackEvent('page', 'redi-web-app');
+  res.sendFile(path.join(process.cwd(), 'public', 'app.html'));
+});
+app.get('/redi/app', (req, res) => {
+  trackEvent('page', 'redi-web-app');
+  res.sendFile(path.join(process.cwd(), 'public', 'app.html'));
+});
+
+// ============================================================
 // REDI SCREEN SHARE - Web UI for desktop screen sharing
 // ============================================================
 app.get('/screen', (req, res) => {
