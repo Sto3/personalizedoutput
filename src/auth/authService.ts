@@ -1,18 +1,23 @@
 /**
- * Auth Service — User authentication and TOTP 2FA
- * =================================================
- * JWT sessions, TOTP setup/verify (Google Authenticator compatible).
+ * Auth Service — User authentication, password auth, and TOTP 2FA
+ * =================================================================
+ * JWT sessions, password-based signup/login, TOTP setup/verify.
+ * Password hashing uses Node's built-in crypto.scrypt (64-byte key, 16-byte salt).
  */
 
 import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import crypto from 'crypto';
+import { promisify } from 'util';
+
+const scrypt = promisify(crypto.scrypt);
 
 const router = Router();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || '';
 const JWT_SECRET = process.env.JWT_SECRET || 'redi-jwt-secret-change-in-production';
+const TOKEN_EXPIRY_HOURS = 720; // 30 days
 
 function getSupabase() {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -44,6 +49,153 @@ function verifyJWT(token: string): any | null {
   } catch {
     return null;
   }
+}
+
+// =============================================================================
+// PASSWORD HASHING (crypto.scrypt — built-in, no external deps)
+// =============================================================================
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.randomBytes(16).toString('hex');
+  const derivedKey = await scrypt(password, salt, 64) as Buffer;
+  return salt + ':' + derivedKey.toString('hex');
+}
+
+async function verifyPassword(password: string, hash: string): Promise<boolean> {
+  const [salt, key] = hash.split(':');
+  if (!salt || !key) return false;
+  const derivedKey = await scrypt(password, salt, 64) as Buffer;
+  return crypto.timingSafeEqual(Buffer.from(key, 'hex'), derivedKey);
+}
+
+// =============================================================================
+// REDI ACCOUNT SYSTEM — Password-based signup/login for web + iOS
+// =============================================================================
+
+export async function rediSignup(data: {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+}): Promise<{ token: string; userId: string; name: string }> {
+  const db = getSupabase();
+
+  // Check if email already exists
+  const { data: existing } = await db
+    .from('redi_users')
+    .select('id, user_id')
+    .eq('email', data.email.toLowerCase())
+    .single();
+
+  if (existing) {
+    throw new Error('An account with this email already exists');
+  }
+
+  // Hash password
+  const passwordHash = await hashPassword(data.password);
+
+  // Create user
+  const userId = `user_${Date.now()}_${crypto.randomBytes(4).toString('hex')}`;
+
+  const { error } = await db
+    .from('redi_users')
+    .insert({
+      id: userId,
+      user_id: userId,
+      name: data.name,
+      email: data.email.toLowerCase(),
+      phone: data.phone || null,
+      password_hash: passwordHash,
+      created_at: new Date().toISOString(),
+      credits_remaining: 5,  // Free starter credits (~5 min of active use)
+      total_sessions: 0,
+    });
+
+  if (error) throw new Error('Could not create account: ' + error.message);
+
+  // Generate JWT (30-day expiry)
+  const token = createJWT(
+    { userId, email: data.email.toLowerCase(), name: data.name },
+    TOKEN_EXPIRY_HOURS,
+  );
+
+  console.log(`[Auth] New Redi user: ${data.name} (${data.email})`);
+
+  return { token, userId, name: data.name };
+}
+
+export async function rediLogin(data: {
+  email: string;
+  password: string;
+}): Promise<{ token: string; userId: string; name: string }> {
+  const db = getSupabase();
+
+  // Find user
+  const { data: user } = await db
+    .from('redi_users')
+    .select('*')
+    .eq('email', data.email.toLowerCase())
+    .single();
+
+  if (!user || !user.password_hash) {
+    throw new Error('Invalid email or password');
+  }
+
+  // Verify password
+  const valid = await verifyPassword(data.password, user.password_hash);
+  if (!valid) {
+    throw new Error('Invalid email or password');
+  }
+
+  const userId = user.id || user.user_id;
+
+  // Generate JWT (30-day expiry)
+  const token = createJWT(
+    { userId, email: user.email, name: user.name || '' },
+    TOKEN_EXPIRY_HOURS,
+  );
+
+  // Update last login
+  await db
+    .from('redi_users')
+    .update({ last_login_at: new Date().toISOString() })
+    .eq('email', data.email.toLowerCase());
+
+  console.log(`[Auth] Redi login: ${user.name || user.email}`);
+
+  return { token, userId, name: user.name || '' };
+}
+
+export function verifyToken(token: string): { userId: string; email: string; name: string } | null {
+  const decoded = verifyJWT(token);
+  if (!decoded) return null;
+  return { userId: decoded.userId, email: decoded.email, name: decoded.name || '' };
+}
+
+export function requireAuth(req: any, res: any, next: any) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  const user = verifyToken(token);
+
+  if (!user) {
+    return res.status(401).json({ error: 'Invalid or expired token' });
+  }
+
+  req.user = user;
+  next();
+}
+
+export async function getCreditBalance(userId: string): Promise<number> {
+  const db = getSupabase();
+  const { data } = await db.from('redi_users').select('credits_remaining').eq('id', userId).single();
+  if (data) return data.credits_remaining || 0;
+  // Fallback: try user_id column
+  const { data: d2 } = await db.from('redi_users').select('credits_remaining').eq('user_id', userId).single();
+  return d2?.credits_remaining || 0;
 }
 
 // TOTP implementation (RFC 6238)

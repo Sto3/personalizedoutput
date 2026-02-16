@@ -21,6 +21,10 @@ const CREDIT_RATES: Record<string, number> = {
   vision: 1.0,
   voice: 0.4,
   passive: 0.1,
+  // Observation mode rates (much lower — Redi is mostly idle)
+  observe_audio_only: 0.1,       // 0.1 credits/min = 6 credits/hour
+  observe_screen_ocr: 0.15,      // 0.15 credits/min = 9 credits/hour
+  observe_screen_vision: 0.4,    // 0.4 credits/min = 24 credits/hour
 };
 
 // Credit packs

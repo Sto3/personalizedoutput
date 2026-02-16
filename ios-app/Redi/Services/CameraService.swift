@@ -104,12 +104,12 @@ class CameraService: NSObject, ObservableObject {
         // OpenAI's vision works great at this resolution
         static let maxOutputDimension: CGFloat = 640
         
-        // JPEG quality - 50% produces small files that AI can still read well
-        // This is the single biggest factor in frame size!
-        static let jpegQuality: CGFloat = 0.50
-        
-        // Motion clip frame quality (even lower for bandwidth)
-        static let clipFrameQuality: CGFloat = 0.40
+        // JPEG quality - 70% balances sharpness and file size
+        // Higher quality reduces blur artifacts that affect AI vision
+        static let jpegQuality: CGFloat = 0.70
+
+        // Motion clip frame quality (lower for bandwidth)
+        static let clipFrameQuality: CGFloat = 0.50
         
         // Target: frames should be <100KB
         // At 640p and 50% quality, typical frame is 40-80KB
@@ -227,6 +227,9 @@ class CameraService: NSObject, ObservableObject {
             // Set focus mode for best sharpness
             if device.isFocusModeSupported(.continuousAutoFocus) {
                 device.focusMode = .continuousAutoFocus
+            }
+            if device.isSmoothAutoFocusSupported {
+                device.isSmoothAutoFocusEnabled = true
             }
 
             // Set exposure for best quality

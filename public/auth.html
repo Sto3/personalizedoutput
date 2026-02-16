@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Redi — Sign In</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0A0A0A;
+            color: #fff;
+            font-family: 'Georgia', serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .auth-container {
+            max-width: 400px;
+            width: 100%;
+            padding: 40px 24px;
+        }
+        .logo { font-size: 48px; letter-spacing: 8px; color: #00CED1; text-align: center; font-variant: small-caps; }
+        .tagline { font-size: 14px; color: #666; text-align: center; margin-top: 4px; font-style: italic; }
+        .tab-row { display: flex; margin-top: 40px; border-bottom: 1px solid #222; }
+        .tab { flex: 1; padding: 12px; text-align: center; color: #666; cursor: pointer; border-bottom: 2px solid transparent; }
+        .tab.active { color: #00CED1; border-bottom-color: #00CED1; }
+        .form { margin-top: 24px; }
+        .field { margin-bottom: 16px; }
+        .field label { display: block; font-size: 13px; color: #888; margin-bottom: 6px; }
+        .field input { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #111; color: #fff; font-family: 'Georgia', serif; font-size: 15px; outline: none; }
+        .field input:focus { border-color: #00CED1; }
+        .submit-btn {
+            width: 100%; padding: 14px; border-radius: 12px; border: none;
+            background: #00CED1; color: #000; font-family: 'Georgia', serif;
+            font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px;
+        }
+        .submit-btn:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .error-msg { color: #FF4444; font-size: 13px; margin-top: 8px; text-align: center; display: none; }
+        .success-msg { color: #00CED1; font-size: 13px; margin-top: 8px; text-align: center; display: none; }
+        .divider { text-align: center; color: #444; margin: 20px 0; font-size: 13px; }
+        .alt-link { text-align: center; margin-top: 16px; }
+        .alt-link a { color: #00CED1; text-decoration: none; font-size: 14px; }
+        .password-requirements { font-size: 11px; color: #555; margin-top: 4px; }
+        .tos { font-size: 11px; color: #555; text-align: center; margin-top: 16px; line-height: 1.4; }
+        .tos a { color: #00CED1; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <div class="logo">REDI</div>
+        <div class="tagline">for anything</div>
+
+        <!-- Tabs -->
+        <div class="tab-row">
+            <div class="tab active" id="tabLogin" onclick="showTab('login')">Sign In</div>
+            <div class="tab" id="tabSignup" onclick="showTab('signup')">Create Account</div>
+        </div>
+
+        <!-- Login Form -->
+        <div class="form" id="loginForm">
+            <div class="field">
+                <label>Email</label>
+                <input type="email" id="loginEmail" placeholder="you@email.com" autocomplete="email">
+            </div>
+            <div class="field">
+                <label>Password</label>
+                <input type="password" id="loginPassword" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="current-password">
+            </div>
+            <button class="submit-btn" id="loginBtn" onclick="doLogin()">Sign In</button>
+            <div class="error-msg" id="loginError"></div>
+            <div class="alt-link"><a href="#" onclick="showTab('signup')">Don't have an account? Create one</a></div>
+        </div>
+
+        <!-- Signup Form -->
+        <div class="form" id="signupForm" style="display:none">
+            <div class="field">
+                <label>Your Name</label>
+                <input type="text" id="signupName" placeholder="What should Redi call you?" autocomplete="name">
+            </div>
+            <div class="field">
+                <label>Email</label>
+                <input type="email" id="signupEmail" placeholder="you@email.com" autocomplete="email">
+            </div>
+            <div class="field">
+                <label>Phone (optional)</label>
+                <input type="tel" id="signupPhone" placeholder="+1 555 123 4567" autocomplete="tel">
+            </div>
+            <div class="field">
+                <label>Password</label>
+                <input type="password" id="signupPassword" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="new-password">
+                <div class="password-requirements">At least 8 characters, one uppercase, one number</div>
+            </div>
+            <div class="field">
+                <label>Confirm Password</label>
+                <input type="password" id="signupConfirm" placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;" autocomplete="new-password">
+            </div>
+            <button class="submit-btn" id="signupBtn" onclick="doSignup()">Create Account</button>
+            <div class="error-msg" id="signupError"></div>
+            <div class="success-msg" id="signupSuccess"></div>
+            <div class="tos">
+                By creating an account, you agree to Redi's <a href="/terms">Terms of Service</a> and <a href="/privacy">Privacy Policy</a>.
+            </div>
+            <div class="alt-link"><a href="#" onclick="showTab('login')">Already have an account? Sign in</a></div>
+        </div>
+    </div>
+
+    <script>
+        // Check if already logged in
+        var token = localStorage.getItem('redi_token');
+        if (token) {
+            fetch('/api/redi/auth/verify', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            }).then(function(r) {
+                if (r.ok) window.location.href = '/app';
+            });
+        }
+
+        function showTab(tab) {
+            document.getElementById('loginForm').style.display = tab === 'login' ? 'block' : 'none';
+            document.getElementById('signupForm').style.display = tab === 'signup' ? 'block' : 'none';
+            document.getElementById('tabLogin').classList.toggle('active', tab === 'login');
+            document.getElementById('tabSignup').classList.toggle('active', tab === 'signup');
+        }
+
+        async function doLogin() {
+            var email = document.getElementById('loginEmail').value.trim();
+            var password = document.getElementById('loginPassword').value;
+            var errorEl = document.getElementById('loginError');
+            var btn = document.getElementById('loginBtn');
+
+            if (!email || !password) {
+                errorEl.textContent = 'Please enter email and password';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Signing in...';
+            errorEl.style.display = 'none';
+
+            try {
+                var resp = await fetch('/api/redi/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: email, password: password }),
+                });
+
+                var data = await resp.json();
+
+                if (resp.ok && data.token) {
+                    localStorage.setItem('redi_token', data.token);
+                    localStorage.setItem('redi_user_id', data.userId);
+                    localStorage.setItem('redi_user_name', data.name || '');
+                    window.location.href = '/app';
+                } else {
+                    errorEl.textContent = data.error || 'Invalid email or password';
+                    errorEl.style.display = 'block';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Connection error. Please try again.';
+                errorEl.style.display = 'block';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Sign In';
+        }
+
+        async function doSignup() {
+            var name = document.getElementById('signupName').value.trim();
+            var email = document.getElementById('signupEmail').value.trim();
+            var phone = document.getElementById('signupPhone').value.trim();
+            var password = document.getElementById('signupPassword').value;
+            var confirm = document.getElementById('signupConfirm').value;
+            var errorEl = document.getElementById('signupError');
+            var successEl = document.getElementById('signupSuccess');
+            var btn = document.getElementById('signupBtn');
+
+            errorEl.style.display = 'none';
+            successEl.style.display = 'none';
+
+            if (!name || !email || !password) {
+                errorEl.textContent = 'Please fill in all required fields';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (password.length < 8) {
+                errorEl.textContent = 'Password must be at least 8 characters';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (!/[A-Z]/.test(password) || !/[0-9]/.test(password)) {
+                errorEl.textContent = 'Password needs at least one uppercase letter and one number';
+                errorEl.style.display = 'block';
+                return;
+            }
+            if (password !== confirm) {
+                errorEl.textContent = 'Passwords do not match';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = 'Creating account...';
+
+            try {
+                var resp = await fetch('/api/redi/auth/signup', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, email: email, phone: phone, password: password }),
+                });
+
+                var data = await resp.json();
+
+                if (resp.ok && data.token) {
+                    localStorage.setItem('redi_token', data.token);
+                    localStorage.setItem('redi_user_id', data.userId);
+                    localStorage.setItem('redi_user_name', name);
+                    window.location.href = '/app';
+                } else {
+                    errorEl.textContent = data.error || 'Could not create account';
+                    errorEl.style.display = 'block';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Connection error. Please try again.';
+                errorEl.style.display = 'block';
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Create Account';
+        }
+
+        // Enter key support
+        document.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                if (document.getElementById('loginForm').style.display !== 'none') doLogin();
+                else doSignup();
+            }
+        });
+    </script>
+</body>
+</html>

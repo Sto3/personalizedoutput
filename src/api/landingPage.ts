@@ -165,7 +165,8 @@ const LANDING_HTML = `<!DOCTYPE html>
         <div class="feature-desc">Proactively checks in on you</div>
       </div>
     </div>
-    <a href="#waitlist" class="cta">Join the Waitlist</a>
+    <a href="/app" class="cta" style="background: linear-gradient(135deg, #00d4ff, #ff00aa); margin-bottom: 12px;">Open Redi in Browser</a>
+    <a href="#waitlist" class="cta" style="background: transparent; border: 1px solid rgba(255,255,255,0.2);">Join the Waitlist</a>
     <div class="waitlist" id="waitlist">
       <form class="waitlist-form" onsubmit="handleWaitlist(event)">
         <input type="email" placeholder="your@email.com" required id="waitlist-email" />

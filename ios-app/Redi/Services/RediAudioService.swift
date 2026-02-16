@@ -73,11 +73,15 @@ class RediAudioService: ObservableObject {
     private func setupAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.defaultToSpeaker, .allowBluetooth])
+            // CRITICAL: .defaultToSpeaker routes to main speaker, not earpiece
+            try session.setCategory(.playAndRecord, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+            try session.setMode(.voiceChat)
             try session.setPreferredSampleRate(sampleRate)
             try session.setPreferredIOBufferDuration(0.005)  // 5ms buffer for low latency!
             try session.setActive(true)
-            print("[RediAudio] ✅ Audio session configured (5ms buffer)")
+            // CRITICAL: Force speaker output to fix low volume issue
+            try session.overrideOutputAudioPort(.speaker)
+            print("[RediAudio] ✅ Audio session configured (speaker output, 5ms buffer)")
         } catch {
             print("[RediAudio] ❌ Audio session setup failed: \(error)")
         }
