@@ -76,7 +76,7 @@ const VOICE_OPTIONS: Record<string, VoiceOption> = {
 let activeVoiceId = VOICE_OPTIONS.brian.id;
 
 function getElevenLabsEndpoint(voiceId: string): string {
-  return `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream`;
+  return `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream?output_format=pcm_24000`;
 }
 
 export async function elevenLabsStreamTTS(
@@ -103,7 +103,6 @@ export async function elevenLabsStreamTTS(
       headers: {
         'xi-api-key': ELEVENLABS_API_KEY,
         'Content-Type': 'application/json',
-        'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
         text,
@@ -114,7 +113,6 @@ export async function elevenLabsStreamTTS(
           style: 0.15,
           use_speaker_boost: true,
         },
-        output_format: 'pcm_24000',
       }),
     },
   );

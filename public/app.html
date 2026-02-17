@@ -705,6 +705,8 @@
                     case 'audio_done':
                         document.getElementById('responseArea').classList.remove('speaking');
                         updateStatus('listening', 'Listening...');
+                        // Reset queue timing for next response
+                        nextPlayTime = 0;
                         break;
 
                     case 'observe_started':
@@ -726,7 +728,9 @@
                         break;
 
                     case 'stop_audio':
-                        // Barge-in: stop playback
+                        // Barge-in: stop playback immediately
+                        stopAllAudio();
+                        document.getElementById('responseArea').classList.remove('speaking');
                         break;
 
                     case 'credits_update':
@@ -875,6 +879,22 @@
 
             }).catch(function(err) {
                 console.error('Screen share error:', err);
+                // Detect iPad/iOS (all iPad browsers use WebKit and block getDisplayMedia)
+                var isIPad = /iPad|Macintosh/i.test(navigator.userAgent) && 'ontouchend' in document;
+                var isIOS = /iPhone|iPod/i.test(navigator.userAgent);
+                if (isIPad || isIOS) {
+                    document.getElementById('responseArea').textContent =
+                        'Screen sharing is not available on iPad or iPhone browsers — this is an Apple restriction on all web apps. ' +
+                        'Use a laptop or desktop browser for Screen View, or continue with Voice mode here.';
+                } else if (err.name === 'NotAllowedError') {
+                    document.getElementById('responseArea').textContent =
+                        'Screen share permission denied. Click the screen button to try again.';
+                } else {
+                    document.getElementById('responseArea').textContent =
+                        'Screen sharing is not supported in this browser. Try Voice or Chat mode instead.';
+                }
+                isScreenOn = false;
+                updateScreenButton();
             });
         }
 
@@ -938,39 +958,74 @@
         }
 
         // =====================================================
-        // AUDIO PLAYBACK
+        // AUDIO PLAYBACK (queued for smooth streaming)
         // =====================================================
+        var nextPlayTime = 0;
+        var activeAudioSources = [];
+
+        function ensureAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+            }
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            return audioContext;
+        }
+
         function playAudioChunk(base64Data) {
             var binaryString = atob(base64Data);
             var bytes = new Uint8Array(binaryString.length);
             for (var i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
-            playAudioBuffer(bytes.buffer);
+            queueAudioBuffer(bytes.buffer);
         }
 
         function playAudioBuffer(arrayBuffer) {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-            }
+            queueAudioBuffer(arrayBuffer);
+        }
 
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
+        function queueAudioBuffer(arrayBuffer) {
+            var ctx = ensureAudioContext();
 
             var pcm16 = new Int16Array(arrayBuffer);
+            if (pcm16.length === 0) return;
+
             var float32 = new Float32Array(pcm16.length);
             for (var i = 0; i < pcm16.length; i++) {
                 float32[i] = pcm16[i] / 32768;
             }
 
-            var buffer = audioContext.createBuffer(1, float32.length, 24000);
+            var buffer = ctx.createBuffer(1, float32.length, 24000);
             buffer.getChannelData(0).set(float32);
 
-            var source = audioContext.createBufferSource();
+            // Schedule chunk right after the previous one ends
+            var now = ctx.currentTime;
+            if (nextPlayTime < now) {
+                nextPlayTime = now + 0.02;
+            }
+
+            var source = ctx.createBufferSource();
             source.buffer = buffer;
-            source.connect(audioContext.destination);
-            source.start();
+            source.connect(ctx.destination);
+            source.start(nextPlayTime);
+            activeAudioSources.push(source);
+
+            nextPlayTime += buffer.duration;
+
+            source.onended = function() {
+                var idx = activeAudioSources.indexOf(source);
+                if (idx !== -1) activeAudioSources.splice(idx, 1);
+            };
+        }
+
+        function stopAllAudio() {
+            for (var i = 0; i < activeAudioSources.length; i++) {
+                try { activeAudioSources[i].stop(); } catch(e) {}
+            }
+            activeAudioSources = [];
+            nextPlayTime = 0;
         }
 
         // =====================================================
@@ -1090,6 +1145,16 @@
         // =====================================================
         // INIT
         // =====================================================
+
+        // Auto-select mode from URL parameter (?mode=voice, ?mode=screen, etc.)
+        (function() {
+            var params = new URLSearchParams(window.location.search);
+            var urlMode = params.get('mode');
+            if (urlMode && ['voice', 'screen', 'observe', 'chat'].indexOf(urlMode) !== -1) {
+                selectMode(urlMode);
+            }
+        })();
+
         loadCredits();
         if (window.location.search.indexOf('purchase=success') !== -1) setTimeout(loadCredits, 2000);
 
