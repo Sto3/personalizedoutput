@@ -1591,10 +1591,14 @@ app.get('/admin/analytics', requireAdmin, async (req, res) => {
 });
 
 // ============================================================
-// HOMEPAGE
+// HOMEPAGE - hostname-based routing
 // ============================================================
 
 app.get('/', async (req, res) => {
+  const host = req.hostname?.toLowerCase() || '';
+  if (host === 'redialways.com' || host === 'www.redialways.com') {
+    return res.sendFile(path.join(process.cwd(), 'public', 'redi-home.html'));
+  }
   const html = await renderPremiumHomepageV4();
   res.send(html);
 });
