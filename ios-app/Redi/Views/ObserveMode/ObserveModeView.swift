@@ -19,10 +19,7 @@ struct ObserveModeView: View {
         VStack(spacing: 24) {
             // Header
             VStack(spacing: 8) {
-                Image(systemName: observeService.isObserving ? "wave.3.right.circle.fill" : "wave.3.right.circle")
-                    .font(.system(size: 60))
-                    .foregroundColor(observeService.isObserving ? .cyan : .gray)
-                    .symbolEffect(.pulse, isActive: observeService.isObserving)
+                observeIcon
 
                 Text(observeService.isObserving ? "Redi is Observing" : "Always On Mode")
                     .font(.custom("BodoniSvtyTwoSCITCTT-Book", size: 24))
@@ -197,5 +194,21 @@ struct ObserveModeView: View {
             }
         }
         .padding()
+    }
+
+    // MARK: - iOS 16/17 compatible icon
+
+    @ViewBuilder
+    private var observeIcon: some View {
+        if #available(iOS 17.0, *) {
+            Image(systemName: observeService.isObserving ? "wave.3.right.circle.fill" : "wave.3.right.circle")
+                .font(.system(size: 60))
+                .foregroundColor(observeService.isObserving ? .cyan : .gray)
+                .symbolEffect(.pulse, isActive: observeService.isObserving)
+        } else {
+            Image(systemName: observeService.isObserving ? "wave.3.right.circle.fill" : "wave.3.right.circle")
+                .font(.system(size: 60))
+                .foregroundColor(observeService.isObserving ? .cyan : .gray)
+        }
     }
 }
