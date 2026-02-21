@@ -53,8 +53,8 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
     }
     
     private func registerNotificationCategories() {
-        let takenAction = UNNotificationAction(identifier: "TAKEN_ACTION", title: "\u2713 Taken", options: [.foreground])
-        let snoozeAction = UNNotificationAction(identifier: "SNOOZE_ACTION", title: "\u23f0 Snooze 15min", options: [])
+        let takenAction = UNNotificationAction(identifier: "TAKEN_ACTION", title: "✓ Taken", options: [.foreground])
+        let snoozeAction = UNNotificationAction(identifier: "SNOOZE_ACTION", title: "⏰ Snooze 15min", options: [])
         let skipAction = UNNotificationAction(identifier: "SKIP_ACTION", title: "Skip", options: [.destructive])
         let medicationCategory = UNNotificationCategory(identifier: "MEDICATION_REMINDER", actions: [takenAction, snoozeAction, skipAction], intentIdentifiers: [], options: [.customDismissAction])
         UNUserNotificationCenter.current().setNotificationCategories([medicationCategory])

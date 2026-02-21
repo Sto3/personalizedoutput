@@ -29,6 +29,17 @@
 		9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB823E4908134544AE3D2E51 /* V5WebSocketService.swift */; };
 		C80227FB26645796A682337E /* V3AudioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CFB05189C28C4E9FD5F1981 /* V3AudioService.swift */; };
 		C93000B12F26E85400431780 /* RediWebRTCService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93000B02F26E85400431780 /* RediWebRTCService.swift */; };
+		C93C8C832F499C17003919E7 /* V9WebSocketService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C822F499C17003919E7 /* V9WebSocketService.swift */; };
+		C93C8C842F499C17003919E7 /* V9Config.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C812F499C17003919E7 /* V9Config.swift */; };
+		C93C8C862F499F1B003919E7 /* UsageDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C852F499F1B003919E7 /* UsageDashboardView.swift */; };
+		C93C8C882F499F37003919E7 /* VoiceSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C872F499F37003919E7 /* VoiceSelectionView.swift */; };
+		C93C8C8A2F499F53003919E7 /* MemoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C892F499F53003919E7 /* MemoryView.swift */; };
+		C93C8C8C2F499F69003919E7 /* MeetingBotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C8B2F499F69003919E7 /* MeetingBotView.swift */; };
+		C93C8C8E2F499F81003919E7 /* AIDisclaimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C8D2F499F81003919E7 /* AIDisclaimer.swift */; };
+		C93C8C902F499FCB003919E7 /* IAPService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C8F2F499FCB003919E7 /* IAPService.swift */; };
+		C93C8C922F49A002003919E7 /* RediShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C912F49A002003919E7 /* RediShortcuts.swift */; };
+		C93C8C942F49A019003919E7 /* PushNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C932F49A019003919E7 /* PushNotificationService.swift */; };
+		C93C8C962F49A040003919E7 /* MemoryLayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C93C8C952F49A040003919E7 /* MemoryLayerView.swift */; };
 		C9C59EBAF783A1FA1B8C5DE5 /* ObjectDetectionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1BB36CA549D64781F0A73176 /* ObjectDetectionService.swift */; };
 		C9CDDDDD2F2F365900DB158B /* RediApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9CDDDDC2F2F365900DB158B /* RediApp.swift */; };
 		C9CDDDDF2F2F3A0F00DB158B /* RediTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9CDDDDE2F2F3A0F00DB158B /* RediTabView.swift */; };
@@ -92,6 +103,17 @@
 		BEA53ACD5677BE0F02E19E7B /* Pods-Redi.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Redi.release.xcconfig"; path = "Target Support Files/Pods-Redi/Pods-Redi.release.xcconfig"; sourceTree = "<group>"; };
 		BEF92C5B2A282CE863A803E3 /* StoreKitService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitService.swift; sourceTree = "<group>"; };
 		C93000B02F26E85400431780 /* RediWebRTCService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RediWebRTCService.swift; path = Services/RediWebRTCService.swift; sourceTree = "<group>"; };
+		C93C8C812F499C17003919E7 /* V9Config.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V9Config.swift; path = Services/V9/V9Config.swift; sourceTree = "<group>"; };
+		C93C8C822F499C17003919E7 /* V9WebSocketService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = V9WebSocketService.swift; path = Services/V9/V9WebSocketService.swift; sourceTree = "<group>"; };
+		C93C8C852F499F1B003919E7 /* UsageDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UsageDashboardView.swift; path = Views/Billing/UsageDashboardView.swift; sourceTree = "<group>"; };
+		C93C8C872F499F37003919E7 /* VoiceSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = VoiceSelectionView.swift; path = Views/Settings/VoiceSelectionView.swift; sourceTree = "<group>"; };
+		C93C8C892F499F53003919E7 /* MemoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MemoryView.swift; path = Views/Memory/MemoryView.swift; sourceTree = "<group>"; };
+		C93C8C8B2F499F69003919E7 /* MeetingBotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MeetingBotView.swift; path = Views/Meetings/MeetingBotView.swift; sourceTree = "<group>"; };
+		C93C8C8D2F499F81003919E7 /* AIDisclaimer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AIDisclaimer.swift; path = Views/Components/AIDisclaimer.swift; sourceTree = "<group>"; };
+		C93C8C8F2F499FCB003919E7 /* IAPService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = IAPService.swift; path = Services/Billing/IAPService.swift; sourceTree = "<group>"; };
+		C93C8C912F49A002003919E7 /* RediShortcuts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RediShortcuts.swift; path = Services/SiriShortcuts/RediShortcuts.swift; sourceTree = "<group>"; };
+		C93C8C932F49A019003919E7 /* PushNotificationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = PushNotificationService.swift; path = Services/Notifications/PushNotificationService.swift; sourceTree = "<group>"; };
+		C93C8C952F49A040003919E7 /* MemoryLayerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = MemoryLayerView.swift; path = Views/Memory/MemoryLayerView.swift; sourceTree = "<group>"; };
 		C9CDDDDC2F2F365900DB158B /* RediApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RediApp.swift; sourceTree = "<group>"; };
 		C9CDDDDE2F2F3A0F00DB158B /* RediTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RediTabView.swift; path = Views/RediTabView.swift; sourceTree = "<group>"; };
 		C9CDDDE02F2F3A4A00DB158B /* HealthDataManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = HealthDataManager.swift; path = Services/Health/HealthDataManager.swift; sourceTree = "<group>"; };
@@ -310,6 +332,17 @@
 		FE7D5ACDAD9848F606558C22 = {
 			isa = PBXGroup;
 			children = (
+				C93C8C952F49A040003919E7 /* MemoryLayerView.swift */,
+				C93C8C912F49A002003919E7 /* RediShortcuts.swift */,
+				C93C8C932F49A019003919E7 /* PushNotificationService.swift */,
+				C93C8C8F2F499FCB003919E7 /* IAPService.swift */,
+				C93C8C852F499F1B003919E7 /* UsageDashboardView.swift */,
+				C93C8C872F499F37003919E7 /* VoiceSelectionView.swift */,
+				C93C8C892F499F53003919E7 /* MemoryView.swift */,
+				C93C8C8B2F499F69003919E7 /* MeetingBotView.swift */,
+				C93C8C8D2F499F81003919E7 /* AIDisclaimer.swift */,
+				C93C8C812F499C17003919E7 /* V9Config.swift */,
+				C93C8C822F499C17003919E7 /* V9WebSocketService.swift */,
 				C9CDDDE02F2F3A4A00DB158B /* HealthDataManager.swift */,
 				C9CDDDE12F2F3A4A00DB158B /* HealthReportService.swift */,
 				C9CDDDE22F2F3A4A00DB158B /* MedicationService.swift */,
@@ -448,30 +481,40 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C93C8C8E2F499F81003919E7 /* AIDisclaimer.swift in Sources */,
+				C93C8C962F49A040003919E7 /* MemoryLayerView.swift in Sources */,
 				0215ED4F4E9C059895B265BE /* AudioClassificationService.swift in Sources */,
 				ED79ACF21932FDCFD407078B /* AudioService.swift in Sources */,
 				02C31AED37CCB58BF6AD1EE2 /* CameraService.swift in Sources */,
 				C9CDDDF72F2F401400DB158B /* ScreenShareService.swift in Sources */,
 				ECFCF1B402D06EF7330A7DDE /* DepthService.swift in Sources */,
 				DED19773F5CEE6421A1D38AC /* HistoryView.swift in Sources */,
+				C93C8C922F49A002003919E7 /* RediShortcuts.swift in Sources */,
 				C9CDDDDD2F2F365900DB158B /* RediApp.swift in Sources */,
 				8B52A1E276920B500C7052D7 /* HomeViewModel.swift in Sources */,
 				C9CDDDE52F2F3A4A00DB158B /* HealthDataManager.swift in Sources */,
+				C93C8C8A2F499F53003919E7 /* MemoryView.swift in Sources */,
 				C9CDDDE62F2F3A4A00DB158B /* HealthReportService.swift in Sources */,
 				C9CDDDEF2F2F3C7800DB158B /* LogMealView.swift in Sources */,
 				C9CDDDF02F2F3C7800DB158B /* LogSymptomView.swift in Sources */,
 				C9CDDDF12F2F3C7800DB158B /* HealthReportView.swift in Sources */,
 				C9CDDDF22F2F3C7800DB158B /* HealthDashboardView.swift in Sources */,
+				C93C8C832F499C17003919E7 /* V9WebSocketService.swift in Sources */,
+				C93C8C842F499C17003919E7 /* V9Config.swift in Sources */,
 				C9CDDDF32F2F3C7800DB158B /* AddMedicationView.swift in Sources */,
 				C9CDDDE72F2F3A4A00DB158B /* SymptomService.swift in Sources */,
 				C9CDDDE82F2F3A4A00DB158B /* NutritionService.swift in Sources */,
+				C93C8C862F499F1B003919E7 /* UsageDashboardView.swift in Sources */,
 				C9CDDDE92F2F3A4A00DB158B /* MedicationService.swift in Sources */,
+				C93C8C942F49A019003919E7 /* PushNotificationService.swift in Sources */,
+				C93C8C902F499FCB003919E7 /* IAPService.swift in Sources */,
 				L0CALTTS001B001A001B001C /* LocalTTSService.swift in Sources */,
 				929C224DD38B492B7C9D0330 /* Models.swift in Sources */,
 				48BB1E504CA010F815FEE58D /* MotionService.swift in Sources */,
 				C9C59EBAF783A1FA1B8C5DE5 /* ObjectDetectionService.swift in Sources */,
 				3A0C91300C54AEC7AE37592D /* PerceptionService.swift in Sources */,
 				RED1AUD10001B001A001B001C /* RediAudioService.swift in Sources */,
+				C93C8C882F499F37003919E7 /* VoiceSelectionView.swift in Sources */,
 				RED1C0NF001B001A001B001C /* RediConfig.swift in Sources */,
 				RED1WEB50001B001A001B001C /* RediWebSocketService.swift in Sources */,
 				223406C2FD912DDB6018B1F1 /* SceneUnderstandingService.swift in Sources */,
@@ -501,6 +544,7 @@
 				5BDFC5B4D2F84EDC9B83341A /* V5AudioService.swift in Sources */,
 				9D9651C6432B4040A7D97AF1 /* V5WebSocketService.swift in Sources */,
 				C9CDDDDF2F2F3A0F00DB158B /* RediTabView.swift in Sources */,
+				C93C8C8C2F499F69003919E7 /* MeetingBotView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

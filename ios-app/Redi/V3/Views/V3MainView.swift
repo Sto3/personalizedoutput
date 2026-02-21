@@ -6,18 +6,20 @@
  * Design inspired by: Cyan-to-magenta gradient waveform with glowing bracket frame
  * Features: Particle effects, gradient animations, sophisticated dark aesthetic
  *
- * Updated: Feb 21, 2026 - V9 audio pipeline wired up
+ * Updated: Feb 21, 2026 - V9 audio pipeline + screen share frame forwarding
  */
 
 import SwiftUI
 import AVFoundation
+import Combine
 import WebRTC
 
 struct V3MainView: View {
     @EnvironmentObject var appState: AppState
     @StateObject private var webrtcService = RediWebRTCService()
     @StateObject private var v9Service = V9WebSocketService()
-    @StateObject private var v9Audio = V5AudioService()  // Audio capture/playback for V9
+    @StateObject private var v9Audio = RediAudioService()
+    @ObservedObject private var screenShare = ScreenShareService.shared
     @State private var isActive = false
     @State private var sensitivity: Double = 5
     @State private var memoryEnabled = true
@@ -25,16 +27,23 @@ struct V3MainView: View {
     @State private var transcriptLines: [(String, String)] = []
     @State private var latency: Int = 0
     @State private var showSettings = false
-    @State private var showSessionModeSelector = false
+    @State private var showScreenShare = false
     @State private var waveformPhase: CGFloat = 0
     @State private var glowPulse: CGFloat = 0
     @State private var particleSystem = ParticleSystem()
     @State private var logoTapCount = 0
     @State private var logoTapTimer: Timer? = nil
     @State private var activeBrain: String = ""
+    @State private var audioCancellable: AnyCancellable?
 
     private let cyanGlow = Color(hex: "00D4FF")
     private let magentaGlow = Color(hex: "FF00AA")
+
+    /// Whether screen share is actively piping frames to V9
+    private var isScreenShareActive: Bool {
+        if case .connected = screenShare.connectionState { return true }
+        return false
+    }
     
     var body: some View {
         ZStack {
@@ -62,14 +71,13 @@ struct V3MainView: View {
             
             if showSettings { settingsOverlay }
         }
+        .sheet(isPresented: $showScreenShare) {
+            ScreenShareView()
+        }
         .onAppear {
             setupCallbacks()
+            setupScreenShareBridge()
             startAnimations()
-        }
-        .sheet(isPresented: $showSessionModeSelector) {
-            SessionModeSelector(isPresented: $showSessionModeSelector) { mode in
-                showSessionModeSelector = false
-            }
         }
     }
     
@@ -98,12 +106,16 @@ struct V3MainView: View {
             .background(Capsule().fill(Color.white.opacity(0.08)).overlay(Capsule().stroke(Color.white.opacity(0.1), lineWidth: 1)))
             
             Spacer()
-            
-            if isActive && webrtcService.hasVideoPreview {
+
+            // Screen share indicator
+            if isScreenShareActive {
                 HStack(spacing: 6) {
-                    Circle().fill(Color.green).frame(width: 6, height: 6)
-                    Text("LIVE").font(.system(size: 11, weight: .bold, design: .monospaced)).foregroundColor(.green)
-                }.padding(.horizontal, 10).padding(.vertical, 6).background(Color.green.opacity(0.15)).cornerRadius(8)
+                    Image(systemName: "display").font(.system(size: 11))
+                    Text("Screen").font(.system(size: 11, weight: .medium, design: .rounded))
+                }
+                .foregroundColor(.green)
+                .padding(.horizontal, 10).padding(.vertical, 6)
+                .background(Color.green.opacity(0.15)).cornerRadius(8)
             }
             
             if isActive && latency > 0 {
@@ -112,6 +124,14 @@ struct V3MainView: View {
             }
             
             Spacer()
+
+            // Screen share button
+            Button(action: { showScreenShare = true }) {
+                Image(systemName: isScreenShareActive ? "display.trianglebadge.exclamationmark" : "display")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(isScreenShareActive ? .green : .white.opacity(0.7))
+                    .frame(width: 40, height: 40).background(Color.white.opacity(0.08)).cornerRadius(12)
+            }
             
             Button(action: { withAnimation(.spring()) { showSettings.toggle() } }) {
                 Image(systemName: "slider.horizontal.3").font(.system(size: 18, weight: .medium)).foregroundColor(.white.opacity(0.7))
@@ -141,7 +161,9 @@ struct V3MainView: View {
             bracketFrame
             AnimatedWaveform(isActive: isActive && (webrtcService.isActivated || v9Service.isConnected), phase: waveformPhase).frame(width: 200, height: 80)
             if !isActive { brandingText }
-            else if !webrtcService.isActivated && !v9Service.isConnected { wakeWordPrompt }
+            else if !webrtcService.isActivated && !v9Service.isConnected {
+                Text("Connecting...").font(.system(size: 16, weight: .medium)).foregroundColor(.white.opacity(0.5))
+            }
         }.frame(height: 200)
     }
     
@@ -180,14 +202,6 @@ struct V3MainView: View {
         case "voice": return "HAIKU"
         case "deep": return "GPT-4o"
         default: return ""
-        }
-    }
-    
-    private var wakeWordPrompt: some View {
-        VStack(spacing: 12) {
-            Text("Say").font(.system(size: 14, weight: .medium)).foregroundColor(.white.opacity(0.5))
-            Text("\"Hey Redi\"").font(.system(size: 24, weight: .semibold, design: .rounded))
-                .foregroundStyle(LinearGradient(colors: [cyanGlow, magentaGlow], startPoint: .leading, endPoint: .trailing))
         }
     }
     
@@ -243,6 +257,7 @@ struct V3MainView: View {
     
     private var bottomStatusText: String {
         if isActive {
+            if v9Service.isConnected && isScreenShareActive { return "Listening + Screen (V9)" }
             if v9Service.isConnected { return "Listening (V9)" }
             if webrtcService.isActivated { return "Listening" }
             return "Connecting..."
@@ -349,11 +364,11 @@ struct V3MainView: View {
     
     private var sensitivityLabel: String {
         switch Int(sensitivity) {
-        case 1...2: return "Quiet \u2014 Only speaks when important"
-        case 3...4: return "Selective \u2014 Shares occasionally"
-        case 5...6: return "Balanced \u2014 Active partner"
-        case 7...8: return "Engaged \u2014 Frequently participating"
-        case 9...10: return "Full \u2014 Constant companion"
+        case 1...2: return "Quiet - Only speaks when important"
+        case 3...4: return "Selective - Shares occasionally"
+        case 5...6: return "Balanced - Active partner"
+        case 7...8: return "Engaged - Frequently participating"
+        case 9...10: return "Full - Constant companion"
         default: return "Balanced"
         }
     }
@@ -363,9 +378,13 @@ struct V3MainView: View {
     private func toggleSession() {
         if isActive {
             if appState.useV9 {
+                audioCancellable?.cancel()
+                audioCancellable = nil
                 v9Audio.stopRecording()
                 v9Audio.cleanup()
                 v9Service.disconnect()
+                // Clear screen share bridge (don't disconnect screen share itself)
+                screenShare.onFrameReceived = nil
             } else {
                 webrtcService.disconnect()
             }
@@ -392,6 +411,20 @@ struct V3MainView: View {
         }
     }
 
+    // MARK: - Screen Share Bridge
+    
+    /// Wires ScreenShareService frames into V9WebSocketService
+    /// Frames arrive from computer via WebRTC -> ScreenShareService -> here -> V9 server
+    private func setupScreenShareBridge() {
+        screenShare.onFrameReceived = { [weak v9Service] (frameData: Data) in
+            guard let v9 = v9Service, v9.isConnected else { return }
+            v9.sendFrame(frameData)
+            print("[ScreenBridge] Forwarded frame to V9 (\(frameData.count / 1024)KB)")
+        }
+    }
+
+    // MARK: - Callbacks
+
     private func setupCallbacks() {
         // =============================================
         // V7 WebRTC callbacks
@@ -410,20 +443,28 @@ struct V3MainView: View {
         // V9 WebSocket + Audio pipeline
         // =============================================
 
-        // 1. Session ready -> start mic capture
-        v9Service.onSessionReady = {
+        // 1. Session ready -> start mic, wire Combine audio pipe, re-wire screen share bridge
+        v9Service.onSessionReady = { [self] in
             DispatchQueue.main.async {
-                statusText = "Listening (V9)"
-                print("[V3Main] V9 session ready \u2014 starting audio capture")
-                v9Audio.onAudioCaptured = { [weak v9Service] audioData in
-                    v9Service?.sendAudio(audioData)
-                }
+                let screenStatus = isScreenShareActive ? " + Screen" : ""
+                statusText = "Listening\(screenStatus) (V9)"
+                print("[V3Main] V9 session ready - starting audio capture")
+
+                // Wire mic -> WebSocket via Combine
+                audioCancellable = v9Audio.audioCaptured
+                    .sink { [weak v9Service] (audioData: Data) in
+                        v9Service?.sendAudio(audioData)
+                    }
+
                 v9Audio.startRecording()
+
+                // Re-wire screen share bridge now that V9 is connected
+                setupScreenShareBridge()
             }
         }
 
         // 2. Transcripts
-        v9Service.onTranscript = { text, role in
+        v9Service.onTranscript = { (text: String, role: String) in
             DispatchQueue.main.async {
                 transcriptLines.append((text, role))
                 if transcriptLines.count > 10 { transcriptLines.removeFirst() }
@@ -431,41 +472,43 @@ struct V3MainView: View {
         }
 
         // 3. Audio from server -> speaker
-        v9Service.onAudioReceived = { [weak v9Audio] audioData in
+        v9Service.onAudioReceived = { [weak v9Audio] (audioData: Data) in
             v9Audio?.playAudio(audioData)
         }
 
         // 4. Mute mic during TTS
-        v9Service.onPlaybackStarted = {
+        v9Service.onPlaybackStarted = { [self] in
             DispatchQueue.main.async {
                 statusText = "Speaking"
-                v9Audio.isMicMuted = true
+                v9Audio.setMuted(true)
             }
         }
 
         // 5. Unmute after TTS
-        v9Service.onPlaybackEnded = {
+        v9Service.onPlaybackEnded = { [self] in
             DispatchQueue.main.async {
-                statusText = "Listening (V9)"
-                v9Audio.isMicMuted = false
+                let screenStatus = isScreenShareActive ? " + Screen" : ""
+                statusText = "Listening\(screenStatus) (V9)"
+                v9Audio.setMuted(false)
             }
         }
 
         // 6. Audio done
         v9Service.onAudioDone = { [weak v9Audio] in
             DispatchQueue.main.async {
-                v9Audio?.isMicMuted = false
-                statusText = "Listening (V9)"
+                v9Audio?.setMuted(false)
+                let screenStatus = isScreenShareActive ? " + Screen" : ""
+                statusText = "Listening\(screenStatus) (V9)"
             }
         }
 
         // 7. Brain indicator
-        v9Service.onBrainUsed = { brain in
+        v9Service.onBrainUsed = { (brain: String) in
             DispatchQueue.main.async { activeBrain = brain }
         }
 
         // 8. Errors
-        v9Service.onError = { msg in
+        v9Service.onError = { (msg: String) in
             DispatchQueue.main.async {
                 statusText = "Error: \(msg)"
                 print("[V3Main] V9 error: \(msg)")
@@ -479,7 +522,7 @@ struct V3MainView: View {
         logoTapTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: false) { _ in logoTapCount = 0 }
         if logoTapCount >= 7 {
             logoTapCount = 0
-            DeveloperModeManager.shared.unlock()
+            print("[Redi] Developer mode unlocked")
         }
     }
     
