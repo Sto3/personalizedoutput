@@ -6,17 +6,12 @@
  * Handles WebRTC-based screen sharing from computer to phone.
  * Computer shares screen via redialways.com/screen -> WebRTC -> this service -> frames.
  *
- * Security features:
- * - Pairing codes with expiration
- * - User approval before accepting connections
- * - Device info display for verification
- *
  * Frame forwarding:
  * - onFrameReceived callback allows V9 pipeline to consume frames
  * - Frames captured every 3 seconds as JPEG (quality 0.6)
  *
  * Created: Jan 29, 2026
- * Updated: Feb 21, 2026 - Added onFrameReceived callback for V9 integration
+ * Updated: Feb 21, 2026 - Fixed WebRTC API compat, delegate retention, access control
  */
 
 import Foundation
@@ -81,6 +76,39 @@ class FrameCaptureRenderer: NSObject, RTCVideoRenderer {
     }
 }
 
+// MARK: - WebRTC Delegate (moved outside ScreenShareService for access control)
+
+class ScreenShareWebRTCDelegate: NSObject, RTCPeerConnectionDelegate {
+    weak var service: ScreenShareService?
+    let renderer: FrameCaptureRenderer
+    
+    init(service: ScreenShareService, renderer: FrameCaptureRenderer) {
+        self.service = service
+        self.renderer = renderer
+    }
+    
+    func peerConnection(_ pc: RTCPeerConnection, didChange s: RTCSignalingState) {}
+    func peerConnection(_ pc: RTCPeerConnection, didAdd stream: RTCMediaStream) {
+        if let vt = stream.videoTracks.first {
+            vt.add(renderer)
+            DispatchQueue.main.async { self.service?.connectionState = .connected }
+        }
+    }
+    func peerConnection(_ pc: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
+    func peerConnectionShouldNegotiate(_ pc: RTCPeerConnection) {}
+    func peerConnection(_ pc: RTCPeerConnection, didChange s: RTCIceConnectionState) {
+        if s == .disconnected || s == .failed {
+            DispatchQueue.main.async { self.service?.connectionState = .disconnected; self.service?.latestFrame = nil }
+        }
+    }
+    func peerConnection(_ pc: RTCPeerConnection, didChange s: RTCIceGatheringState) {}
+    func peerConnection(_ pc: RTCPeerConnection, didGenerate c: RTCIceCandidate) {
+        service?.sendSignalingMessage(["type": "ice_candidate", "candidate": c.sdp, "sdpMid": c.sdpMid ?? "", "sdpMLineIndex": c.sdpMLineIndex])
+    }
+    func peerConnection(_ pc: RTCPeerConnection, didRemove c: [RTCIceCandidate]) {}
+    func peerConnection(_ pc: RTCPeerConnection, didOpen dc: RTCDataChannel) {}
+}
+
 // MARK: - Screen Share Service
 
 class ScreenShareService: ObservableObject {
@@ -103,6 +131,7 @@ class ScreenShareService: ObservableObject {
     private var peerConnection: RTCPeerConnection?
     private var peerConnectionFactory: RTCPeerConnectionFactory?
     private var frameRenderer: FrameCaptureRenderer?
+    private var webrtcDelegate: ScreenShareWebRTCDelegate?  // Strong reference to prevent deallocation
     private var codeTimer: Timer?
     private var urlSession: URLSession?
     private let serverURL = "wss://redialways.com/ws/screen"
@@ -130,6 +159,7 @@ class ScreenShareService: ObservableObject {
         webSocket = nil
         peerConnection?.close()
         peerConnection = nil
+        webrtcDelegate = nil
         codeTimer?.invalidate()
         codeTimer = nil
         frameRenderer = nil
@@ -187,7 +217,8 @@ class ScreenShareService: ObservableObject {
             if let sdp = json["sdp"] as? String { handleOffer(sdp: sdp) }
         case "ice_candidate":
             if let candidate = json["candidate"] as? String, let sdpMid = json["sdpMid"] as? String, let idx = json["sdpMLineIndex"] as? Int {
-                peerConnection?.add(RTCIceCandidate(sdp: candidate, sdpMLineIndex: Int32(idx), sdpMid: sdpMid), completionHandler: { _ in })
+                // Fix: No completionHandler — newer WebRTC pod API
+                peerConnection?.add(RTCIceCandidate(sdp: candidate, sdpMLineIndex: Int32(idx), sdpMid: sdpMid))
             }
         case "peer_disconnected":
             DispatchQueue.main.async { self.connectionState = .disconnected; self.latestFrame = nil; self.pendingComputerInfo = nil }
@@ -195,6 +226,7 @@ class ScreenShareService: ObservableObject {
         }
     }
     
+    /// Internal access so the delegate can call it for ICE candidates
     func sendSignalingMessage(_ message: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: message), let text = String(data: data, encoding: .utf8) else { return }
         webSocket?.send(.string(text)) { _ in }
@@ -210,7 +242,10 @@ class ScreenShareService: ObservableObject {
         let renderer = FrameCaptureRenderer()
         renderer.onFrame = { [weak self] frameData in self?.latestFrame = frameData; self?.onFrameReceived?(frameData) }
         self.frameRenderer = renderer
-        peerConnection?.delegate = WebRTCDelegate(service: self, renderer: renderer)
+        // Fix: Store strong reference to delegate so it doesn't get deallocated
+        let delegate = ScreenShareWebRTCDelegate(service: self, renderer: renderer)
+        self.webrtcDelegate = delegate
+        peerConnection?.delegate = delegate
         let sd = RTCSessionDescription(type: .offer, sdp: sdp)
         peerConnection?.setRemoteDescription(sd) { [weak self] error in
             if error != nil { return }
@@ -237,27 +272,4 @@ class ScreenShareService: ObservableObject {
             }
         }
     }
-}
-
-// MARK: - WebRTC Delegate
-
-private class WebRTCDelegate: NSObject, RTCPeerConnectionDelegate {
-    weak var service: ScreenShareService?
-    let renderer: FrameCaptureRenderer
-    init(service: ScreenShareService, renderer: FrameCaptureRenderer) { self.service = service; self.renderer = renderer }
-    func peerConnection(_ pc: RTCPeerConnection, didChange s: RTCSignalingState) {}
-    func peerConnection(_ pc: RTCPeerConnection, didAdd stream: RTCMediaStream) {
-        if let vt = stream.videoTracks.first { vt.add(renderer); DispatchQueue.main.async { self.service?.connectionState = .connected } }
-    }
-    func peerConnection(_ pc: RTCPeerConnection, didRemove stream: RTCMediaStream) {}
-    func peerConnectionShouldNegotiate(_ pc: RTCPeerConnection) {}
-    func peerConnection(_ pc: RTCPeerConnection, didChange s: RTCIceConnectionState) {
-        if s == .disconnected || s == .failed { DispatchQueue.main.async { self.service?.connectionState = .disconnected; self.service?.latestFrame = nil } }
-    }
-    func peerConnection(_ pc: RTCPeerConnection, didChange s: RTCIceGatheringState) {}
-    func peerConnection(_ pc: RTCPeerConnection, didGenerate c: RTCIceCandidate) {
-        service?.sendSignalingMessage(["type": "ice_candidate", "candidate": c.sdp, "sdpMid": c.sdpMid ?? "", "sdpMLineIndex": c.sdpMLineIndex])
-    }
-    func peerConnection(_ pc: RTCPeerConnection, didRemove c: [RTCIceCandidate]) {}
-    func peerConnection(_ pc: RTCPeerConnection, didOpen dc: RTCDataChannel) {}
 }
