@@ -39,6 +39,8 @@ import { initRediV6, closeRediV6 } from './websocket/rediV6Server';
 import { initRediV7, closeRediV7 } from './websocket/rediV7Server';
 import { initRediV8, closeRediV8 } from './websocket/rediV8Server';
 import { initV9WebSocket } from './websocket/rediV9Server';
+// Provider health checks
+import { startPeriodicHealthChecks, getProviderStatuses } from './providers/healthCheck';
 // Redi services
 import memoryService from './memory/memoryService';
 import tieredMemory from './memory/tieredMemory';
@@ -352,6 +354,19 @@ app.use('/api/redi/auth/signup', generationRateLimiter);
 app.get('/api/health', (req, res) => {
   const health = getSystemHealth();
   res.json(health);
+});
+
+// ============================================================
+// V9 PROVIDER HEALTH CHECK ENDPOINT
+// ============================================================
+app.get('/api/redi/health', (req, res) => {
+  const statuses = getProviderStatuses();
+  const allHealthy = statuses.length > 0 && statuses.every(s => s.healthy);
+  res.json({
+    ok: allHealthy,
+    providers: statuses,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // ============================================================
@@ -1789,6 +1804,9 @@ initScreenShare(server);
 server.listen(PORT, () => {
   startUsageMonitoring();
 
+  // Start V9 provider health checks (runs immediately + every 6 hours)
+  startPeriodicHealthChecks();
+
   scheduleDailyDigest(() => {
     const totalPageViews = Object.values(analytics.pageViews).reduce((a, b) => a + b, 0);
     const totalGenerations = Object.values(analytics.generations).reduce((a, b) => a + b, 0);
@@ -1819,6 +1837,7 @@ server.listen(PORT, () => {
 ║   Server running at: http://localhost:${PORT}                   ║
 ║                                                               ║
 ║   Redi WebSocket Versions:                                    ║
+║   • V9 (Three-Brain): /ws/redi?v=9  (Cerebras+Claude+GPT-4o)  ║
 ║   • V8 (Split):      /ws/redi?v=8  (Deepgram→Groq→ElevenLabs) ║
 ║   • V7 (Production): /ws/redi?v=7  (OpenAI Realtime)          ║
 ║   • V6 (Stable):     /ws/redi?v=6                             ║
@@ -1828,6 +1847,9 @@ server.listen(PORT, () => {
 ║   Redi WebRTC:       POST /api/redi/webrtc/token              ║
 ║   Screen Share:      /ws/screen (WebRTC signaling)            ║
 ║                      /screen (Web UI)                         ║
+║                                                               ║
+║   Provider Health:   GET /api/redi/health                     ║
+║                      Checks every 6 hours                     ║
 ║                                                               ║
 ║   Usage API:         GET /api/usage/summary                   ║
 ║                      GET /api/usage/openai                    ║
