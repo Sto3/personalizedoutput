@@ -7,6 +7,7 @@
  * Features: Particle effects, gradient animations, sophisticated dark aesthetic
  *
  * Updated: Feb 21, 2026 - V9 audio pipeline + screen share frame forwarding
+ * Fixed: Feb 21, 2026 - Added config send, mic permission, debug logging for V9
  */
 
 import SwiftUI
@@ -107,7 +108,6 @@ struct V3MainView: View {
             
             Spacer()
 
-            // Screen share indicator
             if isScreenShareActive {
                 HStack(spacing: 6) {
                     Image(systemName: "display").font(.system(size: 11))
@@ -125,7 +125,6 @@ struct V3MainView: View {
             
             Spacer()
 
-            // Screen share button
             Button(action: { showScreenShare = true }) {
                 Image(systemName: isScreenShareActive ? "display.trianglebadge.exclamationmark" : "display")
                     .font(.system(size: 16, weight: .medium))
@@ -378,12 +377,12 @@ struct V3MainView: View {
     private func toggleSession() {
         if isActive {
             if appState.useV9 {
+                print("[V3Main] 🛑 Stopping V9 session")
                 audioCancellable?.cancel()
                 audioCancellable = nil
                 v9Audio.stopRecording()
                 v9Audio.cleanup()
                 v9Service.disconnect()
-                // Clear screen share bridge (don't disconnect screen share itself)
                 screenShare.onFrameReceived = nil
             } else {
                 webrtcService.disconnect()
@@ -394,9 +393,22 @@ struct V3MainView: View {
             activeBrain = ""
         } else {
             if appState.useV9 {
-                v9Service.connect()
-                isActive = true
-                statusText = "Connecting (V9)..."
+                print("[V3Main] ▶️ Starting V9 session")
+                
+                // Request mic permission BEFORE connecting
+                AVAudioSession.sharedInstance().requestRecordPermission { granted in
+                    DispatchQueue.main.async {
+                        if granted {
+                            print("[V3Main] ✅ Mic permission granted")
+                            self.v9Service.connect()
+                            self.isActive = true
+                            self.statusText = "Connecting (V9)..."
+                        } else {
+                            print("[V3Main] ❌ Mic permission denied!")
+                            self.statusText = "Mic access denied"
+                        }
+                    }
+                }
             } else {
                 Task {
                     do {
@@ -413,8 +425,6 @@ struct V3MainView: View {
 
     // MARK: - Screen Share Bridge
     
-    /// Wires ScreenShareService frames into V9WebSocketService
-    /// Frames arrive from computer via WebRTC -> ScreenShareService -> here -> V9 server
     private func setupScreenShareBridge() {
         screenShare.onFrameReceived = { [weak v9Service] (frameData: Data) in
             guard let v9 = v9Service, v9.isConnected else { return }
@@ -443,22 +453,35 @@ struct V3MainView: View {
         // V9 WebSocket + Audio pipeline
         // =============================================
 
-        // 1. Session ready -> start mic, wire Combine audio pipe, re-wire screen share bridge
+        // 1. Session ready -> send config, start mic, wire audio pipe
         v9Service.onSessionReady = { [self] in
             DispatchQueue.main.async {
+                print("[V3Main] ✅ V9 session ready — sending config and starting audio")
+                
                 let screenStatus = isScreenShareActive ? " + Screen" : ""
                 statusText = "Listening\(screenStatus) (V9)"
-                print("[V3Main] V9 session ready - starting audio capture")
+
+                // CRITICAL: Send config to server (web client does this, iOS was missing it)
+                v9Service.sendConfig(
+                    drivingMode: false,
+                    voiceOnly: true,
+                    memory: "",
+                    voice: ""
+                )
+                print("[V3Main] 📤 Config sent to server")
 
                 // Wire mic -> WebSocket via Combine
                 audioCancellable = v9Audio.audioCaptured
                     .sink { [weak v9Service] (audioData: Data) in
                         v9Service?.sendAudio(audioData)
                     }
+                print("[V3Main] 🔗 Audio pipeline wired (Combine sink)")
 
+                // Start microphone capture
                 v9Audio.startRecording()
+                print("[V3Main] 🎤 startRecording() called, isRecording: \(v9Audio.isRecording)")
 
-                // Re-wire screen share bridge now that V9 is connected
+                // Re-wire screen share bridge
                 setupScreenShareBridge()
             }
         }
@@ -473,10 +496,11 @@ struct V3MainView: View {
 
         // 3. Audio from server -> speaker
         v9Service.onAudioReceived = { [weak v9Audio] (audioData: Data) in
+            print("[V3Main] 🔊 Audio received from server: \(audioData.count) bytes")
             v9Audio?.playAudio(audioData)
         }
 
-        // 4. Mute mic during TTS
+        // 4. Mute mic during TTS playback
         v9Service.onPlaybackStarted = { [self] in
             DispatchQueue.main.async {
                 statusText = "Speaking"
@@ -497,8 +521,6 @@ struct V3MainView: View {
         v9Service.onAudioDone = { [weak v9Audio] in
             DispatchQueue.main.async {
                 v9Audio?.setMuted(false)
-                let screenStatus = isScreenShareActive ? " + Screen" : ""
-                statusText = "Listening\(screenStatus) (V9)"
             }
         }
 
@@ -507,11 +529,16 @@ struct V3MainView: View {
             DispatchQueue.main.async { activeBrain = brain }
         }
 
-        // 8. Errors
+        // 8. Latency
+        v9Service.onResponseReceived = { (text: String, brain: String, latencyMs: Int) in
+            DispatchQueue.main.async { latency = latencyMs }
+        }
+
+        // 9. Errors
         v9Service.onError = { (msg: String) in
             DispatchQueue.main.async {
                 statusText = "Error: \(msg)"
-                print("[V3Main] V9 error: \(msg)")
+                print("[V3Main] ❌ V9 error: \(msg)")
             }
         }
     }
