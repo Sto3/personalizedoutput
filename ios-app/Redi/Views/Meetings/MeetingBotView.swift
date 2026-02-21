@@ -14,8 +14,9 @@ struct MeetingBotView: View {
     @State private var botStatus = "idle"
     @State private var transcript: [(speaker: String, text: String)] = []
     @State private var isJoining = false
+    @State private var pollingTimer: Timer?
 
-    let userName: String
+    var userName: String = "User"
 
     var rediDisplayName: String {
         "\(userName) / Redi"
@@ -110,6 +111,10 @@ struct MeetingBotView: View {
         }
         .padding(.top)
         .navigationTitle("Meeting Assistant")
+        .onDisappear {
+            pollingTimer?.invalidate()
+            pollingTimer = nil
+        }
     }
 
     var platformIcon: String {
@@ -172,6 +177,8 @@ struct MeetingBotView: View {
         request.httpMethod = "POST"
         URLSession.shared.dataTask(with: request) { _, _, _ in
             DispatchQueue.main.async {
+                pollingTimer?.invalidate()
+                pollingTimer = nil
                 botId = nil
                 botStatus = "idle"
             }
@@ -179,16 +186,26 @@ struct MeetingBotView: View {
     }
 
     private func startPollingStatus() {
-        Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { timer in
-            guard let id = botId else { timer.invalidate(); return }
+        pollingTimer?.invalidate()
+        pollingTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: true) { _ in
+            guard let id = self.botId else {
+                self.pollingTimer?.invalidate()
+                self.pollingTimer = nil
+                return
+            }
 
             if let url = URL(string: "https://redialways.com/api/meetings/bot/\(id)/status") {
                 URLSession.shared.dataTask(with: url) { data, _, _ in
                     if let data = data,
                        let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                        let status = json["status"] as? String {
-                        DispatchQueue.main.async { botStatus = status }
-                        if status == "ended" { timer.invalidate() }
+                        DispatchQueue.main.async { self.botStatus = status }
+                        if status == "ended" {
+                            DispatchQueue.main.async {
+                                self.pollingTimer?.invalidate()
+                                self.pollingTimer = nil
+                            }
+                        }
                     }
                 }.resume()
             }
@@ -203,7 +220,7 @@ struct MeetingBotView: View {
                                   let text = item["text"] as? String else { return nil }
                             return (speaker, text)
                         }
-                        DispatchQueue.main.async { transcript = parsed }
+                        DispatchQueue.main.async { self.transcript = parsed }
                     }
                 }.resume()
             }
