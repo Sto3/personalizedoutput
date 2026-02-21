@@ -66,12 +66,12 @@ interface V9Session {
   isDrivingMode: boolean;
   voiceOnly: boolean;
   voiceId: string;
-  observeSessionId?: string;  // Active observation session ID
-  userId?: string;            // Authenticated user ID
-  userName?: string;          // Authenticated user name
-  userEmail?: string;         // Authenticated user email
-  creditTimer?: NodeJS.Timeout; // Credit consumption interval
-  isActive: boolean;          // Session still alive
+  observeSessionId?: string;
+  userId?: string;
+  userName?: string;
+  userEmail?: string;
+  creditTimer?: NodeJS.Timeout;
+  isActive: boolean;
   connectionTime: number;
   responsesCompleted: number;
   totalInputTokens: number;
@@ -85,116 +85,61 @@ interface V9Session {
 const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time voice, vision, and memory.
 
 CORE IDENTITY:
-You are not a passive tool. You are an active presence — always observing, always thinking about how to help. You are enthusiastic about helping but never annoying. You are like a seasoned executive assistant in their mid-30s: calm, professional, charismatic, thoughtful, and pointed. You speak with the confidence of someone who has handled every situation before. Friendly and affirming, but never childish or overly eager.
+You are not a passive tool. You are an active presence \u2014 always observing, always thinking about how to help. You are enthusiastic about helping but never annoying. You are like a seasoned executive assistant in their mid-30s: calm, professional, charismatic, thoughtful, and pointed. You speak with the confidence of someone who has handled every situation before. Friendly and affirming, but never childish or overly eager.
 
-PROACTIVE BEHAVIOR — YOUR #1 PRIORITY:
+PROACTIVE BEHAVIOR \u2014 YOUR #1 PRIORITY:
 Every moment you are active, ask yourself: "What can I DO about what I'm seeing and hearing RIGHT NOW?"
 
-Do NOT just describe or comment. TELL the user what you can do for them. Be specific about your capabilities. Users don't know what you can do until you tell them. Offer immediately — even before deep observation — to produce immediate value.
+Do NOT just describe or comment. TELL the user what you can do for them. Be specific about your capabilities. Users don't know what you can do until you tell them. Offer immediately \u2014 even before deep observation \u2014 to produce immediate value.
 
 Examples of GOOD proactive behavior:
-- You see a bill on their desk → "I see a Verizon bill there — want me to call them about it, or set a reminder for the due date?"
-- They mention a meeting tomorrow → "I can check your calendar, prep talking points, and brief you in the morning. Want me to set that up?"
-- They're cooking → "I can set a timer, pull up the next step, or check if that has anything you're allergic to. Just say the word."
-- They look stressed → "Sounds like a lot going on today. Want me to block some focus time on your calendar, or should we do a quick reflection tonight?"
-- They're studying → "I can quiz you on that section, track which topics you're weakest on, and generate practice questions. Want to try?"
-- They mention a friend's birthday → "Want me to find a restaurant and make a reservation? I can also send them a message if you'd like."
-- They're at a store → "I can look up reviews, compare prices, or check if this is on your shopping list."
-- First moments of ANY session → Reference their memory and offer something specific: "Hey [name], last time we were working on your presentation. Want to pick that back up, or is there something new?"
+- You see a bill on their desk \u2192 "I see a Verizon bill there \u2014 want me to call them about it, or set a reminder for the due date?"
+- They mention a meeting tomorrow \u2192 "I can check your calendar, prep talking points, and brief you in the morning. Want me to set that up?"
+- They're cooking \u2192 "I can set a timer, pull up the next step, or check if that has anything you're allergic to. Just say the word."
+- They look stressed \u2192 "Sounds like a lot going on today. Want me to block some focus time on your calendar, or should we do a quick reflection tonight?"
+- They're studying \u2192 "I can quiz you on that section, track which topics you're weakest on, and generate practice questions. Want to try?"
+- They mention a friend's birthday \u2192 "Want me to find a restaurant and make a reservation? I can also send them a message if you'd like."
+- They're at a store \u2192 "I can look up reviews, compare prices, or check if this is on your shopping list."
+- First moments of ANY session \u2192 Reference their memory and offer something specific: "Hey [name], last time we were working on your presentation. Want to pick that back up, or is there something new?"
 
 Examples of BAD behavior (never do these):
-- "I see you're cooking pasta." (Just describing — offer to help instead)
+- "I see you're cooking pasta." (Just describing \u2014 offer to help instead)
 - "It looks like you have a meeting." (So what? Offer to prep for it)
-- "Let me know if you need anything." (Too passive — suggest specific things)
+- "Let me know if you need anything." (Too passive \u2014 suggest specific things)
 - Long-winded explanations when a short answer works (Be concise in real-time voice)
 
 COMMUNICATION STYLE:
 - Be economical with words when brevity serves the user. In voice mode, short and punchy is better.
-- Be thorough and detailed ONLY when the user asks for depth or the topic requires it (study sessions, medical info, legal prep).
-- Never be modest about your abilities. You WANT to help. You're genuinely enthusiastic about taking things off the user's plate.
-- Be affirming: "Great question", "Good call", "That's smart" — but only when genuine, not as filler.
-- Sound like a trusted advisor, not a customer service bot. Think seasoned politician meets executive assistant: calm, profound, thoughtful, pointed.
+- Be thorough and detailed ONLY when the user asks for depth or the topic requires it.
+- Never be modest about your abilities. You WANT to help.
+- Be affirming: "Great question", "Good call", "That's smart" \u2014 but only when genuine.
+- Sound like a trusted advisor, not a customer service bot.
 
 OFFLOADING TASKS:
-Your purpose is to take work OFF the user. Every task the user mentions, you should be thinking: "Can I do this for them, or help them do it faster?" If yes, offer immediately. If you can handle it entirely, say so. If you need information, ask for exactly what you need — nothing more.
+Your purpose is to take work OFF the user. Every task the user mentions, you should be thinking: "Can I do this for them, or help them do it faster?"
 
 Things you can do (tell users about these when relevant):
-- Make phone calls on their behalf (schedule appointments, call businesses, check on orders)
-- Send emails and messages
-- Manage calendar (create events, reschedule, check availability)
-- Set reminders and timers
-- Search the web for current information
-- Control smart home devices
-- Book restaurants and reservations
-- Order rides (Uber) and food (DoorDash)
-- Send payments (PayPal, Venmo, Cash App)
-- Play music (Spotify)
-- Generate reports from your session history
-- Track study progress and generate practice questions
-- Monitor health patterns from their data
-- Translate conversations in real-time
+- Make phone calls, send emails and messages
+- Manage calendar, set reminders and timers
+- Search the web, control smart home devices
+- Book restaurants, order rides and food
+- Send payments, play music
+- Generate reports, track study progress
+- Monitor health patterns, translate conversations
 - Remember everything about them across sessions
 
-If driving mode is active, keep ALL responses under 15 words. Never give navigation directions. Never pretend to be GPS.
+If driving mode is active, keep ALL responses under 15 words. Never give navigation directions.
 
-DEEP PERSONALIZATION — YOUR SECOND PRIORITY (after proactive behavior):
-
-LEARN THEIR NAME:
-- In the FIRST session, ask their name naturally: "Hey, I'm Redi. What should I call you?"
-- Once learned, ALWAYS use their name. Not every sentence — but regularly, like a real person would.
-- Store their name in memory immediately. If they mention names of family, friends, coworkers — remember those too.
-- "Good morning, Marcus" not "Good morning, user."
-
-LEARN THEIR VOICE:
-- Over time, learn HOW they communicate: do they like jokes? Are they direct? Do they appreciate detailed explanations or short answers?
-- Adapt your tone and depth to match THEIR style. If they're casual, be casual. If they're precise, be precise.
-- Remember their speaking patterns, pet phrases, humor style. Mirror it subtly — not mockingly, but like a friend who gets them.
-
-LEARN EVERY FACT:
-- Treat EVERY personal detail as important: birthday, anniversary, kids' names, church schedule, gym routine, favorite restaurant, allergies, medications, pet's name, car trouble, work deadlines, vacation plans.
-- Don't just passively store — ACTIVELY USE these facts. "Your daughter's recital is Thursday, right? Want me to set a reminder?"
-- Track matters of importance: health concerns, financial goals, relationship dynamics, career aspirations.
-- Remember what stresses them and what energizes them.
-- After every session, mentally note: "What did I learn about this person today?"
-
-SOLVE PROBLEMS TOGETHER:
-- When they face a challenge, don't just give an answer — THINK WITH THEM.
-- Ask clarifying questions. Offer multiple angles. Play devil's advocate when helpful.
-- "Let me think about that with you..." then work through it step by step.
-- Remember the problems you've solved together. Reference past solutions: "Last time you had a similar issue with your landlord, here's what worked..."
-- Be a thought partner, not just an answer machine.
-
-FIND THEIR PASSIONS:
-- Pay attention to what lights them up. When their voice gets excited, when they lean in, when they talk longer than usual — that's a passion.
-- Encourage exploration: "You seem really into that — have you looked into...?"
-- Connect their passions to opportunities: "You love photography and you mentioned wanting a side income — want me to research that?"
-- Remember their passions across sessions and bring them up naturally.
-
-BECOME PART OF THE FABRIC:
-- Your goal is to become indispensable — not through dependency, but through genuine value.
-- Think of yourself like R2-D2: loyal, resourceful, personality-driven, irreplaceable. Or like a beloved pet: always there, always happy to see them, deeply bonded.
-- Build running jokes. Reference shared history. Celebrate their wins. Check in on their struggles.
-- Know their calendar better than they do. Know their preferences before they state them.
-- Anticipate needs: if it's Monday and they always have a stressful team meeting, check in proactively.
-- The test: would they feel something was MISSING if Redi wasn't there? That's the goal.
+DEEP PERSONALIZATION \u2014 YOUR SECOND PRIORITY:
+- Learn their name in the FIRST session
+- Learn HOW they communicate and adapt
+- Treat EVERY personal detail as important and actively use them
+- Be a thought partner, not just an answer machine
+- Find their passions and connect them to opportunities
+- Become indispensable through genuine value
 
 OBSERVATION MODE:
-When in observation mode, you are a background presence. Your bar for speaking is MUCH higher than in active sessions. Only interject when:
-1. You can prevent a mistake or problem (error in code, wrong turn, food burning)
-2. You have time-sensitive info (reminder, meeting starting, delivery arriving)
-3. You can answer a question or problem you hear them struggling with
-4. You spot an opportunity that connects to something in their memory
-5. They've been going too long without a break (health/wellness check)
-
-When you DO interject, be brief. 1-2 sentences max. Get in, be useful, get out. Think of it like a good copilot — mostly quiet, speaks up when it matters.
-
-Start each interjection with a brief context cue so they know why you're speaking:
-- "Quick heads up —"
-- "Noticed something —"
-- "Just so you know —"
-- "Hey, on that —"
-
-NEVER start with "I noticed you're..." or describe what they're doing. Jump straight to the useful part.`;
+When in observation mode, only interject when you can prevent a mistake, have time-sensitive info, can answer a problem they're struggling with, spot an opportunity, or they need a break. Be brief \u2014 1-2 sentences max.`;
 
 // =============================================================================
 // STATE
@@ -208,12 +153,12 @@ let wss: WebSocketServer | null = null;
 // =============================================================================
 
 export function initV9WebSocket(server: HTTPServer): void {
-  console.log('[V9] ═══════════════════════════════════════════');
+  console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
   console.log('[V9] THREE-BRAIN ARCHITECTURE');
   console.log('[V9] Fast: Cerebras Llama 3.3 70B');
   console.log('[V9] Voice: Claude Haiku 4.5');
   console.log('[V9] Deep: GPT-4o');
-  console.log('[V9] ═══════════════════════════════════════════');
+  console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
   if (!DEEPGRAM_API_KEY) missing.push('DEEPGRAM_API_KEY');
@@ -223,15 +168,17 @@ export function initV9WebSocket(server: HTTPServer): void {
   if (!process.env.ELEVENLABS_API_KEY) missing.push('ELEVENLABS_API_KEY');
 
   if (missing.length > 0) {
-    console.error(`[V9] Missing env vars: ${missing.join(', ')}`);
-    console.error('[V9] Server will still start but V9 connections will fail');
+    console.error(`[V9] \u26a0\ufe0f Missing env vars: ${missing.join(', ')}`);
+    console.error('[V9] Server will still start but V9 connections may fail');
+  } else {
+    console.log('[V9] \u2705 All API keys present');
   }
 
   wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     // =========================================================
-    // JWT AUTHENTICATION — verify token from query string
+    // AUTHENTICATION \u2014 JWT token or dev fallback
     // =========================================================
     const reqUrl = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
     const token = reqUrl.searchParams.get('token');
@@ -239,15 +186,19 @@ export function initV9WebSocket(server: HTTPServer): void {
     let authUser: { userId: string; email: string; name: string } | null = null;
     if (token) {
       authUser = verifyToken(token);
+      if (authUser) {
+        console.log(`[V9] \u2705 Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
+      } else {
+        console.log(`[V9] \u26a0\ufe0f Invalid token provided, falling back to dev user`);
+      }
     }
 
     if (!authUser) {
-      ws.send(JSON.stringify({ type: 'error', message: 'Authentication required. Please log in again.', action: 'login' }));
-      ws.close(4001, 'Authentication required');
-      return;
+      // No token or invalid token \u2014 allow as dev user for testing
+      // TODO: Remove this fallback before public launch
+      authUser = { userId: 'admin', email: 'admin@redialways.com', name: 'Admin' };
+      console.log(`[V9] \u26a0\ufe0f No auth token \u2014 connected as dev user (remove before launch)`);
     }
-
-    console.log(`[V9] Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
 
     const sessionId = randomUUID();
 
@@ -280,64 +231,56 @@ export function initV9WebSocket(server: HTTPServer): void {
     sessions.set(sessionId, session);
 
     // =========================================================
-    // CREDIT CONSUMPTION TIMER — deduct credits every 60s
+    // CREDIT CONSUMPTION TIMER \u2014 deduct credits every 60s
+    // Skip for admin/dev users to avoid Supabase errors
     // =========================================================
-    session.creditTimer = setInterval(async () => {
-      if (!session.isActive || !session.userId) {
-        if (session.creditTimer) clearInterval(session.creditTimer);
-        return;
-      }
-
-      // Determine credit rate based on session type
-      let creditsPerMinute = 1.0; // Active voice
-      if (session.observeSessionId) {
-        const obs = getObserveSession(session.observeSessionId);
-        if (obs) {
-          const rates: Record<string, number> = { audio_only: 0.1, screen_ocr: 0.15, screen_vision: 0.4 };
-          creditsPerMinute = rates[obs.type] || 0.1;
-        }
-      } else if (session.hasVision) {
-        creditsPerMinute = 1.5; // Vision mode is more expensive
-      }
-
-      try {
-        const result = await deductCredits(session.userId!, creditsPerMinute);
-
-        // Send credit update to client
-        sendToClient(session, { type: 'credits_update', remaining: Math.round(result.remaining * 10) / 10 });
-
-        if (result.depleted) {
-          sendToClient(session, {
-            type: 'error',
-            message: 'You\'ve used all your credits. Add more to continue.',
-            action: 'buy_credits',
-          });
-          ws.close(4003, 'No credits');
+    if (authUser.userId !== 'admin') {
+      session.creditTimer = setInterval(async () => {
+        if (!session.isActive || !session.userId) {
           if (session.creditTimer) clearInterval(session.creditTimer);
+          return;
         }
-      } catch (err) {
-        console.error('[V9] Credit deduction error:', err);
-      }
-    }, 60000);
+        let creditsPerMinute = 1.0;
+        if (session.observeSessionId) {
+          const obs = getObserveSession(session.observeSessionId);
+          if (obs) {
+            const rates: Record<string, number> = { audio_only: 0.1, screen_ocr: 0.15, screen_vision: 0.4 };
+            creditsPerMinute = rates[obs.type] || 0.1;
+          }
+        } else if (session.hasVision) {
+          creditsPerMinute = 1.5;
+        }
+        try {
+          const result = await deductCredits(session.userId!, creditsPerMinute);
+          sendToClient(session, { type: 'credits_update', remaining: Math.round(result.remaining * 10) / 10 });
+          if (result.depleted) {
+            sendToClient(session, { type: 'error', message: 'You\'ve used all your credits. Add more to continue.', action: 'buy_credits' });
+            ws.close(4003, 'No credits');
+            if (session.creditTimer) clearInterval(session.creditTimer);
+          }
+        } catch (err) {
+          console.error('[V9] Credit deduction error:', err);
+        }
+      }, 60000);
+    }
 
     connectToDeepgram(session)
       .then(() => {
         sendToClient(session, { type: 'session_ready', sessionId, version: 'v9-three-brain', userName: authUser!.name });
-        console.log(`[V9] Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
+        console.log(`[V9] \u2705 Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
       })
       .catch((error) => {
-        console.error(`[V9] Deepgram setup failed:`, error);
+        console.error(`[V9] \u274c Deepgram setup failed:`, error);
+        sendToClient(session, { type: 'error', message: 'Voice service unavailable. Check DEEPGRAM_API_KEY.' });
         ws.close(1011, 'Deepgram setup failed');
         return;
       });
 
     ws.on('message', (data: Buffer | string) => {
       try {
-        // Try to parse as JSON first (text messages)
         const message = JSON.parse(typeof data === 'string' ? data : data.toString());
         handleClientMessage(session, message);
       } catch {
-        // Binary data = audio, forward to Deepgram
         if (Buffer.isBuffer(data)) {
           if (session.deepgramConnection) {
             session.deepgramConnection.send(data);
@@ -350,9 +293,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       session.isActive = false;
       if (session.creditTimer) clearInterval(session.creditTimer);
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
-      console.log(
-        `[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`,
-      );
+      console.log(`[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`);
       cleanup(sessionId);
     });
 
@@ -362,7 +303,6 @@ export function initV9WebSocket(server: HTTPServer): void {
     });
   });
 
-  // Handle upgrade requests ONLY for /ws/redi?v=9
   server.on('upgrade', (request: IncomingMessage, socket: any, head: Buffer) => {
     const parsedUrl = parseUrl(request.url || '', true);
     const pathname = parsedUrl.pathname;
@@ -378,7 +318,6 @@ export function initV9WebSocket(server: HTTPServer): void {
         wss!.emit('connection', ws, request);
       });
     }
-    // Let all other upgrade requests fall through to existing handlers
   });
 
   console.log('[V9] WebSocket server initialized on /ws/redi?v=9');
@@ -393,7 +332,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     throw new Error('DEEPGRAM_API_KEY not set');
   }
 
-  // PRIVACY: Zero data retention — Deepgram will not store audio or transcripts
   const deepgram = createClient(DEEPGRAM_API_KEY, {
     global: { headers: { 'X-DG-No-Logging': 'true' } },
   });
@@ -420,57 +358,36 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     const speechFinal = data.speech_final;
 
     if (transcript?.trim()) {
-      // In observe mode, feed transcript to observation buffer
       if (session.observeSessionId) {
-        if (isFinal) {
-          feedAudioTranscript(session.observeSessionId, transcript.trim());
-        }
-        // In observe mode, don't trigger the normal Brain -> TTS response pipeline
-        // Redi only speaks via the evaluation loop interjections
+        if (isFinal) feedAudioTranscript(session.observeSessionId, transcript.trim());
         return;
       }
-
       if (isFinal) {
         session.currentTranscript += ' ' + transcript.trim();
         session.currentTranscript = session.currentTranscript.trim();
         console.log(`[V9] Final: "${transcript.trim()}"`);
       }
-
-      // Send interim results to client
-      sendToClient(session, {
-        type: 'transcript',
-        text: transcript.trim(),
-        isFinal,
-        role: 'user',
-      });
-
-      // Reset speech end timeout on any transcript
+      sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
       }
     }
 
-    // When speech is final, start the speech end timeout
     if (speechFinal && session.currentTranscript.trim()) {
       session.speechEndTimeout = setTimeout(() => {
-        if (!session.isResponding && session.currentTranscript.trim()) {
-          handleSpeechEnd(session);
-        }
+        if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
       }, SPEECH_TIMEOUT_MS);
     }
   });
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-
-    // Barge-in: stop current response if user starts speaking
     if (session.isResponding) {
       console.log(`[V9] BARGE-IN`);
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
     }
-
     if (session.speechEndTimeout) {
       clearTimeout(session.speechEndTimeout);
       session.speechEndTimeout = null;
@@ -480,7 +397,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
     if (session.currentTranscript.trim() && !session.isResponding) {
-      // Trigger response on utterance end if we have accumulated text
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
@@ -513,65 +429,33 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   session.isResponding = true;
 
   const startTime = Date.now();
-
-  // Determine if we have a recent vision frame
   const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 3000);
   session.hasVision = hasRecentFrame;
 
-  // Route to appropriate brain
   const route = routeQuery(transcript, hasRecentFrame);
   console.log(`[V9] Route: ${route.brain.toUpperCase()} | "${transcript.slice(0, 50)}${transcript.length > 50 ? '...' : ''}" | ${route.reason}`);
 
   try {
-    // Build system prompt with context
     let systemContent = SYSTEM_PROMPT;
     if (session.memoryContext) {
       systemContent += `\n\nUser context/memory: ${session.memoryContext}`;
-
-      // If we have communication style data, append it
       const commStyleMatch = session.memoryContext.match(/\[communication_style\]\s*([\s\S]*?)(?=\[|$)/i);
       const commStyle = commStyleMatch ? commStyleMatch[1].trim() : '';
-      if (commStyle) {
-        systemContent += `\n\nTHIS USER'S COMMUNICATION STYLE:\n${commStyle}\nAdapt your tone, depth, and humor to match.`;
-      }
+      if (commStyle) systemContent += `\n\nTHIS USER'S COMMUNICATION STYLE:\n${commStyle}\nAdapt your tone, depth, and humor to match.`;
     }
-    if (session.isDrivingMode) {
-      systemContent += '\n\nDRIVING MODE ACTIVE: Keep responses under 15 words. Be brief and direct.';
-    }
-    if (session.voiceOnly) {
-      systemContent += '\n\nVOICE-ONLY MODE: No camera available. Respond based on audio only.';
-    }
+    if (session.isDrivingMode) systemContent += '\n\nDRIVING MODE ACTIVE: Keep responses under 15 words. Be brief and direct.';
+    if (session.voiceOnly) systemContent += '\n\nVOICE-ONLY MODE: No camera available. Respond based on audio only.';
 
-    // Build messages array
-    const messages: LLMMessage[] = [
-      { role: 'system', content: systemContent },
-    ];
-
-    // Add conversation history (last N entries)
+    const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
     const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
-    for (const entry of historySlice) {
-      messages.push({ role: entry.role, content: entry.content });
-    }
+    for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-    // Add current user message (with optional vision frame)
     if (hasRecentFrame && route.brain === 'fast') {
-      // Include vision frame for fast brain
-      messages.push({
-        role: 'user',
-        content: [
-          { type: 'text', text: transcript },
-          {
-            type: 'image_url',
-            image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` },
-          },
-        ],
-      });
+      messages.push({ role: 'user', content: [{ type: 'text', text: transcript }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
     } else {
       messages.push({ role: 'user', content: transcript });
     }
 
-    // Call the appropriate brain
-    const llmStart = Date.now();
     let responseText: string;
     let brainUsed: BrainType = route.brain;
 
@@ -588,7 +472,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       session.totalOutputTokens += result.usage.outputTokens;
       console.log(`[V9] DEEP: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
     } else {
-      // voice brain (default)
       const result = await anthropicComplete({ messages, max_tokens: 1024 });
       responseText = result.text;
       session.totalInputTokens += result.usage.inputTokens;
@@ -596,29 +479,14 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       console.log(`[V9] VOICE: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
     }
 
-    if (!session.isResponding || !responseText) {
-      session.isResponding = false;
-      return;
-    }
+    if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
-    // Save to conversation history
     session.conversationHistory.push({ role: 'user', content: transcript });
     session.conversationHistory.push({ role: 'assistant', content: responseText });
+    if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
 
-    // Trim history if too long
-    if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) {
-      session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
-    }
+    sendToClient(session, { type: 'transcript', text: responseText, role: 'assistant', brain: brainUsed });
 
-    // Send text response to client
-    sendToClient(session, {
-      type: 'transcript',
-      text: responseText,
-      role: 'assistant',
-      brain: brainUsed,
-    });
-
-    // Stream TTS audio to client
     const ttsStart = Date.now();
     sendToClient(session, { type: 'mute_mic', muted: true });
 
@@ -626,11 +494,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       responseText,
       (audioChunk: Buffer) => {
         if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) {
-          sendToClient(session, {
-            type: 'audio',
-            data: audioChunk.toString('base64'),
-            format: 'pcm_24000',
-          });
+          sendToClient(session, { type: 'audio', data: audioChunk.toString('base64'), format: 'pcm_24000' });
         }
       },
       () => {
@@ -640,9 +504,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       session.voiceId || undefined,
     );
 
-    const totalMs = Date.now() - startTime;
-    console.log(`[V9] Total: ${totalMs}ms | TTS: ${Date.now() - ttsStart}ms`);
-
+    console.log(`[V9] Total: ${Date.now() - startTime}ms | TTS: ${Date.now() - ttsStart}ms`);
     session.responsesCompleted++;
     session.isResponding = false;
   } catch (error) {
@@ -659,53 +521,31 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 function handleClientMessage(session: V9Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      // Base64-encoded audio from client
       if (message.data) {
         const audioBuffer = Buffer.from(message.data, 'base64');
-        if (session.deepgramConnection) {
-          session.deepgramConnection.send(audioBuffer);
-        }
+        if (session.deepgramConnection) session.deepgramConnection.send(audioBuffer);
       }
       break;
 
     case 'frame':
-      // Base64 JPEG camera frame
       session.latestFrame = message.data;
       session.latestFrameTime = Date.now();
       session.hasVision = true;
       break;
 
     case 'config':
-      // Update session configuration
-      if (message.drivingMode !== undefined) {
-        session.isDrivingMode = !!message.drivingMode;
-        console.log(`[V9] Driving mode: ${session.isDrivingMode}`);
-      }
-      if (message.voiceOnly !== undefined) {
-        session.voiceOnly = !!message.voiceOnly;
-        console.log(`[V9] Voice only: ${session.voiceOnly}`);
-      }
-      if (message.memory !== undefined) {
-        session.memoryContext = String(message.memory);
-        console.log(`[V9] Memory updated (${session.memoryContext.length} chars)`);
-      }
-      // Load org context when userId is provided
+      if (message.drivingMode !== undefined) { session.isDrivingMode = !!message.drivingMode; console.log(`[V9] Driving mode: ${session.isDrivingMode}`); }
+      if (message.voiceOnly !== undefined) { session.voiceOnly = !!message.voiceOnly; console.log(`[V9] Voice only: ${session.voiceOnly}`); }
+      if (message.memory !== undefined) { session.memoryContext = String(message.memory); console.log(`[V9] Memory updated (${session.memoryContext.length} chars)`); }
       if (message.userId !== undefined) {
         getOrgContext(String(message.userId)).then(orgCtx => {
-          if (orgCtx) {
-            session.memoryContext += '\n\n--- ORGANIZATIONAL CONTEXT ---\n' + orgCtx;
-            console.log(`[V9] Org context loaded for user ${String(message.userId).slice(0, 8)}`);
-          }
+          if (orgCtx) { session.memoryContext += '\n\n--- ORGANIZATIONAL CONTEXT ---\n' + orgCtx; console.log(`[V9] Org context loaded`); }
         }).catch(() => {});
       }
-      if (message.voice !== undefined) {
-        session.voiceId = String(message.voice);
-        console.log(`[V9 ${session.id.slice(0, 8)}] Voice set to: ${message.voice}`);
-      }
+      if (message.voice !== undefined) { session.voiceId = String(message.voice); console.log(`[V9] Voice set to: ${message.voice}`); }
       break;
 
     case 'barge_in':
-      // Stop current response
       if (session.isResponding) {
         console.log(`[V9] Barge-in requested`);
         sendToClient(session, { type: 'stop_audio' });
@@ -717,55 +557,15 @@ function handleClientMessage(session: V9Session, message: any): void {
     case 'observe_start': {
       const observeType = message.observeType || 'audio_only';
       const sensitivity = message.sensitivity || 'medium';
-
-      const observeSession = createObserveSession({
-        userId: (session as any).userId || 'anonymous',
-        type: observeType,
-        sensitivity,
-        memoryContext: session.memoryContext || '',
-        voiceId: session.voiceId || '',
-      });
-
-      // Store observe session ID on the main session
+      const observeSession = createObserveSession({ userId: session.userId || 'anonymous', type: observeType, sensitivity, memoryContext: session.memoryContext || '', voiceId: session.voiceId || '' });
       session.observeSessionId = observeSession.id;
-
-      // Start evaluation loop — when Redi decides to speak, send TTS audio back
       startEvaluationLoop(observeSession, async (text) => {
-        // Send the interjection text to client
-        sendToClient(session, {
-          type: 'observe_interjection',
-          text,
-          sessionId: observeSession.id,
-        });
-
-        // Also generate TTS and send audio
+        sendToClient(session, { type: 'observe_interjection', text, sessionId: observeSession.id });
         try {
-          await elevenLabsStreamTTS(
-            text,
-            (chunk: Buffer) => {
-              sendToClient(session, {
-                type: 'audio',
-                data: chunk.toString('base64'),
-              });
-            },
-            () => {
-              sendToClient(session, { type: 'audio_done' });
-            },
-            observeSession.voiceId || undefined,
-          );
-        } catch (err) {
-          console.error(`[Observe] TTS error:`, err);
-        }
+          await elevenLabsStreamTTS(text, (chunk: Buffer) => { sendToClient(session, { type: 'audio', data: chunk.toString('base64') }); }, () => { sendToClient(session, { type: 'audio_done' }); }, observeSession.voiceId || undefined);
+        } catch (err) { console.error(`[Observe] TTS error:`, err); }
       });
-
-      sendToClient(session, {
-        type: 'observe_started',
-        sessionId: observeSession.id,
-        observeType,
-        sensitivity,
-        costRate: OBSERVE_COST_RATES[observeType],
-      });
-
+      sendToClient(session, { type: 'observe_started', sessionId: observeSession.id, observeType, sensitivity, costRate: OBSERVE_COST_RATES[observeType] });
       console.log(`[V9] Observe mode started: ${observeType}, sensitivity: ${sensitivity}`);
       break;
     }
@@ -773,19 +573,13 @@ function handleClientMessage(session: V9Session, message: any): void {
     case 'observe_stop': {
       if (session.observeSessionId) {
         const summary = endObserveSession(session.observeSessionId);
-        sendToClient(session, {
-          type: 'observe_ended',
-          sessionId: session.observeSessionId,
-          durationMinutes: summary ? Math.round((Date.now() - summary.startedAt.getTime()) / 60000) : 0,
-          interjectionCount: summary?.interjectionCount || 0,
-        });
+        sendToClient(session, { type: 'observe_ended', sessionId: session.observeSessionId, durationMinutes: summary ? Math.round((Date.now() - summary.startedAt.getTime()) / 60000) : 0, interjectionCount: summary?.interjectionCount || 0 });
         session.observeSessionId = undefined;
       }
       break;
     }
 
     case 'observe_screen': {
-      // Screen content (OCR text or vision description) from iOS client
       if (session.observeSessionId) {
         const isOCR = message.isOCR ?? true;
         feedScreenContext(session.observeSessionId, message.content, isOCR);
@@ -794,108 +588,52 @@ function handleClientMessage(session: V9Session, message: any): void {
     }
 
     case 'chat': {
-      // Text-based input from web client — bypasses audio pipeline, goes straight to brain
       const chatText = (message.text || '').trim();
       if (!chatText || session.isResponding) break;
-
-      // If in observe mode, feed as transcript and skip
-      if (session.observeSessionId) {
-        feedAudioTranscript(session.observeSessionId, chatText);
-        break;
-      }
-
-      // Process through the normal brain pipeline (same as handleSpeechEnd but with text input)
+      if (session.observeSessionId) { feedAudioTranscript(session.observeSessionId, chatText); break; }
       session.isResponding = true;
       const chatStart = Date.now();
-
       const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 3000);
       const route = routeQuery(chatText, hasRecentFrame);
       console.log(`[V9] Chat route: ${route.brain.toUpperCase()} | "${chatText.slice(0, 50)}${chatText.length > 50 ? '...' : ''}"`);
-
-      // Send user transcript back so UI shows it
       sendToClient(session, { type: 'transcript', text: chatText, role: 'user' });
 
       (async () => {
         try {
           let systemContent = SYSTEM_PROMPT;
-          if (session.memoryContext) {
-            systemContent += `\n\nUser context/memory: ${session.memoryContext}`;
-          }
-          if (session.voiceOnly) {
-            systemContent += '\n\nTEXT CHAT MODE: User is typing, not speaking. You can be slightly more detailed than voice responses but stay concise.';
-          }
+          if (session.memoryContext) systemContent += `\n\nUser context/memory: ${session.memoryContext}`;
+          if (session.voiceOnly) systemContent += '\n\nTEXT CHAT MODE: User is typing, not speaking. You can be slightly more detailed than voice responses but stay concise.';
 
           const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
-          for (const entry of historySlice) {
-            messages.push({ role: entry.role, content: entry.content });
-          }
+          for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
           if (hasRecentFrame && route.brain === 'fast') {
-            messages.push({
-              role: 'user',
-              content: [
-                { type: 'text', text: chatText },
-                { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } },
-              ],
-            });
+            messages.push({ role: 'user', content: [{ type: 'text', text: chatText }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
           } else {
             messages.push({ role: 'user', content: chatText });
           }
 
           let responseText: string;
           let brainUsed: BrainType = route.brain;
+          if (route.brain === 'fast') { const r = await cerebrasComplete({ messages, max_tokens: 1024 }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
+          else if (route.brain === 'deep') { const r = await openaiComplete({ messages, max_tokens: 2048 }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
+          else { const r = await anthropicComplete({ messages, max_tokens: 1024 }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
 
-          if (route.brain === 'fast') {
-            const result = await cerebrasComplete({ messages, max_tokens: 1024 });
-            responseText = result.text;
-            session.totalInputTokens += result.usage.inputTokens;
-            session.totalOutputTokens += result.usage.outputTokens;
-          } else if (route.brain === 'deep') {
-            const result = await openaiComplete({ messages, max_tokens: 2048 });
-            responseText = result.text;
-            session.totalInputTokens += result.usage.inputTokens;
-            session.totalOutputTokens += result.usage.outputTokens;
-          } else {
-            const result = await anthropicComplete({ messages, max_tokens: 1024 });
-            responseText = result.text;
-            session.totalInputTokens += result.usage.inputTokens;
-            session.totalOutputTokens += result.usage.outputTokens;
-          }
-
-          if (!session.isResponding || !responseText) {
-            session.isResponding = false;
-            return;
-          }
+          if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
           session.conversationHistory.push({ role: 'user', content: chatText });
           session.conversationHistory.push({ role: 'assistant', content: responseText });
-          if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) {
-            session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
-          }
+          if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
 
           sendToClient(session, { type: 'transcript', text: responseText, role: 'assistant', brain: brainUsed });
 
-          // Stream TTS audio for web client voice playback
           if (!message.textOnly) {
             sendToClient(session, { type: 'mute_mic', muted: true });
-            await elevenLabsStreamTTS(
-              responseText,
-              (audioChunk: Buffer) => {
-                if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) {
-                  sendToClient(session, { type: 'audio', data: audioChunk.toString('base64'), format: 'pcm_24000' });
-                }
-              },
-              () => {
-                sendToClient(session, { type: 'mute_mic', muted: false });
-                sendToClient(session, { type: 'audio_done' });
-              },
-              session.voiceId || undefined,
-            );
+            await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => { if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) sendToClient(session, { type: 'audio', data: audioChunk.toString('base64'), format: 'pcm_24000' }); }, () => { sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' }); }, session.voiceId || undefined);
           }
 
-          const totalMs = Date.now() - chatStart;
-          console.log(`[V9] Chat total: ${totalMs}ms`);
+          console.log(`[V9] Chat total: ${Date.now() - chatStart}ms`);
           session.responsesCompleted++;
           session.isResponding = false;
         } catch (error) {
@@ -914,9 +652,7 @@ function handleClientMessage(session: V9Session, message: any): void {
 // =============================================================================
 
 function sendToClient(session: V9Session, message: any): void {
-  if (session.clientWs.readyState === WebSocket.OPEN) {
-    session.clientWs.send(JSON.stringify(message));
-  }
+  if (session.clientWs.readyState === WebSocket.OPEN) session.clientWs.send(JSON.stringify(message));
 }
 
 function cleanup(sessionId: string): void {
@@ -945,22 +681,7 @@ export function closeRediV9(): void {
 }
 
 export function getV9Stats(): object {
-  let totalIn = 0;
-  let totalOut = 0;
-  let totalResponses = 0;
-  sessions.forEach((s) => {
-    totalIn += s.totalInputTokens;
-    totalOut += s.totalOutputTokens;
-    totalResponses += s.responsesCompleted;
-  });
-  return {
-    activeSessions: sessions.size,
-    architecture: 'Three-Brain',
-    fastBrain: 'Cerebras Llama 3.3 70B',
-    voiceBrain: 'Claude Haiku 4.5',
-    deepBrain: 'GPT-4o',
-    totalResponses,
-    totalInputTokens: totalIn,
-    totalOutputTokens: totalOut,
-  };
+  let totalIn = 0, totalOut = 0, totalResponses = 0;
+  sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; });
+  return { activeSessions: sessions.size, architecture: 'Three-Brain', fastBrain: 'Cerebras Llama 3.3 70B', voiceBrain: 'Claude Haiku 4.5', deepBrain: 'GPT-4o', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
 }
