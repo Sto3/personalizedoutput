@@ -5,418 +5,131 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Redi — Ready for Anything</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #0A0A0A;
-            color: #ffffff;
-            font-family: 'Georgia', serif;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            overflow-x: hidden;
+            background: #0A0A0A; color: #ffffff; font-family: 'Georgia', serif;
+            min-height: 100vh; display: flex; flex-direction: column; align-items: center; overflow-x: hidden;
         }
-
         .container {
-            max-width: 500px;
-            width: 100%;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
+            max-width: 500px; width: 100%; padding: 20px;
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh;
         }
-
-        /* Header */
-        .logo {
-            font-size: 48px;
-            letter-spacing: 8px;
-            color: #00CED1;
-            margin-top: 40px;
-            font-variant: small-caps;
-        }
-
-        .tagline {
-            font-size: 14px;
-            color: #666;
-            margin-top: 4px;
-            font-style: italic;
-        }
-
-        /* Status */
+        .logo { font-size: 48px; letter-spacing: 8px; color: #00CED1; margin-top: 40px; font-variant: small-caps; }
+        .tagline { font-size: 14px; color: #666; margin-top: 4px; font-style: italic; }
         .status-bar {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 20px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            background: rgba(0, 206, 209, 0.08);
-            font-size: 13px;
+            display: flex; align-items: center; gap: 8px; margin-top: 20px;
+            padding: 8px 16px; border-radius: 20px; background: rgba(0, 206, 209, 0.08); font-size: 13px;
         }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #555;
-        }
-
-        .status-dot.connected {
-            background: #00CED1;
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.listening {
-            background: #00FF88;
-            animation: pulse 1s infinite;
-        }
-
-        .status-dot.error {
-            background: #FF4444;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.4; }
-        }
-
-        .status-text {
-            color: #888;
-        }
-
-        .brain-badge {
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 11px;
-            background: rgba(0, 206, 209, 0.15);
-            color: #00CED1;
-        }
-
-        /* Main area */
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; }
+        .status-dot.connected { background: #00CED1; animation: pulse 2s infinite; }
+        .status-dot.listening { background: #00FF88; animation: pulse 1s infinite; }
+        .status-dot.error { background: #FF4444; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        .status-text { color: #888; }
+        .brain-badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; background: rgba(0, 206, 209, 0.15); color: #00CED1; }
         .main-area {
-            flex: 1;
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 20px;
-            padding: 20px 0;
+            flex: 1; width: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 20px; padding: 20px 0;
         }
-
-        /* Visualizer */
         .visualizer {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
+            width: 120px; height: 120px; border-radius: 50%;
             background: radial-gradient(circle, rgba(0, 206, 209, 0.2) 0%, transparent 70%);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
+            display: flex; align-items: center; justify-content: center; position: relative;
         }
-
-        .visualizer.active {
-            animation: breathe 3s ease-in-out infinite;
-        }
-
+        .visualizer.active { animation: breathe 3s ease-in-out infinite; }
         .visualizer-inner {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
+            width: 60px; height: 60px; border-radius: 50%;
             background: radial-gradient(circle, rgba(0, 206, 209, 0.4) 0%, rgba(0, 206, 209, 0.1) 100%);
         }
-
-        @keyframes breathe {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
-        }
-
-        /* Transcript */
-        .transcript-area {
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 0 10px;
-        }
-
-        .transcript-line {
-            padding: 6px 0;
-            font-size: 14px;
-            color: #aaa;
-            border-bottom: 1px solid rgba(255,255,255,0.03);
-        }
-
-        .transcript-line.redi {
-            color: #00CED1;
-        }
-
-        .transcript-line .speaker {
-            font-size: 11px;
-            color: #666;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        /* Response */
+        @keyframes breathe { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+        .transcript-area { width: 100%; max-height: 200px; overflow-y: auto; padding: 0 10px; }
+        .transcript-line { padding: 6px 0; font-size: 14px; color: #aaa; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        .transcript-line.redi { color: #00CED1; }
+        .transcript-line .speaker { font-size: 11px; color: #666; display: block; margin-bottom: 2px; }
         .response-area {
-            width: 100%;
-            min-height: 60px;
-            padding: 16px;
-            background: rgba(0, 206, 209, 0.05);
-            border-radius: 12px;
-            font-size: 15px;
-            line-height: 1.5;
-            color: #ddd;
+            width: 100%; min-height: 60px; padding: 16px;
+            background: rgba(0, 206, 209, 0.05); border-radius: 12px;
+            font-size: 15px; line-height: 1.5; color: #ddd;
         }
-
-        .response-area.speaking {
-            border: 1px solid rgba(0, 206, 209, 0.3);
-        }
-
-        /* Controls */
-        .controls {
-            width: 100%;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            padding-bottom: 30px;
-        }
-
-        .control-row {
-            display: flex;
-            gap: 12px;
-            justify-content: center;
-        }
-
+        .response-area.speaking { border: 1px solid rgba(0, 206, 209, 0.3); }
+        .controls { width: 100%; display: flex; flex-direction: column; gap: 12px; padding-bottom: 30px; }
+        .control-row { display: flex; gap: 12px; justify-content: center; }
         .btn {
-            padding: 14px 24px;
-            border-radius: 12px;
-            border: none;
-            font-family: 'Georgia', serif;
-            font-size: 16px;
-            cursor: pointer;
-            transition: all 0.2s;
-            flex: 1;
-            max-width: 200px;
+            padding: 14px 24px; border-radius: 12px; border: none; font-family: 'Georgia', serif;
+            font-size: 16px; cursor: pointer; transition: all 0.2s; flex: 1; max-width: 200px;
         }
-
-        .btn:active {
-            transform: scale(0.97);
-        }
-
-        .btn-primary {
-            background: #00CED1;
-            color: #000;
-            font-weight: bold;
-        }
-
-        .btn-primary:disabled {
-            background: #333;
-            color: #666;
-            cursor: not-allowed;
-        }
-
-        .btn-danger {
-            background: rgba(255, 68, 68, 0.8);
-            color: white;
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
-            color: #aaa;
-        }
-
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #00CED1; color: #000; font-weight: bold; }
+        .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+        .btn-danger { background: rgba(255, 68, 68, 0.8); color: white; }
+        .btn-secondary { background: rgba(255, 255, 255, 0.08); color: #aaa; }
         .btn-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            flex: none;
-            max-width: none;
+            width: 50px; height: 50px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 20px; flex: none; max-width: none;
         }
-
-        .btn-icon.active {
-            background: rgba(0, 206, 209, 0.2);
-            color: #00CED1;
-        }
-
-        .btn-icon.muted {
-            background: rgba(255, 68, 68, 0.2);
-            color: #FF4444;
-        }
-
-        /* Mode selector */
-        .mode-selector {
-            display: flex;
-            gap: 8px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-
+        .btn-icon.active { background: rgba(0, 206, 209, 0.2); color: #00CED1; }
+        .btn-icon.muted { background: rgba(255, 68, 68, 0.2); color: #FF4444; }
+        .mode-selector { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
         .mode-btn {
-            padding: 8px 16px;
-            border-radius: 20px;
-            border: 1px solid #333;
-            background: transparent;
-            color: #888;
-            font-size: 13px;
-            cursor: pointer;
-            font-family: 'Georgia', serif;
+            padding: 8px 16px; border-radius: 20px; border: 1px solid #333;
+            background: transparent; color: #888; font-size: 13px; cursor: pointer; font-family: 'Georgia', serif;
         }
-
-        .mode-btn.selected {
-            border-color: #00CED1;
-            color: #00CED1;
-            background: rgba(0, 206, 209, 0.08);
-        }
-
-        /* Screen share preview */
+        .mode-btn.selected { border-color: #00CED1; color: #00CED1; background: rgba(0, 206, 209, 0.08); }
         .screen-preview {
-            width: 100%;
-            max-height: 200px;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #111;
-            display: none;
-            position: relative;
+            width: 100%; max-height: 200px; border-radius: 8px; overflow: hidden;
+            background: #111; display: none; position: relative;
         }
-
-        .screen-preview.active {
-            display: block;
-        }
-
-        .screen-preview video {
-            width: 100%;
-            height: auto;
-        }
-
+        .screen-preview.active { display: block; }
+        .screen-preview video { width: 100%; height: auto; }
         .screen-preview .label {
-            position: absolute;
-            top: 8px;
-            left: 8px;
-            background: rgba(0,0,0,0.7);
-            color: #00CED1;
-            font-size: 11px;
-            padding: 2px 8px;
-            border-radius: 4px;
+            position: absolute; top: 8px; left: 8px; background: rgba(0,0,0,0.7);
+            color: #00CED1; font-size: 11px; padding: 2px 8px; border-radius: 4px;
         }
-
-        /* Settings panel */
         .settings-panel {
-            width: 100%;
-            background: rgba(255,255,255,0.03);
-            border-radius: 12px;
-            padding: 16px;
-            margin-top: 12px;
-            display: none;
+            width: 100%; background: rgba(255,255,255,0.03); border-radius: 12px;
+            padding: 16px; margin-top: 12px; display: none;
         }
-
-        .settings-panel.open {
-            display: block;
-        }
-
+        .settings-panel.open { display: block; }
         .setting-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 10px 0;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.05);
         }
-
-        .setting-label {
-            font-size: 14px;
-            color: #aaa;
-        }
-
+        .setting-label { font-size: 14px; color: #aaa; }
         select {
-            background: #1a1a1a;
-            color: #fff;
-            border: 1px solid #333;
-            padding: 6px 10px;
-            border-radius: 6px;
-            font-family: 'Georgia', serif;
+            background: #1a1a1a; color: #fff; border: 1px solid #333;
+            padding: 6px 10px; border-radius: 6px; font-family: 'Georgia', serif;
         }
-
-        /* Disclaimer */
-        .disclaimer {
-            font-size: 11px;
-            color: rgba(255,255,255,0.3);
-            text-align: center;
-            padding: 10px;
-            margin-top: auto;
-        }
-
-        /* Chat input */
-        .chat-input-area {
-            width: 100%;
-            display: none;
-            gap: 8px;
-        }
-
-        .chat-input-area.visible {
-            display: flex;
-        }
-
+        .disclaimer { font-size: 11px; color: rgba(255,255,255,0.3); text-align: center; padding: 10px; margin-top: auto; }
+        .chat-input-area { width: 100%; display: none; gap: 8px; }
+        .chat-input-area.visible { display: flex; }
         .chat-input {
-            flex: 1;
-            padding: 12px;
-            border-radius: 12px;
-            border: 1px solid #333;
-            background: #111;
-            color: #fff;
-            font-family: 'Georgia', serif;
-            font-size: 14px;
-            outline: none;
+            flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #333;
+            background: #111; color: #fff; font-family: 'Georgia', serif; font-size: 14px; outline: none;
         }
-
-        .chat-input:focus {
-            border-color: #00CED1;
-        }
-
+        .chat-input:focus { border-color: #00CED1; }
         .chat-send {
-            width: 44px;
-            height: 44px;
-            border-radius: 50%;
-            background: #00CED1;
-            color: #000;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
+            width: 44px; height: 44px; border-radius: 50%; background: #00CED1;
+            color: #000; border: none; cursor: pointer; font-size: 18px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Header -->
         <div class="logo">REDI</div>
         <div class="tagline">for anything</div>
 
-        <!-- User bar -->
         <div style="display:flex; align-items:center; gap:8px; margin-top:12px;">
             <span style="color:#888; font-size:13px;" id="userGreeting"></span>
             <span class="brain-badge" id="creditBadge" style="display:inline; background:rgba(0,206,209,0.1); cursor:pointer;" onclick="showBuyCredits()"><span id="creditCount">--</span> credits</span>
             <button onclick="logout()" style="background:none; border:1px solid #333; color:#888; padding:4px 10px; border-radius:6px; font-size:12px; cursor:pointer; font-family:Georgia,serif;">Sign Out</button>
         </div>
 
-        <!-- Status bar -->
         <div class="status-bar">
             <div class="status-dot" id="statusDot"></div>
             <span class="status-text" id="statusText">Disconnected</span>
             <span class="brain-badge" id="brainBadge" style="display:none"></span>
         </div>
 
-        <!-- Mode selector (pre-session) -->
         <div class="mode-selector" id="modeSelector">
             <button class="mode-btn selected" data-mode="voice" onclick="selectMode('voice')">&#x1F3A4; Voice</button>
             <button class="mode-btn" data-mode="screen" onclick="selectMode('screen')">&#x1F5A5;&#xFE0F; Screen + Voice</button>
@@ -424,35 +137,23 @@
             <button class="mode-btn" data-mode="chat" onclick="selectMode('chat')">&#x1F4AC; Chat Only</button>
         </div>
 
-        <!-- Main area -->
         <div class="main-area">
-            <!-- Screen share preview -->
             <div class="screen-preview" id="screenPreview">
                 <video id="screenVideo" autoplay muted></video>
                 <span class="label">Screen Sharing</span>
             </div>
-
-            <!-- Visualizer -->
             <div class="visualizer" id="visualizer">
                 <div class="visualizer-inner"></div>
             </div>
-
-            <!-- Response area -->
-            <div class="response-area" id="responseArea">
-                Press Start to connect to Redi
-            </div>
-
-            <!-- Transcript -->
+            <div class="response-area" id="responseArea">Press Start to connect to Redi</div>
             <div class="transcript-area" id="transcriptArea"></div>
         </div>
 
-        <!-- Chat input -->
         <div class="chat-input-area" id="chatInputArea">
             <input type="text" class="chat-input" id="chatInput" placeholder="Type a message..." onkeypress="handleChatKeypress(event)">
             <button class="chat-send" onclick="sendChatMessage()">&rarr;</button>
         </div>
 
-        <!-- Controls -->
         <div class="controls">
             <div class="control-row">
                 <button class="btn btn-primary" id="startBtn" onclick="startSession()">Start Session</button>
@@ -466,7 +167,6 @@
             </div>
         </div>
 
-        <!-- Settings panel -->
         <div class="settings-panel" id="settingsPanel">
             <div class="setting-row">
                 <span class="setting-label">Voice</span>
@@ -484,53 +184,29 @@
             </div>
         </div>
 
-        <!-- Disclaimer -->
-        <div class="disclaimer">
-            Redi is an AI assistant and may make mistakes. Always verify important information.
-        </div>
+        <div class="disclaimer">Redi is an AI assistant and may make mistakes. Always verify important information.</div>
     </div>
 
     <script>
         // =====================================================
-        // AUTH CHECK — Redirect to login if not authenticated
+        // AUTH
         // =====================================================
         var authToken = localStorage.getItem('redi_token');
         var userId = localStorage.getItem('redi_user_id');
         var userName = localStorage.getItem('redi_user_name');
-
-        if (!authToken) {
-            window.location.href = '/login';
-        }
-
-        // Verify token is still valid
-        fetch('/api/redi/auth/verify', {
-            headers: { 'Authorization': 'Bearer ' + authToken }
-        }).then(function(r) {
-            if (!r.ok) {
-                localStorage.removeItem('redi_token');
-                localStorage.removeItem('redi_user_id');
-                localStorage.removeItem('redi_user_name');
-                window.location.href = '/login';
-            }
+        if (!authToken) window.location.href = '/login';
+        fetch('/api/redi/auth/verify', { headers: { 'Authorization': 'Bearer ' + authToken } }).then(function(r) {
+            if (!r.ok) { localStorage.removeItem('redi_token'); localStorage.removeItem('redi_user_id'); localStorage.removeItem('redi_user_name'); window.location.href = '/login'; }
         });
-
-        function logout() {
-            localStorage.removeItem('redi_token');
-            localStorage.removeItem('redi_user_id');
-            localStorage.removeItem('redi_user_name');
-            window.location.href = '/login';
-        }
-
-        // Show user greeting
-        if (userName) {
-            document.getElementById('userGreeting').textContent = 'Hi, ' + userName;
-        }
+        function logout() { localStorage.removeItem('redi_token'); localStorage.removeItem('redi_user_id'); localStorage.removeItem('redi_user_name'); window.location.href = '/login'; }
+        if (userName) document.getElementById('userGreeting').textContent = 'Hi, ' + userName;
 
         // =====================================================
         // STATE
         // =====================================================
         var ws = null;
-        var audioContext = null;
+        var micContext = null;       // AudioContext for mic capture (24kHz)
+        var playbackContext = null;  // AudioContext for TTS playback (48kHz, decodes MP3)
         var mediaStream = null;
         var screenStream = null;
         var screenCaptureInterval = null;
@@ -541,7 +217,11 @@
         var selectedMode = 'voice';
         var sessionActive = false;
 
-        // WebSocket URL includes auth token
+        // Audio queue for gapless MP3 chunk playback
+        var audioQueue = [];
+        var isPlaying = false;
+        var nextPlayTime = 0;
+
         var SERVER_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/redi?v=9&token=' + encodeURIComponent(authToken || '');
 
         // =====================================================
@@ -549,114 +229,65 @@
         // =====================================================
         function selectMode(mode) {
             selectedMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(function(btn) {
-                btn.classList.toggle('selected', btn.dataset.mode === mode);
-            });
+            document.querySelectorAll('.mode-btn').forEach(function(btn) { btn.classList.toggle('selected', btn.dataset.mode === mode); });
         }
 
         // =====================================================
-        // SESSION MANAGEMENT
+        // SESSION
         // =====================================================
         function startSession() {
             var startBtn = document.getElementById('startBtn');
             startBtn.disabled = true;
             startBtn.textContent = 'Connecting...';
 
+            // Reset audio queue
+            audioQueue = [];
+            isPlaying = false;
+            nextPlayTime = 0;
+
             try {
                 ws = new WebSocket(SERVER_URL);
-
                 ws.onopen = function() {
                     console.log('[WS] Connected');
                     updateStatus('connected', 'Connected');
-
-                    // Send config based on selected mode
-                    ws.send(JSON.stringify({
-                        type: 'config',
-                        voiceOnly: selectedMode === 'voice' || selectedMode === 'observe',
-                        drivingMode: false,
-                        voice: document.getElementById('voiceSelect').value || '',
-                    }));
-
-                    // If observe mode, start observation
+                    ws.send(JSON.stringify({ type: 'config', voiceOnly: selectedMode === 'voice' || selectedMode === 'observe', drivingMode: false, voice: document.getElementById('voiceSelect').value || '' }));
                     if (selectedMode === 'observe') {
-                        ws.send(JSON.stringify({
-                            type: 'observe_start',
-                            observeType: 'audio_only',
-                            sensitivity: document.getElementById('sensitivitySelect').value,
-                        }));
+                        ws.send(JSON.stringify({ type: 'observe_start', observeType: 'audio_only', sensitivity: document.getElementById('sensitivitySelect').value }));
                     }
-
                     sessionActive = true;
                     document.getElementById('modeSelector').style.display = 'none';
                     document.getElementById('sessionControls').style.display = 'flex';
                     startBtn.style.display = 'none';
                     document.getElementById('visualizer').classList.add('active');
-                    document.getElementById('responseArea').textContent = selectedMode === 'observe'
-                        ? 'Redi is listening...'
-                        : 'Redi is ready. Start talking!';
-
-                    // Start mic
-                    if (selectedMode !== 'chat') {
-                        startMicrophone();
-                    }
-
-                    // Start screen share if screen mode
-                    if (selectedMode === 'screen') {
-                        startScreenShare();
-                    }
-
-                    // Show chat input if chat mode
-                    if (selectedMode === 'chat') {
-                        isChatVisible = true;
-                        document.getElementById('chatInputArea').classList.add('visible');
-                    }
+                    document.getElementById('responseArea').textContent = selectedMode === 'observe' ? 'Redi is listening...' : 'Redi is ready. Start talking!';
+                    if (selectedMode !== 'chat') startMicrophone();
+                    if (selectedMode === 'screen') startScreenShare();
+                    if (selectedMode === 'chat') { isChatVisible = true; document.getElementById('chatInputArea').classList.add('visible'); }
                 };
-
                 ws.onmessage = handleMessage;
-
-                ws.onerror = function(err) {
-                    console.error('[WS] Error:', err);
-                    updateStatus('error', 'Connection error');
-                };
-
-                ws.onclose = function() {
-                    console.log('[WS] Disconnected');
-                    if (sessionActive) {
-                        updateStatus('error', 'Disconnected');
-                    }
-                };
-
+                ws.onerror = function(err) { console.error('[WS] Error:', err); updateStatus('error', 'Connection error'); };
+                ws.onclose = function() { console.log('[WS] Disconnected'); if (sessionActive) updateStatus('error', 'Disconnected'); };
             } catch (err) {
                 console.error('Start error:', err);
                 startBtn.disabled = false;
                 startBtn.textContent = 'Start Session';
                 updateStatus('error', 'Failed to connect');
             }
-
             loadVoices();
         }
 
         function endSession() {
             sessionActive = false;
-
-            if (ws) {
-                if (selectedMode === 'observe') {
-                    ws.send(JSON.stringify({ type: 'observe_stop' }));
-                }
-                ws.close();
-                ws = null;
-            }
-
+            if (ws) { if (selectedMode === 'observe') ws.send(JSON.stringify({ type: 'observe_stop' })); ws.close(); ws = null; }
             stopMicrophone();
             stopScreenShare();
-
+            audioQueue = [];
+            isPlaying = false;
             isConnected = false;
             document.getElementById('modeSelector').style.display = 'flex';
             document.getElementById('sessionControls').style.display = 'none';
             var startBtn = document.getElementById('startBtn');
-            startBtn.style.display = 'block';
-            startBtn.disabled = false;
-            startBtn.textContent = 'Start Session';
+            startBtn.style.display = 'block'; startBtn.disabled = false; startBtn.textContent = 'Start Session';
             document.getElementById('visualizer').classList.remove('active');
             document.getElementById('responseArea').textContent = 'Session ended.';
             document.getElementById('chatInputArea').classList.remove('visible');
@@ -664,79 +295,70 @@
         }
 
         // =====================================================
-        // WEBSOCKET MESSAGE HANDLING
+        // MESSAGE HANDLING
         // =====================================================
         function handleMessage(event) {
+            // Binary data = raw audio bytes from server
+            if (event.data instanceof Blob) {
+                event.data.arrayBuffer().then(function(buffer) { queueAudioChunk(buffer); });
+                return;
+            }
+
             try {
                 var msg = JSON.parse(event.data);
-
                 switch (msg.type) {
                     case 'session_ready':
                         console.log('[WS] Session ready:', msg.sessionId);
                         updateStatus('connected', 'Session active');
                         break;
-
                     case 'transcript':
                         if (msg.role === 'assistant') {
                             document.getElementById('responseArea').textContent = msg.text;
                             document.getElementById('responseArea').classList.add('speaking');
                             addTranscript('Redi', msg.text, true);
-
-                            // Show brain badge
                             if (msg.brain) {
                                 var badge = document.getElementById('brainBadge');
                                 badge.style.display = 'inline';
                                 badge.textContent = msg.brain === 'fast' ? '\u26A1 Fast' : msg.brain === 'deep' ? '\uD83E\uDDE0 Deep' : '\uD83D\uDDE3\uFE0F Voice';
                             }
                         } else {
-                            if (msg.isFinal) {
-                                addTranscript('You', msg.text, true);
-                                updateStatus('connected', 'Processing...');
-                            }
+                            if (msg.isFinal) { addTranscript('You', msg.text, true); updateStatus('connected', 'Processing...'); }
                         }
                         break;
-
                     case 'audio':
+                        // Base64-encoded audio chunk (MP3 from ElevenLabs)
                         if (msg.data) {
-                            playAudioChunk(msg.data);
+                            var binaryString = atob(msg.data);
+                            var bytes = new Uint8Array(binaryString.length);
+                            for (var i = 0; i < binaryString.length; i++) bytes[i] = binaryString.charCodeAt(i);
+                            queueAudioChunk(bytes.buffer);
                         }
                         break;
-
                     case 'audio_done':
                         document.getElementById('responseArea').classList.remove('speaking');
                         updateStatus('listening', 'Listening...');
                         break;
-
                     case 'observe_started':
                         updateStatus('listening', 'Always On \u2014 listening...');
                         break;
-
                     case 'observe_interjection':
                         document.getElementById('responseArea').textContent = msg.text;
                         document.getElementById('responseArea').classList.add('speaking');
                         addTranscript('Redi', msg.text, true);
                         break;
-
                     case 'observe_ended':
                         updateStatus('connected', 'Observed ' + msg.durationMinutes + 'min, ' + msg.interjectionCount + ' interjections');
                         break;
-
-                    case 'mute_mic':
-                        // Server requests mic mute during playback
-                        break;
-
+                    case 'mute_mic': break;
                     case 'stop_audio':
-                        // Barge-in: stop playback
+                        // Barge-in: clear audio queue
+                        audioQueue = [];
+                        isPlaying = false;
                         break;
-
                     case 'credits_update':
                         document.getElementById('creditCount').textContent = Math.round(msg.remaining);
-                        if (msg.remaining <= 2) {
-                            document.getElementById('creditBadge').style.background = 'rgba(255,68,68,0.15)';
-                            document.getElementById('creditBadge').style.color = '#FF4444';
-                        }
+                        if (msg.remaining <= 2) { document.getElementById('creditBadge').style.background = 'rgba(255,68,68,0.15)'; document.getElementById('creditBadge').style.color = '#FF4444'; }
                         break;
-
                     case 'error':
                         console.error('[WS] Error:', msg.message);
                         updateStatus('error', msg.message || 'Error');
@@ -745,50 +367,33 @@
                         break;
                 }
             } catch (err) {
-                // Binary audio data
-                if (event.data instanceof Blob) {
-                    event.data.arrayBuffer().then(function(buffer) {
-                        playAudioBuffer(buffer);
-                    });
-                }
+                console.error('[WS] Parse error:', err);
             }
         }
 
         // =====================================================
-        // MICROPHONE
+        // MICROPHONE (24kHz PCM16 capture)
         // =====================================================
         function startMicrophone() {
             navigator.mediaDevices.getUserMedia({
-                audio: {
-                    sampleRate: 24000,
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                }
+                audio: { sampleRate: 24000, channelCount: 1, echoCancellation: true, noiseSuppression: true }
             }).then(function(stream) {
                 mediaStream = stream;
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-                var source = audioContext.createMediaStreamSource(stream);
-                var processor = audioContext.createScriptProcessor(4096, 1, 1);
-
+                micContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                var source = micContext.createMediaStreamSource(stream);
+                var processor = micContext.createScriptProcessor(4096, 1, 1);
                 processor.onaudioprocess = function(e) {
                     if (!ws || ws.readyState !== WebSocket.OPEN || !isMicOn) return;
-
                     var inputData = e.inputBuffer.getChannelData(0);
                     var pcm16 = new Int16Array(inputData.length);
-                    for (var i = 0; i < inputData.length; i++) {
-                        pcm16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
-                    }
+                    for (var i = 0; i < inputData.length; i++) pcm16[i] = Math.max(-32768, Math.min(32767, inputData[i] * 32768));
                     ws.send(pcm16.buffer);
                 };
-
                 source.connect(processor);
-                processor.connect(audioContext.destination);
-
+                processor.connect(micContext.destination);
                 updateStatus('listening', 'Listening...');
                 isMicOn = true;
                 updateMicButton();
-
             }).catch(function(err) {
                 console.error('Microphone error:', err);
                 updateStatus('error', 'Mic access denied');
@@ -796,21 +401,11 @@
         }
 
         function stopMicrophone() {
-            if (mediaStream) {
-                mediaStream.getTracks().forEach(function(t) { t.stop(); });
-                mediaStream = null;
-            }
-            if (audioContext) {
-                audioContext.close();
-                audioContext = null;
-            }
+            if (mediaStream) { mediaStream.getTracks().forEach(function(t) { t.stop(); }); mediaStream = null; }
+            if (micContext) { micContext.close(); micContext = null; }
         }
 
-        function toggleMic() {
-            isMicOn = !isMicOn;
-            updateMicButton();
-        }
-
+        function toggleMic() { isMicOn = !isMicOn; updateMicButton(); }
         function updateMicButton() {
             var btn = document.getElementById('micBtn');
             btn.textContent = isMicOn ? '\uD83C\uDFA4' : '\uD83D\uDD07';
@@ -818,92 +413,114 @@
         }
 
         // =====================================================
+        // AUDIO PLAYBACK (MP3 decoding with queue)
+        // =====================================================
+        function ensurePlaybackContext() {
+            if (!playbackContext || playbackContext.state === 'closed') {
+                playbackContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (playbackContext.state === 'suspended') {
+                playbackContext.resume();
+            }
+            return playbackContext;
+        }
+
+        function queueAudioChunk(arrayBuffer) {
+            var ctx = ensurePlaybackContext();
+
+            // decodeAudioData handles MP3, WAV, OGG, etc. automatically
+            ctx.decodeAudioData(arrayBuffer.slice(0), function(audioBuffer) {
+                audioQueue.push(audioBuffer);
+                if (!isPlaying) {
+                    isPlaying = true;
+                    nextPlayTime = ctx.currentTime;
+                    playNextChunk();
+                }
+            }, function(err) {
+                // If decode fails, try playing as raw PCM16 (fallback)
+                console.warn('[Audio] MP3 decode failed, trying PCM16 fallback:', err);
+                try {
+                    var pcm16 = new Int16Array(arrayBuffer);
+                    var float32 = new Float32Array(pcm16.length);
+                    for (var i = 0; i < pcm16.length; i++) float32[i] = pcm16[i] / 32768;
+                    var buffer = ctx.createBuffer(1, float32.length, 24000);
+                    buffer.getChannelData(0).set(float32);
+                    audioQueue.push(buffer);
+                    if (!isPlaying) { isPlaying = true; nextPlayTime = ctx.currentTime; playNextChunk(); }
+                } catch (e) {
+                    console.error('[Audio] PCM fallback also failed:', e);
+                }
+            });
+        }
+
+        function playNextChunk() {
+            var ctx = ensurePlaybackContext();
+            if (audioQueue.length === 0) {
+                isPlaying = false;
+                return;
+            }
+
+            var buffer = audioQueue.shift();
+            var source = ctx.createBufferSource();
+            source.buffer = buffer;
+            source.connect(ctx.destination);
+
+            // Schedule for gapless playback
+            var startTime = Math.max(ctx.currentTime, nextPlayTime);
+            source.start(startTime);
+            nextPlayTime = startTime + buffer.duration;
+
+            source.onended = function() {
+                playNextChunk();
+            };
+        }
+
+        // =====================================================
         // SCREEN SHARE
         // =====================================================
         function startScreenShare() {
-            navigator.mediaDevices.getDisplayMedia({
-                video: {
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 },
-                    frameRate: { max: 1 }
-                }
-            }).then(function(stream) {
+            navigator.mediaDevices.getDisplayMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { max: 1 } } }).then(function(stream) {
                 screenStream = stream;
                 var video = document.getElementById('screenVideo');
                 video.srcObject = stream;
                 document.getElementById('screenPreview').classList.add('active');
                 isScreenOn = true;
                 updateScreenButton();
-
                 var canvas = document.createElement('canvas');
                 var ctx = canvas.getContext('2d');
-
                 screenCaptureInterval = setInterval(function() {
                     if (!ws || ws.readyState !== WebSocket.OPEN || !isScreenOn) return;
-
                     canvas.width = Math.min(video.videoWidth, 1280);
                     canvas.height = Math.min(video.videoHeight, 720);
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
                     canvas.toBlob(function(blob) {
                         if (!blob) return;
                         var reader = new FileReader();
                         reader.onloadend = function() {
                             var base64 = reader.result.split(',')[1];
-
                             if (selectedMode === 'observe') {
-                                ws.send(JSON.stringify({
-                                    type: 'observe_screen',
-                                    content: base64,
-                                    isOCR: false,
-                                }));
+                                ws.send(JSON.stringify({ type: 'observe_screen', content: base64, isOCR: false }));
                             } else {
-                                ws.send(JSON.stringify({
-                                    type: 'frame',
-                                    data: base64,
-                                }));
+                                ws.send(JSON.stringify({ type: 'frame', data: base64 }));
                             }
                         };
                         reader.readAsDataURL(blob);
                     }, 'image/jpeg', 0.7);
-
                 }, selectedMode === 'observe' ? 10000 : 3000);
-
-                stream.getVideoTracks()[0].onended = function() {
-                    stopScreenShare();
-                };
-
-            }).catch(function(err) {
-                console.error('Screen share error:', err);
-            });
+                stream.getVideoTracks()[0].onended = function() { stopScreenShare(); };
+            }).catch(function(err) { console.error('Screen share error:', err); });
         }
 
         function stopScreenShare() {
-            if (screenStream) {
-                screenStream.getTracks().forEach(function(t) { t.stop(); });
-                screenStream = null;
-            }
-            if (screenCaptureInterval) {
-                clearInterval(screenCaptureInterval);
-                screenCaptureInterval = null;
-            }
+            if (screenStream) { screenStream.getTracks().forEach(function(t) { t.stop(); }); screenStream = null; }
+            if (screenCaptureInterval) { clearInterval(screenCaptureInterval); screenCaptureInterval = null; }
             document.getElementById('screenPreview').classList.remove('active');
             isScreenOn = false;
             updateScreenButton();
         }
 
-        function toggleScreen() {
-            if (isScreenOn) {
-                stopScreenShare();
-            } else {
-                startScreenShare();
-            }
-        }
-
-        function updateScreenButton() {
-            var btn = document.getElementById('screenBtn');
-            btn.className = 'btn btn-icon ' + (isScreenOn ? 'active' : '');
-        }
+        function toggleScreen() { if (isScreenOn) stopScreenShare(); else startScreenShare(); }
+        function updateScreenButton() { document.getElementById('screenBtn').className = 'btn btn-icon ' + (isScreenOn ? 'active' : ''); }
 
         // =====================================================
         // CHAT
@@ -912,195 +529,40 @@
             isChatVisible = !isChatVisible;
             document.getElementById('chatInputArea').classList.toggle('visible', isChatVisible);
             document.getElementById('chatBtn').classList.toggle('active', isChatVisible);
-            if (isChatVisible) {
-                document.getElementById('chatInput').focus();
-            }
+            if (isChatVisible) document.getElementById('chatInput').focus();
         }
-
-        function handleChatKeypress(event) {
-            if (event.key === 'Enter') {
-                sendChatMessage();
-            }
-        }
-
+        function handleChatKeypress(event) { if (event.key === 'Enter') sendChatMessage(); }
         function sendChatMessage() {
             var input = document.getElementById('chatInput');
             var text = input.value.trim();
             if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-            ws.send(JSON.stringify({
-                type: 'chat',
-                text: text,
-            }));
-
+            ws.send(JSON.stringify({ type: 'chat', text: text }));
             addTranscript('You', text, true);
             input.value = '';
-        }
-
-        // =====================================================
-        // AUDIO PLAYBACK
-        // =====================================================
-        function playAudioChunk(base64Data) {
-            var binaryString = atob(base64Data);
-            var bytes = new Uint8Array(binaryString.length);
-            for (var i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            playAudioBuffer(bytes.buffer);
-        }
-
-        function playAudioBuffer(arrayBuffer) {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-            }
-
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-
-            var pcm16 = new Int16Array(arrayBuffer);
-            var float32 = new Float32Array(pcm16.length);
-            for (var i = 0; i < pcm16.length; i++) {
-                float32[i] = pcm16[i] / 32768;
-            }
-
-            var buffer = audioContext.createBuffer(1, float32.length, 24000);
-            buffer.getChannelData(0).set(float32);
-
-            var source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            source.connect(audioContext.destination);
-            source.start();
         }
 
         // =====================================================
         // UI HELPERS
         // =====================================================
         function updateStatus(state, text) {
-            var dot = document.getElementById('statusDot');
-            dot.className = 'status-dot ' + state;
+            document.getElementById('statusDot').className = 'status-dot ' + state;
             document.getElementById('statusText').textContent = text;
         }
-
         function addTranscript(speaker, text, isFinal) {
             if (!isFinal) return;
-
             var area = document.getElementById('transcriptArea');
             var line = document.createElement('div');
             line.className = 'transcript-line' + (speaker === 'Redi' ? ' redi' : '');
             line.innerHTML = '<span class="speaker">' + speaker + '</span>' + escapeHtml(text);
             area.appendChild(line);
             area.scrollTop = area.scrollHeight;
-
-            while (area.children.length > 50) {
-                area.removeChild(area.firstChild);
-            }
+            while (area.children.length > 50) area.removeChild(area.firstChild);
         }
-
-        function escapeHtml(text) {
-            var div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        function toggleSettings() {
-            document.getElementById('settingsPanel').classList.toggle('open');
-        }
+        function escapeHtml(text) { var div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
+        function toggleSettings() { document.getElementById('settingsPanel').classList.toggle('open'); }
 
         // =====================================================
-        // VOICE SELECTION
+        // VOICES
         // =====================================================
         function loadVoices() {
-            fetch('/api/voices').then(function(resp) {
-                return resp.json();
-            }).then(function(data) {
-                var select = document.getElementById('voiceSelect');
-                select.innerHTML = '<option value="">Default (Brian)</option>';
-
-                if (data.voices) {
-                    data.voices.forEach(function(v) {
-                        var opt = document.createElement('option');
-                        opt.value = v.id;
-                        opt.textContent = v.name + ' \u2014 ' + v.description;
-                        select.appendChild(opt);
-                    });
-                }
-            }).catch(function() {
-                console.log('Could not load voices');
-            });
-        }
-
-        function updateVoice() {
-            var voiceId = document.getElementById('voiceSelect').value;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'config', voice: voiceId }));
-            }
-        }
-
-        function updateSensitivity() {
-            var val = document.getElementById('sensitivitySelect').value;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'config', sensitivity: val }));
-            }
-        }
-
-        // =====================================================
-        // CREDITS + BILLING
-        // =====================================================
-        async function loadCredits() {
-            try {
-                var resp = await fetch('/api/redi/billing/balance', { headers: { 'Authorization': 'Bearer ' + authToken } });
-                var data = await resp.json();
-                document.getElementById('creditCount').textContent = Math.round(data.credits);
-                if (data.credits <= 2) {
-                    document.getElementById('creditBadge').style.background = 'rgba(255,68,68,0.15)';
-                    document.getElementById('creditBadge').style.color = '#FF4444';
-                }
-            } catch (e) {}
-        }
-
-        async function showBuyCredits() {
-            var resp = await fetch('/api/redi/billing/packs');
-            var data = await resp.json();
-            var html = '<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:1000;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">';
-            html += '<div style="max-width:400px;width:90%;background:#111;border-radius:16px;padding:24px;">';
-            html += '<h2 style="color:#00CED1;text-align:center;font-family:Georgia,serif;">Add Credits</h2>';
-            html += '<p style="color:#888;text-align:center;font-size:13px;margin:8px 0 20px;">1 credit \u2248 1 minute of active use</p>';
-            data.packs.forEach(function(pack) {
-                html += '<div onclick="buyPack(\'' + pack.id + '\')" style="display:flex;justify-content:space-between;align-items:center;padding:14px;margin:8px 0;background:rgba(0,206,209,0.05);border-radius:10px;cursor:pointer;border:1px solid #222;">';
-                html += '<div><strong style="color:#fff;">' + pack.name + '</strong><br><span style="color:#888;font-size:12px;">' + pack.credits + ' credits</span></div>';
-                html += '<span style="color:#00CED1;font-weight:bold;">$' + (pack.priceInCents / 100).toFixed(0) + '</span>';
-                html += '</div>';
-            });
-            html += '<button onclick="this.parentElement.parentElement.remove()" style="width:100%;margin-top:16px;padding:10px;background:#222;color:#888;border:none;border-radius:8px;cursor:pointer;font-family:Georgia,serif;">Cancel</button>';
-            html += '</div></div>';
-            document.body.insertAdjacentHTML('beforeend', html);
-        }
-
-        async function buyPack(packId) {
-            var resp = await fetch('/api/redi/billing/checkout', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
-                body: JSON.stringify({ packId: packId }),
-            });
-            var data = await resp.json();
-            if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-        }
-
-        // =====================================================
-        // INIT
-        // =====================================================
-        loadCredits();
-        if (window.location.search.indexOf('purchase=success') !== -1) setTimeout(loadCredits, 2000);
-
-        document.addEventListener('click', function() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
-            }
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
-            }
-        }, { once: true });
-    </script>
-</body>
-</html>
+            fetch('/api/voices').then(function(r) { return r
