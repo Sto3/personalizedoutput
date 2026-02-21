@@ -15,14 +15,14 @@ class CalendarService: ObservableObject {
 
     func requestAccess() async -> Bool {
         do {
-            var granted = false
+            let result: Bool
             if #available(iOS 17.0, *) {
-                granted = try await store.requestFullAccessToEvents()
+                result = try await store.requestFullAccessToEvents()
             } else {
-                granted = try await store.requestAccess(to: .event)
+                result = try await store.requestAccess(to: .event)
             }
-            await MainActor.run { isAuthorized = granted }
-            return granted
+            await MainActor.run { isAuthorized = result }
+            return result
         } catch {
             print("[Calendar] Access error: \(error)")
             return false

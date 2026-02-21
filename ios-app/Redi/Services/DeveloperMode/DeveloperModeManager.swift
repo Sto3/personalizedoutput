@@ -9,6 +9,8 @@ import Foundation
 import UIKit
 
 class DeveloperModeManager: ObservableObject {
+    static let shared = DeveloperModeManager()
+
     @Published var isEnabled = false
     @Published var isDualVisionActive = false
 
@@ -19,7 +21,7 @@ class DeveloperModeManager: ObservableObject {
 
     private let enabledKey = "developerModeEnabled"
 
-    init() {
+    private init() {
         isEnabled = UserDefaults.standard.bool(forKey: enabledKey)
     }
 
@@ -34,17 +36,22 @@ class DeveloperModeManager: ObservableObject {
         lastTapTime = now
 
         if tapCount >= requiredTaps {
-            isEnabled.toggle()
-            UserDefaults.standard.set(isEnabled, forKey: enabledKey)
+            unlock()
             tapCount = 0
-
-            if isEnabled {
-                print("[DevMode] Developer mode ENABLED")
-                let generator = UIImpactFeedbackGenerator(style: .heavy)
-                generator.impactOccurred()
-            } else {
-                print("[DevMode] Developer mode DISABLED")
-            }
         }
+    }
+
+    func unlock() {
+        isEnabled = true
+        UserDefaults.standard.set(true, forKey: enabledKey)
+        print("[DevMode] Developer mode ENABLED")
+        let generator = UIImpactFeedbackGenerator(style: .heavy)
+        generator.impactOccurred()
+    }
+
+    func lock() {
+        isEnabled = false
+        UserDefaults.standard.set(false, forKey: enabledKey)
+        print("[DevMode] Developer mode DISABLED")
     }
 }
