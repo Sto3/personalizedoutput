@@ -15,7 +15,12 @@ class CalendarService: ObservableObject {
 
     func requestAccess() async -> Bool {
         do {
-            let granted = try await store.requestFullAccessToEvents()
+            var granted = false
+            if #available(iOS 17.0, *) {
+                granted = try await store.requestFullAccessToEvents()
+            } else {
+                granted = try await store.requestAccess(to: .event)
+            }
             await MainActor.run { isAuthorized = granted }
             return granted
         } catch {

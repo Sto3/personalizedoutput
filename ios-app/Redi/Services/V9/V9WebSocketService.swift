@@ -37,11 +37,15 @@ class V9WebSocketService: ObservableObject {
         }
     }
 
-    // Callbacks
+    // Callbacks (V3MainView uses these names)
+    var onTranscript: ((String, String) -> Void)?  // (text, role)
+    var onPlaybackStarted: (() -> Void)?
+    var onPlaybackEnded: (() -> Void)?
+    var onSessionReady: (() -> Void)?
+    var onBrainUsed: ((String) -> Void)?
     var onAudioReceived: ((Data) -> Void)?
     var onTranscriptReceived: ((String, Bool) -> Void)?  // (text, isFinal)
     var onResponseReceived: ((String, String, Int) -> Void)?  // (text, brain, latencyMs)
-    var onSessionReady: ((String) -> Void)?  // sessionId
     var onError: ((String) -> Void)?
     var onAudioDone: (() -> Void)?
 
@@ -115,9 +119,9 @@ class V9WebSocketService: ObservableObject {
         sendJSON(["type": "barge_in"])
     }
 
-    // MARK: - Private
+    // MARK: - Internal (accessible to other services like ObserveModeService)
 
-    private func sendJSON(_ dict: [String: Any]) {
+    func sendJSON(_ dict: [String: Any]) {
         guard let data = try? JSONSerialization.data(withJSONObject: dict),
               let string = String(data: data, encoding: .utf8) else { return }
         webSocket?.send(.string(string)) { error in
@@ -154,13 +158,15 @@ class V9WebSocketService: ObservableObject {
                     self?.isConnected = true
                     self?.connectionState = .connected
                     self?.reconnectAttempts = 0
-                    self?.onSessionReady?(sessionId)
+                    self?.onSessionReady?()
                     print("[V9WS] Session ready: \(sessionId)")
 
                 case "transcript":
                     let text = json["text"] as? String ?? ""
                     let isFinal = json["isFinal"] as? Bool ?? false
+                    let role = json["role"] as? String ?? "user"
                     self?.onTranscriptReceived?(text, isFinal)
+                    if isFinal { self?.onTranscript?(text, role) }
 
                 case "response":
                     let text = json["text"] as? String ?? ""
@@ -169,6 +175,9 @@ class V9WebSocketService: ObservableObject {
                     self?.currentBrain = brain
                     self?.lastLatencyMs = latencyMs
                     self?.onResponseReceived?(text, brain, latencyMs)
+                    self?.onTranscript?(text, "assistant")
+                    self?.onBrainUsed?(brain)
+                    self?.onPlaybackStarted?()
 
                 case "audio":
                     if let b64 = json["data"] as? String, let audioData = Data(base64Encoded: b64) {
@@ -177,6 +186,7 @@ class V9WebSocketService: ObservableObject {
 
                 case "audio_done":
                     self?.onAudioDone?()
+                    self?.onPlaybackEnded?()
 
                 case "error":
                     let msg = json["message"] as? String ?? "Unknown error"
