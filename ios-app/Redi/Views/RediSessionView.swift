@@ -2,14 +2,15 @@
  * RediSessionView.swift
  *
  * Main session view for Redi.
- * Supports both WebRTC (V9) and WebSocket (V7) connections.
+ * Supports both WebRTC and WebSocket (V7) connections.
  * 
  * WebRTC is preferred for:
- * - Built-in echo cancellation
- * - Lower latency
- * - Better audio quality
+ * - Built-in echo cancellation (hardware AEC)
+ * - Lower latency (direct peer connection)
+ * - Better audio quality (Opus codec)
+ * - Camera via WebRTC video track (no manual frame sending)
  * 
- * Jan 25, 2026: WebRTC ENABLED!
+ * Updated: Feb 20, 2026 - Aligned with production RediWebRTCService API
  */
 
 import SwiftUI
@@ -25,7 +26,7 @@ struct RediSessionView: View {
     // WebSocket service (V7 fallback)
     @StateObject private var webSocketService = RediWebSocketService()
     
-    // WebRTC service (V9 - preferred)
+    // WebRTC service (preferred - handles its own camera & audio)
     @StateObject private var webRTCService = RediWebRTCService()
     
     // MARK: - State
@@ -49,8 +50,14 @@ struct RediSessionView: View {
     var body: some View {
         ZStack {
             // Camera preview
-            RediCameraPreviewView(previewLayer: cameraService.previewLayer)
-                .ignoresSafeArea()
+            // When using WebRTC, camera is handled by the service's video track
+            // When using WebSocket, use CameraService preview
+            if !useWebRTC {
+                RediCameraPreviewView(previewLayer: cameraService.previewLayer)
+                    .ignoresSafeArea()
+            } else {
+                Color.black.ignoresSafeArea()
+            }
             
             // Overlay content
             VStack {
@@ -169,21 +176,17 @@ struct RediSessionView: View {
         
         // Check if WebRTC is enabled in config
         useWebRTC = RediConfig.isWebRTCEnabled
-        print("[RediSession] Using \(useWebRTC ? "WebRTC (V9)" : "WebSocket (V7)")")
+        print("[RediSession] Using \(useWebRTC ? "WebRTC" : "WebSocket (V7)")")
         
         if useWebRTC {
             startWebRTCSession()
         } else {
             startWebSocketSession()
         }
-        
-        // Start camera (same for both modes)
-        cameraService.start()
-        cameraService.startPeriodicSnapshots(intervalMs: Int(RediConfig.Camera.staticFrameInterval * 1000))
     }
     
     private func startWebRTCSession() {
-        print("[RediSession] 🚀 Starting WebRTC session...")
+        print("[RediSession] \u{1F680} Starting WebRTC session...")
         
         isConnecting = true
         
@@ -193,7 +196,7 @@ struct RediSessionView: View {
                 self.isConnected = true
                 self.isConnecting = false
                 self.errorMessage = nil
-                print("[RediSession] ✅ WebRTC session ready!")
+                print("[RediSession] \u2705 WebRTC session ready!")
             }
         }
         
@@ -202,45 +205,38 @@ struct RediSessionView: View {
         }
         
         webRTCService.onPlaybackStarted = {
-            // WebRTC handles echo cancellation internally - no need to mute mic
-            print("[RediSession] 🔊 WebRTC playback started")
+            // WebRTC handles echo cancellation internally via hardware AEC
+            print("[RediSession] \u{1F50A} WebRTC playback started")
         }
         
         webRTCService.onPlaybackEnded = {
-            print("[RediSession] 🔇 WebRTC playback ended")
-        }
-        
-        webRTCService.onRequestFrame = {
-            self.cameraService.captureSnapshot()
+            print("[RediSession] \u{1F507} WebRTC playback ended")
         }
         
         webRTCService.onError = { error in
             DispatchQueue.main.async {
                 self.errorMessage = error.localizedDescription
-                print("[RediSession] ❌ WebRTC error: \(error.localizedDescription)")
+                print("[RediSession] \u274C WebRTC error: \(error.localizedDescription)")
             }
         }
         
-        // Camera -> WebRTC (for vision)
-        cameraService.snapshotCaptured
-            .sink { [weak webRTCService] data in
-                webRTCService?.sendFrame(data)
-            }
-            .store(in: &cancellables)
+        // Note: WebRTC handles camera via its own video track
+        // No need to manually send frames - the service sets up
+        // RTCCameraVideoCapturer which streams directly to OpenAI
         
         // Connect!
         Task {
             do {
-                try await webRTCService.connect(mode: currentMode.rawValue)
-                print("[RediSession] ✅ WebRTC connected!")
+                try await webRTCService.connect()
+                print("[RediSession] \u2705 WebRTC connected!")
             } catch {
                 await MainActor.run {
-                    print("[RediSession] ❌ WebRTC failed: \(error.localizedDescription)")
+                    print("[RediSession] \u274C WebRTC failed: \(error.localizedDescription)")
                     errorMessage = "WebRTC failed, trying WebSocket..."
                     isConnecting = false
                     
                     // Fall back to WebSocket if WebRTC fails
-                    print("[RediSession] 🔄 Falling back to WebSocket")
+                    print("[RediSession] \u{1F504} Falling back to WebSocket")
                     useWebRTC = false
                     startWebSocketSession()
                 }
@@ -261,6 +257,10 @@ struct RediSessionView: View {
         // Start audio (WebSocket needs explicit audio handling)
         audioService.startRecording()
         
+        // Start camera (WebSocket needs manual frame capture)
+        cameraService.start()
+        cameraService.startPeriodicSnapshots(intervalMs: Int(RediConfig.Camera.staticFrameInterval * 1000))
+        
         // Setup bindings
         setupServiceBindings()
     }
@@ -273,9 +273,8 @@ struct RediSessionView: View {
         } else {
             webSocketService.disconnect()
             audioService.cleanup()
+            cameraService.stop()
         }
-        
-        cameraService.stop()
     }
     
     private func setupWebSocketCallbacks() {
@@ -373,7 +372,7 @@ struct RediSessionView: View {
         currentMode = mode
         
         if useWebRTC {
-            // WebRTC: Mode is set at connection time
+            // WebRTC: Mode is set at connection time via session config
             // Would need to reconnect to change mode
             print("[RediSession] Mode change requires reconnect in WebRTC mode")
         } else {
@@ -382,7 +381,7 @@ struct RediSessionView: View {
     }
 }
 
-// MARK: - Redi Camera Preview (unique name to avoid conflict with SessionView)
+// MARK: - Redi Camera Preview (unique name to avoid conflict)
 
 struct RediCameraPreviewView: UIViewRepresentable {
     let previewLayer: AVCaptureVideoPreviewLayer?

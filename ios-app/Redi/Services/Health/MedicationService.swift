@@ -108,7 +108,6 @@ class MedicationService: ObservableObject {
     
     func isDoseTakenToday(medicationId: String, scheduleTime: ScheduleTime) -> Bool {
         let calendar = Calendar.current
-        let now = Date()
         
         // Check if there's a log for this medication today at approximately this time
         return todaysDoses.contains { log in
@@ -200,11 +199,6 @@ class MedicationService: ObservableObject {
     
     func getMissedDoses(days: Int = 7) -> Int {
         let adherence = calculateAdherence(days: days)
-        let calendar = Calendar.current
-        let endDate = Date()
-        guard let startDate = calendar.date(byAdding: .day, value: -days, to: endDate) else {
-            return 0
-        }
         
         var expectedDoses = 0
         for medication in medications where medication.isActive {
