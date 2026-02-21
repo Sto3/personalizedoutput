@@ -14,9 +14,14 @@ class RemindersService: ObservableObject {
 
     func requestAccess() async -> Bool {
         do {
-            let granted = try await store.requestFullAccessToReminders()
-            await MainActor.run { isAuthorized = granted }
-            return granted
+            let result: Bool
+            if #available(iOS 17.0, *) {
+                result = try await store.requestFullAccessToReminders()
+            } else {
+                result = try await store.requestAccess(to: .reminder)
+            }
+            await MainActor.run { isAuthorized = result }
+            return result
         } catch {
             print("[Reminders] Access error: \(error)")
             return false
