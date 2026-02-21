@@ -1,14 +1,16 @@
 /**
  * Cerebras Provider - Fast Brain
  * ==============================
- * Llama 3.3 70B via Cerebras for fast vision queries.
- * Model: llama-3.3-70b
+ * GPT-OSS 120B via Cerebras for fast queries.
+ * Model: gpt-oss-120b (~3000 tokens/s)
+ * 
+ * Updated: Feb 21, 2026 - Switched from deprecated llama-3.3-70b to gpt-oss-120b
  */
 
 import { LLMRequest, LLMResponse } from './types';
 
 const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY;
-const CEREBRAS_MODEL = 'llama-3.3-70b';
+const CEREBRAS_MODEL = 'gpt-oss-120b';
 const CEREBRAS_ENDPOINT = 'https://api.cerebras.ai/v1/chat/completions';
 
 export async function cerebrasComplete(request: LLMRequest): Promise<LLMResponse> {
