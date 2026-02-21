@@ -2,15 +2,17 @@
  * Redi V9 Server - THREE-BRAIN ARCHITECTURE
  * ==========================================
  *
- * FAST BRAIN: Cerebras Llama 3.3 70B (~200ms) - Vision queries
- * VOICE BRAIN: Claude Haiku 4.5 (~400ms) - Voice-only conversations
- * DEEP BRAIN: GPT-4o (~1.5-2s) - Complex reasoning (LSAT, MCAT, medical, legal)
+ * FAST BRAIN: Cerebras GPT-OSS 120B (~3000 t/s) - Text-only queries
+ * VOICE BRAIN: Claude Haiku 4.5 (~400ms) - Reserved for future use
+ * DEEP BRAIN: GPT-4o (~1.5-2s) - Vision + complex reasoning (LSAT, MCAT, medical, legal)
  *
  * Pipeline: Deepgram STT -> Brain Router -> [Cerebras | Claude Haiku | GPT-4o] -> ElevenLabs TTS
  *
  * Endpoint: /ws/redi?v=9
  *
- * Cost: $0.07-0.09/min (79-83% margins vs V7's $0.30-0.60/min)
+ * Updated: Feb 21, 2026
+ * - Cerebras model: gpt-oss-120b (llama-3.3-70b deprecated Feb 16)
+ * - Vision routes to Deep Brain (GPT-4o) since Cerebras doesn't support image_url
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -155,9 +157,9 @@ let wss: WebSocketServer | null = null;
 export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
   console.log('[V9] THREE-BRAIN ARCHITECTURE');
-  console.log('[V9] Fast: Cerebras Llama 3.3 70B');
+  console.log('[V9] Fast: Cerebras GPT-OSS 120B (text)');
   console.log('[V9] Voice: Claude Haiku 4.5');
-  console.log('[V9] Deep: GPT-4o');
+  console.log('[V9] Deep: GPT-4o (vision + complex)');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
@@ -450,7 +452,8 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
     for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-    if (hasRecentFrame && route.brain === 'fast') {
+    // Vision frames only go to deep brain (GPT-4o supports image_url)
+    if (hasRecentFrame && route.brain === 'deep') {
       messages.push({ role: 'user', content: [{ type: 'text', text: transcript }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
     } else {
       messages.push({ role: 'user', content: transcript });
@@ -485,7 +488,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     session.conversationHistory.push({ role: 'assistant', content: responseText });
     if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
 
-    sendToClient(session, { type: 'transcript', text: responseText, role: 'assistant', brain: brainUsed });
+    sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - startTime });
 
     const ttsStart = Date.now();
     sendToClient(session, { type: 'mute_mic', muted: true });
@@ -608,7 +611,8 @@ function handleClientMessage(session: V9Session, message: any): void {
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
           for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-          if (hasRecentFrame && route.brain === 'fast') {
+          // Vision frames only go to deep brain (GPT-4o supports image_url)
+          if (hasRecentFrame && route.brain === 'deep') {
             messages.push({ role: 'user', content: [{ type: 'text', text: chatText }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
           } else {
             messages.push({ role: 'user', content: chatText });
@@ -626,7 +630,7 @@ function handleClientMessage(session: V9Session, message: any): void {
           session.conversationHistory.push({ role: 'assistant', content: responseText });
           if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
 
-          sendToClient(session, { type: 'transcript', text: responseText, role: 'assistant', brain: brainUsed });
+          sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - chatStart });
 
           if (!message.textOnly) {
             sendToClient(session, { type: 'mute_mic', muted: true });
@@ -683,5 +687,5 @@ export function closeRediV9(): void {
 export function getV9Stats(): object {
   let totalIn = 0, totalOut = 0, totalResponses = 0;
   sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; });
-  return { activeSessions: sessions.size, architecture: 'Three-Brain', fastBrain: 'Cerebras Llama 3.3 70B', voiceBrain: 'Claude Haiku 4.5', deepBrain: 'GPT-4o', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
+  return { activeSessions: sessions.size, architecture: 'Three-Brain', fastBrain: 'Cerebras GPT-OSS 120B', voiceBrain: 'Claude Haiku 4.5', deepBrain: 'GPT-4o', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
 }

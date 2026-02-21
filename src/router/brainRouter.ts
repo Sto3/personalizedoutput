@@ -5,8 +5,13 @@
  *
  * Routing logic:
  * 1. Deep Brain patterns (LSAT, MCAT, medical, legal, etc.) -> 'deep' (GPT-4o)
- * 2. Has vision frame -> 'fast' (Cerebras Llama 3.3 70B)
- * 3. Default -> 'voice' (Claude Haiku 4.5)
+ * 2. Has vision frame -> 'deep' (GPT-4o - multimodal, supports image_url)
+ * 3. Default text -> 'fast' (Cerebras GPT-OSS 120B - fastest text completion)
+ * 4. Conversational fallback -> 'voice' (Claude Haiku 4.5)
+ *
+ * Updated: Feb 21, 2026
+ * - Vision routes to Deep (GPT-4o) since Cerebras doesn't support image_url
+ * - Fast brain now handles general text queries (was defaulting to voice)
  */
 
 import { RouteDecision } from '../providers/types';
@@ -44,17 +49,18 @@ export function routeQuery(
     }
   }
 
-  // Vision queries go to fast brain (Cerebras with vision support)
+  // Vision queries go to deep brain (GPT-4o supports multimodal image_url)
   if (hasVision) {
     return {
-      brain: 'fast',
-      reason: 'Vision frame present',
+      brain: 'deep',
+      reason: 'Vision frame present — using GPT-4o (multimodal)',
     };
   }
 
-  // Default: voice brain (Claude Haiku - optimized for conversational)
+  // General text queries -> fast brain (Cerebras GPT-OSS 120B, ~3000 t/s)
+  // This handles 90%+ of voice-only queries at maximum speed
   return {
-    brain: 'voice',
-    reason: 'Default conversational',
+    brain: 'fast',
+    reason: 'Text-only — using Cerebras (fastest)',
   };
 }
