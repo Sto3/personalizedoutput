@@ -116,7 +116,15 @@ if(userName)document.getElementById('userGreeting').textContent='Hi, '+userName;
 // STATE
 var ws=null,micContext=null,playbackContext=null,mediaStream=null,screenStream=null,screenCaptureInterval=null;
 var isConnected=false,isMicOn=true,isScreenOn=false,isChatVisible=false,selectedMode='voice',sessionActive=false;
-var audioQueue=[],isPlaying=false,nextPlayTime=0;
+
+// PCM16 accumulator for smooth playback
+var pcmChunks=[];
+var pcmFlushTimer=null;
+var audioQueue=[];
+var isPlaying=false;
+var nextPlayTime=0;
+var FLUSH_INTERVAL_MS=150; // Accumulate chunks for 150ms then play as one block
+
 var SERVER_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/redi?v=9&token='+encodeURIComponent(authToken||'');
 
 function selectMode(mode){selectedMode=mode;document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.toggle('selected',b.dataset.mode===mode)});}
@@ -124,7 +132,7 @@ function selectMode(mode){selectedMode=mode;document.querySelectorAll('.mode-btn
 // SESSION
 function startSession(){
     var btn=document.getElementById('startBtn');btn.disabled=true;btn.textContent='Connecting...';
-    audioQueue=[];isPlaying=false;nextPlayTime=0;
+    pcmChunks=[];audioQueue=[];isPlaying=false;nextPlayTime=0;
     try{
         ws=new WebSocket(SERVER_URL);
         ws.onopen=function(){
@@ -150,7 +158,9 @@ function startSession(){
 function endSession(){
     sessionActive=false;
     if(ws){if(selectedMode==='observe')ws.send(JSON.stringify({type:'observe_stop'}));ws.close();ws=null;}
-    stopMicrophone();stopScreenShare();audioQueue=[];isPlaying=false;isConnected=false;
+    stopMicrophone();stopScreenShare();
+    pcmChunks=[];audioQueue=[];isPlaying=false;if(pcmFlushTimer){clearTimeout(pcmFlushTimer);pcmFlushTimer=null;}
+    isConnected=false;
     document.getElementById('modeSelector').style.display='flex';
     document.getElementById('sessionControls').style.display='none';
     var b=document.getElementById('startBtn');b.style.display='block';b.disabled=false;b.textContent='Start Session';
@@ -162,7 +172,7 @@ function endSession(){
 
 // MESSAGE HANDLING
 function handleMessage(event){
-    if(event.data instanceof Blob){event.data.arrayBuffer().then(function(buf){queueAudioChunk(buf);});return;}
+    if(event.data instanceof Blob){event.data.arrayBuffer().then(function(buf){accumulatePCM(buf);});return;}
     try{
         var m=JSON.parse(event.data);
         switch(m.type){
@@ -172,14 +182,18 @@ function handleMessage(event){
                 else{if(m.isFinal){addTranscript('You',m.text,true);updateStatus('connected','Processing...');}}
                 break;
             case 'audio':
-                if(m.data){var bs=atob(m.data),bytes=new Uint8Array(bs.length);for(var i=0;i<bs.length;i++)bytes[i]=bs.charCodeAt(i);queueAudioChunk(bytes.buffer);}
+                if(m.data){var bs=atob(m.data),bytes=new Uint8Array(bs.length);for(var i=0;i<bs.length;i++)bytes[i]=bs.charCodeAt(i);accumulatePCM(bytes.buffer);}
                 break;
-            case 'audio_done':document.getElementById('responseArea').classList.remove('speaking');updateStatus('listening','Listening...');break;
+            case 'audio_done':
+                flushPCM();
+                document.getElementById('responseArea').classList.remove('speaking');
+                updateStatus('listening','Listening...');
+                break;
             case 'observe_started':updateStatus('listening','Always On \u2014 listening...');break;
             case 'observe_interjection':document.getElementById('responseArea').textContent=m.text;document.getElementById('responseArea').classList.add('speaking');addTranscript('Redi',m.text,true);break;
             case 'observe_ended':updateStatus('connected','Observed '+m.durationMinutes+'min');break;
             case 'mute_mic':break;
-            case 'stop_audio':audioQueue=[];isPlaying=false;break;
+            case 'stop_audio':pcmChunks=[];audioQueue=[];isPlaying=false;if(pcmFlushTimer){clearTimeout(pcmFlushTimer);pcmFlushTimer=null;}break;
             case 'credits_update':document.getElementById('creditCount').textContent=Math.round(m.remaining);if(m.remaining<=2){document.getElementById('creditBadge').style.background='rgba(255,68,68,0.15)';document.getElementById('creditBadge').style.color='#FF4444';}break;
             case 'error':console.error('[WS] Error:',m.message);updateStatus('error',m.message||'Error');if(m.action==='buy_credits')showBuyCredits();if(m.action==='login')logout();break;
         }
@@ -206,34 +220,62 @@ function stopMicrophone(){if(mediaStream){mediaStream.getTracks().forEach(functi
 function toggleMic(){isMicOn=!isMicOn;updateMicButton();}
 function updateMicButton(){var b=document.getElementById('micBtn');b.textContent=isMicOn?'\uD83C\uDFA4':'\uD83D\uDD07';b.className='btn btn-icon '+(isMicOn?'active':'muted');}
 
-// AUDIO PLAYBACK (MP3 decode + gapless queue)
+// =====================================================
+// AUDIO PLAYBACK — PCM16 24kHz with accumulation
+// =====================================================
+// Server sends ElevenLabs PCM16 24kHz as many small chunks.
+// We accumulate chunks for FLUSH_INTERVAL_MS, merge into one
+// larger buffer, then schedule for gapless playback.
+// This eliminates choppiness from playing tiny fragments.
+
 function ensurePlaybackContext(){
-    if(!playbackContext||playbackContext.state==='closed')playbackContext=new(window.AudioContext||window.webkitAudioContext)();
+    if(!playbackContext||playbackContext.state==='closed')playbackContext=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});
     if(playbackContext.state==='suspended')playbackContext.resume();
     return playbackContext;
 }
-function queueAudioChunk(arrayBuffer){
-    var ctx=ensurePlaybackContext();
-    ctx.decodeAudioData(arrayBuffer.slice(0),function(audioBuffer){
-        audioQueue.push(audioBuffer);
-        if(!isPlaying){isPlaying=true;nextPlayTime=ctx.currentTime;playNextChunk();}
-    },function(err){
-        console.warn('[Audio] MP3 decode failed, PCM16 fallback:',err);
-        try{
-            var pcm=new Int16Array(arrayBuffer),f32=new Float32Array(pcm.length);
-            for(var i=0;i<pcm.length;i++)f32[i]=pcm[i]/32768;
-            var buf=ctx.createBuffer(1,f32.length,24000);buf.getChannelData(0).set(f32);
-            audioQueue.push(buf);
-            if(!isPlaying){isPlaying=true;nextPlayTime=ctx.currentTime;playNextChunk();}
-        }catch(e){console.error('[Audio] PCM fallback failed:',e);}
-    });
+
+function accumulatePCM(arrayBuffer){
+    pcmChunks.push(new Int16Array(arrayBuffer));
+    if(!pcmFlushTimer){
+        pcmFlushTimer=setTimeout(function(){flushPCM();},FLUSH_INTERVAL_MS);
+    }
 }
-function playNextChunk(){
+
+function flushPCM(){
+    if(pcmFlushTimer){clearTimeout(pcmFlushTimer);pcmFlushTimer=null;}
+    if(pcmChunks.length===0)return;
+
+    // Merge all accumulated PCM16 chunks into one buffer
+    var totalLen=0;
+    for(var i=0;i<pcmChunks.length;i++)totalLen+=pcmChunks[i].length;
+    var merged=new Int16Array(totalLen);
+    var offset=0;
+    for(var i=0;i<pcmChunks.length;i++){merged.set(pcmChunks[i],offset);offset+=pcmChunks[i].length;}
+    pcmChunks=[];
+
+    // Convert PCM16 to Float32 for Web Audio
     var ctx=ensurePlaybackContext();
+    var float32=new Float32Array(merged.length);
+    for(var i=0;i<merged.length;i++)float32[i]=merged[i]/32768;
+
+    var buffer=ctx.createBuffer(1,float32.length,24000);
+    buffer.getChannelData(0).set(float32);
+
+    // Queue for gapless playback
+    audioQueue.push(buffer);
+    if(!isPlaying){isPlaying=true;nextPlayTime=ctx.currentTime;playNextChunk();}
+}
+
+function playNextChunk(){
     if(audioQueue.length===0){isPlaying=false;return;}
-    var buf=audioQueue.shift(),src=ctx.createBufferSource();
-    src.buffer=buf;src.connect(ctx.destination);
-    var t=Math.max(ctx.currentTime,nextPlayTime);src.start(t);nextPlayTime=t+buf.duration;
+    var ctx=ensurePlaybackContext();
+    var buf=audioQueue.shift();
+    var src=ctx.createBufferSource();
+    src.buffer=buf;
+    src.connect(ctx.destination);
+    var t=Math.max(ctx.currentTime,nextPlayTime);
+    src.start(t);
+    nextPlayTime=t+buf.duration;
     src.onended=function(){playNextChunk();};
 }
 
