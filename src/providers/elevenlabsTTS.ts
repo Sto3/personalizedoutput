@@ -4,7 +4,10 @@
  * Streaming text-to-speech using ElevenLabs.
  * Voice selection system with mature, authoritative voices.
  * Model: eleven_turbo_v2_5
- * Output: pcm_24000
+ * Output: pcm_24000 (raw PCM16 signed LE, 24kHz, mono)
+ *
+ * IMPORTANT: Accept header must match output_format.
+ * pcm_24000 = raw audio bytes, NOT mp3.
  */
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
@@ -103,7 +106,8 @@ export async function elevenLabsStreamTTS(
       headers: {
         'xi-api-key': ELEVENLABS_API_KEY,
         'Content-Type': 'application/json',
-        'Accept': 'audio/mpeg',
+        // CRITICAL: Accept must be audio/pcm for pcm output, NOT audio/mpeg
+        'Accept': 'application/octet-stream',
       },
       body: JSON.stringify({
         text,
