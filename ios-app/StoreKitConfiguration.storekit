@@ -1,0 +1,21 @@
+{
+  "identifier" : "E4D3B2A1-0001-0001-0001-000000000001",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "1234567890",
+    "_developerTeamID" : "XXXXXXXXXX",
+    "_lastSynchronizedDate" : 0
+  },
+  "subscriptionGroups" : [
+
+  ],
+  "version" : {
+    "major" : 3,
+    "minor" : 0
+  }
+}
