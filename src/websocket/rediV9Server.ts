@@ -10,7 +10,8 @@
  *
  * Endpoint: /ws/redi?v=9
  *
- * Updated: Feb 21, 2026
+ * Updated: Feb 22, 2026
+ * - Audio sent as BINARY WebSocket frames (not base64 JSON) for zero-overhead playback
  * - Cerebras model: gpt-oss-120b (llama-3.3-70b deprecated Feb 16)
  * - Vision routes to Deep Brain (GPT-4o) since Cerebras doesn't support image_url
  */
@@ -78,6 +79,8 @@ interface V9Session {
   responsesCompleted: number;
   totalInputTokens: number;
   totalOutputTokens: number;
+  ttsChunkCount: number;
+  ttsTotalBytes: number;
 }
 
 // =============================================================================
@@ -160,6 +163,7 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Fast: Cerebras GPT-OSS 120B (text)');
   console.log('[V9] Voice: Claude Haiku 4.5');
   console.log('[V9] Deep: GPT-4o (vision + complex)');
+  console.log('[V9] Audio: BINARY PCM16 24kHz (ElevenLabs)');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
@@ -179,9 +183,6 @@ export function initV9WebSocket(server: HTTPServer): void {
   wss = new WebSocketServer({ noServer: true });
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    // =========================================================
-    // AUTHENTICATION \u2014 JWT token or dev fallback
-    // =========================================================
     const reqUrl = new URL(req.url || '', `http://${req.headers.host || 'localhost'}`);
     const token = reqUrl.searchParams.get('token');
 
@@ -196,8 +197,6 @@ export function initV9WebSocket(server: HTTPServer): void {
     }
 
     if (!authUser) {
-      // No token or invalid token \u2014 allow as dev user for testing
-      // TODO: Remove this fallback before public launch
       authUser = { userId: 'admin', email: 'admin@redialways.com', name: 'Admin' };
       console.log(`[V9] \u26a0\ufe0f No auth token \u2014 connected as dev user (remove before launch)`);
     }
@@ -228,14 +227,12 @@ export function initV9WebSocket(server: HTTPServer): void {
       responsesCompleted: 0,
       totalInputTokens: 0,
       totalOutputTokens: 0,
+      ttsChunkCount: 0,
+      ttsTotalBytes: 0,
     };
 
     sessions.set(sessionId, session);
 
-    // =========================================================
-    // CREDIT CONSUMPTION TIMER \u2014 deduct credits every 60s
-    // Skip for admin/dev users to avoid Supabase errors
-    // =========================================================
     if (authUser.userId !== 'admin') {
       session.creditTimer = setInterval(async () => {
         if (!session.isActive || !session.userId) {
@@ -283,6 +280,7 @@ export function initV9WebSocket(server: HTTPServer): void {
         const message = JSON.parse(typeof data === 'string' ? data : data.toString());
         handleClientMessage(session, message);
       } catch {
+        // Binary data = raw PCM16 audio from mic
         if (Buffer.isBuffer(data)) {
           if (session.deepgramConnection) {
             session.deepgramConnection.send(data);
@@ -419,6 +417,22 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 }
 
 // =============================================================================
+// SEND BINARY AUDIO TO CLIENT
+// =============================================================================
+
+/**
+ * Send raw PCM16 audio as a binary WebSocket frame.
+ * This avoids base64 encoding overhead and lets clients play directly.
+ */
+function sendAudioBinary(session: V9Session, audioChunk: Buffer): void {
+  if (session.clientWs.readyState === WebSocket.OPEN) {
+    session.clientWs.send(audioChunk);
+    session.ttsChunkCount++;
+    session.ttsTotalBytes += audioChunk.length;
+  }
+}
+
+// =============================================================================
 // SPEECH END -> RESPONSE PIPELINE
 // =============================================================================
 
@@ -452,7 +466,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
     for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-    // Vision frames only go to deep brain (GPT-4o supports image_url)
     if (hasRecentFrame && route.brain === 'deep') {
       messages.push({ role: 'user', content: [{ type: 'text', text: transcript }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
     } else {
@@ -491,16 +504,20 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - startTime });
 
     const ttsStart = Date.now();
+    session.ttsChunkCount = 0;
+    session.ttsTotalBytes = 0;
     sendToClient(session, { type: 'mute_mic', muted: true });
 
     await elevenLabsStreamTTS(
       responseText,
       (audioChunk: Buffer) => {
         if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) {
-          sendToClient(session, { type: 'audio', data: audioChunk.toString('base64'), format: 'pcm_24000' });
+          // Send as raw binary WebSocket frame — no base64, no JSON wrapper
+          sendAudioBinary(session, audioChunk);
         }
       },
       () => {
+        console.log(`[V9] TTS sent: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB`);
         sendToClient(session, { type: 'mute_mic', muted: false });
         sendToClient(session, { type: 'audio_done' });
       },
@@ -565,7 +582,7 @@ function handleClientMessage(session: V9Session, message: any): void {
       startEvaluationLoop(observeSession, async (text) => {
         sendToClient(session, { type: 'observe_interjection', text, sessionId: observeSession.id });
         try {
-          await elevenLabsStreamTTS(text, (chunk: Buffer) => { sendToClient(session, { type: 'audio', data: chunk.toString('base64') }); }, () => { sendToClient(session, { type: 'audio_done' }); }, observeSession.voiceId || undefined);
+          await elevenLabsStreamTTS(text, (chunk: Buffer) => { sendAudioBinary(session, chunk); }, () => { sendToClient(session, { type: 'audio_done' }); }, observeSession.voiceId || undefined);
         } catch (err) { console.error(`[Observe] TTS error:`, err); }
       });
       sendToClient(session, { type: 'observe_started', sessionId: observeSession.id, observeType, sensitivity, costRate: OBSERVE_COST_RATES[observeType] });
@@ -611,7 +628,6 @@ function handleClientMessage(session: V9Session, message: any): void {
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
           for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-          // Vision frames only go to deep brain (GPT-4o supports image_url)
           if (hasRecentFrame && route.brain === 'deep') {
             messages.push({ role: 'user', content: [{ type: 'text', text: chatText }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
           } else {
@@ -633,8 +649,10 @@ function handleClientMessage(session: V9Session, message: any): void {
           sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - chatStart });
 
           if (!message.textOnly) {
+            session.ttsChunkCount = 0;
+            session.ttsTotalBytes = 0;
             sendToClient(session, { type: 'mute_mic', muted: true });
-            await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => { if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) sendToClient(session, { type: 'audio', data: audioChunk.toString('base64'), format: 'pcm_24000' }); }, () => { sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' }); }, session.voiceId || undefined);
+            await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => { if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) sendAudioBinary(session, audioChunk); }, () => { sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' }); }, session.voiceId || undefined);
           }
 
           console.log(`[V9] Chat total: ${Date.now() - chatStart}ms`);
