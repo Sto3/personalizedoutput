@@ -116,14 +116,7 @@ if(userName)document.getElementById('userGreeting').textContent='Hi, '+userName;
 // STATE
 var ws=null,micContext=null,playbackContext=null,mediaStream=null,screenStream=null,screenCaptureInterval=null;
 var isConnected=false,isMicOn=true,isScreenOn=false,isChatVisible=false,selectedMode='voice',sessionActive=false;
-
-// PCM16 accumulator for smooth playback
-var pcmChunks=[];
-var pcmFlushTimer=null;
-var audioQueue=[];
-var isPlaying=false;
-var nextPlayTime=0;
-var FLUSH_INTERVAL_MS=150; // Accumulate chunks for 150ms then play as one block
+var currentAudioSource=null;
 
 var SERVER_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/redi?v=9&token='+encodeURIComponent(authToken||'');
 
@@ -132,7 +125,7 @@ function selectMode(mode){selectedMode=mode;document.querySelectorAll('.mode-btn
 // SESSION
 function startSession(){
     var btn=document.getElementById('startBtn');btn.disabled=true;btn.textContent='Connecting...';
-    pcmChunks=[];audioQueue=[];isPlaying=false;nextPlayTime=0;
+    currentAudioSource=null;
     try{
         ws=new WebSocket(SERVER_URL);
         ws.onopen=function(){
@@ -158,8 +151,7 @@ function startSession(){
 function endSession(){
     sessionActive=false;
     if(ws){if(selectedMode==='observe')ws.send(JSON.stringify({type:'observe_stop'}));ws.close();ws=null;}
-    stopMicrophone();stopScreenShare();
-    pcmChunks=[];audioQueue=[];isPlaying=false;if(pcmFlushTimer){clearTimeout(pcmFlushTimer);pcmFlushTimer=null;}
+    stopMicrophone();stopScreenShare();stopAudio();
     isConnected=false;
     document.getElementById('modeSelector').style.display='flex';
     document.getElementById('sessionControls').style.display='none';
@@ -172,7 +164,14 @@ function endSession(){
 
 // MESSAGE HANDLING
 function handleMessage(event){
-    if(event.data instanceof Blob){event.data.arrayBuffer().then(function(buf){accumulatePCM(buf);});return;}
+    // Binary frame = MP3 audio from ElevenLabs TTS
+    if(event.data instanceof Blob){
+        console.log('[Audio] Received binary blob:',event.data.size,'bytes');
+        event.data.arrayBuffer().then(function(buf){
+            playMP3(buf);
+        });
+        return;
+    }
     try{
         var m=JSON.parse(event.data);
         switch(m.type){
@@ -181,11 +180,17 @@ function handleMessage(event){
                 if(m.role==='assistant'){document.getElementById('responseArea').textContent=m.text;document.getElementById('responseArea').classList.add('speaking');addTranscript('Redi',m.text,true);if(m.brain){var bg=document.getElementById('brainBadge');bg.style.display='inline';bg.textContent=m.brain==='fast'?'\u26A1 Fast':m.brain==='deep'?'\uD83E\uDDE0 Deep':'\uD83D\uDDE3\uFE0F Voice';}}
                 else{if(m.isFinal){addTranscript('You',m.text,true);updateStatus('connected','Processing...');}}
                 break;
+            case 'response':
+                document.getElementById('responseArea').textContent=m.text;
+                document.getElementById('responseArea').classList.add('speaking');
+                addTranscript('Redi',m.text,true);
+                if(m.brain){var bg=document.getElementById('brainBadge');bg.style.display='inline';bg.textContent=m.brain==='fast'?'\u26A1 Fast':m.brain==='deep'?'\uD83E\uDDE0 Deep':'\uD83D\uDDE3\uFE0F Voice';}
+                break;
             case 'audio':
-                if(m.data){var bs=atob(m.data),bytes=new Uint8Array(bs.length);for(var i=0;i<bs.length;i++)bytes[i]=bs.charCodeAt(i);accumulatePCM(bytes.buffer);}
+                // Legacy base64 fallback (shouldn't fire with binary mode)
+                if(m.data){var bs=atob(m.data),bytes=new Uint8Array(bs.length);for(var i=0;i<bs.length;i++)bytes[i]=bs.charCodeAt(i);playMP3(bytes.buffer);}
                 break;
             case 'audio_done':
-                flushPCM();
                 document.getElementById('responseArea').classList.remove('speaking');
                 updateStatus('listening','Listening...');
                 break;
@@ -193,7 +198,7 @@ function handleMessage(event){
             case 'observe_interjection':document.getElementById('responseArea').textContent=m.text;document.getElementById('responseArea').classList.add('speaking');addTranscript('Redi',m.text,true);break;
             case 'observe_ended':updateStatus('connected','Observed '+m.durationMinutes+'min');break;
             case 'mute_mic':break;
-            case 'stop_audio':pcmChunks=[];audioQueue=[];isPlaying=false;if(pcmFlushTimer){clearTimeout(pcmFlushTimer);pcmFlushTimer=null;}break;
+            case 'stop_audio':stopAudio();break;
             case 'credits_update':document.getElementById('creditCount').textContent=Math.round(m.remaining);if(m.remaining<=2){document.getElementById('creditBadge').style.background='rgba(255,68,68,0.15)';document.getElementById('creditBadge').style.color='#FF4444';}break;
             case 'error':console.error('[WS] Error:',m.message);updateStatus('error',m.message||'Error');if(m.action==='buy_credits')showBuyCredits();if(m.action==='login')logout();break;
         }
@@ -221,62 +226,42 @@ function toggleMic(){isMicOn=!isMicOn;updateMicButton();}
 function updateMicButton(){var b=document.getElementById('micBtn');b.textContent=isMicOn?'\uD83C\uDFA4':'\uD83D\uDD07';b.className='btn btn-icon '+(isMicOn?'active':'muted');}
 
 // =====================================================
-// AUDIO PLAYBACK — PCM16 24kHz with accumulation
+// AUDIO PLAYBACK — MP3 via decodeAudioData
 // =====================================================
-// Server sends ElevenLabs PCM16 24kHz as many small chunks.
-// We accumulate chunks for FLUSH_INTERVAL_MS, merge into one
-// larger buffer, then schedule for gapless playback.
-// This eliminates choppiness from playing tiny fragments.
+// Server sends complete MP3 as a single binary WebSocket frame.
+// Browser's native decodeAudioData handles MP3 decoding perfectly.
+// No PCM alignment issues, no format guessing, no accumulation needed.
 
 function ensurePlaybackContext(){
-    if(!playbackContext||playbackContext.state==='closed')playbackContext=new(window.AudioContext||window.webkitAudioContext)({sampleRate:24000});
+    if(!playbackContext||playbackContext.state==='closed')playbackContext=new(window.AudioContext||window.webkitAudioContext)();
     if(playbackContext.state==='suspended')playbackContext.resume();
     return playbackContext;
 }
 
-function accumulatePCM(arrayBuffer){
-    pcmChunks.push(new Int16Array(arrayBuffer));
-    if(!pcmFlushTimer){
-        pcmFlushTimer=setTimeout(function(){flushPCM();},FLUSH_INTERVAL_MS);
-    }
+function playMP3(arrayBuffer){
+    var ctx=ensurePlaybackContext();
+    // Make a copy because decodeAudioData detaches the original ArrayBuffer
+    var copy=arrayBuffer.slice(0);
+    ctx.decodeAudioData(copy,function(audioBuffer){
+        console.log('[Audio] Decoded MP3: '+audioBuffer.duration.toFixed(2)+'s, '+audioBuffer.sampleRate+'Hz');
+        var source=ctx.createBufferSource();
+        source.buffer=audioBuffer;
+        source.connect(ctx.destination);
+        source.start(0);
+        currentAudioSource=source;
+        source.onended=function(){
+            currentAudioSource=null;
+        };
+    },function(err){
+        console.error('[Audio] MP3 decode failed:',err);
+        // Log first bytes for debugging
+        var view=new Uint8Array(arrayBuffer);
+        console.error('[Audio] First 8 bytes:',Array.from(view.slice(0,8)).map(function(b){return b.toString(16)}).join(' '));
+    });
 }
 
-function flushPCM(){
-    if(pcmFlushTimer){clearTimeout(pcmFlushTimer);pcmFlushTimer=null;}
-    if(pcmChunks.length===0)return;
-
-    // Merge all accumulated PCM16 chunks into one buffer
-    var totalLen=0;
-    for(var i=0;i<pcmChunks.length;i++)totalLen+=pcmChunks[i].length;
-    var merged=new Int16Array(totalLen);
-    var offset=0;
-    for(var i=0;i<pcmChunks.length;i++){merged.set(pcmChunks[i],offset);offset+=pcmChunks[i].length;}
-    pcmChunks=[];
-
-    // Convert PCM16 to Float32 for Web Audio
-    var ctx=ensurePlaybackContext();
-    var float32=new Float32Array(merged.length);
-    for(var i=0;i<merged.length;i++)float32[i]=merged[i]/32768;
-
-    var buffer=ctx.createBuffer(1,float32.length,24000);
-    buffer.getChannelData(0).set(float32);
-
-    // Queue for gapless playback
-    audioQueue.push(buffer);
-    if(!isPlaying){isPlaying=true;nextPlayTime=ctx.currentTime;playNextChunk();}
-}
-
-function playNextChunk(){
-    if(audioQueue.length===0){isPlaying=false;return;}
-    var ctx=ensurePlaybackContext();
-    var buf=audioQueue.shift();
-    var src=ctx.createBufferSource();
-    src.buffer=buf;
-    src.connect(ctx.destination);
-    var t=Math.max(ctx.currentTime,nextPlayTime);
-    src.start(t);
-    nextPlayTime=t+buf.duration;
-    src.onended=function(){playNextChunk();};
+function stopAudio(){
+    if(currentAudioSource){try{currentAudioSource.stop();}catch(e){}currentAudioSource=null;}
 }
 
 // SCREEN SHARE
