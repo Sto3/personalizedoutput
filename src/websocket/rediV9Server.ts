@@ -10,11 +10,11 @@
  *
  * Endpoint: /ws/redi?v=9
  *
- * Updated: Feb 23, 2026
- * - Compact voice-first system prompt (~200 tokens vs ~980)
- * - max_tokens: 150 for fast brain (forces concise voice responses)
- * - Speech timeout: 1500ms, utterance_end: 2000ms
- * - Smart vision routing
+ * Updated: Feb 23, 2026 (v3)
+ * - No-hallucination rule: never make up weather/stocks/news
+ * - max_tokens: 80 fast, 150 deep (force ultra-short voice responses)
+ * - Deepgram keywords: boost "Redi" to stop "Brady/Freddy/Reddy" mishearing
+ * - TTS pronunciation hints in prompt (degrees not degrev)
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -50,10 +50,10 @@ const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 const SPEECH_TIMEOUT_MS = 1500;
 const MAX_HISTORY_ENTRIES = 20;
 
-// Max tokens for each brain — voice responses MUST be short
-const FAST_MAX_TOKENS = 150;   // ~2-3 sentences spoken aloud
-const DEEP_MAX_TOKENS = 300;   // Complex answers can be slightly longer
-const VOICE_MAX_TOKENS = 150;
+// Max tokens — voice responses MUST be ultra-short
+const FAST_MAX_TOKENS = 80;    // ~1-2 sentences spoken aloud
+const DEEP_MAX_TOKENS = 150;   // Vision/complex can be slightly longer
+const VOICE_MAX_TOKENS = 80;
 
 // =============================================================================
 // TYPES
@@ -90,24 +90,25 @@ interface V9Session {
 }
 
 // =============================================================================
-// SYSTEM PROMPT — COMPACT, VOICE-FIRST
+// SYSTEM PROMPT — ULTRA-COMPACT, VOICE-FIRST, NO HALLUCINATION
 // =============================================================================
 
-const SYSTEM_PROMPT = `You are Redi, a real-time voice AI assistant. You speak out loud — every word you write is spoken via TTS.
+const SYSTEM_PROMPT = `You are Redi (pronounced "ready"), a real-time voice AI assistant. Everything you write is spoken aloud via TTS.
 
-VOICE RULES (critical):
-- Keep responses to 1-3 sentences. You are being SPOKEN aloud — long responses are painful to listen to.
-- Be direct and punchy. No filler, no preamble, no "That's a great question."
-- For greetings, just be natural and brief: "Hey! What's up?" or "What can I help with?"
-- Match the user's energy. Casual question = casual answer. Serious question = focused answer.
-- If someone asks something complex, give the short answer first, then ask if they want more detail.
+VOICE RULES — FOLLOW STRICTLY:
+- 1-2 sentences max. You are being SPOKEN. Every extra word wastes the user's time.
+- Greetings: "Hey! What's going on?" — that's it. No introductions, no offers, no monologues.
+- Direct answers only. No filler ("That's a great question"), no preamble, no repetition.
+- Complex topics: give the short answer. If they want more, they'll ask.
 
-IDENTITY:
-- Confident, warm, sharp. Like a trusted friend who happens to know everything.
-- Proactive: suggest what you can DO, don't just describe what you see.
-- Never passive ("let me know if you need anything") — always offer something specific.
+NEVER HALLUCINATE:
+- You have NO access to real-time data: weather, stock prices, sports scores, news.
+- If asked for real-time info, say "I don't have live data for that right now" — NEVER make up numbers.
+- Write numbers and units clearly for TTS: "72 degrees" not "72°", "5 dollars" not "$5".
 
-DRIVING MODE: If active, 10 words max. No navigation directions ever.`;
+IDENTITY: Confident, warm, sharp. Proactive — suggest actions, don't just describe.
+
+DRIVING MODE: If active, 10 words max. No directions.`;
 
 // =============================================================================
 // STATE
@@ -123,11 +124,11 @@ let wss: WebSocketServer | null = null;
 export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
   console.log('[V9] THREE-BRAIN ARCHITECTURE');
-  console.log('[V9] Fast: Cerebras GPT-OSS 120B (text) | max ' + FAST_MAX_TOKENS + ' tokens');
+  console.log('[V9] Fast: Cerebras GPT-OSS 120B | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Voice: Claude Haiku 4.5 | max ' + VOICE_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep: GPT-4o (vision + complex) | max ' + DEEP_MAX_TOKENS + ' tokens');
   console.log('[V9] Audio: MP3 44.1kHz 128kbps (ElevenLabs)');
-  console.log('[V9] Speech timeout: ' + SPEECH_TIMEOUT_MS + 'ms');
+  console.log('[V9] Speech timeout: ' + SPEECH_TIMEOUT_MS + 'ms | Keywords: Redi boosted');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
@@ -299,10 +300,12 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     encoding: 'linear16',
     sample_rate: 24000,
     channels: 1,
+    // Boost "Redi" so Deepgram stops hearing "Brady", "Freddy", "Reddy", "Ready"
+    keywords: ['Redi:5', 'Redi Always:3'],
   });
 
   connection.on(LiveTranscriptionEvents.Open, () => {
-    console.log(`[V9] Deepgram connected (nova-2, 24kHz PCM16)`);
+    console.log(`[V9] Deepgram connected (nova-2, 24kHz PCM16, keywords: Redi boosted)`);
   });
 
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
@@ -394,7 +397,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   session.isResponding = true;
 
   const startTime = Date.now();
-  const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 3000);
+  const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 5000);
   session.hasVision = hasRecentFrame;
 
   const route = routeQuery(transcript, hasRecentFrame);
@@ -557,7 +560,7 @@ function handleClientMessage(session: V9Session, message: any): void {
       if (session.observeSessionId) { feedAudioTranscript(session.observeSessionId, chatText); break; }
       session.isResponding = true;
       const chatStart = Date.now();
-      const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 3000);
+      const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 5000);
       const route = routeQuery(chatText, hasRecentFrame);
       console.log(`[V9] Chat route: ${route.brain.toUpperCase()} | "${chatText.slice(0, 50)}${chatText.length > 50 ? '...' : ''}"`);
       sendToClient(session, { type: 'transcript', text: chatText, role: 'user' });
