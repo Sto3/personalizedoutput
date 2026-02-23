@@ -2,19 +2,21 @@
  * ElevenLabs TTS Provider
  * =======================
  * Streaming text-to-speech using ElevenLabs.
- * Voice selection system with mature, authoritative voices.
- * Model: eleven_turbo_v2_5
- * Output: pcm_24000 (raw PCM16 signed LE, 24kHz, mono)
+ * 
+ * Output: mp3_44100_128 (MP3, 44.1kHz, 128kbps)
+ * 
+ * WHY MP3 instead of PCM:
+ * - Browsers natively decode MP3 via decodeAudioData() — zero custom code
+ * - ElevenLabs PCM streaming sends odd-sized chunks that break Int16Array alignment
+ * - MP3 chunks are self-contained frames — no alignment issues
+ * - ~10x smaller payload than PCM (128kbps vs ~768kbps)
+ * - decodeAudioData handles sample rate conversion automatically
  *
- * IMPORTANT: Accept header must match output_format.
- * pcm_24000 = raw audio bytes, NOT mp3.
+ * Model: eleven_turbo_v2_5
  */
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_MODEL = 'eleven_turbo_v2_5';
-
-// Voice options — mature, professional, authoritative
-// Target: mid-30s to early 40s. Calm but profound. Thoughtful but pointed.
 
 interface VoiceOption {
   id: string;
@@ -24,49 +26,42 @@ interface VoiceOption {
 }
 
 const VOICE_OPTIONS: Record<string, VoiceOption> = {
-  // PRIMARY MALE: Brian — American, deep, middle-aged, resonant
   brian: {
     id: 'nPczCjzI2devNBz1zQrb',
     name: 'Brian',
     description: 'American, deep, authoritative, warm',
     gender: 'male',
   },
-  // BACKUP MALE: Chris — American, casual but professional
   chris: {
     id: 'iP95p4xoKVk53GoZ742B',
     name: 'Chris',
     description: 'American, casual, conversational, middle-aged',
     gender: 'male',
   },
-  // ALTERNATIVE MALE: Eric — American, friendly
   eric: {
     id: 'cjVigY5qzO86Huf0OWal',
     name: 'Eric',
     description: 'American, friendly, conversational, middle-aged',
     gender: 'male',
   },
-  // BRITISH MALE: Daniel
   daniel: {
     id: 'onwK4e9ZLuTAKqWW03F9',
     name: 'Daniel',
     description: 'British, authoritative, calm, professional',
     gender: 'male',
   },
-  // PRIMARY FEMALE: Aria — American, mature
   aria: {
     id: '9BWtsMINqrJLrRacOk9x',
     name: 'Aria',
     description: 'American, expressive, calm, mature',
     gender: 'female',
   },
-  // BACKUP FEMALE: Matilda — American, friendly
   matilda: {
     id: 'XrExE9yKIg1WjnnlVkGX',
     name: 'Matilda',
     description: 'American, friendly, warm, narration',
     gender: 'female',
   },
-  // BRITISH FEMALE: Alice
   alice: {
     id: 'Xb7hH8MSUJpSbSDYk0k2',
     name: 'Alice',
@@ -75,7 +70,6 @@ const VOICE_OPTIONS: Record<string, VoiceOption> = {
   },
 };
 
-// Default voice — Brian (authoritative American male)
 let activeVoiceId = VOICE_OPTIONS.brian.id;
 
 function getElevenLabsEndpoint(voiceId: string): string {
@@ -106,8 +100,7 @@ export async function elevenLabsStreamTTS(
       headers: {
         'xi-api-key': ELEVENLABS_API_KEY,
         'Content-Type': 'application/json',
-        // CRITICAL: Accept must be audio/pcm for pcm output, NOT audio/mpeg
-        'Accept': 'application/octet-stream',
+        'Accept': 'audio/mpeg',
       },
       body: JSON.stringify({
         text,
@@ -118,7 +111,8 @@ export async function elevenLabsStreamTTS(
           style: 0.15,
           use_speaker_boost: true,
         },
-        output_format: 'pcm_24000',
+        // MP3 output — browsers decode natively, no alignment issues
+        output_format: 'mp3_44100_128',
       }),
     },
   );
@@ -133,16 +127,31 @@ export async function elevenLabsStreamTTS(
     throw new Error('No response body reader available');
   }
 
+  // Accumulate ALL MP3 data into a single buffer, then send as one chunk.
+  // This ensures the client gets a complete, decodable MP3 file.
+  const chunks: Buffer[] = [];
+  let totalSize = 0;
+
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      onChunk(Buffer.from(value));
+      const buf = Buffer.from(value);
+      chunks.push(buf);
+      totalSize += buf.length;
     }
   } finally {
     reader.releaseLock();
-    onDone();
   }
+
+  // Send complete MP3 as a single binary frame
+  if (totalSize > 0) {
+    const complete = Buffer.concat(chunks, totalSize);
+    console.log(`[ElevenLabs] MP3 complete: ${Math.round(totalSize / 1024)}KB, header: ${complete.slice(0, 4).toString('hex')}`);
+    onChunk(complete);
+  }
+
+  onDone();
 }
 
 export function setActiveVoice(voiceName: string): void {
