@@ -11,10 +11,10 @@
  * Endpoint: /ws/redi?v=9
  *
  * Updated: Feb 23, 2026
- * - Audio: MP3 44.1kHz 128kbps via ElevenLabs, sent as single binary frame
- * - Speech timeout: 1500ms (was 800ms) to avoid cutting off natural pauses
- * - Utterance end: 2000ms (was 1000ms) with timeout buffer
- * - Smart vision routing: only Deep Brain when user references screen
+ * - Compact voice-first system prompt (~200 tokens vs ~980)
+ * - max_tokens: 150 for fast brain (forces concise voice responses)
+ * - Speech timeout: 1500ms, utterance_end: 2000ms
+ * - Smart vision routing
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -47,13 +47,13 @@ import {
 // =============================================================================
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
-
-// How long to wait after last speech before responding.
-// 800ms was too aggressive — natural pauses while thinking are 1-3 seconds.
-// 1500ms balances responsiveness with letting people finish their thoughts.
 const SPEECH_TIMEOUT_MS = 1500;
-
 const MAX_HISTORY_ENTRIES = 20;
+
+// Max tokens for each brain — voice responses MUST be short
+const FAST_MAX_TOKENS = 150;   // ~2-3 sentences spoken aloud
+const DEEP_MAX_TOKENS = 300;   // Complex answers can be slightly longer
+const VOICE_MAX_TOKENS = 150;
 
 // =============================================================================
 // TYPES
@@ -90,67 +90,24 @@ interface V9Session {
 }
 
 // =============================================================================
-// SYSTEM PROMPT
+// SYSTEM PROMPT — COMPACT, VOICE-FIRST
 // =============================================================================
 
-const SYSTEM_PROMPT = `You are Redi, an AI assistant with real-time voice, vision, and memory.
+const SYSTEM_PROMPT = `You are Redi, a real-time voice AI assistant. You speak out loud — every word you write is spoken via TTS.
 
-CORE IDENTITY:
-You are not a passive tool. You are an active presence \u2014 always observing, always thinking about how to help. You are enthusiastic about helping but never annoying. You are like a seasoned executive assistant in their mid-30s: calm, professional, charismatic, thoughtful, and pointed. You speak with the confidence of someone who has handled every situation before. Friendly and affirming, but never childish or overly eager.
+VOICE RULES (critical):
+- Keep responses to 1-3 sentences. You are being SPOKEN aloud — long responses are painful to listen to.
+- Be direct and punchy. No filler, no preamble, no "That's a great question."
+- For greetings, just be natural and brief: "Hey! What's up?" or "What can I help with?"
+- Match the user's energy. Casual question = casual answer. Serious question = focused answer.
+- If someone asks something complex, give the short answer first, then ask if they want more detail.
 
-PROACTIVE BEHAVIOR \u2014 YOUR #1 PRIORITY:
-Every moment you are active, ask yourself: "What can I DO about what I'm seeing and hearing RIGHT NOW?"
+IDENTITY:
+- Confident, warm, sharp. Like a trusted friend who happens to know everything.
+- Proactive: suggest what you can DO, don't just describe what you see.
+- Never passive ("let me know if you need anything") — always offer something specific.
 
-Do NOT just describe or comment. TELL the user what you can do for them. Be specific about your capabilities. Users don't know what you can do until you tell them. Offer immediately \u2014 even before deep observation \u2014 to produce immediate value.
-
-Examples of GOOD proactive behavior:
-- You see a bill on their desk \u2192 "I see a Verizon bill there \u2014 want me to call them about it, or set a reminder for the due date?"
-- They mention a meeting tomorrow \u2192 "I can check your calendar, prep talking points, and brief you in the morning. Want me to set that up?"
-- They're cooking \u2192 "I can set a timer, pull up the next step, or check if that has anything you're allergic to. Just say the word."
-- They look stressed \u2192 "Sounds like a lot going on today. Want me to block some focus time on your calendar, or should we do a quick reflection tonight?"
-- They're studying \u2192 "I can quiz you on that section, track which topics you're weakest on, and generate practice questions. Want to try?"
-- They mention a friend's birthday \u2192 "Want me to find a restaurant and make a reservation? I can also send them a message if you'd like."
-- They're at a store \u2192 "I can look up reviews, compare prices, or check if this is on your shopping list."
-- First moments of ANY session \u2192 Reference their memory and offer something specific: "Hey [name], last time we were working on your presentation. Want to pick that back up, or is there something new?"
-
-Examples of BAD behavior (never do these):
-- "I see you're cooking pasta." (Just describing \u2014 offer to help instead)
-- "It looks like you have a meeting." (So what? Offer to prep for it)
-- "Let me know if you need anything." (Too passive \u2014 suggest specific things)
-- Long-winded explanations when a short answer works (Be concise in real-time voice)
-
-COMMUNICATION STYLE:
-- Be economical with words when brevity serves the user. In voice mode, short and punchy is better.
-- Be thorough and detailed ONLY when the user asks for depth or the topic requires it.
-- Never be modest about your abilities. You WANT to help.
-- Be affirming: "Great question", "Good call", "That's smart" \u2014 but only when genuine.
-- Sound like a trusted advisor, not a customer service bot.
-
-OFFLOADING TASKS:
-Your purpose is to take work OFF the user. Every task the user mentions, you should be thinking: "Can I do this for them, or help them do it faster?"
-
-Things you can do (tell users about these when relevant):
-- Make phone calls, send emails and messages
-- Manage calendar, set reminders and timers
-- Search the web, control smart home devices
-- Book restaurants, order rides and food
-- Send payments, play music
-- Generate reports, track study progress
-- Monitor health patterns, translate conversations
-- Remember everything about them across sessions
-
-If driving mode is active, keep ALL responses under 15 words. Never give navigation directions.
-
-DEEP PERSONALIZATION \u2014 YOUR SECOND PRIORITY:
-- Learn their name in the FIRST session
-- Learn HOW they communicate and adapt
-- Treat EVERY personal detail as important and actively use them
-- Be a thought partner, not just an answer machine
-- Find their passions and connect them to opportunities
-- Become indispensable through genuine value
-
-OBSERVATION MODE:
-When in observation mode, only interject when you can prevent a mistake, have time-sensitive info, can answer a problem they're struggling with, spot an opportunity, or they need a break. Be brief \u2014 1-2 sentences max.`;
+DRIVING MODE: If active, 10 words max. No navigation directions ever.`;
 
 // =============================================================================
 // STATE
@@ -166,9 +123,9 @@ let wss: WebSocketServer | null = null;
 export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
   console.log('[V9] THREE-BRAIN ARCHITECTURE');
-  console.log('[V9] Fast: Cerebras GPT-OSS 120B (text)');
-  console.log('[V9] Voice: Claude Haiku 4.5');
-  console.log('[V9] Deep: GPT-4o (vision + complex)');
+  console.log('[V9] Fast: Cerebras GPT-OSS 120B (text) | max ' + FAST_MAX_TOKENS + ' tokens');
+  console.log('[V9] Voice: Claude Haiku 4.5 | max ' + VOICE_MAX_TOKENS + ' tokens');
+  console.log('[V9] Deep: GPT-4o (vision + complex) | max ' + DEEP_MAX_TOKENS + ' tokens');
   console.log('[V9] Audio: MP3 44.1kHz 128kbps (ElevenLabs)');
   console.log('[V9] Speech timeout: ' + SPEECH_TIMEOUT_MS + 'ms');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
@@ -182,7 +139,6 @@ export function initV9WebSocket(server: HTTPServer): void {
 
   if (missing.length > 0) {
     console.error(`[V9] \u26a0\ufe0f Missing env vars: ${missing.join(', ')}`);
-    console.error('[V9] Server will still start but V9 connections may fail');
   } else {
     console.log('[V9] \u2705 All API keys present');
   }
@@ -199,7 +155,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       if (authUser) {
         console.log(`[V9] \u2705 Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
       } else {
-        console.log(`[V9] \u26a0\ufe0f Invalid token provided, falling back to dev user`);
+        console.log(`[V9] \u26a0\ufe0f Invalid token, falling back to dev user`);
       }
     }
 
@@ -277,7 +233,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       })
       .catch((error) => {
         console.error(`[V9] \u274c Deepgram setup failed:`, error);
-        sendToClient(session, { type: 'error', message: 'Voice service unavailable. Check DEEPGRAM_API_KEY.' });
+        sendToClient(session, { type: 'error', message: 'Voice service unavailable.' });
         ws.close(1011, 'Deepgram setup failed');
         return;
       });
@@ -287,11 +243,8 @@ export function initV9WebSocket(server: HTTPServer): void {
         const message = JSON.parse(typeof data === 'string' ? data : data.toString());
         handleClientMessage(session, message);
       } catch {
-        // Binary data = raw PCM16 audio from mic
         if (Buffer.isBuffer(data)) {
-          if (session.deepgramConnection) {
-            session.deepgramConnection.send(data);
-          }
+          if (session.deepgramConnection) session.deepgramConnection.send(data);
         }
       }
     });
@@ -316,14 +269,9 @@ export function initV9WebSocket(server: HTTPServer): void {
     const version = parsedUrl.query.v;
 
     if (pathname === '/ws/redi' && version === '9') {
-      if (!wss) {
-        socket.destroy();
-        return;
-      }
+      if (!wss) { socket.destroy(); return; }
       console.log(`[V9] Upgrade request for v=9`);
-      wss.handleUpgrade(request, socket, head, (ws) => {
-        wss!.emit('connection', ws, request);
-      });
+      wss.handleUpgrade(request, socket, head, (ws) => { wss!.emit('connection', ws, request); });
     }
   });
 
@@ -335,9 +283,7 @@ export function initV9WebSocket(server: HTTPServer): void {
 // =============================================================================
 
 async function connectToDeepgram(session: V9Session): Promise<void> {
-  if (!DEEPGRAM_API_KEY) {
-    throw new Error('DEEPGRAM_API_KEY not set');
-  }
+  if (!DEEPGRAM_API_KEY) throw new Error('DEEPGRAM_API_KEY not set');
 
   const deepgram = createClient(DEEPGRAM_API_KEY, {
     global: { headers: { 'X-DG-No-Logging': 'true' } },
@@ -348,8 +294,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     language: 'en',
     smart_format: true,
     interim_results: true,
-    // How long Deepgram waits after silence before firing UtteranceEnd.
-    // 2000ms lets people pause to think without triggering a premature response.
     utterance_end_ms: 2000,
     vad_events: true,
     encoding: 'linear16',
@@ -378,15 +322,12 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
       }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
 
-      // Any new speech resets the timeout — user is still talking
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
       }
     }
 
-    // speech_final means Deepgram detected end of a sentence/phrase
-    // Start a timeout — if no more speech within SPEECH_TIMEOUT_MS, respond
     if (speechFinal && session.currentTranscript.trim()) {
       session.speechEndTimeout = setTimeout(() => {
         if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
@@ -401,7 +342,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
     }
-    // User started speaking again — cancel any pending response
     if (session.speechEndTimeout) {
       clearTimeout(session.speechEndTimeout);
       session.speechEndTimeout = null;
@@ -410,14 +350,8 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
-    // UtteranceEnd means 2 seconds of total silence.
-    // Instead of immediately responding, use a short timeout so any
-    // final transcript fragments can arrive and be accumulated.
     if (session.currentTranscript.trim() && !session.isResponding) {
-      if (session.speechEndTimeout) {
-        clearTimeout(session.speechEndTimeout);
-      }
-      // Short delay to catch any trailing final transcripts
+      if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
       session.speechEndTimeout = setTimeout(() => {
         if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
       }, 300);
@@ -469,13 +403,9 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   try {
     let systemContent = SYSTEM_PROMPT;
     if (session.memoryContext) {
-      systemContent += `\n\nUser context/memory: ${session.memoryContext}`;
-      const commStyleMatch = session.memoryContext.match(/\[communication_style\]\s*([\s\S]*?)(?=\[|$)/i);
-      const commStyle = commStyleMatch ? commStyleMatch[1].trim() : '';
-      if (commStyle) systemContent += `\n\nTHIS USER'S COMMUNICATION STYLE:\n${commStyle}\nAdapt your tone, depth, and humor to match.`;
+      systemContent += `\n\nUser context: ${session.memoryContext}`;
     }
-    if (session.isDrivingMode) systemContent += '\n\nDRIVING MODE ACTIVE: Keep responses under 15 words. Be brief and direct.';
-    if (session.voiceOnly) systemContent += '\n\nVOICE-ONLY MODE: No camera available. Respond based on audio only.';
+    if (session.isDrivingMode) systemContent += '\n\nDRIVING MODE: 10 words max. No directions.';
 
     const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
     const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
@@ -491,19 +421,19 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     let brainUsed: BrainType = route.brain;
 
     if (route.brain === 'fast') {
-      const result = await cerebrasComplete({ messages, max_tokens: 1024 });
+      const result = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS });
       responseText = result.text;
       session.totalInputTokens += result.usage.inputTokens;
       session.totalOutputTokens += result.usage.outputTokens;
       console.log(`[V9] FAST: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
     } else if (route.brain === 'deep') {
-      const result = await openaiComplete({ messages, max_tokens: 2048 });
+      const result = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS });
       responseText = result.text;
       session.totalInputTokens += result.usage.inputTokens;
       session.totalOutputTokens += result.usage.outputTokens;
       console.log(`[V9] DEEP: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
     } else {
-      const result = await anthropicComplete({ messages, max_tokens: 1024 });
+      const result = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS });
       responseText = result.text;
       session.totalInputTokens += result.usage.inputTokens;
       session.totalOutputTokens += result.usage.outputTokens;
@@ -635,8 +565,7 @@ function handleClientMessage(session: V9Session, message: any): void {
       (async () => {
         try {
           let systemContent = SYSTEM_PROMPT;
-          if (session.memoryContext) systemContent += `\n\nUser context/memory: ${session.memoryContext}`;
-          if (session.voiceOnly) systemContent += '\n\nTEXT CHAT MODE: User is typing, not speaking. You can be slightly more detailed than voice responses but stay concise.';
+          if (session.memoryContext) systemContent += `\n\nUser context: ${session.memoryContext}`;
 
           const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
@@ -650,9 +579,9 @@ function handleClientMessage(session: V9Session, message: any): void {
 
           let responseText: string;
           let brainUsed: BrainType = route.brain;
-          if (route.brain === 'fast') { const r = await cerebrasComplete({ messages, max_tokens: 1024 }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
-          else if (route.brain === 'deep') { const r = await openaiComplete({ messages, max_tokens: 2048 }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
-          else { const r = await anthropicComplete({ messages, max_tokens: 1024 }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
+          if (route.brain === 'fast') { const r = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
+          else if (route.brain === 'deep') { const r = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
+          else { const r = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
 
           if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
