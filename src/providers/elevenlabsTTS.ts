@@ -5,18 +5,23 @@
  * 
  * Output: mp3_44100_128 (MP3, 44.1kHz, 128kbps)
  * 
- * WHY MP3 instead of PCM:
- * - Browsers natively decode MP3 via decodeAudioData() — zero custom code
- * - ElevenLabs PCM streaming sends odd-sized chunks that break Int16Array alignment
- * - MP3 chunks are self-contained frames — no alignment issues
- * - ~10x smaller payload than PCM (128kbps vs ~768kbps)
- * - decodeAudioData handles sample rate conversion automatically
+ * Streaming strategy:
+ * - Accumulate chunks until we have >= MIN_CHUNK_SIZE bytes
+ * - Send accumulated chunk to client as binary WebSocket frame
+ * - Client receives multiple MP3 fragments and plays them in sequence
+ * - This gives fast time-to-first-audio while keeping chunks decodable
  *
  * Model: eleven_turbo_v2_5
  */
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_MODEL = 'eleven_turbo_v2_5';
+
+// Minimum bytes to accumulate before sending a chunk to client.
+// Too small = decode errors (MP3 frames need ~417 bytes each at 128kbps).
+// Too large = high latency to first audio.
+// 8KB = ~0.5 seconds of audio, enough for clean MP3 frames.
+const MIN_CHUNK_SIZE = 8192;
 
 interface VoiceOption {
   id: string;
@@ -111,7 +116,6 @@ export async function elevenLabsStreamTTS(
           style: 0.15,
           use_speaker_boost: true,
         },
-        // MP3 output — browsers decode natively, no alignment issues
         output_format: 'mp3_44100_128',
       }),
     },
@@ -127,30 +131,48 @@ export async function elevenLabsStreamTTS(
     throw new Error('No response body reader available');
   }
 
-  // Accumulate ALL MP3 data into a single buffer, then send as one chunk.
-  // This ensures the client gets a complete, decodable MP3 file.
-  const chunks: Buffer[] = [];
-  let totalSize = 0;
+  // Accumulate into chunks of MIN_CHUNK_SIZE for clean MP3 frame boundaries
+  let accumulator: Buffer[] = [];
+  let accumulatedSize = 0;
+  let chunksSent = 0;
+  let totalBytes = 0;
+  let isFirstChunk = true;
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
+
       const buf = Buffer.from(value);
-      chunks.push(buf);
-      totalSize += buf.length;
+      accumulator.push(buf);
+      accumulatedSize += buf.length;
+      totalBytes += buf.length;
+
+      // Send when we've accumulated enough for clean MP3 playback
+      if (accumulatedSize >= MIN_CHUNK_SIZE) {
+        const chunk = Buffer.concat(accumulator, accumulatedSize);
+        if (isFirstChunk) {
+          console.log(`[ElevenLabs] First chunk: ${chunk.length} bytes, header: ${chunk.slice(0, 4).toString('hex')}`);
+          isFirstChunk = false;
+        }
+        onChunk(chunk);
+        chunksSent++;
+        accumulator = [];
+        accumulatedSize = 0;
+      }
     }
   } finally {
     reader.releaseLock();
   }
 
-  // Send complete MP3 as a single binary frame
-  if (totalSize > 0) {
-    const complete = Buffer.concat(chunks, totalSize);
-    console.log(`[ElevenLabs] MP3 complete: ${Math.round(totalSize / 1024)}KB, header: ${complete.slice(0, 4).toString('hex')}`);
-    onChunk(complete);
+  // Send any remaining accumulated data
+  if (accumulatedSize > 0) {
+    const remaining = Buffer.concat(accumulator, accumulatedSize);
+    onChunk(remaining);
+    chunksSent++;
   }
 
+  console.log(`[ElevenLabs] Complete: ${chunksSent} chunks, ${Math.round(totalBytes / 1024)}KB`);
   onDone();
 }
 
