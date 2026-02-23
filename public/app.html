@@ -106,26 +106,28 @@
     <div class="disclaimer">Redi is an AI assistant and may make mistakes.</div>
 </div>
 <script>
-// AUTH
 var authToken=localStorage.getItem('redi_token'),userId=localStorage.getItem('redi_user_id'),userName=localStorage.getItem('redi_user_name');
 if(!authToken)window.location.href='/login';
 fetch('/api/redi/auth/verify',{headers:{'Authorization':'Bearer '+authToken}}).then(function(r){if(!r.ok){localStorage.removeItem('redi_token');localStorage.removeItem('redi_user_id');localStorage.removeItem('redi_user_name');window.location.href='/login';}});
 function logout(){localStorage.removeItem('redi_token');localStorage.removeItem('redi_user_id');localStorage.removeItem('redi_user_name');window.location.href='/login';}
 if(userName)document.getElementById('userGreeting').textContent='Hi, '+userName;
 
-// STATE
 var ws=null,micContext=null,playbackContext=null,mediaStream=null,screenStream=null,screenCaptureInterval=null;
 var isConnected=false,isMicOn=true,isScreenOn=false,isChatVisible=false,selectedMode='voice',sessionActive=false;
-var currentAudioSource=null;
+
+// Audio queue for gapless MP3 chunk playback
+var audioQueue=[];
+var isPlayingAudio=false;
+var nextPlayTime=0;
+var activeSources=[];
 
 var SERVER_URL=(location.protocol==='https:'?'wss://':'ws://')+location.host+'/ws/redi?v=9&token='+encodeURIComponent(authToken||'');
 
 function selectMode(mode){selectedMode=mode;document.querySelectorAll('.mode-btn').forEach(function(b){b.classList.toggle('selected',b.dataset.mode===mode)});}
 
-// SESSION
 function startSession(){
     var btn=document.getElementById('startBtn');btn.disabled=true;btn.textContent='Connecting...';
-    currentAudioSource=null;
+    audioQueue=[];isPlayingAudio=false;nextPlayTime=0;activeSources=[];
     try{
         ws=new WebSocket(SERVER_URL);
         ws.onopen=function(){
@@ -162,14 +164,9 @@ function endSession(){
     updateStatus('','Disconnected');
 }
 
-// MESSAGE HANDLING
 function handleMessage(event){
-    // Binary frame = MP3 audio from ElevenLabs TTS
     if(event.data instanceof Blob){
-        console.log('[Audio] Received binary blob:',event.data.size,'bytes');
-        event.data.arrayBuffer().then(function(buf){
-            playMP3(buf);
-        });
+        event.data.arrayBuffer().then(function(buf){queueMP3Chunk(buf);});
         return;
     }
     try{
@@ -187,8 +184,7 @@ function handleMessage(event){
                 if(m.brain){var bg=document.getElementById('brainBadge');bg.style.display='inline';bg.textContent=m.brain==='fast'?'\u26A1 Fast':m.brain==='deep'?'\uD83E\uDDE0 Deep':'\uD83D\uDDE3\uFE0F Voice';}
                 break;
             case 'audio':
-                // Legacy base64 fallback (shouldn't fire with binary mode)
-                if(m.data){var bs=atob(m.data),bytes=new Uint8Array(bs.length);for(var i=0;i<bs.length;i++)bytes[i]=bs.charCodeAt(i);playMP3(bytes.buffer);}
+                if(m.data){var bs=atob(m.data),bytes=new Uint8Array(bs.length);for(var i=0;i<bs.length;i++)bytes[i]=bs.charCodeAt(i);queueMP3Chunk(bytes.buffer);}
                 break;
             case 'audio_done':
                 document.getElementById('responseArea').classList.remove('speaking');
@@ -205,7 +201,6 @@ function handleMessage(event){
     }catch(e){console.error('[WS] Parse error:',e);}
 }
 
-// MICROPHONE (24kHz PCM16)
 function startMicrophone(){
     navigator.mediaDevices.getUserMedia({audio:{sampleRate:24000,channelCount:1,echoCancellation:true,noiseSuppression:true}}).then(function(stream){
         mediaStream=stream;
@@ -226,45 +221,49 @@ function toggleMic(){isMicOn=!isMicOn;updateMicButton();}
 function updateMicButton(){var b=document.getElementById('micBtn');b.textContent=isMicOn?'\uD83C\uDFA4':'\uD83D\uDD07';b.className='btn btn-icon '+(isMicOn?'active':'muted');}
 
 // =====================================================
-// AUDIO PLAYBACK — MP3 via decodeAudioData
+// AUDIO PLAYBACK — MP3 chunks queued for gapless play
 // =====================================================
-// Server sends complete MP3 as a single binary WebSocket frame.
-// Browser's native decodeAudioData handles MP3 decoding perfectly.
-// No PCM alignment issues, no format guessing, no accumulation needed.
-
 function ensurePlaybackContext(){
     if(!playbackContext||playbackContext.state==='closed')playbackContext=new(window.AudioContext||window.webkitAudioContext)();
     if(playbackContext.state==='suspended')playbackContext.resume();
     return playbackContext;
 }
 
-function playMP3(arrayBuffer){
+function queueMP3Chunk(arrayBuffer){
     var ctx=ensurePlaybackContext();
-    // Make a copy because decodeAudioData detaches the original ArrayBuffer
     var copy=arrayBuffer.slice(0);
     ctx.decodeAudioData(copy,function(audioBuffer){
-        console.log('[Audio] Decoded MP3: '+audioBuffer.duration.toFixed(2)+'s, '+audioBuffer.sampleRate+'Hz');
-        var source=ctx.createBufferSource();
-        source.buffer=audioBuffer;
-        source.connect(ctx.destination);
-        source.start(0);
-        currentAudioSource=source;
-        source.onended=function(){
-            currentAudioSource=null;
-        };
+        audioQueue.push(audioBuffer);
+        if(!isPlayingAudio){isPlayingAudio=true;nextPlayTime=ctx.currentTime;playNextInQueue();}
     },function(err){
-        console.error('[Audio] MP3 decode failed:',err);
-        // Log first bytes for debugging
-        var view=new Uint8Array(arrayBuffer);
-        console.error('[Audio] First 8 bytes:',Array.from(view.slice(0,8)).map(function(b){return b.toString(16)}).join(' '));
+        console.warn('[Audio] Chunk decode failed (may be partial frame), skipping');
     });
 }
 
-function stopAudio(){
-    if(currentAudioSource){try{currentAudioSource.stop();}catch(e){}currentAudioSource=null;}
+function playNextInQueue(){
+    if(audioQueue.length===0){isPlayingAudio=false;return;}
+    var ctx=ensurePlaybackContext();
+    var buf=audioQueue.shift();
+    var source=ctx.createBufferSource();
+    source.buffer=buf;
+    source.connect(ctx.destination);
+    var t=Math.max(ctx.currentTime,nextPlayTime);
+    source.start(t);
+    nextPlayTime=t+buf.duration;
+    activeSources.push(source);
+    source.onended=function(){
+        var idx=activeSources.indexOf(source);
+        if(idx>=0)activeSources.splice(idx,1);
+        playNextInQueue();
+    };
 }
 
-// SCREEN SHARE
+function stopAudio(){
+    audioQueue=[];isPlayingAudio=false;nextPlayTime=0;
+    activeSources.forEach(function(s){try{s.stop();}catch(e){}});
+    activeSources=[];
+}
+
 function startScreenShare(){
     navigator.mediaDevices.getDisplayMedia({video:{width:{ideal:1280},height:{ideal:720},frameRate:{max:1}}}).then(function(stream){
         screenStream=stream;var vid=document.getElementById('screenVideo');vid.srcObject=stream;
@@ -283,28 +282,23 @@ function stopScreenShare(){if(screenStream){screenStream.getTracks().forEach(fun
 function toggleScreen(){if(isScreenOn)stopScreenShare();else startScreenShare();}
 function updateScreenButton(){document.getElementById('screenBtn').className='btn btn-icon '+(isScreenOn?'active':'');}
 
-// CHAT
 function toggleChat(){isChatVisible=!isChatVisible;document.getElementById('chatInputArea').classList.toggle('visible',isChatVisible);document.getElementById('chatBtn').classList.toggle('active',isChatVisible);if(isChatVisible)document.getElementById('chatInput').focus();}
 function handleChatKeypress(e){if(e.key==='Enter')sendChatMessage();}
 function sendChatMessage(){var inp=document.getElementById('chatInput'),txt=inp.value.trim();if(!txt||!ws||ws.readyState!==WebSocket.OPEN)return;ws.send(JSON.stringify({type:'chat',text:txt}));addTranscript('You',txt,true);inp.value='';}
 
-// UI
 function updateStatus(s,t){document.getElementById('statusDot').className='status-dot '+s;document.getElementById('statusText').textContent=t;}
 function addTranscript(speaker,text,isFinal){if(!isFinal)return;var a=document.getElementById('transcriptArea'),l=document.createElement('div');l.className='transcript-line'+(speaker==='Redi'?' redi':'');l.innerHTML='<span class="speaker">'+speaker+'</span>'+escapeHtml(text);a.appendChild(l);a.scrollTop=a.scrollHeight;while(a.children.length>50)a.removeChild(a.firstChild);}
 function escapeHtml(t){var d=document.createElement('div');d.textContent=t;return d.innerHTML;}
 function toggleSettings(){document.getElementById('settingsPanel').classList.toggle('open');}
 
-// VOICES
 function loadVoices(){fetch('/api/voices').then(function(r){return r.json()}).then(function(d){var s=document.getElementById('voiceSelect');s.innerHTML='<option value="">Default (Brian)</option>';if(d.voices)d.voices.forEach(function(v){var o=document.createElement('option');o.value=v.id;o.textContent=v.name+' \u2014 '+v.description;s.appendChild(o);});}).catch(function(){});}
 function updateVoice(){var v=document.getElementById('voiceSelect').value;if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'config',voice:v}));}
 function updateSensitivity(){var v=document.getElementById('sensitivitySelect').value;if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'config',sensitivity:v}));}
 
-// CREDITS
 async function loadCredits(){try{var r=await fetch('/api/redi/billing/balance',{headers:{'Authorization':'Bearer '+authToken}});var d=await r.json();document.getElementById('creditCount').textContent=Math.round(d.credits);if(d.credits<=2){document.getElementById('creditBadge').style.background='rgba(255,68,68,0.15)';document.getElementById('creditBadge').style.color='#FF4444';}}catch(e){}}
 async function showBuyCredits(){try{var r=await fetch('/api/redi/billing/packs');var d=await r.json();var h='<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:1000;display:flex;align-items:center;justify-content:center" onclick="if(event.target===this)this.remove()"><div style="max-width:400px;width:90%;background:#111;border-radius:16px;padding:24px"><h2 style="color:#00CED1;text-align:center;font-family:Georgia,serif">Add Credits</h2><p style="color:#888;text-align:center;font-size:13px;margin:8px 0 20px">1 credit \u2248 1 minute</p>';d.packs.forEach(function(p){h+='<div onclick="buyPack(\''+p.id+'\')" style="display:flex;justify-content:space-between;align-items:center;padding:14px;margin:8px 0;background:rgba(0,206,209,0.05);border-radius:10px;cursor:pointer;border:1px solid #222"><div><strong style="color:#fff">'+p.name+'</strong><br><span style="color:#888;font-size:12px">'+p.credits+' credits</span></div><span style="color:#00CED1;font-weight:bold">$'+(p.priceInCents/100).toFixed(0)+'</span></div>';});h+='<button onclick="this.parentElement.parentElement.remove()" style="width:100%;margin-top:16px;padding:10px;background:#222;color:#888;border:none;border-radius:8px;cursor:pointer;font-family:Georgia,serif">Cancel</button></div></div>';document.body.insertAdjacentHTML('beforeend',h);}catch(e){}}
 async function buyPack(id){var r=await fetch('/api/redi/billing/checkout',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+authToken},body:JSON.stringify({packId:id})});var d=await r.json();if(d.checkoutUrl)window.location.href=d.checkoutUrl;}
 
-// INIT
 loadCredits();
 if(window.location.search.indexOf('purchase=success')!==-1)setTimeout(loadCredits,2000);
 document.addEventListener('click',function(){ensurePlaybackContext();},{once:true});
