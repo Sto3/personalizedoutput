@@ -10,10 +10,11 @@
  *
  * Endpoint: /ws/redi?v=9
  *
- * Updated: Feb 22, 2026
- * - Audio sent as BINARY WebSocket frames (not base64 JSON) for zero-overhead playback
- * - Cerebras model: gpt-oss-120b (llama-3.3-70b deprecated Feb 16)
- * - Vision routes to Deep Brain (GPT-4o) since Cerebras doesn't support image_url
+ * Updated: Feb 23, 2026
+ * - Audio: MP3 44.1kHz 128kbps via ElevenLabs, sent as single binary frame
+ * - Speech timeout: 1500ms (was 800ms) to avoid cutting off natural pauses
+ * - Utterance end: 2000ms (was 1000ms) with timeout buffer
+ * - Smart vision routing: only Deep Brain when user references screen
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -46,7 +47,12 @@ import {
 // =============================================================================
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
-const SPEECH_TIMEOUT_MS = 800;
+
+// How long to wait after last speech before responding.
+// 800ms was too aggressive — natural pauses while thinking are 1-3 seconds.
+// 1500ms balances responsiveness with letting people finish their thoughts.
+const SPEECH_TIMEOUT_MS = 1500;
+
 const MAX_HISTORY_ENTRIES = 20;
 
 // =============================================================================
@@ -163,7 +169,8 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Fast: Cerebras GPT-OSS 120B (text)');
   console.log('[V9] Voice: Claude Haiku 4.5');
   console.log('[V9] Deep: GPT-4o (vision + complex)');
-  console.log('[V9] Audio: BINARY PCM16 24kHz (ElevenLabs)');
+  console.log('[V9] Audio: MP3 44.1kHz 128kbps (ElevenLabs)');
+  console.log('[V9] Speech timeout: ' + SPEECH_TIMEOUT_MS + 'ms');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
@@ -341,7 +348,9 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     language: 'en',
     smart_format: true,
     interim_results: true,
-    utterance_end_ms: 1000,
+    // How long Deepgram waits after silence before firing UtteranceEnd.
+    // 2000ms lets people pause to think without triggering a premature response.
+    utterance_end_ms: 2000,
     vad_events: true,
     encoding: 'linear16',
     sample_rate: 24000,
@@ -368,12 +377,16 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
         console.log(`[V9] Final: "${transcript.trim()}"`);
       }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
+
+      // Any new speech resets the timeout — user is still talking
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
       }
     }
 
+    // speech_final means Deepgram detected end of a sentence/phrase
+    // Start a timeout — if no more speech within SPEECH_TIMEOUT_MS, respond
     if (speechFinal && session.currentTranscript.trim()) {
       session.speechEndTimeout = setTimeout(() => {
         if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
@@ -388,6 +401,7 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
     }
+    // User started speaking again — cancel any pending response
     if (session.speechEndTimeout) {
       clearTimeout(session.speechEndTimeout);
       session.speechEndTimeout = null;
@@ -396,12 +410,17 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
+    // UtteranceEnd means 2 seconds of total silence.
+    // Instead of immediately responding, use a short timeout so any
+    // final transcript fragments can arrive and be accumulated.
     if (session.currentTranscript.trim() && !session.isResponding) {
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
-        session.speechEndTimeout = null;
       }
-      handleSpeechEnd(session);
+      // Short delay to catch any trailing final transcripts
+      session.speechEndTimeout = setTimeout(() => {
+        if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
+      }, 300);
     }
   });
 
@@ -420,10 +439,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 // SEND BINARY AUDIO TO CLIENT
 // =============================================================================
 
-/**
- * Send raw PCM16 audio as a binary WebSocket frame.
- * This avoids base64 encoding overhead and lets clients play directly.
- */
 function sendAudioBinary(session: V9Session, audioChunk: Buffer): void {
   if (session.clientWs.readyState === WebSocket.OPEN) {
     session.clientWs.send(audioChunk);
@@ -512,7 +527,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       responseText,
       (audioChunk: Buffer) => {
         if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) {
-          // Send as raw binary WebSocket frame — no base64, no JSON wrapper
           sendAudioBinary(session, audioChunk);
         }
       },
