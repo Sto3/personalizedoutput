@@ -1,10 +1,11 @@
 /**
  * ElevenLabs TTS Provider
  * =======================
- * Output: mp3_44100_128 (complete MP3 file)
- * 
- * Strategy: Accumulate ENTIRE MP3 response, then send as ONE chunk.
- * Client plays it with a simple Audio element — most reliable method.
+ * Output: mp3_44100_128 (complete MP3 file, sent as single binary frame)
+ *
+ * CRITICAL: Browser decodeAudioData() CANNOT decode partial MP3 fragments.
+ * We MUST accumulate the entire MP3 response and send as ONE chunk.
+ * The latency cost is ~300-700ms but this is the only way to get clean audio.
  *
  * Model: eleven_turbo_v2_5
  */
@@ -69,7 +70,7 @@ export async function elevenLabsStreamTTS(
   const reader = response.body?.getReader();
   if (!reader) throw new Error('No response body reader available');
 
-  // Accumulate complete MP3
+  // Accumulate ENTIRE MP3 before sending — decodeAudioData needs complete file
   const chunks: Buffer[] = [];
   let totalSize = 0;
 
@@ -77,9 +78,8 @@ export async function elevenLabsStreamTTS(
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      const buf = Buffer.from(value);
-      chunks.push(buf);
-      totalSize += buf.length;
+      chunks.push(Buffer.from(value));
+      totalSize += value.length;
     }
   } finally {
     reader.releaseLock();
@@ -87,7 +87,7 @@ export async function elevenLabsStreamTTS(
 
   if (totalSize > 0) {
     const complete = Buffer.concat(chunks, totalSize);
-    console.log(`[ElevenLabs] MP3: ${Math.round(totalSize / 1024)}KB, header: ${complete.slice(0, 3).toString('hex')}`);
+    console.log(`[ElevenLabs] MP3 complete: ${Math.round(totalSize / 1024)}KB`);
     onChunk(complete);
   }
 
