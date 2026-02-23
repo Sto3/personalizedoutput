@@ -2,18 +2,16 @@
  * Redi V9 Server - THREE-BRAIN ARCHITECTURE
  * ==========================================
  *
- * FAST BRAIN: Cerebras GPT-OSS 120B (~3000 t/s) - Text-only queries
- * VOICE BRAIN: Claude Haiku 4.5 (~400ms) - Reserved for future use
- * DEEP BRAIN: GPT-4o (~1.5-2s) - Vision + complex reasoning (LSAT, MCAT, medical, legal)
- *
  * Pipeline: Deepgram STT -> [Web Search?] -> Brain Router -> [Cerebras | Claude Haiku | GPT-4o] -> ElevenLabs TTS
  *
  * Endpoint: /ws/redi?v=9
  *
- * Updated: Feb 23, 2026 (v4)
- * - Web search via Tavily for real-time data (weather, news, scores, prices)
- * - Speech accumulation: ONLY fire on UtteranceEnd (2s silence), no more speechFinal trigger
- * - WebSocket ping/pong keepalive every 30s to prevent disconnects
+ * Updated: Feb 23, 2026 (v5)
+ * - HYBRID speech timing: speechFinal starts 800ms timer, UtteranceEnd fires immediately
+ * - TTS always sends audio (removed isResponding guard on onChunk — barge-in was killing audio)
+ * - Barge-in only cancels BEFORE TTS starts, not during
+ * - Web search via Tavily
+ * - WebSocket ping/pong keepalive 30s
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -48,9 +46,12 @@ import {
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
-// Speech timeout: only used as a safety net now.
-// Primary trigger is UtteranceEnd (2s of silence from Deepgram).
-const SPEECH_TIMEOUT_MS = 1500;
+// HYBRID SPEECH TIMING:
+// - speechFinal (phrase boundary) starts SPEECH_TIMEOUT_MS timer (800ms)
+// - Each new final transcript resets the timer
+// - UtteranceEnd (2s silence) fires with only 300ms buffer
+// Result: quick exchanges respond in ~1s, multi-phrase sentences accumulate properly
+const SPEECH_TIMEOUT_MS = 800;
 const MAX_HISTORY_ENTRIES = 20;
 
 // Max tokens — voice responses MUST be ultra-short
@@ -76,6 +77,7 @@ interface V9Session {
   currentTranscript: string;
   speechEndTimeout: NodeJS.Timeout | null;
   isResponding: boolean;
+  isTTSActive: boolean;  // NEW: tracks whether TTS is currently sending audio
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   memoryContext: string;
   isDrivingMode: boolean;
@@ -97,7 +99,7 @@ interface V9Session {
 }
 
 // =============================================================================
-// SYSTEM PROMPT — ULTRA-COMPACT, VOICE-FIRST, WEB SEARCH ENABLED
+// SYSTEM PROMPT
 // =============================================================================
 
 const SYSTEM_PROMPT = `You are Redi (pronounced "ready"), a real-time voice AI assistant. Everything you write is spoken aloud via TTS.
@@ -135,9 +137,8 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Fast: Cerebras GPT-OSS 120B | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Voice: Claude Haiku 4.5 | max ' + VOICE_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep: GPT-4o (vision + complex) | max ' + DEEP_MAX_TOKENS + ' tokens');
-  console.log('[V9] Search: Tavily API (weather, news, scores, prices)');
-  console.log('[V9] Audio: MP3 44.1kHz 128kbps (ElevenLabs)');
-  console.log('[V9] Speech: UtteranceEnd only (2s silence) | Ping: 30s');
+  console.log('[V9] Search: Tavily API | Audio: MP3 ElevenLabs');
+  console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | Ping: 30s');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
@@ -188,6 +189,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       currentTranscript: '',
       speechEndTimeout: null,
       isResponding: false,
+      isTTSActive: false,
       conversationHistory: [],
       memoryContext: '',
       isDrivingMode: false,
@@ -269,9 +271,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       }
     });
 
-    ws.on('pong', () => {
-      // Client responded to ping — connection is alive
-    });
+    ws.on('pong', () => {});
 
     ws.on('close', () => {
       session.isActive = false;
@@ -304,7 +304,7 @@ export function initV9WebSocket(server: HTTPServer): void {
 }
 
 // =============================================================================
-// DEEPGRAM STT
+// DEEPGRAM STT — HYBRID SPEECH TIMING
 // =============================================================================
 
 async function connectToDeepgram(session: V9Session): Promise<void> {
@@ -328,12 +328,13 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
   });
 
   connection.on(LiveTranscriptionEvents.Open, () => {
-    console.log(`[V9] Deepgram connected (nova-2, 24kHz PCM16, keywords: Redi boosted)`);
+    console.log(`[V9] Deepgram connected (nova-2, keywords: Redi)`);
   });
 
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const transcript = data.channel?.alternatives?.[0]?.transcript;
     const isFinal = data.is_final;
+    const speechFinal = data.speech_final;
 
     if (transcript?.trim()) {
       if (session.observeSessionId) {
@@ -347,25 +348,41 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
       }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
 
-      // Any new speech resets any pending timeout — user is still talking
+      // Any new speech resets pending timeout — user is still talking
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
       }
     }
 
-    // NOTE: We intentionally do NOT use speechFinal here anymore.
-    // speechFinal fires between phrases ("What's the weather in" -> pause -> "Washington DC")
-    // and caused fragmented responses. We now ONLY respond on UtteranceEnd (2s of total silence).
+    // HYBRID: speechFinal starts a SHORT timer (800ms).
+    // If user keeps talking, next final transcript resets the timer.
+    // If user stops, 800ms passes and we respond.
+    // This is faster than waiting for UtteranceEnd (2s) for quick exchanges.
+    if (speechFinal && session.currentTranscript.trim() && !session.isResponding) {
+      session.speechEndTimeout = setTimeout(() => {
+        if (!session.isResponding && session.currentTranscript.trim()) {
+          handleSpeechEnd(session);
+        }
+      }, SPEECH_TIMEOUT_MS);
+    }
   });
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-    if (session.isResponding) {
-      console.log(`[V9] BARGE-IN`);
+
+    // Barge-in: cancel pending LLM request (but NOT active TTS — let it finish sending)
+    if (session.isResponding && !session.isTTSActive) {
+      console.log(`[V9] BARGE-IN (pre-TTS)`);
+      session.isResponding = false;
+    } else if (session.isTTSActive) {
+      // TTS is actively sending — tell client to stop playback
+      console.log(`[V9] BARGE-IN (during TTS)`);
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
+      session.isTTSActive = false;
     }
+
     if (session.speechEndTimeout) {
       clearTimeout(session.speechEndTimeout);
       session.speechEndTimeout = null;
@@ -374,10 +391,10 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
-    // UtteranceEnd = 2 seconds of total silence. User is done talking.
-    // Short 300ms buffer to catch any trailing final transcripts from Deepgram.
+    // UtteranceEnd = 2 seconds of total silence. If we haven't responded yet, do it now.
     if (session.currentTranscript.trim() && !session.isResponding) {
       if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
+      // Short buffer to catch trailing transcripts
       session.speechEndTimeout = setTimeout(() => {
         if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
       }, 300);
@@ -415,11 +432,11 @@ async function maybeSearchWeb(transcript: string): Promise<string | null> {
   if (!needsWebSearch(transcript)) return null;
 
   try {
-    console.log(`[V9] \uD83D\uDD0D Web search triggered for: "${transcript.slice(0, 60)}"`);
+    console.log(`[V9] \uD83D\uDD0D Web search for: "${transcript.slice(0, 60)}"`);
     const searchStart = Date.now();
     const results = await searchWeb(transcript, 3);
     const formatted = formatSearchResultsForLLM(results);
-    console.log(`[V9] \uD83D\uDD0D Search complete: ${results.length} results in ${Date.now() - searchStart}ms`);
+    console.log(`[V9] \uD83D\uDD0D ${results.length} results in ${Date.now() - searchStart}ms`);
     return formatted;
   } catch (err) {
     console.error(`[V9] \uD83D\uDD0D Search failed:`, err);
@@ -447,16 +464,12 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   console.log(`[V9] Route: ${route.brain.toUpperCase()} | "${transcript.slice(0, 50)}${transcript.length > 50 ? '...' : ''}" | ${route.reason}`);
 
   try {
-    // Check if we need web search (weather, news, scores, prices)
+    // Web search if needed (weather, news, scores, prices)
     const searchResults = await maybeSearchWeb(transcript);
 
     let systemContent = SYSTEM_PROMPT;
-    if (session.memoryContext) {
-      systemContent += `\n\nUser context: ${session.memoryContext}`;
-    }
-    if (searchResults) {
-      systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
-    }
+    if (session.memoryContext) systemContent += `\n\nUser context: ${session.memoryContext}`;
+    if (searchResults) systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
     if (session.isDrivingMode) systemContent += '\n\nDRIVING MODE: 10 words max. No directions.';
 
     const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
@@ -471,6 +484,9 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 
     let responseText: string;
     let brainUsed: BrainType = route.brain;
+
+    // Check if barge-in happened during LLM call
+    if (!session.isResponding) { return; }
 
     if (route.brain === 'fast') {
       const result = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS });
@@ -492,6 +508,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       console.log(`[V9] VOICE: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
     }
 
+    // Check again after LLM call
     if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
     session.conversationHistory.push({ role: 'user', content: transcript });
@@ -500,20 +517,25 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 
     sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - startTime });
 
+    // TTS — mark as active so barge-in handles it properly
     const ttsStart = Date.now();
     session.ttsChunkCount = 0;
     session.ttsTotalBytes = 0;
+    session.isTTSActive = true;
     sendToClient(session, { type: 'mute_mic', muted: true });
 
     await elevenLabsStreamTTS(
       responseText,
       (audioChunk: Buffer) => {
-        if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) {
+        // ALWAYS send audio if WebSocket is open — don't check isResponding here.
+        // Barge-in sends stop_audio to client which handles it on their end.
+        if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) {
           sendAudioBinary(session, audioChunk);
         }
       },
       () => {
         console.log(`[V9] TTS sent: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB`);
+        session.isTTSActive = false;
         sendToClient(session, { type: 'mute_mic', muted: false });
         sendToClient(session, { type: 'audio_done' });
       },
@@ -523,9 +545,11 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     console.log(`[V9] Total: ${Date.now() - startTime}ms | TTS: ${Date.now() - ttsStart}ms`);
     session.responsesCompleted++;
     session.isResponding = false;
+    session.isTTSActive = false;
   } catch (error) {
     console.error(`[V9] Pipeline error:`, error);
     session.isResponding = false;
+    session.isTTSActive = false;
     sendToClient(session, { type: 'mute_mic', muted: false });
   }
 }
@@ -562,10 +586,11 @@ function handleClientMessage(session: V9Session, message: any): void {
       break;
 
     case 'barge_in':
-      if (session.isResponding) {
+      if (session.isResponding || session.isTTSActive) {
         console.log(`[V9] Barge-in requested`);
         sendToClient(session, { type: 'stop_audio' });
         session.isResponding = false;
+        session.isTTSActive = false;
         sendToClient(session, { type: 'mute_mic', muted: false });
       }
       break;
@@ -616,7 +641,6 @@ function handleClientMessage(session: V9Session, message: any): void {
 
       (async () => {
         try {
-          // Check if we need web search for chat too
           const searchResults = await maybeSearchWeb(chatText);
 
           let systemContent = SYSTEM_PROMPT;
@@ -650,16 +674,25 @@ function handleClientMessage(session: V9Session, message: any): void {
           if (!message.textOnly) {
             session.ttsChunkCount = 0;
             session.ttsTotalBytes = 0;
+            session.isTTSActive = true;
             sendToClient(session, { type: 'mute_mic', muted: true });
-            await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => { if (session.isResponding && session.clientWs.readyState === WebSocket.OPEN) sendAudioBinary(session, audioChunk); }, () => { sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' }); }, session.voiceId || undefined);
+            await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
+              if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
+            }, () => {
+              session.isTTSActive = false;
+              sendToClient(session, { type: 'mute_mic', muted: false });
+              sendToClient(session, { type: 'audio_done' });
+            }, session.voiceId || undefined);
           }
 
           console.log(`[V9] Chat total: ${Date.now() - chatStart}ms`);
           session.responsesCompleted++;
           session.isResponding = false;
+          session.isTTSActive = false;
         } catch (error) {
           console.error(`[V9] Chat pipeline error:`, error);
           session.isResponding = false;
+          session.isTTSActive = false;
           sendToClient(session, { type: 'mute_mic', muted: false });
         }
       })();
