@@ -6,15 +6,14 @@
  * VOICE BRAIN: Claude Haiku 4.5 (~400ms) - Reserved for future use
  * DEEP BRAIN: GPT-4o (~1.5-2s) - Vision + complex reasoning (LSAT, MCAT, medical, legal)
  *
- * Pipeline: Deepgram STT -> Brain Router -> [Cerebras | Claude Haiku | GPT-4o] -> ElevenLabs TTS
+ * Pipeline: Deepgram STT -> [Web Search?] -> Brain Router -> [Cerebras | Claude Haiku | GPT-4o] -> ElevenLabs TTS
  *
  * Endpoint: /ws/redi?v=9
  *
- * Updated: Feb 23, 2026 (v3)
- * - No-hallucination rule: never make up weather/stocks/news
- * - max_tokens: 80 fast, 150 deep (force ultra-short voice responses)
- * - Deepgram keywords: boost "Redi" to stop "Brady/Freddy/Reddy" mishearing
- * - TTS pronunciation hints in prompt (degrees not degrev)
+ * Updated: Feb 23, 2026 (v4)
+ * - Web search via Tavily for real-time data (weather, news, scores, prices)
+ * - Speech accumulation: ONLY fire on UtteranceEnd (2s silence), no more speechFinal trigger
+ * - WebSocket ping/pong keepalive every 30s to prevent disconnects
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -32,6 +31,7 @@ import { routeQuery } from '../router/brainRouter';
 import { getOrgContext } from '../organizations/orgService';
 import { verifyToken } from '../auth/authService';
 import { deductCredits } from '../billing/stripeService';
+import { needsWebSearch, searchWeb, formatSearchResultsForLLM } from '../integrations/webSearch';
 import {
   createObserveSession,
   startEvaluationLoop,
@@ -47,6 +47,9 @@ import {
 // =============================================================================
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
+
+// Speech timeout: only used as a safety net now.
+// Primary trigger is UtteranceEnd (2s of silence from Deepgram).
 const SPEECH_TIMEOUT_MS = 1500;
 const MAX_HISTORY_ENTRIES = 20;
 
@@ -54,6 +57,9 @@ const MAX_HISTORY_ENTRIES = 20;
 const FAST_MAX_TOKENS = 80;    // ~1-2 sentences spoken aloud
 const DEEP_MAX_TOKENS = 150;   // Vision/complex can be slightly longer
 const VOICE_MAX_TOKENS = 80;
+
+// WebSocket keepalive interval (prevents idle disconnects)
+const WS_PING_INTERVAL_MS = 30000;
 
 // =============================================================================
 // TYPES
@@ -80,6 +86,7 @@ interface V9Session {
   userName?: string;
   userEmail?: string;
   creditTimer?: NodeJS.Timeout;
+  pingInterval?: NodeJS.Timeout;
   isActive: boolean;
   connectionTime: number;
   responsesCompleted: number;
@@ -90,7 +97,7 @@ interface V9Session {
 }
 
 // =============================================================================
-// SYSTEM PROMPT — ULTRA-COMPACT, VOICE-FIRST, NO HALLUCINATION
+// SYSTEM PROMPT — ULTRA-COMPACT, VOICE-FIRST, WEB SEARCH ENABLED
 // =============================================================================
 
 const SYSTEM_PROMPT = `You are Redi (pronounced "ready"), a real-time voice AI assistant. Everything you write is spoken aloud via TTS.
@@ -101,10 +108,11 @@ VOICE RULES — FOLLOW STRICTLY:
 - Direct answers only. No filler ("That's a great question"), no preamble, no repetition.
 - Complex topics: give the short answer. If they want more, they'll ask.
 
-NEVER HALLUCINATE:
-- You have NO access to real-time data: weather, stock prices, sports scores, news.
-- If asked for real-time info, say "I don't have live data for that right now" — NEVER make up numbers.
+REAL-TIME DATA:
+- When web search results are provided, use them to give accurate answers.
+- Summarize search results in 1-2 spoken sentences. Don't list URLs.
 - Write numbers and units clearly for TTS: "72 degrees" not "72°", "5 dollars" not "$5".
+- If no search results are provided and you don't know current data, say so briefly.
 
 IDENTITY: Confident, warm, sharp. Proactive — suggest actions, don't just describe.
 
@@ -123,12 +131,13 @@ let wss: WebSocketServer | null = null;
 
 export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
-  console.log('[V9] THREE-BRAIN ARCHITECTURE');
+  console.log('[V9] THREE-BRAIN ARCHITECTURE + WEB SEARCH');
   console.log('[V9] Fast: Cerebras GPT-OSS 120B | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Voice: Claude Haiku 4.5 | max ' + VOICE_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep: GPT-4o (vision + complex) | max ' + DEEP_MAX_TOKENS + ' tokens');
+  console.log('[V9] Search: Tavily API (weather, news, scores, prices)');
   console.log('[V9] Audio: MP3 44.1kHz 128kbps (ElevenLabs)');
-  console.log('[V9] Speech timeout: ' + SPEECH_TIMEOUT_MS + 'ms | Keywords: Redi boosted');
+  console.log('[V9] Speech: UtteranceEnd only (2s silence) | Ping: 30s');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
 
   const missing: string[] = [];
@@ -137,11 +146,12 @@ export function initV9WebSocket(server: HTTPServer): void {
   if (!process.env.ANTHROPIC_API_KEY) missing.push('ANTHROPIC_API_KEY');
   if (!process.env.OPENAI_API_KEY) missing.push('OPENAI_API_KEY');
   if (!process.env.ELEVENLABS_API_KEY) missing.push('ELEVENLABS_API_KEY');
+  if (!process.env.TAVILY_API_KEY) missing.push('TAVILY_API_KEY');
 
   if (missing.length > 0) {
     console.error(`[V9] \u26a0\ufe0f Missing env vars: ${missing.join(', ')}`);
   } else {
-    console.log('[V9] \u2705 All API keys present');
+    console.log('[V9] \u2705 All API keys present (including Tavily)');
   }
 
   wss = new WebSocketServer({ noServer: true });
@@ -197,6 +207,15 @@ export function initV9WebSocket(server: HTTPServer): void {
 
     sessions.set(sessionId, session);
 
+    // WebSocket keepalive — ping every 30s to prevent idle disconnects
+    session.pingInterval = setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.ping();
+      } else {
+        if (session.pingInterval) clearInterval(session.pingInterval);
+      }
+    }, WS_PING_INTERVAL_MS);
+
     if (authUser.userId !== 'admin') {
       session.creditTimer = setInterval(async () => {
         if (!session.isActive || !session.userId) {
@@ -250,9 +269,14 @@ export function initV9WebSocket(server: HTTPServer): void {
       }
     });
 
+    ws.on('pong', () => {
+      // Client responded to ping — connection is alive
+    });
+
     ws.on('close', () => {
       session.isActive = false;
       if (session.creditTimer) clearInterval(session.creditTimer);
+      if (session.pingInterval) clearInterval(session.pingInterval);
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
       console.log(`[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`);
       cleanup(sessionId);
@@ -300,7 +324,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     encoding: 'linear16',
     sample_rate: 24000,
     channels: 1,
-    // Boost "Redi" so Deepgram stops hearing "Brady", "Freddy", "Reddy", "Ready"
     keywords: ['Redi:5', 'Redi Always:3'],
   });
 
@@ -311,7 +334,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const transcript = data.channel?.alternatives?.[0]?.transcript;
     const isFinal = data.is_final;
-    const speechFinal = data.speech_final;
 
     if (transcript?.trim()) {
       if (session.observeSessionId) {
@@ -325,17 +347,16 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
       }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
 
+      // Any new speech resets any pending timeout — user is still talking
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
       }
     }
 
-    if (speechFinal && session.currentTranscript.trim()) {
-      session.speechEndTimeout = setTimeout(() => {
-        if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
-      }, SPEECH_TIMEOUT_MS);
-    }
+    // NOTE: We intentionally do NOT use speechFinal here anymore.
+    // speechFinal fires between phrases ("What's the weather in" -> pause -> "Washington DC")
+    // and caused fragmented responses. We now ONLY respond on UtteranceEnd (2s of total silence).
   });
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
@@ -353,6 +374,8 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
+    // UtteranceEnd = 2 seconds of total silence. User is done talking.
+    // Short 300ms buffer to catch any trailing final transcripts from Deepgram.
     if (session.currentTranscript.trim() && !session.isResponding) {
       if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
       session.speechEndTimeout = setTimeout(() => {
@@ -385,6 +408,26 @@ function sendAudioBinary(session: V9Session, audioChunk: Buffer): void {
 }
 
 // =============================================================================
+// WEB SEARCH HELPER
+// =============================================================================
+
+async function maybeSearchWeb(transcript: string): Promise<string | null> {
+  if (!needsWebSearch(transcript)) return null;
+
+  try {
+    console.log(`[V9] \uD83D\uDD0D Web search triggered for: "${transcript.slice(0, 60)}"`);
+    const searchStart = Date.now();
+    const results = await searchWeb(transcript, 3);
+    const formatted = formatSearchResultsForLLM(results);
+    console.log(`[V9] \uD83D\uDD0D Search complete: ${results.length} results in ${Date.now() - searchStart}ms`);
+    return formatted;
+  } catch (err) {
+    console.error(`[V9] \uD83D\uDD0D Search failed:`, err);
+    return null;
+  }
+}
+
+// =============================================================================
 // SPEECH END -> RESPONSE PIPELINE
 // =============================================================================
 
@@ -404,9 +447,15 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   console.log(`[V9] Route: ${route.brain.toUpperCase()} | "${transcript.slice(0, 50)}${transcript.length > 50 ? '...' : ''}" | ${route.reason}`);
 
   try {
+    // Check if we need web search (weather, news, scores, prices)
+    const searchResults = await maybeSearchWeb(transcript);
+
     let systemContent = SYSTEM_PROMPT;
     if (session.memoryContext) {
       systemContent += `\n\nUser context: ${session.memoryContext}`;
+    }
+    if (searchResults) {
+      systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
     }
     if (session.isDrivingMode) systemContent += '\n\nDRIVING MODE: 10 words max. No directions.';
 
@@ -567,8 +616,12 @@ function handleClientMessage(session: V9Session, message: any): void {
 
       (async () => {
         try {
+          // Check if we need web search for chat too
+          const searchResults = await maybeSearchWeb(chatText);
+
           let systemContent = SYSTEM_PROMPT;
           if (session.memoryContext) systemContent += `\n\nUser context: ${session.memoryContext}`;
+          if (searchResults) systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
 
           const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
@@ -628,6 +681,7 @@ function cleanup(sessionId: string): void {
   if (session) {
     session.isActive = false;
     if (session.creditTimer) clearInterval(session.creditTimer);
+    if (session.pingInterval) clearInterval(session.pingInterval);
     if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
     if (session.observeSessionId) endObserveSession(session.observeSessionId);
     session.deepgramConnection?.finish();
@@ -651,5 +705,5 @@ export function closeRediV9(): void {
 export function getV9Stats(): object {
   let totalIn = 0, totalOut = 0, totalResponses = 0;
   sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; });
-  return { activeSessions: sessions.size, architecture: 'Three-Brain', fastBrain: 'Cerebras GPT-OSS 120B', voiceBrain: 'Claude Haiku 4.5', deepBrain: 'GPT-4o', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
+  return { activeSessions: sessions.size, architecture: 'Three-Brain + Web Search', fastBrain: 'Cerebras GPT-OSS 120B', voiceBrain: 'Claude Haiku 4.5', deepBrain: 'GPT-4o', search: 'Tavily', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
 }
