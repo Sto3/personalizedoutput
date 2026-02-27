@@ -1,15 +1,17 @@
 /**
- * Redi V9 Server - THREE-BRAIN ARCHITECTURE
+ * Redi V9 Server - FOUR-BRAIN ARCHITECTURE
  * ==========================================
  *
- * Pipeline: Deepgram STT -> Wake Word Check -> [Web Search?] -> Brain Router -> LLM -> ElevenLabs TTS
+ * Pipeline: Deepgram STT -> Wake Word -> [Web Search?] -> Brain Router -> LLM -> ElevenLabs TTS
+ *
+ * Brains:
+ *   Fast   = Cerebras GPT-OSS 120B (text-only, ~200ms)
+ *   Vision = GPT-4o Mini (screen share, ~300ms, auto-routed)
+ *   Deep   = GPT-4o (complex reasoning, opt-in toggle)
+ *   Voice  = Claude Haiku 4.5 (reserved)
  *
  * Endpoint: /ws/redi?v=9
- *
- * Updated: Feb 27, 2026 (v6)
- * - Wake word: Redi only responds when "Redi"/"ready" is in transcript (ignores ambient speech)
- * - Deep Brain opt-in: user toggle, not auto-routed
- * - deepEnabled flag passed to brain router
+ * Updated: Feb 27, 2026
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -48,14 +50,15 @@ const SPEECH_TIMEOUT_MS = 800;
 const MAX_HISTORY_ENTRIES = 20;
 
 const FAST_MAX_TOKENS = 80;
+const VISION_MAX_TOKENS = 150;
 const DEEP_MAX_TOKENS = 150;
 const VOICE_MAX_TOKENS = 80;
 
 const WS_PING_INTERVAL_MS = 30000;
 
-// Wake word patterns — Redi only responds when it hears its name
-// Matches: "redi", "ready", "hey redi", "yo redi", etc.
+// Wake word patterns
 const WAKE_WORD_PATTERN = /\b(redi|ready|reddi|reddy)\b/i;
+const AWAKE_WINDOW_MS = 30000;
 
 // =============================================================================
 // TYPES
@@ -73,9 +76,9 @@ interface V9Session {
   speechEndTimeout: NodeJS.Timeout | null;
   isResponding: boolean;
   isTTSActive: boolean;
-  deepEnabled: boolean;       // User toggle — deep brain opt-in
-  wakeWordActive: boolean;    // True after wake word detected, stays active during conversation
-  lastResponseTime: number;   // Track when Redi last spoke — stays "awake" for a window after
+  deepEnabled: boolean;
+  wakeWordActive: boolean;
+  lastResponseTime: number;
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   memoryContext: string;
   isDrivingMode: boolean;
@@ -114,6 +117,12 @@ REAL-TIME DATA:
 - Write numbers and units clearly for TTS: "72 degrees" not "72°", "5 dollars" not "$5".
 - If no search results are provided and you don't know current data, say so briefly.
 
+SCREEN/VISION:
+- When an image is provided, describe what you see concisely.
+- For code on screen: identify the language, spot errors, suggest fixes briefly.
+- For documents: summarize the key content in 1-2 sentences.
+- Don't say "I can see an image of..." — just describe what's there directly.
+
 IDENTITY: Confident, warm, sharp. Proactive — suggest actions, don't just describe.
 
 DRIVING MODE: If active, 10 words max. No directions.`;
@@ -125,36 +134,15 @@ DRIVING MODE: If active, 10 words max. No directions.`;
 const sessions = new Map<string, V9Session>();
 let wss: WebSocketServer | null = null;
 
-// How long Redi stays "awake" after a conversation exchange (no wake word needed)
-const AWAKE_WINDOW_MS = 30000; // 30 seconds after last response
-
 // =============================================================================
-// WAKE WORD CHECK
+// WAKE WORD
 // =============================================================================
 
 function shouldRespond(session: V9Session, transcript: string): boolean {
-  // Chat messages (typed) always get a response — no wake word needed
-  // This function is only for voice transcripts
-
-  // 1. Wake word in current transcript
-  if (WAKE_WORD_PATTERN.test(transcript)) {
-    session.wakeWordActive = true;
-    console.log(`[V9] \uD83D\uDFE2 Wake word detected`);
-    return true;
-  }
-
-  // 2. Still in active conversation (responded within last 30s)
-  if (session.lastResponseTime && (Date.now() - session.lastResponseTime < AWAKE_WINDOW_MS)) {
-    return true;
-  }
-
-  // 3. First message in session — always respond (user just connected, expects Redi to be listening)
-  if (session.responsesCompleted === 0 && session.conversationHistory.length === 0) {
-    return true;
-  }
-
-  // No wake word, not in active conversation — ignore (ambient speech)
-  console.log(`[V9] \uD83D\uDD07 Ignored (no wake word): "${transcript.slice(0, 40)}"`);
+  if (WAKE_WORD_PATTERN.test(transcript)) { session.wakeWordActive = true; console.log(`[V9] 🟢 Wake word detected`); return true; }
+  if (session.lastResponseTime && (Date.now() - session.lastResponseTime < AWAKE_WINDOW_MS)) return true;
+  if (session.responsesCompleted === 0 && session.conversationHistory.length === 0) return true;
+  console.log(`[V9] 🔇 Ignored (no wake word): "${transcript.slice(0, 40)}"`);
   return false;
 }
 
@@ -163,14 +151,14 @@ function shouldRespond(session: V9Session, transcript: string): boolean {
 // =============================================================================
 
 export function initV9WebSocket(server: HTTPServer): void {
-  console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
-  console.log('[V9] THREE-BRAIN ARCHITECTURE + WEB SEARCH');
-  console.log('[V9] Fast: Cerebras GPT-OSS 120B | max ' + FAST_MAX_TOKENS + ' tokens');
-  console.log('[V9] Deep: GPT-4o (opt-in toggle) | max ' + DEEP_MAX_TOKENS + ' tokens');
-  console.log('[V9] Wake word: "Redi" required (30s conversation window)');
-  console.log('[V9] Search: Tavily API | Audio: MP3 ElevenLabs');
+  console.log('[V9] ═══════════════════════════════════════════════');
+  console.log('[V9] FOUR-BRAIN ARCHITECTURE + WEB SEARCH');
+  console.log('[V9] Fast:   Cerebras GPT-OSS 120B   | text-only   | max ' + FAST_MAX_TOKENS + ' tokens');
+  console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
+  console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
+  console.log('[V9] Wake word: "Redi" (30s window) | Search: Tavily | TTS: ElevenLabs');
   console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | Ping: 30s');
-  console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
+  console.log('[V9] ═══════════════════════════════════════════════');
 
   const missing: string[] = [];
   if (!DEEPGRAM_API_KEY) missing.push('DEEPGRAM_API_KEY');
@@ -181,9 +169,9 @@ export function initV9WebSocket(server: HTTPServer): void {
   if (!process.env.TAVILY_API_KEY) missing.push('TAVILY_API_KEY');
 
   if (missing.length > 0) {
-    console.error(`[V9] \u26a0\ufe0f Missing env vars: ${missing.join(', ')}`);
+    console.error(`[V9] ⚠️ Missing env vars: ${missing.join(', ')}`);
   } else {
-    console.log('[V9] \u2705 All API keys present');
+    console.log('[V9] ✅ All API keys present');
   }
 
   wss = new WebSocketServer({ noServer: true });
@@ -195,117 +183,69 @@ export function initV9WebSocket(server: HTTPServer): void {
     let authUser: { userId: string; email: string; name: string } | null = null;
     if (token) {
       authUser = verifyToken(token);
-      if (authUser) {
-        console.log(`[V9] \u2705 Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
-      } else {
-        console.log(`[V9] \u26a0\ufe0f Invalid token, falling back to dev user`);
-      }
+      if (authUser) console.log(`[V9] ✅ Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
+      else console.log(`[V9] ⚠️ Invalid token, falling back to dev user`);
     }
 
     if (!authUser) {
       authUser = { userId: 'admin', email: 'admin@redialways.com', name: 'Admin' };
-      console.log(`[V9] \u26a0\ufe0f No auth token \u2014 connected as dev user (remove before launch)`);
+      console.log(`[V9] ⚠️ No auth token — connected as dev user (remove before launch)`);
     }
 
     const sessionId = randomUUID();
 
     const session: V9Session = {
-      id: sessionId,
-      clientWs: ws,
-      deepgramConnection: null,
-      latestFrame: null,
-      latestFrameTime: 0,
-      hasVision: false,
-      isUserSpeaking: false,
-      currentTranscript: '',
-      speechEndTimeout: null,
-      isResponding: false,
-      isTTSActive: false,
-      deepEnabled: false,
-      wakeWordActive: false,
-      lastResponseTime: 0,
-      conversationHistory: [],
-      memoryContext: '',
-      isDrivingMode: false,
-      voiceOnly: false,
-      voiceId: '',
-      userId: authUser.userId,
-      userName: authUser.name,
-      userEmail: authUser.email,
-      isActive: true,
-      connectionTime: Date.now(),
-      responsesCompleted: 0,
-      totalInputTokens: 0,
-      totalOutputTokens: 0,
-      ttsChunkCount: 0,
-      ttsTotalBytes: 0,
+      id: sessionId, clientWs: ws, deepgramConnection: null,
+      latestFrame: null, latestFrameTime: 0, hasVision: false,
+      isUserSpeaking: false, currentTranscript: '', speechEndTimeout: null,
+      isResponding: false, isTTSActive: false, deepEnabled: false,
+      wakeWordActive: false, lastResponseTime: 0,
+      conversationHistory: [], memoryContext: '',
+      isDrivingMode: false, voiceOnly: false, voiceId: '',
+      userId: authUser.userId, userName: authUser.name, userEmail: authUser.email,
+      isActive: true, connectionTime: Date.now(),
+      responsesCompleted: 0, totalInputTokens: 0, totalOutputTokens: 0,
+      ttsChunkCount: 0, ttsTotalBytes: 0,
     };
-
     sessions.set(sessionId, session);
 
     session.pingInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.ping();
-      } else {
-        if (session.pingInterval) clearInterval(session.pingInterval);
-      }
+      if (ws.readyState === WebSocket.OPEN) ws.ping();
+      else if (session.pingInterval) clearInterval(session.pingInterval);
     }, WS_PING_INTERVAL_MS);
 
     if (authUser.userId !== 'admin') {
       session.creditTimer = setInterval(async () => {
-        if (!session.isActive || !session.userId) {
-          if (session.creditTimer) clearInterval(session.creditTimer);
-          return;
-        }
+        if (!session.isActive || !session.userId) { if (session.creditTimer) clearInterval(session.creditTimer); return; }
         let creditsPerMinute = 1.0;
         if (session.observeSessionId) {
           const obs = getObserveSession(session.observeSessionId);
-          if (obs) {
-            const rates: Record<string, number> = { audio_only: 0.1, screen_ocr: 0.15, screen_vision: 0.4 };
-            creditsPerMinute = rates[obs.type] || 0.1;
-          }
-        } else if (session.deepEnabled) {
-          creditsPerMinute = 1.5;
-        }
+          if (obs) { const rates: Record<string, number> = { audio_only: 0.1, screen_ocr: 0.15, screen_vision: 0.4 }; creditsPerMinute = rates[obs.type] || 0.1; }
+        } else if (session.deepEnabled) { creditsPerMinute = 1.5; }
         try {
           const result = await deductCredits(session.userId!, creditsPerMinute);
           sendToClient(session, { type: 'credits_update', remaining: Math.round(result.remaining * 10) / 10 });
-          if (result.depleted) {
-            sendToClient(session, { type: 'error', message: 'You\'ve used all your credits. Add more to continue.', action: 'buy_credits' });
-            ws.close(4003, 'No credits');
-            if (session.creditTimer) clearInterval(session.creditTimer);
-          }
-        } catch (err) {
-          console.error('[V9] Credit deduction error:', err);
-        }
+          if (result.depleted) { sendToClient(session, { type: 'error', message: 'You\'ve used all your credits. Add more to continue.', action: 'buy_credits' }); ws.close(4003, 'No credits'); if (session.creditTimer) clearInterval(session.creditTimer); }
+        } catch (err) { console.error('[V9] Credit deduction error:', err); }
       }, 60000);
     }
 
     connectToDeepgram(session)
       .then(() => {
-        sendToClient(session, { type: 'session_ready', sessionId, version: 'v9-three-brain', userName: authUser!.name });
-        console.log(`[V9] \u2705 Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
+        sendToClient(session, { type: 'session_ready', sessionId, version: 'v9-four-brain', userName: authUser!.name });
+        console.log(`[V9] ✅ Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
       })
       .catch((error) => {
-        console.error(`[V9] \u274c Deepgram setup failed:`, error);
+        console.error(`[V9] ❌ Deepgram setup failed:`, error);
         sendToClient(session, { type: 'error', message: 'Voice service unavailable.' });
         ws.close(1011, 'Deepgram setup failed');
-        return;
       });
 
     ws.on('message', (data: Buffer | string) => {
-      try {
-        const message = JSON.parse(typeof data === 'string' ? data : data.toString());
-        handleClientMessage(session, message);
-      } catch {
-        if (Buffer.isBuffer(data)) {
-          if (session.deepgramConnection) session.deepgramConnection.send(data);
-        }
-      }
+      try { const message = JSON.parse(typeof data === 'string' ? data : data.toString()); handleClientMessage(session, message); }
+      catch { if (Buffer.isBuffer(data)) { if (session.deepgramConnection) session.deepgramConnection.send(data); } }
     });
-
     ws.on('pong', () => {});
-
     ws.on('close', () => {
       session.isActive = false;
       if (session.creditTimer) clearInterval(session.creditTimer);
@@ -314,19 +254,12 @@ export function initV9WebSocket(server: HTTPServer): void {
       console.log(`[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`);
       cleanup(sessionId);
     });
-
-    ws.on('error', (err) => {
-      console.error(`[V9] WebSocket error:`, err);
-      cleanup(sessionId);
-    });
+    ws.on('error', (err) => { console.error(`[V9] WebSocket error:`, err); cleanup(sessionId); });
   });
 
   server.on('upgrade', (request: IncomingMessage, socket: any, head: Buffer) => {
     const parsedUrl = parseUrl(request.url || '', true);
-    const pathname = parsedUrl.pathname;
-    const version = parsedUrl.query.v;
-
-    if (pathname === '/ws/redi' && version === '9') {
+    if (parsedUrl.pathname === '/ws/redi' && parsedUrl.query.v === '9') {
       if (!wss) { socket.destroy(); return; }
       console.log(`[V9] Upgrade request for v=9`);
       wss.handleUpgrade(request, socket, head, (ws) => { wss!.emit('connection', ws, request); });
@@ -342,97 +275,47 @@ export function initV9WebSocket(server: HTTPServer): void {
 
 async function connectToDeepgram(session: V9Session): Promise<void> {
   if (!DEEPGRAM_API_KEY) throw new Error('DEEPGRAM_API_KEY not set');
-
-  const deepgram = createClient(DEEPGRAM_API_KEY, {
-    global: { headers: { 'X-DG-No-Logging': 'true' } },
-  });
-
+  const deepgram = createClient(DEEPGRAM_API_KEY, { global: { headers: { 'X-DG-No-Logging': 'true' } } });
   const connection = deepgram.listen.live({
-    model: 'nova-2',
-    language: 'en',
-    smart_format: true,
-    interim_results: true,
-    utterance_end_ms: 2000,
-    vad_events: true,
-    encoding: 'linear16',
-    sample_rate: 24000,
-    channels: 1,
+    model: 'nova-2', language: 'en', smart_format: true, interim_results: true,
+    utterance_end_ms: 2000, vad_events: true, encoding: 'linear16', sample_rate: 24000, channels: 1,
     keywords: ['Redi:5', 'Redi Always:3'],
   });
 
-  connection.on(LiveTranscriptionEvents.Open, () => {
-    console.log(`[V9] Deepgram connected (nova-2, keywords: Redi)`);
-  });
+  connection.on(LiveTranscriptionEvents.Open, () => { console.log(`[V9] Deepgram connected (nova-2, keywords: Redi)`); });
 
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const transcript = data.channel?.alternatives?.[0]?.transcript;
     const isFinal = data.is_final;
     const speechFinal = data.speech_final;
-
     if (transcript?.trim()) {
-      if (session.observeSessionId) {
-        if (isFinal) feedAudioTranscript(session.observeSessionId, transcript.trim());
-        return;
-      }
-      if (isFinal) {
-        session.currentTranscript += ' ' + transcript.trim();
-        session.currentTranscript = session.currentTranscript.trim();
-        console.log(`[V9] Final: "${transcript.trim()}"`);
-      }
+      if (session.observeSessionId) { if (isFinal) feedAudioTranscript(session.observeSessionId, transcript.trim()); return; }
+      if (isFinal) { session.currentTranscript += ' ' + transcript.trim(); session.currentTranscript = session.currentTranscript.trim(); console.log(`[V9] Final: "${transcript.trim()}"`); }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
-
-      if (session.speechEndTimeout) {
-        clearTimeout(session.speechEndTimeout);
-        session.speechEndTimeout = null;
-      }
+      if (session.speechEndTimeout) { clearTimeout(session.speechEndTimeout); session.speechEndTimeout = null; }
     }
-
     if (speechFinal && session.currentTranscript.trim() && !session.isResponding) {
-      session.speechEndTimeout = setTimeout(() => {
-        if (!session.isResponding && session.currentTranscript.trim()) {
-          handleSpeechEnd(session);
-        }
-      }, SPEECH_TIMEOUT_MS);
+      session.speechEndTimeout = setTimeout(() => { if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session); }, SPEECH_TIMEOUT_MS);
     }
   });
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-
-    if (session.isResponding && !session.isTTSActive) {
-      console.log(`[V9] BARGE-IN (pre-TTS)`);
-      session.isResponding = false;
-    } else if (session.isTTSActive) {
-      console.log(`[V9] BARGE-IN (during TTS)`);
-      sendToClient(session, { type: 'stop_audio' });
-      session.isResponding = false;
-      session.isTTSActive = false;
-    }
-
-    if (session.speechEndTimeout) {
-      clearTimeout(session.speechEndTimeout);
-      session.speechEndTimeout = null;
-    }
+    if (session.isResponding && !session.isTTSActive) { console.log(`[V9] BARGE-IN (pre-TTS)`); session.isResponding = false; }
+    else if (session.isTTSActive) { console.log(`[V9] BARGE-IN (during TTS)`); sendToClient(session, { type: 'stop_audio' }); session.isResponding = false; session.isTTSActive = false; }
+    if (session.speechEndTimeout) { clearTimeout(session.speechEndTimeout); session.speechEndTimeout = null; }
   });
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
     if (session.currentTranscript.trim() && !session.isResponding) {
       if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
-      session.speechEndTimeout = setTimeout(() => {
-        if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
-      }, 300);
+      session.speechEndTimeout = setTimeout(() => { if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session); }, 300);
     }
   });
 
-  connection.on(LiveTranscriptionEvents.Error, (err: any) => {
-    console.error(`[V9] Deepgram error:`, err);
-  });
-
-  connection.on(LiveTranscriptionEvents.Close, () => {
-    console.log(`[V9] Deepgram closed`);
-  });
-
+  connection.on(LiveTranscriptionEvents.Error, (err: any) => { console.error(`[V9] Deepgram error:`, err); });
+  connection.on(LiveTranscriptionEvents.Close, () => { console.log(`[V9] Deepgram closed`); });
   session.deepgramConnection = connection;
 }
 
@@ -441,30 +324,57 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 // =============================================================================
 
 function sendAudioBinary(session: V9Session, audioChunk: Buffer): void {
-  if (session.clientWs.readyState === WebSocket.OPEN) {
-    session.clientWs.send(audioChunk);
-    session.ttsChunkCount++;
-    session.ttsTotalBytes += audioChunk.length;
-  }
+  if (session.clientWs.readyState === WebSocket.OPEN) { session.clientWs.send(audioChunk); session.ttsChunkCount++; session.ttsTotalBytes += audioChunk.length; }
+}
+
+function sendToClient(session: V9Session, message: any): void {
+  if (session.clientWs.readyState === WebSocket.OPEN) session.clientWs.send(JSON.stringify(message));
 }
 
 async function maybeSearchWeb(transcript: string): Promise<string | null> {
   if (!needsWebSearch(transcript)) return null;
   try {
-    console.log(`[V9] \uD83D\uDD0D Web search for: "${transcript.slice(0, 60)}"`);
-    const searchStart = Date.now();
+    console.log(`[V9] 🔍 Web search for: "${transcript.slice(0, 60)}"`);
+    const start = Date.now();
     const results = await searchWeb(transcript, 3);
     const formatted = formatSearchResultsForLLM(results);
-    console.log(`[V9] \uD83D\uDD0D ${results.length} results in ${Date.now() - searchStart}ms`);
+    console.log(`[V9] 🔍 ${results.length} results in ${Date.now() - start}ms`);
     return formatted;
-  } catch (err) {
-    console.error(`[V9] \uD83D\uDD0D Search failed:`, err);
-    return null;
-  }
+  } catch (err) { console.error(`[V9] 🔍 Search failed:`, err); return null; }
 }
 
-function sendToClient(session: V9Session, message: any): void {
-  if (session.clientWs.readyState === WebSocket.OPEN) session.clientWs.send(JSON.stringify(message));
+// =============================================================================
+// LLM DISPATCH — routes to the correct provider based on brain type
+// =============================================================================
+
+async function callBrain(
+  brain: BrainType,
+  messages: LLMMessage[],
+  session: V9Session,
+): Promise<{ text: string; brain: BrainType }> {
+  let result;
+
+  if (brain === 'vision') {
+    // GPT-4o Mini — cheap vision, auto-routed for screen share
+    result = await openaiComplete({ messages, max_tokens: VISION_MAX_TOKENS, model: 'gpt-4o-mini' });
+    console.log(`[V9] VISION (4o-mini): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
+  } else if (brain === 'deep') {
+    // GPT-4o — full power, opt-in toggle
+    result = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS, model: 'gpt-4o' });
+    console.log(`[V9] DEEP (4o): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
+  } else if (brain === 'voice') {
+    // Claude Haiku 4.5 — reserved for future
+    result = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS });
+    console.log(`[V9] VOICE (haiku): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
+  } else {
+    // Cerebras — fast brain, default
+    result = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS });
+    console.log(`[V9] FAST (cerebras): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
+  }
+
+  session.totalInputTokens += result.usage.inputTokens;
+  session.totalOutputTokens += result.usage.outputTokens;
+  return { text: result.text, brain };
 }
 
 // =============================================================================
@@ -475,27 +385,19 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   const transcript = session.currentTranscript.trim();
   session.currentTranscript = '';
   session.isUserSpeaking = false;
-
   if (!transcript || session.isResponding) return;
-
-  // WAKE WORD CHECK — ignore ambient speech
-  if (!shouldRespond(session, transcript)) {
-    return;
-  }
+  if (!shouldRespond(session, transcript)) return;
 
   session.isResponding = true;
-
   const startTime = Date.now();
   const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 5000);
   session.hasVision = hasRecentFrame;
 
-  // Pass deepEnabled to router — deep brain is opt-in only
   const route = routeQuery(transcript, hasRecentFrame, session.deepEnabled);
   console.log(`[V9] Route: ${route.brain.toUpperCase()} | "${transcript.slice(0, 50)}${transcript.length > 50 ? '...' : ''}" | ${route.reason}`);
 
   try {
     const searchResults = await maybeSearchWeb(transcript);
-
     let systemContent = SYSTEM_PROMPT;
     if (session.memoryContext) systemContent += `\n\nUser context: ${session.memoryContext}`;
     if (searchResults) systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
@@ -505,37 +407,16 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
     for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-    if (hasRecentFrame && route.brain === 'deep') {
+    // Vision: send frame to vision or deep brain
+    if (hasRecentFrame && (route.brain === 'vision' || route.brain === 'deep')) {
       messages.push({ role: 'user', content: [{ type: 'text', text: transcript }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
     } else {
       messages.push({ role: 'user', content: transcript });
     }
 
-    let responseText: string;
-    let brainUsed: BrainType = route.brain;
+    if (!session.isResponding) return;
 
-    if (!session.isResponding) { return; }
-
-    if (route.brain === 'fast') {
-      const result = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS });
-      responseText = result.text;
-      session.totalInputTokens += result.usage.inputTokens;
-      session.totalOutputTokens += result.usage.outputTokens;
-      console.log(`[V9] FAST: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
-    } else if (route.brain === 'deep') {
-      const result = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS });
-      responseText = result.text;
-      session.totalInputTokens += result.usage.inputTokens;
-      session.totalOutputTokens += result.usage.outputTokens;
-      console.log(`[V9] DEEP: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
-    } else {
-      const result = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS });
-      responseText = result.text;
-      session.totalInputTokens += result.usage.inputTokens;
-      session.totalOutputTokens += result.usage.outputTokens;
-      console.log(`[V9] VOICE: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
-    }
-
+    const { text: responseText, brain: brainUsed } = await callBrain(route.brain, messages, session);
     if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
     session.conversationHistory.push({ role: 'user', content: transcript });
@@ -543,40 +424,23 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
 
     sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - startTime });
-
-    // Update last response time — keeps Redi "awake" for 30s
     session.lastResponseTime = Date.now();
 
     const ttsStart = Date.now();
-    session.ttsChunkCount = 0;
-    session.ttsTotalBytes = 0;
-    session.isTTSActive = true;
+    session.ttsChunkCount = 0; session.ttsTotalBytes = 0; session.isTTSActive = true;
     sendToClient(session, { type: 'mute_mic', muted: true });
 
-    await elevenLabsStreamTTS(
-      responseText,
-      (audioChunk: Buffer) => {
-        if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) {
-          sendAudioBinary(session, audioChunk);
-        }
-      },
-      () => {
-        console.log(`[V9] TTS sent: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB`);
-        session.isTTSActive = false;
-        sendToClient(session, { type: 'mute_mic', muted: false });
-        sendToClient(session, { type: 'audio_done' });
-      },
-      session.voiceId || undefined,
-    );
+    await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
+      if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
+    }, () => {
+      console.log(`[V9] TTS sent: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB`);
+      session.isTTSActive = false; sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' });
+    }, session.voiceId || undefined);
 
     console.log(`[V9] Total: ${Date.now() - startTime}ms | TTS: ${Date.now() - ttsStart}ms`);
-    session.responsesCompleted++;
-    session.isResponding = false;
-    session.isTTSActive = false;
+    session.responsesCompleted++; session.isResponding = false; session.isTTSActive = false;
   } catch (error) {
-    console.error(`[V9] Pipeline error:`, error);
-    session.isResponding = false;
-    session.isTTSActive = false;
+    console.error(`[V9] Pipeline error:`, error); session.isResponding = false; session.isTTSActive = false;
     sendToClient(session, { type: 'mute_mic', muted: false });
   }
 }
@@ -588,16 +452,11 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 function handleClientMessage(session: V9Session, message: any): void {
   switch (message.type) {
     case 'audio':
-      if (message.data) {
-        const audioBuffer = Buffer.from(message.data, 'base64');
-        if (session.deepgramConnection) session.deepgramConnection.send(audioBuffer);
-      }
+      if (message.data) { const buf = Buffer.from(message.data, 'base64'); if (session.deepgramConnection) session.deepgramConnection.send(buf); }
       break;
 
     case 'frame':
-      session.latestFrame = message.data;
-      session.latestFrameTime = Date.now();
-      session.hasVision = true;
+      session.latestFrame = message.data; session.latestFrameTime = Date.now(); session.hasVision = true;
       break;
 
     case 'config':
@@ -610,10 +469,9 @@ function handleClientMessage(session: V9Session, message: any): void {
         }).catch(() => {});
       }
       if (message.voice !== undefined) { session.voiceId = String(message.voice); console.log(`[V9] Voice set to: ${message.voice}`); }
-      // Deep Brain toggle
       if (message.deepEnabled !== undefined) {
         session.deepEnabled = !!message.deepEnabled;
-        console.log(`[V9] \uD83E\uDDE0 Deep Brain: ${session.deepEnabled ? 'ON' : 'OFF'}`);
+        console.log(`[V9] 🧠 Deep Brain: ${session.deepEnabled ? 'ON' : 'OFF'}`);
         sendToClient(session, { type: 'deep_status', enabled: session.deepEnabled });
       }
       break;
@@ -622,8 +480,7 @@ function handleClientMessage(session: V9Session, message: any): void {
       if (session.isResponding || session.isTTSActive) {
         console.log(`[V9] Barge-in requested`);
         sendToClient(session, { type: 'stop_audio' });
-        session.isResponding = false;
-        session.isTTSActive = false;
+        session.isResponding = false; session.isTTSActive = false;
         sendToClient(session, { type: 'mute_mic', muted: false });
       }
       break;
@@ -675,7 +532,6 @@ function handleClientMessage(session: V9Session, message: any): void {
       (async () => {
         try {
           const searchResults = await maybeSearchWeb(chatText);
-
           let systemContent = SYSTEM_PROMPT;
           if (session.memoryContext) systemContent += `\n\nUser context: ${session.memoryContext}`;
           if (searchResults) systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
@@ -684,18 +540,14 @@ function handleClientMessage(session: V9Session, message: any): void {
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
           for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-          if (hasRecentFrame && route.brain === 'deep') {
+          // Vision: send frame to vision or deep brain in chat too
+          if (hasRecentFrame && (route.brain === 'vision' || route.brain === 'deep')) {
             messages.push({ role: 'user', content: [{ type: 'text', text: chatText }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
           } else {
             messages.push({ role: 'user', content: chatText });
           }
 
-          let responseText: string;
-          let brainUsed: BrainType = route.brain;
-          if (route.brain === 'fast') { const r = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
-          else if (route.brain === 'deep') { const r = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
-          else { const r = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS }); responseText = r.text; session.totalInputTokens += r.usage.inputTokens; session.totalOutputTokens += r.usage.outputTokens; }
-
+          const { text: responseText, brain: brainUsed } = await callBrain(route.brain, messages, session);
           if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
           session.conversationHistory.push({ role: 'user', content: chatText });
@@ -706,27 +558,20 @@ function handleClientMessage(session: V9Session, message: any): void {
           session.lastResponseTime = Date.now();
 
           if (!message.textOnly) {
-            session.ttsChunkCount = 0;
-            session.ttsTotalBytes = 0;
-            session.isTTSActive = true;
+            session.ttsChunkCount = 0; session.ttsTotalBytes = 0; session.isTTSActive = true;
             sendToClient(session, { type: 'mute_mic', muted: true });
             await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
               if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
             }, () => {
-              session.isTTSActive = false;
-              sendToClient(session, { type: 'mute_mic', muted: false });
-              sendToClient(session, { type: 'audio_done' });
+              session.isTTSActive = false; sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' });
             }, session.voiceId || undefined);
           }
 
           console.log(`[V9] Chat total: ${Date.now() - chatStart}ms`);
-          session.responsesCompleted++;
-          session.isResponding = false;
-          session.isTTSActive = false;
+          session.responsesCompleted++; session.isResponding = false; session.isTTSActive = false;
         } catch (error) {
           console.error(`[V9] Chat pipeline error:`, error);
-          session.isResponding = false;
-          session.isTTSActive = false;
+          session.isResponding = false; session.isTTSActive = false;
           sendToClient(session, { type: 'mute_mic', muted: false });
         }
       })();
@@ -768,5 +613,13 @@ export function closeRediV9(): void {
 export function getV9Stats(): object {
   let totalIn = 0, totalOut = 0, totalResponses = 0;
   sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; });
-  return { activeSessions: sessions.size, architecture: 'Three-Brain + Wake Word + Web Search', fastBrain: 'Cerebras GPT-OSS 120B', deepBrain: 'GPT-4o (opt-in)', search: 'Tavily', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
+  return {
+    activeSessions: sessions.size,
+    architecture: 'Four-Brain + Wake Word + Web Search',
+    fastBrain: 'Cerebras GPT-OSS 120B',
+    visionBrain: 'GPT-4o Mini (auto-routed)',
+    deepBrain: 'GPT-4o (opt-in)',
+    search: 'Tavily',
+    totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut,
+  };
 }
