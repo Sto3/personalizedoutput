@@ -1,17 +1,21 @@
 /**
  * ElevenLabs TTS Provider
  * =======================
- * Output: mp3_44100_128 (complete MP3 file, sent as single binary frame)
+ * Output: mp3_44100_128 streamed in chunks for low-latency playback
  *
- * CRITICAL: Browser decodeAudioData() CANNOT decode partial MP3 fragments.
- * We MUST accumulate the entire MP3 response and send as ONE chunk.
- * The latency cost is ~300-700ms but this is the only way to get clean audio.
+ * STREAMING MODE: Sends audio chunks as they arrive from ElevenLabs.
+ * First chunk arrives in ~150-250ms, giving near-instant voice response.
+ * Client must handle sequential MP3 chunk playback.
  *
- * Model: eleven_turbo_v2_5
+ * Model: eleven_turbo_v2_5 (lowest latency)
+ * Speed: 1.15x (slightly faster for conversational feel)
  */
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_MODEL = 'eleven_turbo_v2_5';
+
+// Minimum chunk size before sending — prevents micro-fragments
+const MIN_CHUNK_BYTES = 4096; // 4KB minimum per chunk
 
 interface VoiceOption {
   id: string;
@@ -46,6 +50,8 @@ export async function elevenLabsStreamTTS(
   if (!text.trim()) { onDone(); return; }
 
   const selectedVoice = voiceId || activeVoiceId;
+  const startTime = Date.now();
+  let firstChunkSent = false;
 
   const response = await fetch(getElevenLabsEndpoint(selectedVoice), {
     method: 'POST',
@@ -57,7 +63,7 @@ export async function elevenLabsStreamTTS(
     body: JSON.stringify({
       text,
       model_id: ELEVENLABS_MODEL,
-      voice_settings: { stability: 0.65, similarity_boost: 0.80, style: 0.15, use_speaker_boost: true },
+      voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.25, use_speaker_boost: true, speed: 1.15 },
       output_format: 'mp3_44100_128',
     }),
   });
@@ -70,27 +76,44 @@ export async function elevenLabsStreamTTS(
   const reader = response.body?.getReader();
   if (!reader) throw new Error('No response body reader available');
 
-  // Accumulate ENTIRE MP3 before sending — decodeAudioData needs complete file
-  const chunks: Buffer[] = [];
+  let buffer = Buffer.alloc(0);
   let totalSize = 0;
+  let chunkCount = 0;
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      chunks.push(Buffer.from(value));
-      totalSize += value.length;
+
+      const chunk = Buffer.from(value);
+      buffer = Buffer.concat([buffer, chunk]);
+      totalSize += chunk.length;
+
+      // Send when we have enough data for smooth playback
+      if (buffer.length >= MIN_CHUNK_BYTES) {
+        if (!firstChunkSent) {
+          console.log(`[ElevenLabs] First chunk: ${Date.now() - startTime}ms | ${Math.round(buffer.length / 1024)}KB`);
+          firstChunkSent = true;
+        }
+        onChunk(buffer);
+        chunkCount++;
+        buffer = Buffer.alloc(0);
+      }
     }
   } finally {
     reader.releaseLock();
   }
 
-  if (totalSize > 0) {
-    const complete = Buffer.concat(chunks, totalSize);
-    console.log(`[ElevenLabs] MP3 complete: ${Math.round(totalSize / 1024)}KB`);
-    onChunk(complete);
+  // Send any remaining data
+  if (buffer.length > 0) {
+    if (!firstChunkSent) {
+      console.log(`[ElevenLabs] First chunk: ${Date.now() - startTime}ms | ${Math.round(buffer.length / 1024)}KB`);
+    }
+    onChunk(buffer);
+    chunkCount++;
   }
 
+  console.log(`[ElevenLabs] Stream done: ${chunkCount} chunks, ${Math.round(totalSize / 1024)}KB, ${Date.now() - startTime}ms`);
   onDone();
 }
 

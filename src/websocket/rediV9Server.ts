@@ -49,10 +49,10 @@ const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 const SPEECH_TIMEOUT_MS = 800;
 const MAX_HISTORY_ENTRIES = 20;
 
-const FAST_MAX_TOKENS = 80;
-const VISION_MAX_TOKENS = 150;
-const DEEP_MAX_TOKENS = 150;
-const VOICE_MAX_TOKENS = 80;
+const FAST_MAX_TOKENS = 200;
+const VISION_MAX_TOKENS = 300;
+const DEEP_MAX_TOKENS = 300;
+const VOICE_MAX_TOKENS = 150;
 
 const WS_PING_INTERVAL_MS = 30000;
 
@@ -103,58 +103,37 @@ interface V9Session {
 // SYSTEM PROMPT
 // =============================================================================
 
-const SYSTEM_PROMPT = `You are Redi (pronounced "ready"), a real-time voice AI assistant made by Personalized Output. Everything you write is spoken aloud via TTS.
+const SYSTEM_PROMPT = `You are Redi, a voice AI assistant by Personalized Output. You speak aloud via TTS.
 
-VOICE RULES — FOLLOW STRICTLY:
-- 1-2 sentences max. You are being SPOKEN. Every extra word wastes the user's time.
-- Greetings: "Hey! What's going on?" — that's it. No introductions, no offers, no monologues.
-- Direct answers only. No filler ("That's a great question"), no preamble, no repetition.
-- Complex topics: give the short answer. If they want more, they'll ask.
-- Never start with "Sure!", "Absolutely!", "Of course!" — just answer.
+YOU ARE BRILLIANT. Show it every interaction:
+- Don't just answer — impress. Add an insight, a connection, a next step they didn't think of.
+- If you see code, don't just spot the bug — explain WHY it happens and how to prevent it.
+- If they're shopping, give them the price AND tell them if there's a better deal strategy.
+- If they ask a simple question, answer it AND anticipate the follow-up.
+- You're not a search engine. You're the smartest friend they've ever had.
 
-NEVER HALLUCINATE:
-- Weather, stock prices, sports scores, news, time, dates: NEVER guess. If you don't have search results, say "I don't have live data for that" in one sentence.
-- Never make up numbers, statistics, or facts you're not certain about.
-- Better to say "I'm not sure" than to give wrong info.
-
-REAL-TIME DATA:
-- When web search results are provided, use them to give accurate answers.
-- Summarize search results in 1-2 spoken sentences. Don't list URLs.
-- If no search results are provided and you don't know current data, say so briefly.
-
-TTS PRONUNCIATION — write for the ear, not the eye:
-- "72 degrees" not "72°", "5 dollars" not "$5", "percent" not "%"
-- "hashtag" not "#", "at" not "@", "and" not "&"
-- Spell out abbreviations: "doctor" not "Dr.", "versus" not "vs."
-- Numbers: "twenty three" for casual, "23" only in technical context.
+VOICE STYLE:
+- Talk like a real person. Vary your rhythm. Short punchy answers for simple stuff. Fuller explanations when it matters.
+- Match their energy. If they're casual, be casual. If they're stressed, be calm and direct.
+- Never start with "Sure!", "Absolutely!", "Of course!", "Great question!" — just GO.
+- Greetings: "Hey! What's going on?" and that's it.
+- You can use conversational phrases like "Oh nice", "Yeah so", "Alright here's the thing" — sound human.
 
 SCREEN & VISION:
-- When you see a screen/image: describe what's there DIRECTLY. Never say "I see an image of..." or "It appears to be..." — just state it.
-- For code: identify language, spot obvious errors, suggest the fix in 1-2 sentences.
-- For documents/text: summarize the key point, not every detail.
-- For apps/UI: identify what app they're in and what's on screen.
-- Keep vision responses to 10-20 spoken words unless they ask for more.
+- Describe what's on screen directly. Never "I see an image of..." — just state it.
+- Be specific: name the app, read the text, identify the error, point to the button.
+- If text is too small or blurry, say so and suggest zooming in or trying Deep Brain.
+- Proactively notice things: typos, errors, better approaches, potential issues.
 
-SCREEN VISION LIMITS — BE HONEST:
-- If text is too small, blurry, or you can't read it clearly, say so. Don't guess.
-- For detailed code review, dense spreadsheets, fine print, or complex documents: say "I can see your screen but for detailed analysis, try turning on Deep Brain."
-- Better to say "I can't read that clearly" than give wrong information.
-- You see a compressed screenshot — small text and fine details may be lost.
+NEVER HALLUCINATE:
+- No live data? Say "I don't have that right now" — never fake numbers.
+- When search results are provided, use them. Summarize for speech, skip URLs.
 
-PROACTIVE BEHAVIOR:
-- Suggest next actions. Don't just describe — help them DO things.
-- If you see an error on screen, tell them how to fix it, not just that it exists.
-- If they're shopping, mention the price and whether it looks like a good deal.
-- If they're writing, catch the typo AND suggest the fix.
-- Offer to help with the next logical step: "Want me to look that up?" or "I can help you draft that."
+TTS RULES:
+- Write "72 degrees" not "72\u00b0", "5 dollars" not "$5", "percent" not "%".
+- Spell out symbols and abbreviations for clean speech.
 
-MEMORY & CONTEXT:
-- If user context is provided, use it naturally. Reference their name, preferences, or history when relevant.
-- Don't repeat their context back to them — just use it to give better answers.
-
-IDENTITY: Confident, warm, sharp. You care about the user — you're their AI with a heart. You're not a search engine, you're an assistant who anticipates needs.
-
-DRIVING MODE: If active, 10 words max. No directions. Safety first.`;
+DRIVING MODE: If active, 10 words max. No directions.`;
 
 // =============================================================================
 // STATE
@@ -185,9 +164,8 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Fast:   Cerebras GPT-OSS 120B   | text-only   | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
-  console.log('[V9] Wake word: "Redi" (45s window) | Search: Tavily | TTS: ElevenLabs');
-  console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | Ping: 30s');
-  console.log('[V9] Barge-in: TTS-only (no pre-TTS cancellation)');
+  console.log('[V9] Wake word: "Redi" (45s window) | Search: Tavily | TTS: ElevenLabs streamed');
+  console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | TTS: 1.15x speed');
   console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
   const missing: string[] = [];
@@ -219,7 +197,7 @@ export function initV9WebSocket(server: HTTPServer): void {
 
     if (!authUser) {
       authUser = { userId: 'admin', email: 'admin@redialways.com', name: 'Admin' };
-      console.log(`[V9] \u{26A0}\u{FE0F} No auth token \u{2014} connected as dev user (remove before launch)`);
+      console.log(`[V9] \u{26A0}\u{FE0F} No auth token \u2014 connected as dev user (remove before launch)`);
     }
 
     const sessionId = randomUUID();
@@ -331,13 +309,13 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-    // Only barge-in during TTS playback — NOT during LLM processing
-    // Vision queries take ~2s; pre-TTS barge-in was killing responses on ambient noise
+    // Barge-in: cancel during TTS playback so user can interrupt
     if (session.isTTSActive) {
       console.log(`[V9] BARGE-IN (during TTS)`);
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
       session.isTTSActive = false;
+      sendToClient(session, { type: 'mute_mic', muted: false });
     }
     if (session.speechEndTimeout) { clearTimeout(session.speechEndTimeout); session.speechEndTimeout = null; }
   });
@@ -380,7 +358,7 @@ async function maybeSearchWeb(transcript: string): Promise<string | null> {
 }
 
 // =============================================================================
-// LLM DISPATCH — routes to the correct provider based on brain type
+// LLM DISPATCH \u2014 routes to the correct provider based on brain type
 // =============================================================================
 
 async function callBrain(
@@ -391,19 +369,15 @@ async function callBrain(
   let result;
 
   if (brain === 'vision') {
-    // GPT-4o Mini — cheap vision, auto-routed for screen share
     result = await openaiComplete({ messages, max_tokens: VISION_MAX_TOKENS, model: 'gpt-4o-mini' });
     console.log(`[V9] VISION (4o-mini): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
   } else if (brain === 'deep') {
-    // GPT-4o — full power, opt-in toggle
     result = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS, model: 'gpt-4o' });
     console.log(`[V9] DEEP (4o): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
   } else if (brain === 'voice') {
-    // Claude Haiku 4.5 — reserved for future
     result = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS });
     console.log(`[V9] VOICE (haiku): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
   } else {
-    // Cerebras — fast brain, default
     result = await cerebrasComplete({ messages, max_tokens: FAST_MAX_TOKENS });
     console.log(`[V9] FAST (cerebras): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
   }
@@ -443,7 +417,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
     for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-    // Vision: send frame to vision or deep brain
     if (hasRecentFrame && (route.brain === 'vision' || route.brain === 'deep')) {
       messages.push({ role: 'user', content: [{ type: 'text', text: transcript }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
     } else {
@@ -469,11 +442,11 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
       if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
     }, () => {
-      console.log(`[V9] TTS sent: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB`);
+      console.log(`[V9] TTS: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB, ${Date.now() - ttsStart}ms`);
       session.isTTSActive = false; sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' });
     }, session.voiceId || undefined);
 
-    console.log(`[V9] Total: ${Date.now() - startTime}ms | TTS: ${Date.now() - ttsStart}ms`);
+    console.log(`[V9] Total: ${Date.now() - startTime}ms`);
     session.responsesCompleted++; session.isResponding = false; session.isTTSActive = false;
   } catch (error) {
     console.error(`[V9] Pipeline error:`, error); session.isResponding = false; session.isTTSActive = false;
@@ -576,7 +549,6 @@ function handleClientMessage(session: V9Session, message: any): void {
           const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
           for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-          // Vision: send frame to vision or deep brain in chat too
           if (hasRecentFrame && (route.brain === 'vision' || route.brain === 'deep')) {
             messages.push({ role: 'user', content: [{ type: 'text', text: chatText }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
           } else {
