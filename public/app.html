@@ -39,6 +39,9 @@
         .btn-icon { width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; flex: none; max-width: none; }
         .btn-icon.active { background: rgba(0,206,209,0.2); color: #00CED1; }
         .btn-icon.muted { background: rgba(255,68,68,0.2); color: #FF4444; }
+        .btn-icon.deep-on { background: rgba(255,165,0,0.2); color: #FFA500; }
+        .deep-note { font-size: 11px; color: #FFA500; text-align: center; display: none; margin-top: -4px; }
+        .deep-note.visible { display: block; }
         .mode-selector { display: flex; gap: 8px; margin-top: 20px; flex-wrap: wrap; justify-content: center; }
         .mode-btn { padding: 8px 16px; border-radius: 20px; border: 1px solid #333; background: transparent; color: #888; font-size: 13px; cursor: pointer; font-family: 'Georgia',serif; }
         .mode-btn.selected { border-color: #00CED1; color: #00CED1; background: rgba(0,206,209,0.08); }
@@ -95,15 +98,17 @@
             <button class="btn btn-icon active" id="micBtn" onclick="toggleMic()">&#x1F3A4;</button>
             <button class="btn btn-icon" id="screenBtn" onclick="toggleScreen()">&#x1F5A5;&#xFE0F;</button>
             <button class="btn btn-icon" id="chatBtn" onclick="toggleChat()">&#x1F4AC;</button>
+            <button class="btn btn-icon" id="deepBtn" onclick="toggleDeep()" title="Deep Brain — GPT-4o for complex tasks">&#x1F9E0;</button>
             <button class="btn btn-icon" id="settingsBtn" onclick="toggleSettings()">&#x2699;&#xFE0F;</button>
             <button class="btn btn-danger btn-icon" onclick="endSession()">&#x2715;</button>
         </div>
+        <div class="deep-note" id="deepNote">&#x1F9E0; Deep Brain ON — uses credits 1.5x faster</div>
     </div>
     <div class="settings-panel" id="settingsPanel">
         <div class="setting-row"><span class="setting-label">Voice</span><select id="voiceSelect" onchange="updateVoice()"><option value="">Loading...</option></select></div>
         <div class="setting-row"><span class="setting-label">Sensitivity</span><select id="sensitivitySelect" onchange="updateSensitivity()"><option value="low">Minimal</option><option value="medium" selected>Balanced</option><option value="high">Active</option></select></div>
     </div>
-    <div class="disclaimer">Redi is an AI assistant and may make mistakes.</div>
+    <div class="disclaimer">Redi is an AI assistant and may make mistakes. Say "Redi" to get started.</div>
 </div>
 <script>
 var authToken=localStorage.getItem('redi_token'),userId=localStorage.getItem('redi_user_id'),userName=localStorage.getItem('redi_user_name');
@@ -113,9 +118,8 @@ function logout(){localStorage.removeItem('redi_token');localStorage.removeItem(
 if(userName)document.getElementById('userGreeting').textContent='Hi, '+userName;
 
 var ws=null,micContext=null,playbackContext=null,mediaStream=null,screenStream=null,screenCaptureInterval=null;
-var isConnected=false,isMicOn=true,isScreenOn=false,isChatVisible=false,selectedMode='voice',sessionActive=false;
+var isConnected=false,isMicOn=true,isScreenOn=false,isChatVisible=false,isDeepEnabled=false,selectedMode='voice',sessionActive=false;
 
-// Audio queue for gapless MP3 chunk playback
 var audioQueue=[];
 var isPlayingAudio=false;
 var nextPlayTime=0;
@@ -127,19 +131,21 @@ function selectMode(mode){selectedMode=mode;document.querySelectorAll('.mode-btn
 
 function startSession(){
     var btn=document.getElementById('startBtn');btn.disabled=true;btn.textContent='Connecting...';
-    audioQueue=[];isPlayingAudio=false;nextPlayTime=0;activeSources=[];
+    audioQueue=[];isPlayingAudio=false;nextPlayTime=0;activeSources=[];isDeepEnabled=false;
+    document.getElementById('deepBtn').className='btn btn-icon';
+    document.getElementById('deepNote').classList.remove('visible');
     try{
         ws=new WebSocket(SERVER_URL);
         ws.onopen=function(){
             console.log('[WS] Connected');updateStatus('connected','Connected');
-            ws.send(JSON.stringify({type:'config',voiceOnly:selectedMode==='voice'||selectedMode==='observe',drivingMode:false,voice:document.getElementById('voiceSelect').value||''}));
+            ws.send(JSON.stringify({type:'config',voiceOnly:selectedMode==='voice'||selectedMode==='observe',drivingMode:false,voice:document.getElementById('voiceSelect').value||'',deepEnabled:false}));
             if(selectedMode==='observe')ws.send(JSON.stringify({type:'observe_start',observeType:'audio_only',sensitivity:document.getElementById('sensitivitySelect').value}));
             sessionActive=true;
             document.getElementById('modeSelector').style.display='none';
             document.getElementById('sessionControls').style.display='flex';
             btn.style.display='none';
             document.getElementById('visualizer').classList.add('active');
-            document.getElementById('responseArea').textContent=selectedMode==='observe'?'Redi is listening...':'Redi is ready. Start talking!';
+            document.getElementById('responseArea').textContent=selectedMode==='observe'?'Redi is listening...':'Say "Redi" to start talking!';
             if(selectedMode!=='chat')startMicrophone();
             if(selectedMode==='screen')startScreenShare();
             if(selectedMode==='chat'){isChatVisible=true;document.getElementById('chatInputArea').classList.add('visible');}
@@ -154,7 +160,9 @@ function endSession(){
     sessionActive=false;
     if(ws){if(selectedMode==='observe')ws.send(JSON.stringify({type:'observe_stop'}));ws.close();ws=null;}
     stopMicrophone();stopScreenShare();stopAudio();
-    isConnected=false;
+    isConnected=false;isDeepEnabled=false;
+    document.getElementById('deepBtn').className='btn btn-icon';
+    document.getElementById('deepNote').classList.remove('visible');
     document.getElementById('modeSelector').style.display='flex';
     document.getElementById('sessionControls').style.display='none';
     var b=document.getElementById('startBtn');b.style.display='block';b.disabled=false;b.textContent='Start Session';
@@ -162,6 +170,13 @@ function endSession(){
     document.getElementById('responseArea').textContent='Session ended.';
     document.getElementById('chatInputArea').classList.remove('visible');
     updateStatus('','Disconnected');
+}
+
+function toggleDeep(){
+    isDeepEnabled=!isDeepEnabled;
+    if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'config',deepEnabled:isDeepEnabled}));
+    document.getElementById('deepBtn').className='btn btn-icon '+(isDeepEnabled?'deep-on':'');
+    document.getElementById('deepNote').classList.toggle('visible',isDeepEnabled);
 }
 
 function handleMessage(event){
@@ -193,6 +208,7 @@ function handleMessage(event){
             case 'observe_started':updateStatus('listening','Always On \u2014 listening...');break;
             case 'observe_interjection':document.getElementById('responseArea').textContent=m.text;document.getElementById('responseArea').classList.add('speaking');addTranscript('Redi',m.text,true);break;
             case 'observe_ended':updateStatus('connected','Observed '+m.durationMinutes+'min');break;
+            case 'deep_status':isDeepEnabled=m.enabled;document.getElementById('deepBtn').className='btn btn-icon '+(isDeepEnabled?'deep-on':'');document.getElementById('deepNote').classList.toggle('visible',isDeepEnabled);break;
             case 'mute_mic':break;
             case 'stop_audio':stopAudio();break;
             case 'credits_update':document.getElementById('creditCount').textContent=Math.round(m.remaining);if(m.remaining<=2){document.getElementById('creditBadge').style.background='rgba(255,68,68,0.15)';document.getElementById('creditBadge').style.color='#FF4444';}break;
@@ -213,16 +229,13 @@ function startMicrophone(){
             ws.send(pcm.buffer);
         };
         src.connect(proc);proc.connect(micContext.destination);
-        updateStatus('listening','Listening...');isMicOn=true;updateMicButton();
+        updateStatus('listening','Say "Redi" to start...');isMicOn=true;updateMicButton();
     }).catch(function(e){console.error('Mic error:',e);updateStatus('error','Mic access denied');});
 }
 function stopMicrophone(){if(mediaStream){mediaStream.getTracks().forEach(function(t){t.stop()});mediaStream=null;}if(micContext){micContext.close();micContext=null;}}
 function toggleMic(){isMicOn=!isMicOn;updateMicButton();}
 function updateMicButton(){var b=document.getElementById('micBtn');b.textContent=isMicOn?'\uD83C\uDFA4':'\uD83D\uDD07';b.className='btn btn-icon '+(isMicOn?'active':'muted');}
 
-// =====================================================
-// AUDIO PLAYBACK — MP3 chunks queued for gapless play
-// =====================================================
 function ensurePlaybackContext(){
     if(!playbackContext||playbackContext.state==='closed')playbackContext=new(window.AudioContext||window.webkitAudioContext)();
     if(playbackContext.state==='suspended')playbackContext.resume();
