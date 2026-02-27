@@ -1,22 +1,19 @@
 /**
- * Brain Router
- * ============
- * Decides which LLM handles each query.
+ * Brain Router — Four-Brain Architecture
+ * =======================================
  *
  * Routing logic:
- * 1. Deep Brain ONLY when user has explicitly enabled it via toggle
- * 2. When deep is enabled: vision frames sent to GPT-4o, complex patterns to GPT-4o
- * 3. When deep is disabled (default): everything goes to Fast Brain (Cerebras)
+ * 1. Vision frame present → 'vision' brain (GPT-4o Mini) — automatic, no toggle needed
+ * 2. Deep Brain toggled ON + complex patterns → 'deep' brain (GPT-4o)
+ * 3. Everything else → 'fast' brain (Cerebras) — 90%+ of queries
  *
- * Deep Brain is opt-in because:
- * - GPT-4o is 2+ seconds vs Cerebras 200ms
- * - Uses 10x more credits
- * - Most queries don't need it
+ * Screen share works automatically now — users don't need to toggle Deep Brain
+ * just to see their screen. Deep Brain is reserved for genuinely complex reasoning.
  *
- * Updated: Feb 24, 2026
- * - Deep Brain is now opt-in only (user toggle)
- * - No more auto-routing based on vision trigger patterns
- * - deepEnabled parameter controls access
+ * Updated: Feb 27, 2026
+ * - Vision auto-routes to GPT-4o Mini (cheap, fast, vision-capable)
+ * - Deep Brain stays opt-in for complex reasoning (GPT-4o)
+ * - No more requiring Deep toggle for screen share
  */
 
 import { RouteDecision } from '../providers/types';
@@ -38,37 +35,26 @@ export function routeQuery(
   deepEnabled: boolean = false,
   conversationContext?: string,
 ): RouteDecision {
-  // Deep Brain is OPT-IN only
-  if (!deepEnabled) {
-    return {
-      brain: 'fast',
-      reason: 'Text-only — using Cerebras (fastest)',
-    };
-  }
-
-  // Deep is enabled — check for complex patterns
   const textToCheck = `${userText} ${conversationContext || ''}`;
-  for (const pattern of DEEP_BRAIN_PATTERNS) {
-    if (pattern.test(textToCheck)) {
-      return {
-        brain: 'deep',
-        reason: `Deep pattern: ${pattern.source}`,
-      };
+
+  // 1. Deep Brain enabled + complex pattern → GPT-4o (full power)
+  if (deepEnabled) {
+    for (const pattern of DEEP_BRAIN_PATTERNS) {
+      if (pattern.test(textToCheck)) {
+        return { brain: 'deep', reason: `Deep pattern: ${pattern.source}` };
+      }
     }
   }
 
-  // Deep is enabled + vision frame available → use GPT-4o for all queries
-  // (user explicitly opted into deep mode, so give them the best)
+  // 2. Vision frame present → GPT-4o Mini (auto-routed, no toggle needed)
+  //    If deep is also ON, use full GPT-4o for vision instead
   if (hasVision) {
-    return {
-      brain: 'deep',
-      reason: 'Deep mode ON + vision — using GPT-4o',
-    };
+    if (deepEnabled) {
+      return { brain: 'deep', reason: 'Deep ON + vision — GPT-4o (full)' };
+    }
+    return { brain: 'vision', reason: 'Screen share — GPT-4o Mini (auto)' };
   }
 
-  // Deep enabled but no vision and no complex pattern → still use fast for speed
-  return {
-    brain: 'fast',
-    reason: 'Deep mode ON but text-only — using Cerebras',
-  };
+  // 3. Everything else → Cerebras (fastest)
+  return { brain: 'fast', reason: 'Text-only — Cerebras (fastest)' };
 }
