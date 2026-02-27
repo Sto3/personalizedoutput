@@ -1,10 +1,15 @@
 /**
  * V9 Shared Types
  * ===============
- * Common interfaces for the Three-Brain architecture.
+ * Common interfaces for the Four-Brain architecture.
+ *
+ * fast   = Cerebras GPT-OSS 120B (text-only, ~200ms)
+ * vision = GPT-4o Mini (screen share, ~300ms, auto-routed)
+ * deep   = GPT-4o (complex reasoning, opt-in toggle)
+ * voice  = Claude Haiku 4.5 (reserved for future)
  */
 
-export type BrainType = 'fast' | 'voice' | 'deep';
+export type BrainType = 'fast' | 'vision' | 'deep' | 'voice';
 
 export interface LLMMessage {
   role: 'system' | 'user' | 'assistant';
@@ -15,6 +20,7 @@ export interface LLMRequest {
   messages: LLMMessage[];
   temperature?: number;
   max_tokens?: number;
+  model?: string;
 }
 
 export interface LLMResponse {
