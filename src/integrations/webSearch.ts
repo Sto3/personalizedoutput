@@ -18,20 +18,32 @@ export interface SearchResult {
 }
 
 // Patterns that indicate web search is needed
+// Be specific to avoid triggering on casual conversation
 const SEARCH_TRIGGER_PATTERNS = [
-  /\b(weather|forecast|temperature)\b/i,
-  /\b(news|latest|current|today|tonight|this week)\b/i,
-  /\b(score|scores|game|match|won|lost|playing)\b/i,
-  /\b(price|cost|how much|stock|market)\b/i,
-  /\b(what time does .+ (close|open))\b/i,
-  /\b(is .+ open)\b/i,
-  /\b(who won|who is winning)\b/i,
-  /\b(hours|schedule|when does)\b/i,
+  /\b(weather|forecast|temperature)\s+(in|for|at|near)/i,
+  /\b(latest|breaking|current)\s+(news|headlines|updates)/i,
+  /\b(score|scores)\s+(of|for|in)/i,
+  /\bwho\s+(won|is winning|scored)/i,
+  /\b(stock|stocks|market)\s+(price|value|of)/i,
+  /\bhow much (does|is|do)\b/i,
+  /\bwhat time does .+ (close|open)/i,
+  /\bis .+ (open|closed) (right now|today|now)/i,
+  /\b(hours|schedule) (of|for|at)/i,
   /\b(reviews? (of|for))\b/i,
   /\b(directions? to|how (do I|to) get to)\b/i,
+  /\b(search|look up|google|find out)\b/i,
+];
+
+// Patterns that should NEVER trigger search (casual conversation)
+const SEARCH_BLOCK_PATTERNS = [
+  /^(hey|hi|hello|what'?s up|how are you|how'?s it going)/i,
+  /^(good morning|good night|good evening|thanks|thank you)/i,
+  /^(yes|no|yeah|nah|okay|ok|sure|alright|cool)/i,
+  /^(what do you think|can you see|are you there)/i,
 ];
 
 export function needsWebSearch(text: string): boolean {
+  if (SEARCH_BLOCK_PATTERNS.some((p) => p.test(text))) return false;
   return SEARCH_TRIGGER_PATTERNS.some((p) => p.test(text));
 }
 

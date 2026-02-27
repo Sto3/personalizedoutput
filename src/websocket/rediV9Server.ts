@@ -6,7 +6,7 @@
  *
  * Brains:
  *   Fast   = Cerebras GPT-OSS 120B (text-only, ~200ms)
- *   Vision = GPT-4o Mini (screen share, ~300ms, auto-routed)
+ *   Vision = GPT-4o Mini (screen share, ~1.5s, auto-routed)
  *   Deep   = GPT-4o (complex reasoning, opt-in toggle)
  *   Voice  = Claude Haiku 4.5 (reserved)
  *
@@ -103,37 +103,46 @@ interface V9Session {
 // SYSTEM PROMPT
 // =============================================================================
 
-const SYSTEM_PROMPT = `You are Redi, a voice AI assistant by Personalized Output. You speak aloud via TTS.
+const SYSTEM_PROMPT = `You are Redi, a voice AI assistant by Personalized Output. Everything you say is spoken aloud.
 
-YOU ARE BRILLIANT. Show it every interaction:
-- Don't just answer — impress. Add an insight, a connection, a next step they didn't think of.
-- If you see code, don't just spot the bug — explain WHY it happens and how to prevent it.
-- If they're shopping, give them the price AND tell them if there's a better deal strategy.
-- If they ask a simple question, answer it AND anticipate the follow-up.
-- You're not a search engine. You're the smartest friend they've ever had.
+YOU ARE A PARTNER, NOT AN ASSISTANT:
+- You're the smartest, most capable friend they've ever had. Show it naturally.
+- Don't just answer questions — add the insight they didn't ask for. Connect dots. Anticipate.
+- If you see code with a bug, explain the fix AND why it happened AND how to prevent it next time.
+- If they're shopping, give the answer AND the strategy: "That's 40 dollars, but this exact model goes on sale every March."
+- If they're writing, don't just catch the typo — suggest the stronger word.
+- If they ask something simple, answer it fast, then open the door: "Need me to dig deeper?"
 
-VOICE STYLE:
-- Talk like a real person. Vary your rhythm. Short punchy answers for simple stuff. Fuller explanations when it matters.
-- Match their energy. If they're casual, be casual. If they're stressed, be calm and direct.
-- Never start with "Sure!", "Absolutely!", "Of course!", "Great question!" — just GO.
-- Greetings: "Hey! What's going on?" and that's it.
-- You can use conversational phrases like "Oh nice", "Yeah so", "Alright here's the thing" — sound human.
+BUT NEVER OVERBEARING:
+- Match their energy. Quick question? Quick answer. Deep dive? Go deep.
+- Don't lecture. Don't over-explain. Don't pad with qualifiers.
+- If they just want to chat, just chat. Not everything needs an insight bomb.
+- Read the room. "What time is it" doesn't need a productivity tip.
+
+VOICE STYLE — SOUND HUMAN:
+- Vary your rhythm. Short and punchy sometimes. Fuller when it matters.
+- Use natural phrases: "Oh interesting", "Yeah so here's the thing", "Alright", "Hmm".
+- Never start with "Sure!", "Absolutely!", "Great question!" — just go.
+- Greeting: "Hey! What's going on?" Done. No monologue.
+- Match their tone. Casual gets casual. Stressed gets calm and direct.
 
 SCREEN & VISION:
-- Describe what's on screen directly. Never "I see an image of..." — just state it.
+- Describe what you see directly. Never "I see an image of..." — just state it.
 - Be specific: name the app, read the text, identify the error, point to the button.
-- If text is too small or blurry, say so and suggest zooming in or trying Deep Brain.
-- Proactively notice things: typos, errors, better approaches, potential issues.
+- If text is too small or blurry, say so honestly. Suggest Deep Brain for detail work.
+- Proactively notice things they might miss: typos, errors, better approaches.
 
 NEVER HALLUCINATE:
-- No live data? Say "I don't have that right now" — never fake numbers.
-- When search results are provided, use them. Summarize for speech, skip URLs.
+- No live data? "I don't have that right now" — one sentence, move on.
+- Use search results when provided. Summarize for speech, skip URLs.
 
 TTS RULES:
 - Write "72 degrees" not "72\u00b0", "5 dollars" not "$5", "percent" not "%".
-- Spell out symbols and abbreviations for clean speech.
+- Spell out symbols for clean speech output.
 
-DRIVING MODE: If active, 10 words max. No directions.`;
+IDENTITY: Confident, warm, sharp. You care. You're their AI with a heart — not a search engine, not a yes-man, not an encyclopedia. A partner who makes their life better every time you talk.
+
+DRIVING MODE: If active, 10 words max. No directions. Safety first.`;
 
 // =============================================================================
 // STATE
@@ -164,8 +173,7 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Fast:   Cerebras GPT-OSS 120B   | text-only   | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
-  console.log('[V9] Wake word: "Redi" (45s window) | Search: Tavily | TTS: ElevenLabs streamed');
-  console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | TTS: 1.15x speed');
+  console.log('[V9] Wake: "Redi" (45s) | TTS: ElevenLabs turbo 1.12x | Search: Tavily');
   console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
   const missing: string[] = [];
@@ -309,9 +317,9 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-    // Barge-in: cancel during TTS playback so user can interrupt
+    // Barge-in: only during TTS playback so user can interrupt Redi speaking
     if (session.isTTSActive) {
-      console.log(`[V9] BARGE-IN (during TTS)`);
+      console.log(`[V9] BARGE-IN`);
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
       session.isTTSActive = false;
@@ -358,7 +366,7 @@ async function maybeSearchWeb(transcript: string): Promise<string | null> {
 }
 
 // =============================================================================
-// LLM DISPATCH \u2014 routes to the correct provider based on brain type
+// LLM DISPATCH
 // =============================================================================
 
 async function callBrain(
@@ -442,7 +450,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
       if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
     }, () => {
-      console.log(`[V9] TTS: ${session.ttsChunkCount} chunks, ${Math.round(session.ttsTotalBytes / 1024)}KB, ${Date.now() - ttsStart}ms`);
+      console.log(`[V9] TTS: ${Math.round(session.ttsTotalBytes / 1024)}KB in ${Date.now() - ttsStart}ms`);
       session.isTTSActive = false; sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' });
     }, session.voiceId || undefined);
 

@@ -1,21 +1,19 @@
 /**
  * ElevenLabs TTS Provider
  * =======================
- * Output: mp3_44100_128 streamed in chunks for low-latency playback
- *
- * STREAMING MODE: Sends audio chunks as they arrive from ElevenLabs.
- * First chunk arrives in ~150-250ms, giving near-instant voice response.
- * Client must handle sequential MP3 chunk playback.
+ * HYBRID STREAMING: Accumulates complete MP3 for reliable decoding,
+ * but starts sending as soon as the full response is ready.
+ * 
+ * Why not chunk streaming: MP3 fragments without headers cause garbled
+ * audio in both browser decodeAudioData() and iOS AVAudioPlayer.
+ * The real latency win comes from ElevenLabs turbo model + speed param.
  *
  * Model: eleven_turbo_v2_5 (lowest latency)
- * Speed: 1.15x (slightly faster for conversational feel)
+ * Speed: 1.12x (slightly faster, natural sounding)
  */
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_MODEL = 'eleven_turbo_v2_5';
-
-// Minimum chunk size before sending — prevents micro-fragments
-const MIN_CHUNK_BYTES = 4096; // 4KB minimum per chunk
 
 interface VoiceOption {
   id: string;
@@ -51,7 +49,6 @@ export async function elevenLabsStreamTTS(
 
   const selectedVoice = voiceId || activeVoiceId;
   const startTime = Date.now();
-  let firstChunkSent = false;
 
   const response = await fetch(getElevenLabsEndpoint(selectedVoice), {
     method: 'POST',
@@ -63,7 +60,7 @@ export async function elevenLabsStreamTTS(
     body: JSON.stringify({
       text,
       model_id: ELEVENLABS_MODEL,
-      voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.25, use_speaker_boost: true, speed: 1.15 },
+      voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.25, use_speaker_boost: true, speed: 1.12 },
       output_format: 'mp3_44100_128',
     }),
   });
@@ -76,44 +73,28 @@ export async function elevenLabsStreamTTS(
   const reader = response.body?.getReader();
   if (!reader) throw new Error('No response body reader available');
 
-  let buffer = Buffer.alloc(0);
+  // Accumulate complete MP3 — partial fragments cause garbled audio
+  const chunks: Buffer[] = [];
   let totalSize = 0;
-  let chunkCount = 0;
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
-      const chunk = Buffer.from(value);
-      buffer = Buffer.concat([buffer, chunk]);
-      totalSize += chunk.length;
-
-      // Send when we have enough data for smooth playback
-      if (buffer.length >= MIN_CHUNK_BYTES) {
-        if (!firstChunkSent) {
-          console.log(`[ElevenLabs] First chunk: ${Date.now() - startTime}ms | ${Math.round(buffer.length / 1024)}KB`);
-          firstChunkSent = true;
-        }
-        onChunk(buffer);
-        chunkCount++;
-        buffer = Buffer.alloc(0);
-      }
+      chunks.push(Buffer.from(value));
+      totalSize += value.length;
     }
   } finally {
     reader.releaseLock();
   }
 
-  // Send any remaining data
-  if (buffer.length > 0) {
-    if (!firstChunkSent) {
-      console.log(`[ElevenLabs] First chunk: ${Date.now() - startTime}ms | ${Math.round(buffer.length / 1024)}KB`);
-    }
-    onChunk(buffer);
-    chunkCount++;
+  if (totalSize > 0) {
+    const complete = Buffer.concat(chunks, totalSize);
+    const elapsed = Date.now() - startTime;
+    console.log(`[ElevenLabs] MP3 ready: ${Math.round(totalSize / 1024)}KB in ${elapsed}ms`);
+    onChunk(complete);
   }
 
-  console.log(`[ElevenLabs] Stream done: ${chunkCount} chunks, ${Math.round(totalSize / 1024)}KB, ${Date.now() - startTime}ms`);
   onDone();
 }
 
