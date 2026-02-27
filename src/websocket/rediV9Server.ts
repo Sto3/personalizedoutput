@@ -58,7 +58,7 @@ const WS_PING_INTERVAL_MS = 30000;
 
 // Wake word patterns
 const WAKE_WORD_PATTERN = /\b(redi|ready|reddi|reddy)\b/i;
-const AWAKE_WINDOW_MS = 30000;
+const AWAKE_WINDOW_MS = 45000;
 
 // =============================================================================
 // TYPES
@@ -168,10 +168,10 @@ let wss: WebSocketServer | null = null;
 // =============================================================================
 
 function shouldRespond(session: V9Session, transcript: string): boolean {
-  if (WAKE_WORD_PATTERN.test(transcript)) { session.wakeWordActive = true; console.log(`[V9] 🟢 Wake word detected`); return true; }
+  if (WAKE_WORD_PATTERN.test(transcript)) { session.wakeWordActive = true; session.lastResponseTime = Date.now(); console.log(`[V9] \u{1F7E2} Wake word detected`); return true; }
   if (session.lastResponseTime && (Date.now() - session.lastResponseTime < AWAKE_WINDOW_MS)) return true;
   if (session.responsesCompleted === 0 && session.conversationHistory.length === 0) return true;
-  console.log(`[V9] 🔇 Ignored (no wake word): "${transcript.slice(0, 40)}"`);
+  console.log(`[V9] \u{1F507} Ignored (no wake word): "${transcript.slice(0, 40)}"`);
   return false;
 }
 
@@ -180,14 +180,15 @@ function shouldRespond(session: V9Session, transcript: string): boolean {
 // =============================================================================
 
 export function initV9WebSocket(server: HTTPServer): void {
-  console.log('[V9] ═══════════════════════════════════════════════');
+  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
   console.log('[V9] FOUR-BRAIN ARCHITECTURE + WEB SEARCH');
   console.log('[V9] Fast:   Cerebras GPT-OSS 120B   | text-only   | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
-  console.log('[V9] Wake word: "Redi" (30s window) | Search: Tavily | TTS: ElevenLabs');
+  console.log('[V9] Wake word: "Redi" (45s window) | Search: Tavily | TTS: ElevenLabs');
   console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | Ping: 30s');
-  console.log('[V9] ═══════════════════════════════════════════════');
+  console.log('[V9] Barge-in: TTS-only (no pre-TTS cancellation)');
+  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
   const missing: string[] = [];
   if (!DEEPGRAM_API_KEY) missing.push('DEEPGRAM_API_KEY');
@@ -198,9 +199,9 @@ export function initV9WebSocket(server: HTTPServer): void {
   if (!process.env.TAVILY_API_KEY) missing.push('TAVILY_API_KEY');
 
   if (missing.length > 0) {
-    console.error(`[V9] ⚠️ Missing env vars: ${missing.join(', ')}`);
+    console.error(`[V9] \u{26A0}\u{FE0F} Missing env vars: ${missing.join(', ')}`);
   } else {
-    console.log('[V9] ✅ All API keys present');
+    console.log('[V9] \u{2705} All API keys present');
   }
 
   wss = new WebSocketServer({ noServer: true });
@@ -212,13 +213,13 @@ export function initV9WebSocket(server: HTTPServer): void {
     let authUser: { userId: string; email: string; name: string } | null = null;
     if (token) {
       authUser = verifyToken(token);
-      if (authUser) console.log(`[V9] ✅ Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
-      else console.log(`[V9] ⚠️ Invalid token, falling back to dev user`);
+      if (authUser) console.log(`[V9] \u{2705} Authenticated: ${authUser.name} (${authUser.userId.slice(0, 12)})`);
+      else console.log(`[V9] \u{26A0}\u{FE0F} Invalid token, falling back to dev user`);
     }
 
     if (!authUser) {
       authUser = { userId: 'admin', email: 'admin@redialways.com', name: 'Admin' };
-      console.log(`[V9] ⚠️ No auth token — connected as dev user (remove before launch)`);
+      console.log(`[V9] \u{26A0}\u{FE0F} No auth token \u{2014} connected as dev user (remove before launch)`);
     }
 
     const sessionId = randomUUID();
@@ -262,10 +263,10 @@ export function initV9WebSocket(server: HTTPServer): void {
     connectToDeepgram(session)
       .then(() => {
         sendToClient(session, { type: 'session_ready', sessionId, version: 'v9-four-brain', userName: authUser!.name });
-        console.log(`[V9] ✅ Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
+        console.log(`[V9] \u{2705} Session ready: ${sessionId.slice(0, 8)} (${authUser!.name})`);
       })
       .catch((error) => {
-        console.error(`[V9] ❌ Deepgram setup failed:`, error);
+        console.error(`[V9] \u{274C} Deepgram setup failed:`, error);
         sendToClient(session, { type: 'error', message: 'Voice service unavailable.' });
         ws.close(1011, 'Deepgram setup failed');
       });
@@ -330,8 +331,14 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-    if (session.isResponding && !session.isTTSActive) { console.log(`[V9] BARGE-IN (pre-TTS)`); session.isResponding = false; }
-    else if (session.isTTSActive) { console.log(`[V9] BARGE-IN (during TTS)`); sendToClient(session, { type: 'stop_audio' }); session.isResponding = false; session.isTTSActive = false; }
+    // Only barge-in during TTS playback — NOT during LLM processing
+    // Vision queries take ~2s; pre-TTS barge-in was killing responses on ambient noise
+    if (session.isTTSActive) {
+      console.log(`[V9] BARGE-IN (during TTS)`);
+      sendToClient(session, { type: 'stop_audio' });
+      session.isResponding = false;
+      session.isTTSActive = false;
+    }
     if (session.speechEndTimeout) { clearTimeout(session.speechEndTimeout); session.speechEndTimeout = null; }
   });
 
@@ -363,13 +370,13 @@ function sendToClient(session: V9Session, message: any): void {
 async function maybeSearchWeb(transcript: string): Promise<string | null> {
   if (!needsWebSearch(transcript)) return null;
   try {
-    console.log(`[V9] 🔍 Web search for: "${transcript.slice(0, 60)}"`);
+    console.log(`[V9] \u{1F50D} Web search for: "${transcript.slice(0, 60)}"`);
     const start = Date.now();
     const results = await searchWeb(transcript, 3);
     const formatted = formatSearchResultsForLLM(results);
-    console.log(`[V9] 🔍 ${results.length} results in ${Date.now() - start}ms`);
+    console.log(`[V9] \u{1F50D} ${results.length} results in ${Date.now() - start}ms`);
     return formatted;
-  } catch (err) { console.error(`[V9] 🔍 Search failed:`, err); return null; }
+  } catch (err) { console.error(`[V9] \u{1F50D} Search failed:`, err); return null; }
 }
 
 // =============================================================================
@@ -500,7 +507,7 @@ function handleClientMessage(session: V9Session, message: any): void {
       if (message.voice !== undefined) { session.voiceId = String(message.voice); console.log(`[V9] Voice set to: ${message.voice}`); }
       if (message.deepEnabled !== undefined) {
         session.deepEnabled = !!message.deepEnabled;
-        console.log(`[V9] 🧠 Deep Brain: ${session.deepEnabled ? 'ON' : 'OFF'}`);
+        console.log(`[V9] \u{1F9E0} Deep Brain: ${session.deepEnabled ? 'ON' : 'OFF'}`);
         sendToClient(session, { type: 'deep_status', enabled: session.deepEnabled });
       }
       break;
