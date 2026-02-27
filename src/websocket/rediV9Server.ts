@@ -2,16 +2,14 @@
  * Redi V9 Server - THREE-BRAIN ARCHITECTURE
  * ==========================================
  *
- * Pipeline: Deepgram STT -> [Web Search?] -> Brain Router -> [Cerebras | Claude Haiku | GPT-4o] -> ElevenLabs TTS
+ * Pipeline: Deepgram STT -> Wake Word Check -> [Web Search?] -> Brain Router -> LLM -> ElevenLabs TTS
  *
  * Endpoint: /ws/redi?v=9
  *
- * Updated: Feb 23, 2026 (v5)
- * - HYBRID speech timing: speechFinal starts 800ms timer, UtteranceEnd fires immediately
- * - TTS always sends audio (removed isResponding guard on onChunk — barge-in was killing audio)
- * - Barge-in only cancels BEFORE TTS starts, not during
- * - Web search via Tavily
- * - WebSocket ping/pong keepalive 30s
+ * Updated: Feb 27, 2026 (v6)
+ * - Wake word: Redi only responds when "Redi"/"ready" is in transcript (ignores ambient speech)
+ * - Deep Brain opt-in: user toggle, not auto-routed
+ * - deepEnabled flag passed to brain router
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -46,21 +44,18 @@ import {
 
 const DEEPGRAM_API_KEY = process.env.DEEPGRAM_API_KEY;
 
-// HYBRID SPEECH TIMING:
-// - speechFinal (phrase boundary) starts SPEECH_TIMEOUT_MS timer (800ms)
-// - Each new final transcript resets the timer
-// - UtteranceEnd (2s silence) fires with only 300ms buffer
-// Result: quick exchanges respond in ~1s, multi-phrase sentences accumulate properly
 const SPEECH_TIMEOUT_MS = 800;
 const MAX_HISTORY_ENTRIES = 20;
 
-// Max tokens — voice responses MUST be ultra-short
-const FAST_MAX_TOKENS = 80;    // ~1-2 sentences spoken aloud
-const DEEP_MAX_TOKENS = 150;   // Vision/complex can be slightly longer
+const FAST_MAX_TOKENS = 80;
+const DEEP_MAX_TOKENS = 150;
 const VOICE_MAX_TOKENS = 80;
 
-// WebSocket keepalive interval (prevents idle disconnects)
 const WS_PING_INTERVAL_MS = 30000;
+
+// Wake word patterns — Redi only responds when it hears its name
+// Matches: "redi", "ready", "hey redi", "yo redi", etc.
+const WAKE_WORD_PATTERN = /\b(redi|ready|reddi|reddy)\b/i;
 
 // =============================================================================
 // TYPES
@@ -77,7 +72,10 @@ interface V9Session {
   currentTranscript: string;
   speechEndTimeout: NodeJS.Timeout | null;
   isResponding: boolean;
-  isTTSActive: boolean;  // NEW: tracks whether TTS is currently sending audio
+  isTTSActive: boolean;
+  deepEnabled: boolean;       // User toggle — deep brain opt-in
+  wakeWordActive: boolean;    // True after wake word detected, stays active during conversation
+  lastResponseTime: number;   // Track when Redi last spoke — stays "awake" for a window after
   conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }>;
   memoryContext: string;
   isDrivingMode: boolean;
@@ -127,6 +125,39 @@ DRIVING MODE: If active, 10 words max. No directions.`;
 const sessions = new Map<string, V9Session>();
 let wss: WebSocketServer | null = null;
 
+// How long Redi stays "awake" after a conversation exchange (no wake word needed)
+const AWAKE_WINDOW_MS = 30000; // 30 seconds after last response
+
+// =============================================================================
+// WAKE WORD CHECK
+// =============================================================================
+
+function shouldRespond(session: V9Session, transcript: string): boolean {
+  // Chat messages (typed) always get a response — no wake word needed
+  // This function is only for voice transcripts
+
+  // 1. Wake word in current transcript
+  if (WAKE_WORD_PATTERN.test(transcript)) {
+    session.wakeWordActive = true;
+    console.log(`[V9] \uD83D\uDFE2 Wake word detected`);
+    return true;
+  }
+
+  // 2. Still in active conversation (responded within last 30s)
+  if (session.lastResponseTime && (Date.now() - session.lastResponseTime < AWAKE_WINDOW_MS)) {
+    return true;
+  }
+
+  // 3. First message in session — always respond (user just connected, expects Redi to be listening)
+  if (session.responsesCompleted === 0 && session.conversationHistory.length === 0) {
+    return true;
+  }
+
+  // No wake word, not in active conversation — ignore (ambient speech)
+  console.log(`[V9] \uD83D\uDD07 Ignored (no wake word): "${transcript.slice(0, 40)}"`);
+  return false;
+}
+
 // =============================================================================
 // INITIALIZATION
 // =============================================================================
@@ -135,8 +166,8 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
   console.log('[V9] THREE-BRAIN ARCHITECTURE + WEB SEARCH');
   console.log('[V9] Fast: Cerebras GPT-OSS 120B | max ' + FAST_MAX_TOKENS + ' tokens');
-  console.log('[V9] Voice: Claude Haiku 4.5 | max ' + VOICE_MAX_TOKENS + ' tokens');
-  console.log('[V9] Deep: GPT-4o (vision + complex) | max ' + DEEP_MAX_TOKENS + ' tokens');
+  console.log('[V9] Deep: GPT-4o (opt-in toggle) | max ' + DEEP_MAX_TOKENS + ' tokens');
+  console.log('[V9] Wake word: "Redi" required (30s conversation window)');
   console.log('[V9] Search: Tavily API | Audio: MP3 ElevenLabs');
   console.log('[V9] Speech: hybrid (speechFinal 800ms + UtteranceEnd 2s) | Ping: 30s');
   console.log('[V9] \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550');
@@ -152,7 +183,7 @@ export function initV9WebSocket(server: HTTPServer): void {
   if (missing.length > 0) {
     console.error(`[V9] \u26a0\ufe0f Missing env vars: ${missing.join(', ')}`);
   } else {
-    console.log('[V9] \u2705 All API keys present (including Tavily)');
+    console.log('[V9] \u2705 All API keys present');
   }
 
   wss = new WebSocketServer({ noServer: true });
@@ -190,6 +221,9 @@ export function initV9WebSocket(server: HTTPServer): void {
       speechEndTimeout: null,
       isResponding: false,
       isTTSActive: false,
+      deepEnabled: false,
+      wakeWordActive: false,
+      lastResponseTime: 0,
       conversationHistory: [],
       memoryContext: '',
       isDrivingMode: false,
@@ -209,7 +243,6 @@ export function initV9WebSocket(server: HTTPServer): void {
 
     sessions.set(sessionId, session);
 
-    // WebSocket keepalive — ping every 30s to prevent idle disconnects
     session.pingInterval = setInterval(() => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.ping();
@@ -231,7 +264,7 @@ export function initV9WebSocket(server: HTTPServer): void {
             const rates: Record<string, number> = { audio_only: 0.1, screen_ocr: 0.15, screen_vision: 0.4 };
             creditsPerMinute = rates[obs.type] || 0.1;
           }
-        } else if (session.hasVision) {
+        } else if (session.deepEnabled) {
           creditsPerMinute = 1.5;
         }
         try {
@@ -304,7 +337,7 @@ export function initV9WebSocket(server: HTTPServer): void {
 }
 
 // =============================================================================
-// DEEPGRAM STT — HYBRID SPEECH TIMING
+// DEEPGRAM STT
 // =============================================================================
 
 async function connectToDeepgram(session: V9Session): Promise<void> {
@@ -348,17 +381,12 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
       }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
 
-      // Any new speech resets pending timeout — user is still talking
       if (session.speechEndTimeout) {
         clearTimeout(session.speechEndTimeout);
         session.speechEndTimeout = null;
       }
     }
 
-    // HYBRID: speechFinal starts a SHORT timer (800ms).
-    // If user keeps talking, next final transcript resets the timer.
-    // If user stops, 800ms passes and we respond.
-    // This is faster than waiting for UtteranceEnd (2s) for quick exchanges.
     if (speechFinal && session.currentTranscript.trim() && !session.isResponding) {
       session.speechEndTimeout = setTimeout(() => {
         if (!session.isResponding && session.currentTranscript.trim()) {
@@ -371,12 +399,10 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
 
-    // Barge-in: cancel pending LLM request (but NOT active TTS — let it finish sending)
     if (session.isResponding && !session.isTTSActive) {
       console.log(`[V9] BARGE-IN (pre-TTS)`);
       session.isResponding = false;
     } else if (session.isTTSActive) {
-      // TTS is actively sending — tell client to stop playback
       console.log(`[V9] BARGE-IN (during TTS)`);
       sendToClient(session, { type: 'stop_audio' });
       session.isResponding = false;
@@ -391,10 +417,8 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.UtteranceEnd, () => {
     session.isUserSpeaking = false;
-    // UtteranceEnd = 2 seconds of total silence. If we haven't responded yet, do it now.
     if (session.currentTranscript.trim() && !session.isResponding) {
       if (session.speechEndTimeout) clearTimeout(session.speechEndTimeout);
-      // Short buffer to catch trailing transcripts
       session.speechEndTimeout = setTimeout(() => {
         if (!session.isResponding && session.currentTranscript.trim()) handleSpeechEnd(session);
       }, 300);
@@ -413,7 +437,7 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 }
 
 // =============================================================================
-// SEND BINARY AUDIO TO CLIENT
+// HELPERS
 // =============================================================================
 
 function sendAudioBinary(session: V9Session, audioChunk: Buffer): void {
@@ -424,13 +448,8 @@ function sendAudioBinary(session: V9Session, audioChunk: Buffer): void {
   }
 }
 
-// =============================================================================
-// WEB SEARCH HELPER
-// =============================================================================
-
 async function maybeSearchWeb(transcript: string): Promise<string | null> {
   if (!needsWebSearch(transcript)) return null;
-
   try {
     console.log(`[V9] \uD83D\uDD0D Web search for: "${transcript.slice(0, 60)}"`);
     const searchStart = Date.now();
@@ -444,6 +463,10 @@ async function maybeSearchWeb(transcript: string): Promise<string | null> {
   }
 }
 
+function sendToClient(session: V9Session, message: any): void {
+  if (session.clientWs.readyState === WebSocket.OPEN) session.clientWs.send(JSON.stringify(message));
+}
+
 // =============================================================================
 // SPEECH END -> RESPONSE PIPELINE
 // =============================================================================
@@ -454,17 +477,23 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   session.isUserSpeaking = false;
 
   if (!transcript || session.isResponding) return;
+
+  // WAKE WORD CHECK — ignore ambient speech
+  if (!shouldRespond(session, transcript)) {
+    return;
+  }
+
   session.isResponding = true;
 
   const startTime = Date.now();
   const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 5000);
   session.hasVision = hasRecentFrame;
 
-  const route = routeQuery(transcript, hasRecentFrame);
+  // Pass deepEnabled to router — deep brain is opt-in only
+  const route = routeQuery(transcript, hasRecentFrame, session.deepEnabled);
   console.log(`[V9] Route: ${route.brain.toUpperCase()} | "${transcript.slice(0, 50)}${transcript.length > 50 ? '...' : ''}" | ${route.reason}`);
 
   try {
-    // Web search if needed (weather, news, scores, prices)
     const searchResults = await maybeSearchWeb(transcript);
 
     let systemContent = SYSTEM_PROMPT;
@@ -485,7 +514,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     let responseText: string;
     let brainUsed: BrainType = route.brain;
 
-    // Check if barge-in happened during LLM call
     if (!session.isResponding) { return; }
 
     if (route.brain === 'fast') {
@@ -508,7 +536,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
       console.log(`[V9] VOICE: ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
     }
 
-    // Check again after LLM call
     if (!session.isResponding || !responseText) { session.isResponding = false; return; }
 
     session.conversationHistory.push({ role: 'user', content: transcript });
@@ -517,7 +544,9 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 
     sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - startTime });
 
-    // TTS — mark as active so barge-in handles it properly
+    // Update last response time — keeps Redi "awake" for 30s
+    session.lastResponseTime = Date.now();
+
     const ttsStart = Date.now();
     session.ttsChunkCount = 0;
     session.ttsTotalBytes = 0;
@@ -527,8 +556,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     await elevenLabsStreamTTS(
       responseText,
       (audioChunk: Buffer) => {
-        // ALWAYS send audio if WebSocket is open — don't check isResponding here.
-        // Barge-in sends stop_audio to client which handles it on their end.
         if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) {
           sendAudioBinary(session, audioChunk);
         }
@@ -583,6 +610,12 @@ function handleClientMessage(session: V9Session, message: any): void {
         }).catch(() => {});
       }
       if (message.voice !== undefined) { session.voiceId = String(message.voice); console.log(`[V9] Voice set to: ${message.voice}`); }
+      // Deep Brain toggle
+      if (message.deepEnabled !== undefined) {
+        session.deepEnabled = !!message.deepEnabled;
+        console.log(`[V9] \uD83E\uDDE0 Deep Brain: ${session.deepEnabled ? 'ON' : 'OFF'}`);
+        sendToClient(session, { type: 'deep_status', enabled: session.deepEnabled });
+      }
       break;
 
     case 'barge_in':
@@ -635,7 +668,7 @@ function handleClientMessage(session: V9Session, message: any): void {
       session.isResponding = true;
       const chatStart = Date.now();
       const hasRecentFrame = !!(session.latestFrame && Date.now() - session.latestFrameTime < 5000);
-      const route = routeQuery(chatText, hasRecentFrame);
+      const route = routeQuery(chatText, hasRecentFrame, session.deepEnabled);
       console.log(`[V9] Chat route: ${route.brain.toUpperCase()} | "${chatText.slice(0, 50)}${chatText.length > 50 ? '...' : ''}"`);
       sendToClient(session, { type: 'transcript', text: chatText, role: 'user' });
 
@@ -670,6 +703,7 @@ function handleClientMessage(session: V9Session, message: any): void {
           if (session.conversationHistory.length > MAX_HISTORY_ENTRIES * 2) session.conversationHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES * 2);
 
           sendToClient(session, { type: 'response', text: responseText, brain: brainUsed, latencyMs: Date.now() - chatStart });
+          session.lastResponseTime = Date.now();
 
           if (!message.textOnly) {
             session.ttsChunkCount = 0;
@@ -702,12 +736,8 @@ function handleClientMessage(session: V9Session, message: any): void {
 }
 
 // =============================================================================
-// HELPERS
+// CLEANUP & EXPORTS
 // =============================================================================
-
-function sendToClient(session: V9Session, message: any): void {
-  if (session.clientWs.readyState === WebSocket.OPEN) session.clientWs.send(JSON.stringify(message));
-}
 
 function cleanup(sessionId: string): void {
   const session = sessions.get(sessionId);
@@ -738,5 +768,5 @@ export function closeRediV9(): void {
 export function getV9Stats(): object {
   let totalIn = 0, totalOut = 0, totalResponses = 0;
   sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; });
-  return { activeSessions: sessions.size, architecture: 'Three-Brain + Web Search', fastBrain: 'Cerebras GPT-OSS 120B', voiceBrain: 'Claude Haiku 4.5', deepBrain: 'GPT-4o', search: 'Tavily', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
+  return { activeSessions: sessions.size, architecture: 'Three-Brain + Wake Word + Web Search', fastBrain: 'Cerebras GPT-OSS 120B', deepBrain: 'GPT-4o (opt-in)', search: 'Tavily', totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut };
 }
