@@ -133,9 +133,10 @@ VOICE STYLE — SOUND HUMAN:
 - Don't lecture. Don't over-explain. Don't pad with qualifiers.
 
 SCREEN & VISION:
-- Describe what you see directly. Never "I see an image of..." — just state it.
+- YOU CAN SEE THE SCREEN. When a screen image is provided, you are looking at it right now. Describe what you see directly and confidently.
+- Never say "I can't see your screen" or "I don't have the ability to view screens" — if an image is in this message, you ARE seeing their screen.
 - Be specific: name the app, read the text, identify the error, point to the button.
-- If text is too small or blurry, say so honestly. Suggest Deep Brain for detail work.
+- If specific text is too small to read in the image, say what you CAN see and ask them to zoom in on that part.
 - Proactively notice things they might miss: typos, errors, better approaches.
 
 NEVER HALLUCINATE:
@@ -194,15 +195,15 @@ function shouldRespond(session: V9Session, transcript: string): boolean {
 // =============================================================================
 
 export function initV9WebSocket(server: HTTPServer): void {
-  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
+  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
   console.log('[V9] FOUR-BRAIN ARCHITECTURE + WEB SEARCH');
   console.log('[V9] Fast:   Cerebras GPT-OSS 120B   | text-only   | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
   console.log('[V9] Wake: "Redi" (45s) | TTS: ElevenLabs turbo 1.12x | Search: Tavily');
   console.log('[V9] Noise: confidence>' + MIN_CONFIDENCE + ' | min ' + MIN_WORDS_TO_RESPOND + ' words | endpointing 400ms');
-  console.log('[V9] Prompt: BE PROFOUND');
-  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
+  console.log('[V9] Prompt: BE PROFOUND + VISION FIX');
+  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
   const missing: string[] = [];
   if (!DEEPGRAM_API_KEY) missing.push('DEEPGRAM_API_KEY');
@@ -334,7 +335,7 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     keywords: ['Redi:5', 'Redi Always:3'],
   });
 
-  connection.on(LiveTranscriptionEvents.Open, () => { console.log(`[V9] Deepgram connected (nova-2, endpointing: 400ms, confidence>' + MIN_CONFIDENCE + ')`); });
+  connection.on(LiveTranscriptionEvents.Open, () => { console.log(`[V9] Deepgram connected (nova-2, endpointing: 400ms, confidence>${MIN_CONFIDENCE})`); });
 
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
     const alt = data.channel?.alternatives?.[0];
@@ -425,9 +426,11 @@ async function callBrain(
   if (brain === 'vision') {
     result = await openaiComplete({ messages, max_tokens: VISION_MAX_TOKENS, model: 'gpt-4o-mini' });
     console.log(`[V9] VISION (4o-mini): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
+    console.log(`[V9] VISION response: "${result.text.slice(0, 120)}${result.text.length > 120 ? '...' : ''}"`);
   } else if (brain === 'deep') {
     result = await openaiComplete({ messages, max_tokens: DEEP_MAX_TOKENS, model: 'gpt-4o' });
     console.log(`[V9] DEEP (4o): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
+    console.log(`[V9] DEEP response: "${result.text.slice(0, 120)}${result.text.length > 120 ? '...' : ''}"`);
   } else if (brain === 'voice') {
     result = await anthropicComplete({ messages, max_tokens: VOICE_MAX_TOKENS });
     console.log(`[V9] VOICE (haiku): ${result.latencyMs}ms | ${result.usage.inputTokens}+${result.usage.outputTokens} tokens`);
@@ -468,6 +471,11 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 
   const route = routeQuery(transcript, hasRecentFrame, session.deepEnabled);
   console.log(`[V9] Route: ${route.brain.toUpperCase()} | "${transcript.slice(0, 50)}${transcript.length > 50 ? '...' : ''}" | ${route.reason}`);
+  if (hasRecentFrame) {
+    const frameAge = Date.now() - session.latestFrameTime;
+    const frameSizeKB = session.latestFrame ? Math.round(session.latestFrame.length * 0.75 / 1024) : 0;
+    console.log(`[V9] \u{1F4F7} Frame: ${frameSizeKB}KB, age ${frameAge}ms, sending to ${route.brain.toUpperCase()}`);
+  }
 
   try {
     const searchResults = await maybeSearchWeb(transcript);
