@@ -19,6 +19,10 @@
  * Echo Guard:
  *   500ms barge-in grace period after TTS starts to prevent echo feedback
  *
+ * Vision Safety:
+ *   - Screen intent without frame → helpful "not connected" message (not hallucination)
+ *   - Vision queries strip poisoned history (prevents "can't see" echo)
+ *
  * Endpoint: /ws/redi?v=9
  * Updated: Feb 28, 2026
  */
@@ -70,11 +74,14 @@ const WAKE_WORD_PATTERN = /\b(redi|ready|reddi|reddy)\b/i;
 const AWAKE_WINDOW_MS = 45000;
 
 // Noise robustness
-const MIN_CONFIDENCE = 0.65;    // Reject transcripts below this confidence
-const MIN_WORDS_TO_RESPOND = 2; // Minimum words needed to trigger a response (unless wake word)
+const MIN_CONFIDENCE = 0.65;
+const MIN_WORDS_TO_RESPOND = 2;
 
 // Echo guard
-const BARGE_IN_GRACE_MS = 500;  // Ignore barge-in for this long after TTS starts (echo suppression)
+const BARGE_IN_GRACE_MS = 500;
+
+// Vision history poison filter — strip assistant messages containing these
+const VISION_POISON_PATTERNS = /can't see|cannot see|don't have.*screen|unable to (see|view)|no screen|not connected/i;
 
 // =============================================================================
 // TYPES
@@ -158,6 +165,9 @@ IDENTITY: Confident, warm, sharp. You care deeply. You're their AI with a heart 
 
 DRIVING MODE: If active, 10 words max. No directions. Safety first.`;
 
+// No-frame response — used when user asks about screen but no frame is connected
+const NO_FRAME_RESPONSE = "I don't see a screen share connected right now. Hit the screen share button and pick a window, then I'll be able to see what you're looking at.";
+
 // =============================================================================
 // STATE
 // =============================================================================
@@ -191,6 +201,23 @@ function shouldRespond(session: V9Session, transcript: string): boolean {
 }
 
 // =============================================================================
+// HISTORY FILTERING
+// =============================================================================
+
+/**
+ * For vision queries, strip conversation history entries where Redi said it
+ * can't see the screen. These poison the context and cause Mini to echo them.
+ */
+function filterHistoryForVision(history: Array<{ role: 'user' | 'assistant'; content: string }>): Array<{ role: 'user' | 'assistant'; content: string }> {
+  return history.filter(entry => {
+    if (entry.role === 'assistant' && VISION_POISON_PATTERNS.test(entry.content)) {
+      return false; // Strip poisoned "can't see" responses
+    }
+    return true;
+  });
+}
+
+// =============================================================================
 // INITIALIZATION
 // =============================================================================
 
@@ -203,6 +230,7 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Wake: "Redi" (45s) | TTS: ElevenLabs turbo 1.12x | Search: Tavily');
   console.log('[V9] Noise: confidence>' + MIN_CONFIDENCE + ' | min ' + MIN_WORDS_TO_RESPOND + ' words | endpointing 400ms');
   console.log('[V9] Barge-in: ' + BARGE_IN_GRACE_MS + 'ms echo guard');
+  console.log('[V9] Vision: no_frame intercept + history poison filter');
   console.log('[V9] Prompt: BE PROFOUND + VISION FIX + ECHO GUARD');
   console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
@@ -364,9 +392,6 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
 
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
-    // Barge-in: only during TTS playback so user can interrupt Redi speaking
-    // ECHO GUARD: Ignore SpeechStarted for BARGE_IN_GRACE_MS after TTS starts
-    // because Redi's own voice echoes through the mic before client can mute
     if (session.isTTSActive) {
       const timeSinceTTS = Date.now() - session.ttsStartTime;
       if (timeSinceTTS < BARGE_IN_GRACE_MS) {
@@ -417,6 +442,28 @@ async function maybeSearchWeb(transcript: string): Promise<string | null> {
     console.log(`[V9] \u{1F50D} ${results.length} results in ${Date.now() - start}ms`);
     return formatted;
   } catch (err) { console.error(`[V9] \u{1F50D} Search failed:`, err); return null; }
+}
+
+/** Send a canned response with TTS (for no_frame, etc.) */
+async function sendCannedResponse(session: V9Session, responseText: string, startTime: number): Promise<void> {
+  sendToClient(session, { type: 'response', text: responseText, brain: 'fast', latencyMs: Date.now() - startTime });
+  session.lastResponseTime = Date.now();
+
+  const ttsStart = Date.now();
+  session.ttsChunkCount = 0; session.ttsTotalBytes = 0; session.isTTSActive = true;
+  session.ttsStartTime = Date.now();
+  sendToClient(session, { type: 'mute_mic', muted: true });
+
+  await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
+    if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
+  }, () => {
+    console.log(`[V9] TTS: ${Math.round(session.ttsTotalBytes / 1024)}KB in ${Date.now() - ttsStart}ms`);
+    session.isTTSActive = false; sendToClient(session, { type: 'mute_mic', muted: false }); sendToClient(session, { type: 'audio_done' });
+  }, session.voiceId || undefined);
+
+  session.responsesCompleted++;
+  session.isResponding = false;
+  session.isTTSActive = false;
 }
 
 // =============================================================================
@@ -483,6 +530,15 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     console.log(`[V9] \u{1F4F7} Frame: ${frameSizeKB}KB, age ${frameAge}ms, sending to ${route.brain.toUpperCase()}`);
   }
 
+  // INTERCEPT: User asking about screen but no frame connected
+  // Give a helpful response instead of letting Cerebras hallucinate
+  if (route.reason === 'no_frame') {
+    console.log(`[V9] \u{1F6AB} No frame — sending canned screen share prompt`);
+    await sendCannedResponse(session, NO_FRAME_RESPONSE, startTime);
+    // Don't save to conversation history — prevents poisoning
+    return;
+  }
+
   try {
     const searchResults = await maybeSearchWeb(transcript);
     let systemContent = SYSTEM_PROMPT;
@@ -491,10 +547,14 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
     if (session.isDrivingMode) systemContent += '\n\nDRIVING MODE: 10 words max. No directions.';
 
     const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
-    const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
+
+    // For vision queries, filter out poisoned history (previous "can't see" responses)
+    const isVisionQuery = route.brain === 'vision' || route.brain === 'deep';
+    const rawHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
+    const historySlice = isVisionQuery ? filterHistoryForVision(rawHistory) : rawHistory;
     for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-    if (hasRecentFrame && (route.brain === 'vision' || route.brain === 'deep')) {
+    if (hasRecentFrame && isVisionQuery) {
       messages.push({ role: 'user', content: [{ type: 'text', text: transcript }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
     } else {
       messages.push({ role: 'user', content: transcript });
@@ -616,6 +676,13 @@ function handleClientMessage(session: V9Session, message: any): void {
       console.log(`[V9] Chat route: ${route.brain.toUpperCase()} | "${chatText.slice(0, 50)}${chatText.length > 50 ? '...' : ''}"`);
       sendToClient(session, { type: 'transcript', text: chatText, role: 'user' });
 
+      // Chat also gets no_frame intercept
+      if (route.reason === 'no_frame') {
+        console.log(`[V9] \u{1F6AB} No frame (chat) — sending canned screen share prompt`);
+        (async () => { await sendCannedResponse(session, NO_FRAME_RESPONSE, chatStart); })();
+        break;
+      }
+
       (async () => {
         try {
           const searchResults = await maybeSearchWeb(chatText);
@@ -624,10 +691,13 @@ function handleClientMessage(session: V9Session, message: any): void {
           if (searchResults) systemContent += `\n\nWEB SEARCH RESULTS (use these to answer):\n${searchResults}`;
 
           const messages: LLMMessage[] = [{ role: 'system', content: systemContent }];
-          const historySlice = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
+
+          const isVisionQuery = route.brain === 'vision' || route.brain === 'deep';
+          const rawHistory = session.conversationHistory.slice(-MAX_HISTORY_ENTRIES);
+          const historySlice = isVisionQuery ? filterHistoryForVision(rawHistory) : rawHistory;
           for (const entry of historySlice) messages.push({ role: entry.role, content: entry.content });
 
-          if (hasRecentFrame && (route.brain === 'vision' || route.brain === 'deep')) {
+          if (hasRecentFrame && isVisionQuery) {
             messages.push({ role: 'user', content: [{ type: 'text', text: chatText }, { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${session.latestFrame}` } }] });
           } else {
             messages.push({ role: 'user', content: chatText });
@@ -702,13 +772,14 @@ export function getV9Stats(): object {
   sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; totalNoiseRejects += s.noiseRejectCount; });
   return {
     activeSessions: sessions.size,
-    architecture: 'Four-Brain + Wake Word + Web Search + Noise Filtering + Echo Guard',
+    architecture: 'Four-Brain + Wake Word + Web Search + Noise Filtering + Echo Guard + Vision Safety',
     fastBrain: 'Cerebras GPT-OSS 120B',
     visionBrain: 'GPT-4o Mini (auto-routed)',
     deepBrain: 'GPT-4o (opt-in)',
     search: 'Tavily',
     noiseFiltering: { minConfidence: MIN_CONFIDENCE, minWords: MIN_WORDS_TO_RESPOND, endpointing: '400ms' },
     echoGuard: { bargeInGraceMs: BARGE_IN_GRACE_MS },
+    visionSafety: { noFrameIntercept: true, historyPoisonFilter: true },
     totalResponses, totalNoiseRejects, totalInputTokens: totalIn, totalOutputTokens: totalOut,
   };
 }
