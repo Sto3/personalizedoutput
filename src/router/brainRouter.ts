@@ -3,17 +3,15 @@
  * =======================================
  *
  * Routing logic:
- * 1. Vision frame present → 'vision' brain (GPT-4o Mini) — automatic, no toggle needed
- * 2. Deep Brain toggled ON + complex patterns → 'deep' brain (GPT-4o)
- * 3. Everything else → 'fast' brain (Cerebras) — 90%+ of queries
+ * 1. User asks about screen but no frame → 'no_frame' (server gives helpful message)
+ * 2. Vision frame present → 'vision' brain (GPT-4o Mini) — automatic, no toggle needed
+ * 3. Deep Brain toggled ON + complex patterns → 'deep' brain (GPT-4o)
+ * 4. Everything else → 'fast' brain (Cerebras) — 90%+ of queries
  *
- * Screen share works automatically now — users don't need to toggle Deep Brain
- * just to see their screen. Deep Brain is reserved for genuinely complex reasoning.
- *
- * Updated: Feb 27, 2026
+ * Updated: Feb 28, 2026
+ * - Added screen intent detection to prevent Cerebras from answering vision questions
  * - Vision auto-routes to GPT-4o Mini (cheap, fast, vision-capable)
  * - Deep Brain stays opt-in for complex reasoning (GPT-4o)
- * - No more requiring Deep toggle for screen share
  */
 
 import { RouteDecision } from '../providers/types';
@@ -27,6 +25,17 @@ const DEEP_BRAIN_PATTERNS: RegExp[] = [
   /\b(advanced\s+physics|calculus|differential\s+equations)\b/i,
   /\b(board\s+exam|USMLE|COMLEX)\b/i,
   /\b(case\s+study|legal\s+analysis|medical\s+reasoning)\b/i,
+];
+
+// Patterns that indicate the user is asking about what's on their screen
+const SCREEN_INTENT_PATTERNS: RegExp[] = [
+  /\b(see|look at|looking at)\s+(my\s+)?screen\b/i,
+  /\b(what('s| is))\s+on\s+(my\s+)?screen\b/i,
+  /\bscreen\s+share\b/i,
+  /\bcan you see\b/i,
+  /\bwhat do you see\b/i,
+  /\bwhat am i (looking at|showing)\b/i,
+  /\bread (this|that|my screen|what's on)\b/i,
 ];
 
 export function routeQuery(
@@ -46,7 +55,17 @@ export function routeQuery(
     }
   }
 
-  // 2. Vision frame present → GPT-4o Mini (auto-routed, no toggle needed)
+  // 2. User asking about screen but no frame → special 'no_frame' indicator
+  //    This prevents Cerebras from hallucinating about screen content
+  if (!hasVision) {
+    for (const pattern of SCREEN_INTENT_PATTERNS) {
+      if (pattern.test(userText)) {
+        return { brain: 'fast', reason: 'no_frame' };
+      }
+    }
+  }
+
+  // 3. Vision frame present → GPT-4o Mini (auto-routed, no toggle needed)
   //    If deep is also ON, use full GPT-4o for vision instead
   if (hasVision) {
     if (deepEnabled) {
@@ -55,6 +74,6 @@ export function routeQuery(
     return { brain: 'vision', reason: 'Screen share — GPT-4o Mini (auto)' };
   }
 
-  // 3. Everything else → Cerebras (fastest)
+  // 4. Everything else → Cerebras (fastest)
   return { brain: 'fast', reason: 'Text-only — Cerebras (fastest)' };
 }
