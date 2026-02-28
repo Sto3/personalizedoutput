@@ -2,13 +2,19 @@
  * Redi V9 Server - FOUR-BRAIN ARCHITECTURE
  * ==========================================
  *
- * Pipeline: Deepgram STT -> Wake Word -> [Web Search?] -> Brain Router -> LLM -> ElevenLabs TTS
+ * Pipeline: Deepgram STT -> Confidence Filter -> Wake Word -> [Web Search?] -> Brain Router -> LLM -> ElevenLabs TTS
  *
  * Brains:
  *   Fast   = Cerebras GPT-OSS 120B (text-only, ~200ms)
  *   Vision = GPT-4o Mini (screen share, ~1.5s, auto-routed)
  *   Deep   = GPT-4o (complex reasoning, opt-in toggle)
  *   Voice  = Claude Haiku 4.5 (reserved)
+ *
+ * Noise Robustness:
+ *   1. Deepgram confidence threshold (0.65) — rejects low-confidence noise
+ *   2. Minimum word count (2 words) — filters single-word ghosts
+ *   3. Explicit endpointing (400ms) — tighter speech boundary detection
+ *   4. Short transcript filter — drops non-wake-word fragments
  *
  * Endpoint: /ws/redi?v=9
  * Updated: Feb 28, 2026
@@ -60,6 +66,10 @@ const WS_PING_INTERVAL_MS = 30000;
 const WAKE_WORD_PATTERN = /\b(redi|ready|reddi|reddy)\b/i;
 const AWAKE_WINDOW_MS = 45000;
 
+// Noise robustness
+const MIN_CONFIDENCE = 0.65;    // Reject transcripts below this confidence
+const MIN_WORDS_TO_RESPOND = 2; // Minimum words needed to trigger a response (unless wake word)
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -97,6 +107,7 @@ interface V9Session {
   totalOutputTokens: number;
   ttsChunkCount: number;
   ttsTotalBytes: number;
+  noiseRejectCount: number;
 }
 
 // =============================================================================
@@ -147,6 +158,26 @@ const sessions = new Map<string, V9Session>();
 let wss: WebSocketServer | null = null;
 
 // =============================================================================
+// NOISE FILTERING
+// =============================================================================
+
+function isLikelyNoise(transcript: string, confidence: number): boolean {
+  // Low confidence = probably background noise, TV, music
+  if (confidence < MIN_CONFIDENCE) return true;
+
+  const words = transcript.trim().split(/\s+/);
+
+  // Single-word fragments that aren't wake words are almost always noise
+  if (words.length === 1 && !WAKE_WORD_PATTERN.test(transcript)) return true;
+
+  // Common noise ghost words from ambient speech/TV
+  const NOISE_GHOSTS = /^(um|uh|hmm|hm|ah|oh|mhm|the|a|an|and|but|so|or|is|it|in|on|to|of)$/i;
+  if (words.length <= 2 && words.every(w => NOISE_GHOSTS.test(w))) return true;
+
+  return false;
+}
+
+// =============================================================================
 // WAKE WORD
 // =============================================================================
 
@@ -169,6 +200,7 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
   console.log('[V9] Wake: "Redi" (45s) | TTS: ElevenLabs turbo 1.12x | Search: Tavily');
+  console.log('[V9] Noise: confidence>' + MIN_CONFIDENCE + ' | min ' + MIN_WORDS_TO_RESPOND + ' words | endpointing 400ms');
   console.log('[V9] Prompt: BE PROFOUND');
   console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
@@ -217,7 +249,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       userId: authUser.userId, userName: authUser.name, userEmail: authUser.email,
       isActive: true, connectionTime: Date.now(),
       responsesCompleted: 0, totalInputTokens: 0, totalOutputTokens: 0,
-      ttsChunkCount: 0, ttsTotalBytes: 0,
+      ttsChunkCount: 0, ttsTotalBytes: 0, noiseRejectCount: 0,
     };
     sessions.set(sessionId, session);
 
@@ -263,7 +295,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       if (session.creditTimer) clearInterval(session.creditTimer);
       if (session.pingInterval) clearInterval(session.pingInterval);
       const duration = Math.round((Date.now() - session.connectionTime) / 1000);
-      console.log(`[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`);
+      console.log(`[V9] Closed: ${sessionId.slice(0, 8)} | ${duration}s | responses: ${session.responsesCompleted} | noise rejected: ${session.noiseRejectCount} | tokens in: ${session.totalInputTokens} out: ${session.totalOutputTokens}`);
       cleanup(sessionId);
     });
     ws.on('error', (err) => { console.error(`[V9] WebSocket error:`, err); cleanup(sessionId); });
@@ -289,20 +321,38 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
   if (!DEEPGRAM_API_KEY) throw new Error('DEEPGRAM_API_KEY not set');
   const deepgram = createClient(DEEPGRAM_API_KEY, { global: { headers: { 'X-DG-No-Logging': 'true' } } });
   const connection = deepgram.listen.live({
-    model: 'nova-2', language: 'en', smart_format: true, interim_results: true,
-    utterance_end_ms: 2000, vad_events: true, encoding: 'linear16', sample_rate: 24000, channels: 1,
+    model: 'nova-2',
+    language: 'en',
+    smart_format: true,
+    interim_results: true,
+    utterance_end_ms: 2000,
+    vad_events: true,
+    endpointing: 400,          // Tighter endpointing for noisy environments (default ~infinite)
+    encoding: 'linear16',
+    sample_rate: 24000,
+    channels: 1,
     keywords: ['Redi:5', 'Redi Always:3'],
   });
 
-  connection.on(LiveTranscriptionEvents.Open, () => { console.log(`[V9] Deepgram connected (nova-2, keywords: Redi)`); });
+  connection.on(LiveTranscriptionEvents.Open, () => { console.log(`[V9] Deepgram connected (nova-2, endpointing: 400ms, confidence>' + MIN_CONFIDENCE + ')`); });
 
   connection.on(LiveTranscriptionEvents.Transcript, (data: any) => {
-    const transcript = data.channel?.alternatives?.[0]?.transcript;
+    const alt = data.channel?.alternatives?.[0];
+    const transcript = alt?.transcript;
+    const confidence = alt?.confidence || 0;
     const isFinal = data.is_final;
     const speechFinal = data.speech_final;
+
     if (transcript?.trim()) {
+      // NOISE FILTER: Check confidence and word count before accepting
+      if (isFinal && isLikelyNoise(transcript.trim(), confidence)) {
+        session.noiseRejectCount++;
+        console.log(`[V9] \u{1F6AB} Noise rejected (conf=${confidence.toFixed(2)}): "${transcript.trim().slice(0, 30)}"`);
+        return; // Don't accumulate this transcript
+      }
+
       if (session.observeSessionId) { if (isFinal) feedAudioTranscript(session.observeSessionId, transcript.trim()); return; }
-      if (isFinal) { session.currentTranscript += ' ' + transcript.trim(); session.currentTranscript = session.currentTranscript.trim(); console.log(`[V9] Final: "${transcript.trim()}"`); }
+      if (isFinal) { session.currentTranscript += ' ' + transcript.trim(); session.currentTranscript = session.currentTranscript.trim(); console.log(`[V9] Final (conf=${confidence.toFixed(2)}): "${transcript.trim()}"`); }
       sendToClient(session, { type: 'transcript', text: transcript.trim(), isFinal, role: 'user' });
       if (session.speechEndTimeout) { clearTimeout(session.speechEndTimeout); session.speechEndTimeout = null; }
     }
@@ -400,6 +450,15 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   session.currentTranscript = '';
   session.isUserSpeaking = false;
   if (!transcript || session.isResponding) return;
+
+  // Final noise gate: check accumulated transcript has enough substance
+  const wordCount = transcript.split(/\s+/).length;
+  if (wordCount < MIN_WORDS_TO_RESPOND && !WAKE_WORD_PATTERN.test(transcript)) {
+    console.log(`[V9] \u{1F6AB} Too short to respond (${wordCount} words): "${transcript}"`);
+    session.noiseRejectCount++;
+    return;
+  }
+
   if (!shouldRespond(session, transcript)) return;
 
   session.isResponding = true;
@@ -623,15 +682,16 @@ export function closeRediV9(): void {
 }
 
 export function getV9Stats(): object {
-  let totalIn = 0, totalOut = 0, totalResponses = 0;
-  sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; });
+  let totalIn = 0, totalOut = 0, totalResponses = 0, totalNoiseRejects = 0;
+  sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; totalNoiseRejects += s.noiseRejectCount; });
   return {
     activeSessions: sessions.size,
-    architecture: 'Four-Brain + Wake Word + Web Search',
+    architecture: 'Four-Brain + Wake Word + Web Search + Noise Filtering',
     fastBrain: 'Cerebras GPT-OSS 120B',
     visionBrain: 'GPT-4o Mini (auto-routed)',
     deepBrain: 'GPT-4o (opt-in)',
     search: 'Tavily',
-    totalResponses, totalInputTokens: totalIn, totalOutputTokens: totalOut,
+    noiseFiltering: { minConfidence: MIN_CONFIDENCE, minWords: MIN_WORDS_TO_RESPOND, endpointing: '400ms' },
+    totalResponses, totalNoiseRejects, totalInputTokens: totalIn, totalOutputTokens: totalOut,
   };
 }
