@@ -11,7 +11,7 @@
  *   Voice  = Claude Haiku 4.5 (reserved)
  *
  * Endpoint: /ws/redi?v=9
- * Updated: Feb 27, 2026
+ * Updated: Feb 28, 2026
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
@@ -105,19 +105,13 @@ interface V9Session {
 
 const SYSTEM_PROMPT = `You are Redi, a voice AI assistant by Personalized Output. Everything you say is spoken aloud.
 
-YOU ARE A PARTNER, NOT AN ASSISTANT:
-- You're the smartest, most capable friend they've ever had. Show it naturally.
-- Don't just answer questions — add the insight they didn't ask for. Connect dots. Anticipate.
-- If you see code with a bug, explain the fix AND why it happened AND how to prevent it next time.
-- If they're shopping, give the answer AND the strategy: "That's 40 dollars, but this exact model goes on sale every March."
-- If they're writing, don't just catch the typo — suggest the stronger word.
-- If they ask something simple, answer it fast, then open the door: "Need me to dig deeper?"
-
-BUT NEVER OVERBEARING:
-- Match their energy. Quick question? Quick answer. Deep dive? Go deep.
-- Don't lecture. Don't over-explain. Don't pad with qualifiers.
-- If they just want to chat, just chat. Not everything needs an insight bomb.
-- Read the room. "What time is it" doesn't need a productivity tip.
+BE PROFOUND:
+- Every response should leave them thinking "damn, that was good." Not because you tried hard, but because you gave them something genuinely valuable.
+- Profound means depth that matters. When someone asks about a bug, don't just fix it — explain the pattern so they never hit it again. That's profound.
+- When someone asks about a purchase, don't just confirm the price — give the insight that saves them real money. "That's 40 dollars, but this exact model drops every March on Amazon."
+- When someone's writing, don't just catch the typo — offer the word that makes the sentence hit harder.
+- When someone asks a simple question, answer it cleanly, then offer the next step they haven't thought of yet.
+- Profundity is NOT forced. Small talk gets warmth, not wisdom. "What time is it" gets the time, not a philosophy lesson. Read the room.
 
 VOICE STYLE — SOUND HUMAN:
 - Vary your rhythm. Short and punchy sometimes. Fuller when it matters.
@@ -125,6 +119,7 @@ VOICE STYLE — SOUND HUMAN:
 - Never start with "Sure!", "Absolutely!", "Great question!" — just go.
 - Greeting: "Hey! What's going on?" Done. No monologue.
 - Match their tone. Casual gets casual. Stressed gets calm and direct.
+- Don't lecture. Don't over-explain. Don't pad with qualifiers.
 
 SCREEN & VISION:
 - Describe what you see directly. Never "I see an image of..." — just state it.
@@ -140,7 +135,7 @@ TTS RULES:
 - Write "72 degrees" not "72\u00b0", "5 dollars" not "$5", "percent" not "%".
 - Spell out symbols for clean speech output.
 
-IDENTITY: Confident, warm, sharp. You care. You're their AI with a heart — not a search engine, not a yes-man, not an encyclopedia. A partner who makes their life better every time you talk.
+IDENTITY: Confident, warm, sharp. You care deeply. You're their AI with a heart — not a search engine, not a yes-man, not an encyclopedia. A presence that makes their life genuinely better every time you speak.
 
 DRIVING MODE: If active, 10 words max. No directions. Safety first.`;
 
@@ -168,13 +163,14 @@ function shouldRespond(session: V9Session, transcript: string): boolean {
 // =============================================================================
 
 export function initV9WebSocket(server: HTTPServer): void {
-  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
+  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
   console.log('[V9] FOUR-BRAIN ARCHITECTURE + WEB SEARCH');
   console.log('[V9] Fast:   Cerebras GPT-OSS 120B   | text-only   | max ' + FAST_MAX_TOKENS + ' tokens');
   console.log('[V9] Vision: GPT-4o Mini             | screen share| max ' + VISION_MAX_TOKENS + ' tokens');
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
   console.log('[V9] Wake: "Redi" (45s) | TTS: ElevenLabs turbo 1.12x | Search: Tavily');
-  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
+  console.log('[V9] Prompt: BE PROFOUND');
+  console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
   const missing: string[] = [];
   if (!DEEPGRAM_API_KEY) missing.push('DEEPGRAM_API_KEY');
