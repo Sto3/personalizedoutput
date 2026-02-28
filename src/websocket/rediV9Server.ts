@@ -16,6 +16,9 @@
  *   3. Explicit endpointing (400ms) — tighter speech boundary detection
  *   4. Short transcript filter — drops non-wake-word fragments
  *
+ * Echo Guard:
+ *   500ms barge-in grace period after TTS starts to prevent echo feedback
+ *
  * Endpoint: /ws/redi?v=9
  * Updated: Feb 28, 2026
  */
@@ -70,6 +73,9 @@ const AWAKE_WINDOW_MS = 45000;
 const MIN_CONFIDENCE = 0.65;    // Reject transcripts below this confidence
 const MIN_WORDS_TO_RESPOND = 2; // Minimum words needed to trigger a response (unless wake word)
 
+// Echo guard
+const BARGE_IN_GRACE_MS = 500;  // Ignore barge-in for this long after TTS starts (echo suppression)
+
 // =============================================================================
 // TYPES
 // =============================================================================
@@ -86,6 +92,7 @@ interface V9Session {
   speechEndTimeout: NodeJS.Timeout | null;
   isResponding: boolean;
   isTTSActive: boolean;
+  ttsStartTime: number;
   deepEnabled: boolean;
   wakeWordActive: boolean;
   lastResponseTime: number;
@@ -163,18 +170,11 @@ let wss: WebSocketServer | null = null;
 // =============================================================================
 
 function isLikelyNoise(transcript: string, confidence: number): boolean {
-  // Low confidence = probably background noise, TV, music
   if (confidence < MIN_CONFIDENCE) return true;
-
   const words = transcript.trim().split(/\s+/);
-
-  // Single-word fragments that aren't wake words are almost always noise
   if (words.length === 1 && !WAKE_WORD_PATTERN.test(transcript)) return true;
-
-  // Common noise ghost words from ambient speech/TV
   const NOISE_GHOSTS = /^(um|uh|hmm|hm|ah|oh|mhm|the|a|an|and|but|so|or|is|it|in|on|to|of)$/i;
   if (words.length <= 2 && words.every(w => NOISE_GHOSTS.test(w))) return true;
-
   return false;
 }
 
@@ -202,7 +202,8 @@ export function initV9WebSocket(server: HTTPServer): void {
   console.log('[V9] Deep:   GPT-4o (opt-in toggle)  | complex     | max ' + DEEP_MAX_TOKENS + ' tokens');
   console.log('[V9] Wake: "Redi" (45s) | TTS: ElevenLabs turbo 1.12x | Search: Tavily');
   console.log('[V9] Noise: confidence>' + MIN_CONFIDENCE + ' | min ' + MIN_WORDS_TO_RESPOND + ' words | endpointing 400ms');
-  console.log('[V9] Prompt: BE PROFOUND + VISION FIX');
+  console.log('[V9] Barge-in: ' + BARGE_IN_GRACE_MS + 'ms echo guard');
+  console.log('[V9] Prompt: BE PROFOUND + VISION FIX + ECHO GUARD');
   console.log('[V9] \u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}\u{2550}');
 
   const missing: string[] = [];
@@ -243,7 +244,7 @@ export function initV9WebSocket(server: HTTPServer): void {
       id: sessionId, clientWs: ws, deepgramConnection: null,
       latestFrame: null, latestFrameTime: 0, hasVision: false,
       isUserSpeaking: false, currentTranscript: '', speechEndTimeout: null,
-      isResponding: false, isTTSActive: false, deepEnabled: false,
+      isResponding: false, isTTSActive: false, ttsStartTime: 0, deepEnabled: false,
       wakeWordActive: false, lastResponseTime: 0,
       conversationHistory: [], memoryContext: '',
       isDrivingMode: false, voiceOnly: false, voiceId: '',
@@ -328,7 +329,7 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     interim_results: true,
     utterance_end_ms: 2000,
     vad_events: true,
-    endpointing: 400,          // Tighter endpointing for noisy environments (default ~infinite)
+    endpointing: 400,
     encoding: 'linear16',
     sample_rate: 24000,
     channels: 1,
@@ -345,11 +346,10 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
     const speechFinal = data.speech_final;
 
     if (transcript?.trim()) {
-      // NOISE FILTER: Check confidence and word count before accepting
       if (isFinal && isLikelyNoise(transcript.trim(), confidence)) {
         session.noiseRejectCount++;
         console.log(`[V9] \u{1F6AB} Noise rejected (conf=${confidence.toFixed(2)}): "${transcript.trim().slice(0, 30)}"`);
-        return; // Don't accumulate this transcript
+        return;
       }
 
       if (session.observeSessionId) { if (isFinal) feedAudioTranscript(session.observeSessionId, transcript.trim()); return; }
@@ -365,12 +365,19 @@ async function connectToDeepgram(session: V9Session): Promise<void> {
   connection.on(LiveTranscriptionEvents.SpeechStarted, () => {
     session.isUserSpeaking = true;
     // Barge-in: only during TTS playback so user can interrupt Redi speaking
+    // ECHO GUARD: Ignore SpeechStarted for BARGE_IN_GRACE_MS after TTS starts
+    // because Redi's own voice echoes through the mic before client can mute
     if (session.isTTSActive) {
-      console.log(`[V9] BARGE-IN`);
-      sendToClient(session, { type: 'stop_audio' });
-      session.isResponding = false;
-      session.isTTSActive = false;
-      sendToClient(session, { type: 'mute_mic', muted: false });
+      const timeSinceTTS = Date.now() - session.ttsStartTime;
+      if (timeSinceTTS < BARGE_IN_GRACE_MS) {
+        console.log(`[V9] \u{1F6E1}\u{FE0F} Barge-in suppressed (echo, ${timeSinceTTS}ms after TTS start)`);
+      } else {
+        console.log(`[V9] BARGE-IN (${timeSinceTTS}ms after TTS start)`);
+        sendToClient(session, { type: 'stop_audio' });
+        session.isResponding = false;
+        session.isTTSActive = false;
+        sendToClient(session, { type: 'mute_mic', muted: false });
+      }
     }
     if (session.speechEndTimeout) { clearTimeout(session.speechEndTimeout); session.speechEndTimeout = null; }
   });
@@ -454,7 +461,6 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
   session.isUserSpeaking = false;
   if (!transcript || session.isResponding) return;
 
-  // Final noise gate: check accumulated transcript has enough substance
   const wordCount = transcript.split(/\s+/).length;
   if (wordCount < MIN_WORDS_TO_RESPOND && !WAKE_WORD_PATTERN.test(transcript)) {
     console.log(`[V9] \u{1F6AB} Too short to respond (${wordCount} words): "${transcript}"`);
@@ -508,6 +514,7 @@ async function handleSpeechEnd(session: V9Session): Promise<void> {
 
     const ttsStart = Date.now();
     session.ttsChunkCount = 0; session.ttsTotalBytes = 0; session.isTTSActive = true;
+    session.ttsStartTime = Date.now();
     sendToClient(session, { type: 'mute_mic', muted: true });
 
     await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
@@ -638,6 +645,7 @@ function handleClientMessage(session: V9Session, message: any): void {
 
           if (!message.textOnly) {
             session.ttsChunkCount = 0; session.ttsTotalBytes = 0; session.isTTSActive = true;
+            session.ttsStartTime = Date.now();
             sendToClient(session, { type: 'mute_mic', muted: true });
             await elevenLabsStreamTTS(responseText, (audioChunk: Buffer) => {
               if (session.clientWs.readyState === WebSocket.OPEN && session.isTTSActive) sendAudioBinary(session, audioChunk);
@@ -694,12 +702,13 @@ export function getV9Stats(): object {
   sessions.forEach((s) => { totalIn += s.totalInputTokens; totalOut += s.totalOutputTokens; totalResponses += s.responsesCompleted; totalNoiseRejects += s.noiseRejectCount; });
   return {
     activeSessions: sessions.size,
-    architecture: 'Four-Brain + Wake Word + Web Search + Noise Filtering',
+    architecture: 'Four-Brain + Wake Word + Web Search + Noise Filtering + Echo Guard',
     fastBrain: 'Cerebras GPT-OSS 120B',
     visionBrain: 'GPT-4o Mini (auto-routed)',
     deepBrain: 'GPT-4o (opt-in)',
     search: 'Tavily',
     noiseFiltering: { minConfidence: MIN_CONFIDENCE, minWords: MIN_WORDS_TO_RESPOND, endpointing: '400ms' },
+    echoGuard: { bargeInGraceMs: BARGE_IN_GRACE_MS },
     totalResponses, totalNoiseRejects, totalInputTokens: totalIn, totalOutputTokens: totalOut,
   };
 }
